@@ -5,7 +5,7 @@ import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./source
 import { SourcesSheet } from "./sheet";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { VideoGrid, playerFor, soortVan, startSoort } from "./video";
-import { videoSlug } from "./feed";
+import { videoSlug, zaaiSamenvattingen } from "./feed";
 import { schoon } from "./schoon";
 import { Beelden, Thumb } from "./beelden";
 
@@ -901,6 +901,7 @@ function useData() {
       const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.filmpjes ??= [];
+      zaaiSamenvattingen(d.samenvattingen);
       d.dumpert ??= [];
       d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
       d.filmpjes = d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) })); // Shorts of Journaals

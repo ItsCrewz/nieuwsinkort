@@ -57,5 +57,10 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
   let out: any = S;
   try { out = merge(S, H); } catch { out = S; }
   try { out = schoon(out); } catch { /* ongeschoond is beter dan niets */ }
+  // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
+  try {
+    const sv: any = await env.NIEUWS.get("sv-klaar", "json");
+    if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
+  } catch { /* zonder: de knop haalt hem op verzoek op */ }
   return new Response(JSON.stringify(out), { headers: HDR });
 };

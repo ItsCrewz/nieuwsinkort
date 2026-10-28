@@ -8,6 +8,7 @@ import { buildWeer, BR_URL, OM_URL, KNMI_VERW, KNMI_WAARSCH } from "./weer";
 import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, type Usage, type In, type Sum } from "./ai";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
+import { vooraf, MAX_ALARMS_PER_UUR } from "./vooraf";
 import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
@@ -245,6 +246,28 @@ export class Runner extends DurableObject<Env> {
     } catch (e: any) {
       return Response.json({ ok: false, err: String(e?.stack || e) }, { status: 500 });
     }
+  }
+
+  async alarm() {
+    const env = this.env, A = ams(), BUDGET = +(env.BUDGET || 9000);
+    const k: any = (await this.ctx.storage.get("vooraf")) || { uur: A.h, n: 0 };
+    if (k.uur !== A.h || k.n >= MAX_ALARMS_PER_UUR) return;
+    // eerlijk deel per run van wat er tot 85% nog over is na de nieuwsreserve, x1.5 (begin van de dag inhalen)
+    const st: any = await env.NIEUWS.get("state", "json").catch(() => null);
+    const vidN = +((await env.NIEUWS.get(`vid-neurons:${A.iso}`).catch(() => null)) || 0) || 0;
+    const used = (st?.datum === A.iso ? +st.neurons || 0 : 0) + vidN;
+    const runsLeft = Math.max(1, 23 - A.h + 1);
+    const vrij = 0.85 * BUDGET - used - Math.max(0, 23 - A.h) * 260;
+    const perAlarm = Math.max(0, Math.min(1200, (vrij / runsLeft) * 1.5));
+    let r: any = { overgeslagen: "geen budget", vrij: Math.round(vrij) };
+    if (perAlarm >= 40) {
+      try { r = await vooraf(env, perAlarm); } catch (e: any) { r = { fout: String(e?.message || e).slice(0, 200) }; }
+    }
+    k.n++; k.laatst = { ...r, perAlarm: Math.round(perAlarm), used: Math.round(used), at: new Date().toISOString() };
+    await this.ctx.storage.put("vooraf", k);
+    await this.env.NIEUWS.put("vooraf-log", JSON.stringify(k.laatst), { expirationTtl: 2 * 86400 });
+    console.log("vooraf", JSON.stringify(k.laatst));
+    if (r.nogTeDoen > 0 && r.stop !== "dagbudget" && r.stop !== "run-budget" && k.n < MAX_ALARMS_PER_UUR) await this.ctx.storage.setAlarm(Date.now() + 5 * 60e3);
   }
 
   async run(force: boolean) {
@@ -518,6 +541,9 @@ export class Runner extends DurableObject<Env> {
     for (const id of Object.keys(st.sums)) if (!live.has(id) && now - st.sums[id].at > 6 * 3600e3) { delete st.sums[id]; }
     for (const [l, id] of Object.entries(st.links)) if (!st.sums[id]) delete st.links[l];
     await Promise.all([env.NIEUWS.put("uur", JSON.stringify(out)), env.NIEUWS.put("state", JSON.stringify(st))]);
+    // video-samenvattingen vooraf: los alarm over 1 minuut (eigen CPU/subrequest-budget), na het nieuws
+    await this.ctx.storage.put("vooraf", { uur: A.h, n: 0 });
+    await this.ctx.storage.setAlarm(Date.now() + 60e3);
     return { ok: true, ...out.meta, gegenereerd: out.gegenereerd };
   }
 }
@@ -548,7 +574,8 @@ export default {
     }
     if (u.pathname === "/status") {
       const d: any = await env.NIEUWS.get("uur", "json");
-      return Response.json(d ? { gegenereerd: d.gegenereerd, ...d.meta } : { leeg: true });
+      const vf = await env.NIEUWS.get("vooraf-log", "json").catch(() => null);
+      return Response.json(d ? { gegenereerd: d.gegenereerd, ...d.meta, vooraf: vf } : { leeg: true });
     }
     return new Response("nieuwsinkort-uur", { status: 200 });
   },

@@ -583,3 +583,5 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .sv-sheet .f-btn{background:#111;color:#fff;align-self:flex-start}
 @media (prefers-reduced-motion:reduce){.sv-sheet,.sv-wrap{animation:none}.sv-dot{animation-duration:2.4s}}
 :root[data-theme="dark"] .sv-sheet{background:#1c1c1e;color:#f2f2f2}:root[data-theme="dark"] .sv-x{color:#f2f2f2}:root[data-theme="dark"] .sv-titel{color:rgba(255,255,255,.6)}:root[data-theme="dark"] .sv-bron{color:rgba(255,255,255,.5)}:root[data-theme="dark"] .sv-laden{color:rgba(255,255,255,.7)}:root[data-theme="dark"] .sv-dot{border-color:rgba(255,255,255,.2);border-top-color:var(--accent)}:root[data-theme="dark"] .sv-sheet .f-btn{background:#fff;color:#111}
+/* samenvatting staat al klaar: klein groen bolletje */
+.sv-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle;box-shadow:0 0 0 2px rgba(34,197,94,.25);flex:none}

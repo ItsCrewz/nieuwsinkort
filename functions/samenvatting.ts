@@ -32,7 +32,8 @@ const WHISPER = "@cf/openai/whisper-large-v3-turbo";
 const WHISPER_PER_MIN = 46.64; // $0.000513 per audiominuut / $0.011 per 1000 neuronen
 const MAX_SEC = 180; // hooguit de eerste 3 minuten geluid
 const MAX_MP4 = 12e6; // mp4 zonder knippen: alleen korte filmpjes
-const PER_RUN = 260; // reserve per nog komend uur-nieuws (gemiddelde run ±210–480)
+const PER_RUN = 260;
+const PRE_MAX = 0.85, PRE_MARGE = 600; // vooraf maken: niet boven 85% van het budget, en 600 neuronen marge // reserve per nog komend uur-nieuws (gemiddelde run ±210–480)
 const HDR = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (o: any, s = 200) => new Response(JSON.stringify(o), { status: s, headers: HDR });
 
@@ -109,7 +110,7 @@ async function ytCaptions(id: string, why: string[]): Promise<string> {
 }
 
 // ---------------- geluid voor Whisper
-async function hlsAudio(url: string, why: string[]): Promise<{ bytes: Uint8Array; sec: number } | null> {
+async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{ bytes: Uint8Array; sec: number } | null> {
   const get = async (u: string) => { const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" }, signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; };
   let list = await (await get(url)).text();
   let base = url;
@@ -130,24 +131,24 @@ async function hlsAudio(url: string, why: string[]): Promise<{ bytes: Uint8Array
   let d = 0;
   for (const m of list.matchAll(/#EXTINF:([\d.]+)[^\n]*\n([^\n#]+)/g)) segs.push({ d: +m[1], u: new URL(m[2].trim(), base).toString() });
   const take: string[] = [];
-  for (const s of segs) { if (d >= MAX_SEC || take.length >= 40) break; take.push(s.u); d += s.d; }
+  for (const s of segs) { if (d >= maxSec || take.length >= 40) break; take.push(s.u); d += s.d; }
   if (!take.length) { why.push("HLS: geen stukjes"); return null; }
   const parts = await Promise.all(take.map(async (u) => new Uint8Array(await (await get(u)).arrayBuffer())));
   const n = parts.reduce((a, p) => a + p.length, 0), bytes = new Uint8Array(n);
   let o = 0; for (const p of parts) { bytes.set(p, o); o += p.length; }
   return { bytes, sec: d };
 }
-async function mp4Audio(url: string, why: string[]): Promise<{ bytes: Uint8Array; sec: number } | null> {
+async function mp4Audio(url: string, why: string[], maxBytes = MAX_MP4): Promise<{ bytes: Uint8Array; sec: number } | null> {
   const H = { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" };
   // eerst alleen het begin: staat de index (moov) vooraan, dan is een afgeknipt stuk nog af te spelen
-  const r = await fetch(url, { headers: { ...H, Range: `bytes=0-${MAX_MP4 - 1}` }, signal: AbortSignal.timeout(15000) });
+  const r = await fetch(url, { headers: { ...H, Range: `bytes=0-${maxBytes - 1}` }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) { why.push(`mp4: HTTP ${r.status}${r.status === 403 ? " (link verlopen)" : ""}`); return null; }
   const bytes = new Uint8Array(await r.arrayBuffer());
   const total = +((r.headers.get("content-range") || "").split("/")[1] || 0) || bytes.length;
   if (total <= bytes.length) return { bytes, sec: 0 };
   const head = new TextDecoder("latin1").decode(bytes.subarray(0, 4096));
   const moov = head.indexOf("moov"), mdat = head.indexOf("mdat");
-  if (moov >= 0 && (mdat < 0 || moov < mdat)) { why.push(`mp4: eerste ${Math.round(MAX_MP4 / 1e6)} van ${Math.round(total / 1e6)} MB`); return { bytes, sec: 0 }; }
+  if (moov >= 0 && (mdat < 0 || moov < mdat)) { why.push(`mp4: eerste ${Math.round(maxBytes / 1e6)} van ${Math.round(total / 1e6)} MB`); return { bytes, sec: 0 }; }
   why.push(`mp4: te groot (${Math.round(total / 1e6)} MB, index achteraan)`);
   return { bytes: new Uint8Array(0), sec: -1 };
 }
@@ -173,6 +174,8 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   let body: any = {};
   try { body = await request.json(); } catch {}
   const id = String(body?.id || "");
+  // pre = vooraf maken door de uur-Worker: strenger budget (marge voor nieuws + verzoeken), korter luisteren
+  const pre = body?.pre === true;
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 400);
   const key = `vs:${id}`;
   const hit = await env.NIEUWS.get(key, "json").catch(() => null);
@@ -192,7 +195,13 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   const reserve = Math.max(0, 23 - A.h) * PER_RUN; // het uurnieuws van de rest van de dag gaat voor
   const ruimte = BUDGET - used - reserve;
   if (ruimte < 60) return json({ ok: false, code: "budget", fout: MSG.budget });
-  const model = used < 0.7 * BUDGET ? env.MODEL || MAIN : env.SMALL_MODEL || SMALL;
+  const zuinig = used >= 0.7 * BUDGET;
+  // vooraf maken stopt ruim vóór het plafond: max 85% van het budget én nog PRE_MARGE vrij voor nieuws/verzoeken
+  if (pre && (used >= PRE_MAX * BUDGET || ruimte < PRE_MARGE + 60)) return json({ ok: false, code: "budget-pre", used: Math.round(used), ruimte: Math.round(ruimte) });
+  const model = !zuinig ? env.MODEL || MAIN : env.SMALL_MODEL || SMALL;
+  const maxSec = pre ? (zuinig ? 45 : 120) : zuinig ? 120 : MAX_SEC;
+  const maxMp4 = pre ? (zuinig ? 4e6 : 8e6) : MAX_MP4;
+  const ruimteNu = pre ? ruimte - PRE_MARGE : ruimte;
 
   await env.NIEUWS.put(`vs-bezig:${id}`, "1", { expirationTtl: 60 }).catch(() => {});
   const u: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0 };
@@ -207,14 +216,14 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
       const media = String(v.embed || "");
       let a: { bytes: Uint8Array; sec: number } | null = null;
       try {
-        if (/\.m3u8(\?|$)/.test(media)) a = await hlsAudio(media, why);
-        else if (/\.mp4(\?|$)/.test(media) || /cdninstagram|fbcdn|twimg/.test(media)) a = await mp4Audio(media, why);
+        if (/\.m3u8(\?|$)/.test(media)) a = await hlsAudio(media, why, maxSec);
+        else if (/\.mp4(\?|$)/.test(media) || /cdninstagram|fbcdn|twimg/.test(media)) a = await mp4Audio(media, why, maxMp4);
         else why.push("geen geluidsbron");
       } catch (e: any) { why.push(`geluid ophalen: ${String(e?.message || e).slice(0, 60)}`); }
       if (a && a.sec < 0) { await env.NIEUWS.put(key, JSON.stringify({ ok: false, code: "te-lang", fout: MSG.teLang }), { expirationTtl: 6 * 3600 }); return json({ ok: false, code: "te-lang", fout: MSG.teLang, why }); }
       if (a && a.bytes.length) {
         const estMin = a.sec ? a.sec / 60 : Math.min(4, a.bytes.length / 1.2e6); // mp4: ruwe schatting
-        if (estMin * WHISPER_PER_MIN + 30 > ruimte) return json({ ok: false, code: "budget", fout: MSG.budget });
+        if (estMin * WHISPER_PER_MIN + 30 > ruimteNu) return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
         const r: any = await env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false });
         const dur = +r?.transcription_info?.duration || estMin * 60;
         u.neurons += (dur / 60) * WHISPER_PER_MIN; u.calls++;
@@ -227,14 +236,15 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
     if (tekst.length < 40) {
       const blok = why.some((w) => /LOGIN_REQUIRED|HTTP 429/.test(w));
       const out = blok ? { ok: false, code: "geblokkeerd", fout: MSG.yt } : { ok: false, code: "geen-tekst", fout: MSG.geenTekst };
-      await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: 3600 });
+      // geen spraak verandert niet: lang onthouden (geen dubbele Whisper-kosten); YouTube-blokkade sneller opnieuw
+      await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: blok ? 3 * 3600 : bron === "spraak" ? 24 * 3600 : 6 * 3600 });
       await addNeurons(env, vKey, u.neurons);
-      return json({ ...out, why });
+      return json({ ...out, why, neuronen: Math.round(u.neurons * 10) / 10 });
     }
     const p = await punten(env.AI, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u);
     await addNeurons(env, vKey, u.neurons);
     if (p.length < 2) return json({ ok: false, code: "fout", fout: MSG.fout, why: [...why, "samenvatting leeg"] });
-    const out = { ok: true, punten: p, bron, sec, model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString() };
+    const out = { ok: true, punten: p, bron, sec, model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString(), ...(pre ? { vooraf: true } : {}) };
     await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: 30 * 86400 });
     return json(out);
   } catch (e: any) {

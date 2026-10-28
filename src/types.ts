@@ -44,6 +44,7 @@ export type Data = {
   dag_samenvatting: string;
   weer: Weer;
   filmpjes: Video[];
+  samenvattingen?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>;
   dumpert: Video[];
   items: Item[];
   gegenereerd?: string;

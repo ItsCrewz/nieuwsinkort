@@ -654,6 +654,10 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
 // vat samen in simpele punten en bewaart dat per filmpje, dus de tweede keer is het meteen klaar.
 type Sv = { ok: true; punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number; model?: string; neuronen?: number; cached?: boolean } | { ok: false; code: string; fout: string };
 const svCache = new Map<string, Sv>();
+/** Vooraf gemaakte samenvattingen uit /data.json in de cache zetten (knop toont dan "klaar"). */
+export function zaaiSamenvattingen(m?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>) {
+  for (const [id, x] of Object.entries(m || {})) if (Array.isArray(x?.punten) && x.punten.length && !svCache.has(id)) svCache.set(id, { ok: true, punten: x.punten, bron: x.bron, sec: x.sec, cached: true });
+}
 async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
   const hit = svCache.get(id);
   if (hit) return hit;
@@ -676,10 +680,11 @@ async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 function SamenvattingKnop({ v }: { v: Video }) {
   const [open, setOpen] = useState(false);
+  const klaar = (svCache.get(videoSlug(v)) as any)?.ok === true;
   return (
     <>
-      <button type="button" className="f-btn" onClick={(e) => { e.stopPropagation(); setOpen(true); }} aria-haspopup="dialog">
-        Samenvatting
+      <button type="button" className={`f-btn${klaar ? " sv-klaar" : ""}`} onClick={(e) => { e.stopPropagation(); setOpen(true); }} aria-haspopup="dialog">
+        Samenvatting{klaar ? <span className="sv-dot" aria-label="klaar" title="Staat al klaar" /> : null}
       </button>
       {open ? createPortal(<SamenvattingBlad v={v} onClose={() => setOpen(false)} />, document.body) : null}
     </>
