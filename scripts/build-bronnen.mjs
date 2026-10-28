@@ -35,6 +35,7 @@ const GROUPS = [
   { id: "tech", label: "Tech & AI" },
   { id: "haarlem", label: "Haarlem" },
   { id: "showbizz", label: "Showbizz" },
+  { id: "politiek", label: "Politiek" },
   { id: "filmpjes", label: "Filmpjes" },
   { id: "dumpert", label: "Dumpert" },
 ];

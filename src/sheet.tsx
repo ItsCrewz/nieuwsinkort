@@ -17,7 +17,8 @@ function sourceLine(s: SourceRow): string {
   const inOverzicht = s.count ? `${s.count} in overzicht` : "";
   const st = s.stat;
   if (!st) return inOverzicht || "Niet in overzicht"; // oude data.json zonder bronstats: niets beweren over 'vandaag'
-  if (st.vandaag == null) return ["Feed niet bereikbaar", inOverzicht].filter(Boolean).join(" · ");
+  // Ophalen mislukt is iets anders dan "vandaag niets": zeg het eerlijk, met wanneer het voor het laatst wél lukte.
+  if (st.vandaag == null) return ["Ophalen mislukt", st.ok ? `laatst gelukt ${hhmm(st.ok)}` : st.laatste ? `laatste bericht ${hhmm(st.laatste)}` : "", inOverzicht].filter(Boolean).join(" · ");
   if (st.vandaag === 0) return `Vandaag niets${st.laatste ? ` · laatste ${hhmm(st.laatste)}` : ""}`;
   return [`${st.vandaag} vandaag`, inOverzicht].filter(Boolean).join(" · ");
 }

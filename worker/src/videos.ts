@@ -12,7 +12,7 @@ export const redditUrl = (s: string) => `https://www.reddit.com/r/${s}/top/.rss?
 export const DUMPERT_URL = "https://www.dumpert.nl/toppers";
 const VIDEO_RE = /v\.redd\.it|youtube\.com\/watch|youtu\.be\/|youtube\.com\/shorts|streamable\.com|(?:twitter|x)\.com\/[^/]+\/status|tiktok\.com|instagram\.com\/reel|nos\.nl\/video|rtl\.nl\/video/i;
 
-export type Video = { titel: string; ai: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number };
+export type Video = { titel: string; ai: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number; soort?: Soort };
 
 export function kortGetal(n: number | undefined | null, eenheid: string) {
   if (n == null) return "";
@@ -102,4 +102,53 @@ export function parseRedditVideos(xml: string, sub: string, since: number, hhmm:
     });
   });
   return out;
+}
+
+// ---------------------------------------------------------------- Shorts vs. Journaals
+/** "journaal" = uitzending/reportage (liggend, langer); "short" = kort clipje (YouTube Shorts, Reels, Reddit, X). */
+export type Soort = "short" | "journaal";
+const JOURNAAL_RE = /journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur/i;
+export function soortVan(v: { titel?: string; href?: string; embed?: string; bron?: string; soort?: string }): Soort {
+  if (v.soort === "short" || v.soort === "journaal") return v.soort;
+  if (JOURNAAL_RE.test(v.titel || "")) return "journaal";
+  const u = `${v.href || ""} ${v.embed || ""}`;
+  if (/youtube\.com\/shorts\//i.test(u)) return "short";
+  if (/youtube(?:-nocookie)?\.com\/(?:watch|embed|live)|youtu\.be\//i.test(u) && !/dumpert/i.test(v.bron || "")) return "journaal";
+  return "short";
+}
+
+// ---------------------------------------------------------------- Instagram (zonder login)
+// Kittygram blokkeert Cloudflare-IP's (HTTP 500 "Blocked"). Instagram's eigen profiel-embed
+// (instagram.com/<naam>/embed/) is openbaar en geeft de laatste 6 posts met echte tijd, tekst en of het een video is.
+export const igUser = (url: string) => /kg\.meowing\.de\/([^/]+)\/atom\.xml|instagram\.com\/([\w.]+)\/?(?:embed\/?)?$/i.exec(url)?.slice(1).find(Boolean) || "";
+export const igProfileUrl = (user: string) => `https://www.instagram.com/${user}/embed/`;
+export const igPostEmbed = (code: string) => `https://www.instagram.com/p/${code}/embed/captioned/`;
+export type IgPost = { code: string; video: boolean; t: number; text: string; img: string; likes: number; user: string };
+export function parseIgProfile(html: string): IgPost[] {
+  const m = /"contextJSON":"((?:[^"\\]|\\.)*)"/.exec(html);
+  if (!m) throw new Error("geen Instagram-embeddata");
+  const ctx = JSON.parse(JSON.parse(`"${m[1]}"`)).context || {};
+  return (ctx.graphql_media || []).map((g: any) => g.shortcode_media).filter(Boolean).map((s: any) => ({
+    code: s.shortcode, video: !!s.is_video, t: (s.taken_at_timestamp || 0) * 1000,
+    text: String(s.edge_media_to_caption?.edges?.[0]?.node?.text || "").trim(),
+    img: s.display_resources?.[0]?.src || s.display_url || "", likes: s.edge_liked_by?.count || 0, user: s.owner?.username || ctx.username || "",
+  }));
+}
+/** MP4-adres uit de post-embed (openbaar, ondertekend, enkele dagen geldig; CORS/CORP staan open). */
+export function igVideoUrl(html: string): string {
+  const m = /video_url(?:\\+)?":(?:\\+)?"(https:[^"]+?\.mp4[^"]*?)(?:\\+)?"/.exec(html);
+  if (!m) return "";
+  return m[1].replace(/\\+\//g, "/").replace(/\\+u0026/g, "&").replace(/\\+/g, "");
+}
+const eersteZin = (s: string) => (s.match(/^[\s\S]{15,140}?[.!?](\s|$)/)?.[0] || s.split("\n")[0]).replace(/\s+/g, " ").trim();
+export function igVideo(p: IgPost, mp4: string, naam: string, hhmm: (t: number) => string): Video {
+  const tekst = p.text.replace(/(\s*#[\p{L}\d_]+)+\s*$/u, "").trim();
+  let titel = eersteZin(tekst) || `Video van ${naam}`;
+  if (titel.length > 110) titel = titel.slice(0, 107).replace(/\s+\S*$/, "") + "…";
+  const rest = tekst.slice(tekst.indexOf(titel) >= 0 ? titel.length : 0).replace(/\s+/g, " ").trim();
+  return {
+    titel, ai: rest.length > 140 ? rest.slice(0, 137).replace(/\s+\S*$/, "") + "…" : rest, bron: "Instagram",
+    href: `https://www.instagram.com/reel/${p.code}/`, embed: mp4, thumb: p.img, populariteit: p.likes ? kortGetal(p.likes, "likes") : "",
+    tijd: hhmm(p.t), _score: p.likes * 20, _pub: p.t, soort: "short", ...({ _k: naam } as any),
+  };
 }

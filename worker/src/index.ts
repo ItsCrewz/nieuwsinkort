@@ -5,12 +5,14 @@
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW, KNMI_WAARSCH } from "./weer";
-import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, type Video } from "./videos";
+import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, type Usage, type In, type Sum } from "./ai";
+import { dedupVideos } from "../../src/dedup";
+import { uniekeBeelden, ogImage } from "../../src/beeld";
 
 export interface Env {
   NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>;
-  RUN_KEY?: string; SITE: string; MODEL: string; CAP?: string; BUDGET?: string;
+  RUN_KEY?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string;
 }
 const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";
 const TZ = "Europe/Amsterdam";
@@ -29,8 +31,63 @@ const hhmm = (t: number) => ams(t).hhmm;
 const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(t));
 
 // ---------------------------------------------------------------- fetcher-DO
-type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit"; label?: string; sub?: string };
+type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og"; label?: string; sub?: string; max?: number };
 type Res = { url: string; ok: boolean; status: number; err?: string; ms: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
+
+const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
+
+// Instagram: profiel-embed -> entries (bronstats) + van vandaag de video's met hun MP4 (max 3 per account).
+async function runInsta(j: Job, since: number, t0: number, kv?: KVNamespace): Promise<Res> {
+  const user = igUser(j.url);
+  if (!user) throw new Error("onbekend Instagram-account");
+  const r = await igGet(igProfileUrl(user));
+  if (!r.ok) return { url: j.url, ok: false, status: r.status, err: `Instagram HTTP ${r.status}`, ms: Date.now() - t0 };
+  const posts = parseIgProfile(await r.text());
+  const now = Date.now() + 15 * 60e3;
+  const entries: Entry[] = posts.map((p) => ({ t: (p.text.split("\n")[0] || `Post van @${p.user}`).slice(0, 160), l: `https://www.instagram.com/p/${p.code}/`, d: p.t || null, s: p.text.slice(0, 600), img: p.img }));
+  const videos: Video[] = [];
+  for (const p of posts.filter((p) => p.video && p.t >= since).slice(0, j.max ?? 3)) {
+    try {
+      // MP4-adres per post 20 uur in KV (ondertekend adres is enkele dagen geldig): elk uur alleen nieuwe reels opvragen
+      const key = `ig:${p.code}`;
+      let mp4 = (await kv?.get(key).catch(() => null)) || "";
+      if (!mp4) {
+        const e = await igGet(igPostEmbed(p.code));
+        mp4 = e.ok ? igVideoUrl(await e.text()) : "";
+        if (mp4) await kv?.put(key, mp4, { expirationTtl: 20 * 3600 }).catch(() => {});
+      }
+      if (mp4) videos.push(igVideo(p, mp4, j.label || user, hhmm));
+    } catch { /* deze video overslaan */ }
+  }
+  return {
+    url: j.url, ok: true, status: 200, ms: Date.now() - t0, total: entries.length, videos,
+    newest: entries.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null),
+    entries: entries.filter((e) => e.d != null && e.d >= since && e.d <= now),
+  };
+}
+
+// og:image van een artikel (alleen als de feed zelf geen foto had). Leest alleen de <head>, 3 dagen in KV.
+async function runOg(j: Job, t0: number, kv?: KVNamespace): Promise<Res> {
+  const key = `og:${normLink(j.url)}`.slice(0, 500);
+  const c = await kv?.get(key).catch(() => null);
+  if (c != null) return { url: j.url, ok: true, status: 200, ms: Date.now() - t0, text: c };
+  const r = await fetch(j.url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(8000), redirect: "follow" });
+  let html = "";
+  if (r.ok && r.body && /html/i.test(r.headers.get("content-type") || "html")) {
+    const rd = r.body.getReader(), dec = new TextDecoder();
+    while (html.length < 250000) {
+      const { done, value } = await rd.read();
+      if (done) break;
+      html += dec.decode(value, { stream: true });
+      if (/<\/head>/i.test(html)) break;
+    }
+    rd.cancel().catch(() => {});
+  } else r.body?.cancel().catch(() => {});
+  const img = ogImage(html, r.url || j.url);
+  if (r.ok || r.status === 404 || r.status === 403) await kv?.put(key, img, { expirationTtl: 3 * 86400 }).catch(() => {});
+  return { url: j.url, ok: r.ok, status: r.status, ms: Date.now() - t0, text: img, ...(r.ok ? {} : { err: `HTTP ${r.status}` }) };
+}
 
 async function get(url: string, timeout = 15000): Promise<Response> {
   // SRU (overheid.nl) geeft JSON terug zodra "application/json" in Accept staat: dan alleen XML vragen
@@ -41,10 +98,12 @@ async function get(url: string, timeout = 15000): Promise<Response> {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function runJob(j: Job, since: number): Promise<Res> {
+async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
   const t0 = Date.now();
   let status = 0;
   try {
+    if (j.kind === "insta") return await runInsta(j, since, t0, kv);
+    if (j.kind === "og") return await runOg(j, t0, kv);
     let r = await get(j.url).catch(async () => { await sleep(1500); return get(j.url, 20000); }); // 1x opnieuw bij time-out/netwerkfout
     if (j.kind === "reddit" && r.status === 429) { await sleep(6000); r = await get(j.url); }
     status = r.status;
@@ -77,7 +136,7 @@ export class Fetcher extends DurableObject<Env> {
     const out: Res[] = new Array(jobs.length);
     const reddit = jobs.map((j, i) => [j, i] as const).filter(([j]) => j.kind === "reddit");
     const rest = jobs.map((j, i) => [j, i] as const).filter(([j]) => j.kind !== "reddit");
-    const pool = async () => { for (let x; (x = rest.shift()); ) out[x[1]] = await runJob(x[0], since); };
+    const pool = async () => { for (let x; (x = rest.shift()); ) out[x[1]] = await runJob(x[0], since, this.env.NIEUWS); };
     const seq = async () => { for (let k = 0; k < reddit.length; k++) { if (k) await sleep(2500); out[reddit[k][1]] = await runJob(reddit[k][0], since); } };
     await Promise.all([seq(), ...Array.from({ length: reddit.length ? 5 : 6 }, pool)]);
     return Response.json(out);
@@ -112,9 +171,9 @@ function cluster(cands: Cand[]): Cluster[] {
 const SOCIAL_INFO = /YouTube|Instagram|Reddit|^X$|Podcast/;
 const NIET_ALS_NIEUWS = new Set(["burgernet", "gemeenteraadhaarlem"]);
 const BEKENDMAKING_HINTS = /raadsbesluit|collegebesluit|verordening|verkeersbesluit|omgevingsplan|bestemmingsplan|apv|referendum|parkeer|evenement|sluiting|aanwijzing|exploitatie/i;
-const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz"];
+const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz", "politiek"];
 
-type State = { datum: string; neurons: number; calls: number; sums: Record<string, Sum & { at: number }>; links: Record<string, string>; kortHash?: string; kort?: string; weerHash?: string; weerTxt?: string; runs: number };
+type State = { okAt?: Record<string, string>; kortAt?: number; datum: string; neurons: number; calls: number; sums: Record<string, Sum & { at: number }>; links: Record<string, string>; kortHash?: string; kort?: string; weerHash?: string; weerTxt?: string; runs: number };
 
 export class Runner extends DurableObject<Env> {
   async fetch(req: Request): Promise<Response> {
@@ -139,7 +198,8 @@ export class Runner extends DurableObject<Env> {
     ]);
     const bronnen: any = await bronnenR.json();
     const stat: any = staticR.ok ? await staticR.json().catch(() => null) : null;
-    let st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: 0, calls: 0, sums: {}, links: {}, runs: 0 };
+    let st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: 0, calls: 0, sums: {}, links: {}, runs: 0, okAt: stateRaw?.okAt || {} };
+    st.okAt ||= {};
     st.runs++;
 
     // ---- jobs
@@ -152,7 +212,7 @@ export class Runner extends DurableObject<Env> {
       srcFeeds.push({ key: `${g.id}|${s.id}`, g: g.id, s, urls });
       for (const url of urls) {
         const sub = /reddit\.com\/r\/([^/]+)/.exec(url)?.[1];
-        add({ url, kind: sub ? "reddit" : "feed", sub, label: s.naam });
+        add({ url, kind: sub ? "reddit" : igUser(url) ? "insta" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(g.id === "politiek" ? { max: 2 } : {}) });
       }
     }
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) add({ url: ytUrl(cid), kind: "feed", label: naam });
@@ -164,8 +224,10 @@ export class Runner extends DurableObject<Env> {
     add({ url: KNMI_VERW, kind: "text" }); add({ url: KNMI_WAARSCH, kind: "text" });
 
     const all = [...jobs.values()];
-    const reddit = all.filter((j) => j.kind === "reddit"), rest = all.filter((j) => j.kind !== "reddit");
+    const reddit = all.filter((j) => j.kind === "reddit"), insta = all.filter((j) => j.kind === "insta"), rest = all.filter((j) => j.kind !== "reddit" && j.kind !== "insta");
     const batches: Job[][] = [reddit];
+    // Instagram apart: per account 1 profiel + max 3 video-embeds = max 4 verzoeken (DO-limiet 50)
+    for (let i = 0; i < insta.length; i += 10) batches.push(insta.slice(i, i + 10));
     for (let i = 0; i < rest.length; i += 30) batches.push(rest.slice(i, i + 30));
     const results = (await Promise.all(batches.map(async (b, i) => {
       if (!b.length) return [] as Res[];
@@ -177,11 +239,13 @@ export class Runner extends DurableObject<Env> {
     const T1 = Date.now();
 
     // ---- bronstats
-    const bronstats: Record<string, { vandaag: number | null; laatste?: string; fout?: string }> = {};
+    const bronstats: Record<string, { vandaag: number | null; laatste?: string; fout?: string; ok?: string }> = {};
+    const nowIso = new Date(now).toISOString();
     for (const f of srcFeeds) {
       const rs = f.urls.map((u) => R.get(u)).filter(Boolean) as Res[];
       const ok = rs.filter((r) => r.ok);
-      if (!ok.length) { bronstats[f.key] = { vandaag: null, fout: rs.map((r) => r.err).filter(Boolean).join("; ").slice(0, 80) || "geen antwoord" }; continue; }
+      if (!ok.length) { bronstats[f.key] = { vandaag: null, fout: rs.map((r) => r.err).filter(Boolean).join("; ").slice(0, 80) || "geen antwoord", ...(st.okAt![f.key] ? { ok: st.okAt![f.key] } : {}) }; continue; }
+      st.okAt![f.key] = nowIso;
       const seen = new Set<string>();
       let newest: number | null = null;
       for (const r of ok) {
@@ -198,7 +262,8 @@ export class Runner extends DurableObject<Env> {
     const cands: Cand[] = [];
     const seenL = new Set<string>();
     for (const f of srcFeeds) {
-      if (!NEWS_CATS.includes(f.g) || SOCIAL_INFO.test(f.s.info || "") || NIET_ALS_NIEUWS.has(f.s.id)) continue;
+      // Politiek: ook Instagram/YouTube-posts van partijen zijn 'nieuws' (eigen rubriek); andere social-bronnen niet.
+      if (!NEWS_CATS.includes(f.g) || (f.g !== "politiek" && SOCIAL_INFO.test(f.s.info || "")) || NIET_ALS_NIEUWS.has(f.s.id)) continue;
       for (const u of f.urls) {
         if (/known_exploited|\.json($|\?)/.test(u)) continue;
         for (const e of R.get(u)?.entries || []) {
@@ -212,6 +277,8 @@ export class Runner extends DurableObject<Env> {
       }
     }
     let clusters = cluster(cands);
+    // Een politieke post over hetzelfde verhaal hoort bij dat nieuwsbericht (rubriek van het nieuws, partij als extra bron)
+    for (const k of clusters) k.cat = k.c.find((c) => c.cat !== "politiek")?.cat || "politiek";
 
     // ---- wat de routine (08:00) al heeft: niet opnieuw samenvatten
     const statToday = stat && typeof stat.gegenereerd === "string" && ams(Date.parse(stat.gegenereerd)).iso === A.iso;
@@ -225,15 +292,29 @@ export class Runner extends DurableObject<Env> {
     // ---- samenvattingen: cache (per link), dan nieuwe tot CAP / budget
     const sumOf = (k: Cluster) => { for (const c of k.c) { const id = st.links[normLink(c.href)]; if (id && st.sums[id]) return st.sums[id]; } return null; };
     const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0 };
-    const todo = clusters.filter((k) => !sumOf(k));
+    // Alleen-politiek (losse partijposts) nooit door de AI: die tonen we zoals de partij ze schrijft.
+    const todo = clusters.filter((k) => !sumOf(k) && k.cat !== "politiek");
+    // ---- AI-budget in trappen (gratis = 10.000 neuronen/dag, BUDGET = eigen plafond daaronder)
+    //  <70%: hoofdmodel voor alles · 70–90%: klein model, minder berichten · 90–100%: klein model, alleen NL/Haarlem · daarna: geen AI.
+    // Per run hooguit 2x het eerlijke deel van wat er nog over is, zodat ook de late uren samenvattingen krijgen.
+    const SMALL = env.SMALL_MODEL || "@cf/meta/llama-3.2-1b-instruct";
+    const used = () => st.neurons + usage.neurons;
+    const tier = () => (used() < 0.7 * BUDGET ? 1 : used() < 0.9 * BUDGET ? 2 : used() < BUDGET ? 3 : 4);
+    const runsLeft = Math.max(1, 23 - A.h + 1);
+    const runBudget = Math.max(300, ((BUDGET - st.neurons) / runsLeft) * 2);
+    const tier0 = tier();
+    let runCapped = false;
+    const modelsUsed = new Set<string>();
     // prioriteit: meer bronnen eerst, dan nieuwste; eerlijk verdeeld over rubrieken
     const byCat: Record<string, Cluster[]> = {};
     for (const k of todo.sort((a, b) => b.c.length - a.c.length || Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d)))) (byCat[k.cat] ||= []).push(k);
     const pick: Cluster[] = [];
-    const ROUND = ["nl", "nl", "tech", "haarlem", "showbizz"];
-    while (pick.length < CAP && Object.values(byCat).some((l) => l.length))
-      for (const c of ROUND) { const x = byCat[c]?.shift(); if (x && pick.length < CAP) pick.push(x); }
+    const ROUND = tier0 >= 3 ? ["nl", "nl", "haarlem"] : ["nl", "nl", "tech", "haarlem", "showbizz"];
+    const capN = tier0 === 1 ? CAP : tier0 === 2 ? Math.min(CAP, 15) : tier0 === 3 ? 8 : 0;
+    while (pick.length < capN && Object.values(byCat).some((l) => l.length))
+      for (const c of ROUND) { const x = byCat[c]?.shift(); if (x && pick.length < capN) pick.push(x); }
     let quotaOut = st.neurons >= BUDGET;
+    const modelNu = () => { const m = tier() === 1 ? model : SMALL; modelsUsed.add(m); return m; };
     const toIn = (k: Cluster, id: number): In => {
       const cs = k.c.slice(0, 4);
       return { id, cat: k.cat, bronnen: [...new Set(cs.map((c) => c.site))], titels: [...new Set(cs.map((c) => c.t))].slice(0, 3), tekst: cs.map((c) => c.s).join(" // ").slice(0, 900) };
@@ -241,9 +322,10 @@ export class Runner extends DurableObject<Env> {
     const groups: Cluster[][] = [];
     for (let i = 0; i < pick.length; i += 5) groups.push(pick.slice(i, i + 5));
     const doGroup = async (g: Cluster[]) => {
-      if (quotaOut || st.neurons + usage.neurons >= BUDGET) { quotaOut = true; return; }
+      if (quotaOut || used() >= BUDGET) { quotaOut = true; return; }
+      if (usage.neurons >= runBudget) { runCapped = true; return; }
       try {
-        const res = await summarize(env.AI, model, g.map((k, i) => toIn(k, i + 1)), usage);
+        const res = await summarize(env.AI, modelNu(), g.map((k, i) => toIn(k, i + 1)), usage);
         g.forEach((k, i) => {
           const s = res.get(i + 1);
           if (!s) return;
@@ -261,15 +343,29 @@ export class Runner extends DurableObject<Env> {
     // ---- items opbouwen
     const firstSentence = (s: string) => (s.match(/^.{20,240}?[.!?](\s|$)/)?.[0] || s.slice(0, 200)).trim();
     const isNL = (k: Cluster) => k.c.some((c) => /\.nl(\/|$)/.test(new URL(c.href).hostname + "/"));
+    const noAI = quotaOut || runCapped || !env.AI;
+    const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
+    const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : noAI && isNL(k) && k.c[0].s));
+    // ---- foto's: uit de feeds; ontbreekt die bij een bron, dan og:image van het artikel (gecachet in KV)
+    const ogLinks = [...new Set(shown.flatMap((k) => k.c.filter((c) => !c.img && !/instagram\.com|youtube\.com|youtu\.be|reddit\.com|x\.com|twitter\.com/.test(c.href)).slice(0, 3).map((c) => c.href)))].slice(0, 120);
+    const og = new Map<string, string>();
+    const ogB: Job[][] = [];
+    for (let i = 0; i < ogLinks.length; i += 30) ogB.push(ogLinks.slice(i, i + 30).map((url) => ({ url, kind: "og" as const })));
+    try {
+      const rs = (await Promise.all(ogB.map(async (b, i) => (await env.FETCHER.get(env.FETCHER.idFromName(`og${i}`)).fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) })).json() as Promise<Res[]>))).flat();
+      for (const r of rs) if (r?.text) og.set(r.url, r.text);
+    } catch { /* zonder og-foto's verder */ }
     const items: any[] = [];
-    for (const k of clusters) {
+    for (const k of shown) {
       const s = sumOf(k);
       const first = Math.min(...k.c.map((c) => c.d));
       const bron = [...new Map(k.c.map((c) => [c.site, { site: c.site, href: c.href }])).values()].slice(0, 6);
-      if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(first), bronnen: bron, _t: first, uur: true });
-      else if ((quotaOut || !env.AI) && isNL(k) && k.c[0].s) {
-        const desc = k.c[0].s;
-        items.push({ cat: k.cat, kop: k.c[0].t.slice(0, 100), ai: firstSentence(desc), samenvatting: desc.slice(0, 700), punten: [], tijd: hhmm(first), bronnen: bron, _t: first, uur: true, ruw: true });
+      const beelden = uniekeBeelden(k.c.flatMap((c) => [c.img, og.get(c.href)]));
+      const bb = beelden.length ? { beelden } : {};
+      if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true });
+      else {
+        const desc = k.c[0].s || k.c[0].t;
+        items.push({ cat: k.cat, kop: k.c[0].t.slice(0, 120), ai: firstSentence(desc), samenvatting: desc.slice(0, 700), punten: [], tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true, ruw: true });
       }
     }
     items.sort((a, b) => b._t - a._t);
@@ -281,16 +377,18 @@ export class Runner extends DurableObject<Env> {
     const lines = order.flatMap((c) => lijst.filter((i) => i.cat === c).slice(0, c === "nl" ? 22 : 10)).map((i) => `${i.cat}: ${i.kop} — ${i.ai}`);
     const kh = await hash(lines.join("\n"));
     let kort = st.kort || "";
-    if ((kh !== st.kortHash || force) && lines.length && !quotaOut && st.neurons + usage.neurons < BUDGET) {
-      try { const k = await inHetKort(env.AI, model, lines, usage); if (k.length > 40) { kort = k; st.kort = k; st.kortHash = kh; } } catch { usage.fails++; }
+    // trap 1: elke keer als het nieuws verandert; trap 2: klein model, hooguit elke 3 uur; trap 3+: niet meer
+    const kortMag = tier() === 1 || (tier() === 2 && now - (st.kortAt || 0) > 3 * 3600e3);
+    if ((kh !== st.kortHash || force) && lines.length && !quotaOut && kortMag) {
+      try { const k = await inHetKort(env.AI, modelNu(), lines, usage); if (k.length > 40) st.kortAt = now; if (k.length > 40) { kort = k; st.kort = k; st.kortHash = kh; } } catch { usage.fails++; }
     }
 
     // ---- weer
     const W = buildWeer(R.get(BR_URL)?.json, R.get(OM_URL)?.json, R.get(KNMI_VERW)?.text || null, R.get(KNMI_WAARSCH)?.text || null, A.iso, A.hhmm);
     if (W.knmiTekst) {
       const wh = await hash(W.knmiTekst);
-      if (wh !== st.weerHash && !quotaOut && st.neurons + usage.neurons < BUDGET) {
-        try { const t = await simpelWeer(env.AI, model, W.knmiTekst, usage); if (t.length > 30) { st.weerTxt = t; st.weerHash = wh; } } catch { usage.fails++; }
+      if (wh !== st.weerHash && !quotaOut && tier() <= 2) {
+        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30) { st.weerTxt = t; st.weerHash = wh; } } catch { usage.fails++; }
       }
       if (st.weerHash === wh && st.weerTxt) W.weer.verwachting = st.weerTxt;
     }
@@ -305,14 +403,22 @@ export class Runner extends DurableObject<Env> {
     const fv: Video[] = [];
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) for (const v of R.get(ytUrl(cid))?.videos || []) fv.push({ ...v, ai: kortAi(v.ai), ...({ _k: naam } as any) });
     for (const sub of REDDIT_SUBS) for (const v of R.get(redditUrl(sub))?.videos || []) fv.push(v);
-    const seenV = new Set<string>();
-    const fOut = fv.sort((a, b) => (b._score || 0) - (a._score || 0)).filter((v) => !seenV.has(v.href) && seenV.add(v.href)).slice(0, 15).map(({ _score, _pub, ...v }: any) => { delete v._k; return v; });
+    for (const j of insta) for (const v of R.get(j.url)?.videos || []) fv.push(v);
+    // Shorts en Journaals apart, elk met een eigen plafond (anders drukken de Shorts de journaals weg)
+    // Geen dubbele filmpjes: zelfde video-id/clip op meerdere platforms, tracking-parameters, bijna-gelijke titels.
+    // Beste kopie blijft (in de site afspeelbaar, beste kwaliteit, populairst); wat al bij Dumpert staat valt hier weg.
+    const dD = dedupVideos(dOut as any[]);
+    dOut.splice(0, dOut.length, ...(dD.list as any[]));
+    const dF = dedupVideos(fv.sort((a, b) => (b._score || 0) - (a._score || 0)).map((v) => ({ ...v, soort: soortVan(v) })), dOut);
+    const uniek = dF.list;
+    const fOut = [...uniek.filter((v) => v.soort === "short").slice(0, 18), ...uniek.filter((v) => v.soort === "journaal").slice(0, 14)]
+      .map(({ _score, _pub, ...v }: any) => { delete v._k; return v; });
 
     // ---- wegschrijven
     st.neurons += usage.neurons; st.calls += usage.calls;
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats,
-      meta: { model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, neuronenRun: Math.round(usage.neurons), neuronenVandaag: Math.round(st.neurons), aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, neuronenRun: Math.round(usage.neurons), neuronenVandaag: Math.round(st.neurons), aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));

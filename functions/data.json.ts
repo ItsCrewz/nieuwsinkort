@@ -3,6 +3,7 @@
 // - samenvattingen, "In het kort" en kernpunten van de routine blijven staan;
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
+import { schoon } from "../src/schoon";
 interface KV { get(key: string, type: "json"): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env }
@@ -24,7 +25,10 @@ export function merge(S: any, H: any) {
   const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
   const sV = new Set<string>((base.filmpjes || []).map((v: any) => v.href));
   const sTijd = sOk ? new Date(S.gegenereerd).toLocaleTimeString("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }) : "00:00";
-  const extraF = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || (v.tijd || "") >= sTijd)).slice(0, 8);
+  // Nieuwe filmpjes van het uur (na de routine), plus alle Instagram-reels (die zijn altijd van nieuwsaccounts).
+  // Per soort (Shorts/Journaals) apart begrensd, zodat de ene soort de andere niet wegdrukt.
+  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.bron === "Instagram" || (v.tijd || "") >= sTijd));
+  const extraF = [...extra.filter((v: any) => v.soort !== "journaal").slice(0, 12), ...extra.filter((v: any) => v.soort === "journaal").slice(0, 10)];
   const { meta, ...h } = H;
   return {
     ...base,
@@ -37,7 +41,7 @@ export function merge(S: any, H: any) {
     bronstats: h.bronstats || base.bronstats,
     gegenereerd: hNieuwer ? H.gegenereerd : S.gegenereerd,
     routine_gegenereerd: sOk ? S.gegenereerd : null,
-    uur: { gegenereerd: H.gegenereerd, nieuw: nieuw.length, model: meta?.model },
+    uur: { gegenereerd: H.gegenereerd, nieuw: nieuw.length, model: meta?.model, ai: meta?.aiStand || "" },
   };
 }
 
@@ -52,5 +56,6 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
   try { H = await env.NIEUWS.get("uur", "json"); } catch { /* KV even niet bereikbaar: statisch */ }
   let out: any = S;
   try { out = merge(S, H); } catch { out = S; }
+  try { out = schoon(out); } catch { /* ongeschoond is beter dan niets */ }
   return new Response(JSON.stringify(out), { headers: HDR });
 };

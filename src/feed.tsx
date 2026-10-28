@@ -637,7 +637,7 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
           </button>
         ) : (
           <div className="f-fail">
-            <p>Dit filmpje speelt hier niet af.</p>
+            <p>{!p ? "Dit filmpje speelt hier niet af." : v.bron === "Instagram" ? "Afspelen lukt niet: de Instagram-link is verlopen of geblokkeerd." : "Afspelen lukt even niet: de bron gaf geen beeld."}</p>
             <a className="f-btn" href={v.href} target="_blank" rel="noreferrer">
               Bekijk bij {v.bron} <Icon name="ext" className="sm" />
             </a>
@@ -651,6 +651,7 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
           </div>
           <h2 className="f-title">{v.titel}</h2>
           {v.ai ? <p className="f-ai">{v.ai}</p> : null}
+          {v.ook?.length ? <p className="f-ook">Ook bij {[...new Set(v.ook.map((o) => o.bron))].slice(0, 3).join(", ")}</p> : null}
           <div className="f-actions">
             <a className="f-btn" href={v.href} target="_blank" rel="noreferrer">
               Open bij bron <Icon name="ext" className="sm" />
@@ -705,11 +706,45 @@ function warmHls(v: Video) {
 }
 
 // ------------------------------------------------------------- de feed
-export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmpjes" | "dumpert"; start: string | null; onClose: () => void }) {
-  // Lijst vastzetten zolang de feed open is (de 15-minuten-verversing schuift dan niets onder je duim weg).
-  const [items] = useState(list);
+export type FeedGroup = { id: string; label: string; list: Video[] };
+export function Feed({
+  list,
+  cat,
+  start,
+  onClose,
+  groups,
+  onGroup,
+}: {
+  list: Video[];
+  cat: "filmpjes" | "dumpert";
+  start: string | null;
+  onClose: () => void;
+  groups?: FeedGroup[];
+  onGroup?: (id: string) => void;
+}) {
+  // Lijsten vastzetten zolang de feed open is (de 15-minuten-verversing schuift dan niets onder je duim weg).
+  const [gs] = useState(() => (groups && groups.length > 1 ? groups : null));
+  const [gi, setGi] = useState(() => {
+    if (!gs) return 0;
+    const k = gs.findIndex((g) => g.list.some((v) => videoSlug(v) === start));
+    return k < 0 ? 0 : k;
+  });
+  const [items, setItems] = useState(() => (gs ? gs[gi].list : list));
   const [first] = useState(() => Math.max(0, items.findIndex((v) => videoSlug(v) === start)));
   const [active, setActive] = useState(first);
+  // Wisselen tussen Shorts en Journaals: nieuwe lijst, vanaf de eerste video (de scroller wordt vers opgebouwd).
+  const pickGroup = useCallback(
+    (k: number) => {
+      if (!gs || k === gi) return;
+      mountedRef.current = new Set();
+      setGi(k);
+      setItems(gs[k].list);
+      setActive(0);
+      setPaused(false);
+      onGroup?.(gs[k].id);
+    },
+    [gs, gi, onGroup]
+  );
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(() => !soundOn());
   const [closing, setClosing] = useState(false);
@@ -725,7 +760,7 @@ export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmp
     for (let i = active - 1; i <= active + 2; i++) if (i >= 0 && i < items.length) next.add(i);
     mountedRef.current = next;
     return next;
-  }, [active, items.length]);
+  }, [active, items]);
   // Cache opwarmen: playlist + eerste stukjes van de komende HLS-filmpjes via onze proxy (edge + browsercache).
   useEffect(() => {
     return whenReady(() => {
@@ -772,7 +807,7 @@ export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmp
     );
     s.querySelectorAll(".fslide").forEach((n) => io.observe(n));
     return () => io.disconnect();
-  }, []);
+  }, [gi]);
 
   // Deep link per video, zonder nieuwe history-stap en zonder hashchange.
   useEffect(() => {
@@ -825,7 +860,7 @@ export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmp
   const onTap = useCallback(() => setPaused((p) => !p), []);
   const onBlocked = useCallback(() => setMuted(true), []);
 
-  const label = cat === "dumpert" ? "Dumpert" : "Filmpjes";
+  const label = cat === "dumpert" ? "Dumpert" : gs ? gs[gi].label : "Filmpjes";
   return createPortal(
     <div className="app modal-root">
       <div
@@ -838,7 +873,7 @@ export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmp
           if (e.target === root.current && closing) onClose();
         }}
       >
-        <div className="feed-scroll" ref={scroller} tabIndex={-1}>
+        <div className={`feed-scroll ${gi ? "g1" : "g0"}`} key={gi} ref={scroller} tabIndex={-1}>
           {items.map((v, i) => (
             <Slide
               key={videoSlug(v) + i}
@@ -869,6 +904,16 @@ export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmp
               <Icon name={muted ? "mute" : "volume"} />
               {muted ? <span>Tik voor geluid</span> : null}
             </button>
+            {gs ? (
+              <div className="f-tabs" role="tablist" aria-label="Soort filmpjes">
+                {gs.map((g, k) => (
+                  <button key={g.id} type="button" role="tab" className="f-tab" aria-selected={k === gi} onClick={() => pickGroup(k)}>
+                    {g.label}
+                    <span className="tnum">{g.list.length}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="feed-nav" aria-hidden="false">

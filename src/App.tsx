@@ -4,16 +4,21 @@ import { BionicText, FocusSwitch, host } from "./ui";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { SourcesSheet } from "./sheet";
 import { Icon, IconSprite, type IconName } from "./icons";
-import { VideoGrid, playerFor } from "./video";
+import { VideoGrid, playerFor, soortVan, startSoort } from "./video";
 import { videoSlug } from "./feed";
+import { schoon } from "./schoon";
+import { Beelden, Thumb } from "./beelden";
+
+const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
 const CATS: { id: Cat; label: string; slug: string }[] = [
   { id: "nl", label: "Nederland", slug: "nederland" },
   { id: "tech", label: "Tech & AI", slug: "tech" },
   { id: "haarlem", label: "Haarlem", slug: "haarlem" },
   { id: "showbizz", label: "Showbizz", slug: "showbizz" },
+  { id: "politiek", label: "Politiek", slug: "politiek" },
 ];
-const CAT_LABEL: Record<Cat, string> = { nl: "Nederland", tech: "Tech & AI", haarlem: "Haarlem", showbizz: "Showbizz" };
+const CAT_LABEL: Record<Cat, string> = { nl: "Nederland", tech: "Tech & AI", haarlem: "Haarlem", showbizz: "Showbizz", politiek: "Politiek" };
 const ALLES_FIRST = 24; // op "Alles" eerst zoveel kaarten, daarna "Toon alle"
 const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
@@ -207,7 +212,7 @@ function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   );
 }
 
-function Briefing({ text, bionic, sources, time }: { text: string; bionic: boolean; sources: number; time: string }) {
+function Briefing({ text, bionic, sources, time, note }: { text: string; bionic: boolean; sources: number; time: string; note?: string }) {
   return (
     <section className="brief" aria-label="In het kort">
       <h2 className="kicker">In het kort</h2>
@@ -224,6 +229,7 @@ function Briefing({ text, bionic, sources, time }: { text: string; bionic: boole
           {time ? <> · <span className="tnum">{time}</span></> : null}
         </p>
       ) : null}
+      {note ? <p className="brief-note">{note}</p> : null}
     </section>
   );
 }
@@ -438,6 +444,7 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
   const n = item.bronnen?.length ?? 0;
   return (
     <a className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
+      {fotos(item).length ? <Beelden urls={fotos(item)} eager className="lead-img" /> : null}
       <div className="meta">
         {CAT_LABEL[item.cat] ?? item.cat}
         {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
@@ -462,12 +469,13 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
   const anim = enter && i < 12;
   return (
     <a
-      className={`row cat-${item.cat} ${anim ? "enter" : ""}`}
+      className={`row cat-${item.cat} ${anim ? "enter" : ""} ${fotos(item).length ? "has-img" : ""}`}
       data-id={key}
       href={`#/bericht/${key}`}
       style={anim ? ({ "--i": i + 1 } as React.CSSProperties) : undefined}
       onClick={click}
     >
+      {fotos(item).length ? <Thumb urls={fotos(item)} /> : null}
       <div className="row-main">
         <div className="meta">
           {CAT_LABEL[item.cat] ?? item.cat}
@@ -535,7 +543,7 @@ function NewsList({ items, view, bionic, focusKey, onOpen }: { items: Item[]; vi
 // en pas als het dan nog niet past mag de kaart zelf scrollen. De kop wordt nooit ingekort.
 function fitCard(el: HTMLElement) {
   const sum = el.querySelector<HTMLElement>(".nc-sum");
-  el.classList.remove("fit-nonum", "fit-nopts", "fit-scroll");
+  el.classList.remove("fit-imgsm", "fit-noimg", "fit-nopts", "fit-scroll");
   el.querySelectorAll<HTMLElement>(".nc-pts li").forEach((li) => (li.hidden = false));
   if (sum) {
     sum.classList.remove("clamp");
@@ -543,13 +551,15 @@ function fitCard(el: HTMLElement) {
   }
   const over = () => el.scrollHeight - el.clientHeight > 1;
   if (!el.clientHeight || !over()) return;
-  el.classList.add("fit-nonum");
+  // eerst de foto kleiner, dan de punten, dan pas de foto weg
+  el.classList.add("fit-imgsm");
   if (!over()) return;
   // punten één voor één van achteren weghalen; pas als er geen meer past, de hele lijst weg
   const pts = [...el.querySelectorAll<HTMLElement>(".nc-pts li")];
   for (let k = pts.length - 1; k >= 0 && over(); k--) pts[k].hidden = true;
   if (pts.length && !over()) return;
   if (pts.length) el.classList.add("fit-nopts");
+  if (el.querySelector(".nc-img")) { el.classList.add("fit-noimg"); if (!over()) return; }
   if (sum) {
     const lh = parseFloat(getComputedStyle(sum).lineHeight) || 26;
     const lines = Math.round(sum.getBoundingClientRect().height / lh);
@@ -585,18 +595,17 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { it
     };
   }, [bionic, item]);
   const click = useOpen(key, onOpen);
+  const beelden = useMemo(() => fotos(item), [item]);
+  const refit = useCallback(() => { const el = cardRef.current; if (el) requestAnimationFrame(() => fitCard(el)); }, []);
   const bronnen = item.bronnen ?? [];
   const first = bronnen[0];
   const sum = item.ai || item.samenvatting;
   const punten = (item.punten ?? []).slice(0, 3);
   return (
     <section className={`nc cat-${item.cat}`} data-id={key} data-i={i} aria-label={`${i + 1} van ${total}: ${item.kop}`}>
-      <article ref={cardRef} className={`nc-in ${item.beeld ? "has-img" : ""}`}>
-        <span className="nc-num tnum" aria-hidden="true">
-          {String(i + 1).padStart(2, "0")}
-        </span>
+      <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
         <div className="nc-body">
-        {item.beeld ? <img className="nc-img" src={item.beeld} alt="" loading={i < 2 ? "eager" : "lazy"} decoding="async" /> : null}
+        {beelden.length ? <Beelden urls={beelden} eager={i < 2} className="nc-img" onChange={refit} /> : <span className="nc-rule" aria-hidden="true" />}
         <div className="nc-meta">
           <span className="nc-cat">{CAT_LABEL[item.cat] ?? item.cat}</span>
           {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
@@ -822,6 +831,7 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
           {bronnen.length ? <span>{bronnenTekst(bronnen.length)}</span> : null}
         </div>
         <h1 className="d-title">{item.kop}</h1>
+        {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
         {item.ai ? (
           <p className="d-lead bn">
             <BionicText text={item.ai} on={bionic} />
@@ -873,11 +883,12 @@ function useData() {
     try {
       const r = await fetch(`/data.json?t=${Math.floor(Date.now() / 60000)}`, { cache: "no-cache" });
       if (!r.ok) throw new Error(String(r.status));
-      const d = (await r.json()) as Data;
+      const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.filmpjes ??= [];
       d.dumpert ??= [];
       d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
+      d.filmpjes = d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) })); // Shorts of Journaals
       setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
       setError(false);
     } catch {
@@ -1037,6 +1048,11 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
 
 export default function App() {
   const { data: raw, error, reload } = useData();
+  // Rustige melding i.p.v. stil falen: bijwerken mislukt, of de AI-dagruimte is (bijna) op.
+  const briefNote = [
+    error && raw ? "Bijwerken lukt even niet; je ziet het nieuws van de laatste keer." : "",
+    raw?.uur?.ai === "op" ? "Samenvatten lukt even niet meer vandaag (dagruimte op). Nieuwe berichten staan er wel, met de tekst van de bron." : "",
+  ].filter(Boolean).join(" ");
   UUR_ACTIEF = Date.now() - Date.parse((raw as any)?.uur?.gegenereerd || "") < 2.5 * 3600e3; // alleen als de uur-run recent draaide
   const { theme, toggle } = useTheme();
   const catalog = useCatalog();
@@ -1102,7 +1118,8 @@ export default function App() {
   const setView = (v: View) => {
     // Mobiel: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht).
     if ((v === "filmpjes" || v === "dumpert") && data && window.matchMedia?.("(max-width: 640px)").matches) {
-      const list = v === "filmpjes" ? data.filmpjes : data.dumpert;
+      // Filmpjes: start in Shorts (of Journaals als er geen shorts zijn); wisselen kan bovenin de feed.
+      const list = v === "filmpjes" ? data.filmpjes.filter((x) => soortVan(x) === startSoort(data.filmpjes)) : data.dumpert;
       if (list.length) {
         feedPushed = false;
         window.location.hash = `#/${v}/${encodeURIComponent(videoSlug(list[0]))}`;
@@ -1251,7 +1268,7 @@ export default function App() {
           </div>
           <NewsFeed
             key={view}
-            items={view === "alles" ? data.items : data.items.filter((i) => i.cat === view)}
+            items={view === "alles" ? data.items.filter((i) => i.cat !== "politiek") : data.items.filter((i) => i.cat === view)}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
@@ -1259,7 +1276,7 @@ export default function App() {
               <div className="wrap nc-head-in">
                 {dateline}
                 <Front>
-                  <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} />
+                  <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
                   <WeatherBox W={raw.weer} bionic={bionic} />
                 </Front>
               </div>
@@ -1273,7 +1290,7 @@ export default function App() {
     <Frame top={top}>
       <main className="wrap" id="top">
         <Front>
-          <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} />
+          <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
           <WeatherBox W={raw.weer} bionic={bionic} />
         </Front>
         <Tabs data={data} view={view} onChange={setView} />
@@ -1306,7 +1323,7 @@ export default function App() {
           <NewsList
             key={view}
             view={view}
-            items={view === "alles" ? data.items : data.items.filter((i) => i.cat === view)}
+            items={view === "alles" ? data.items.filter((i) => i.cat !== "politiek") : data.items.filter((i) => i.cat === view)}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

@@ -84,6 +84,18 @@ const data = {
 };
 for (const w of warnings) console.warn("Let op: " + w);
 
+// Filmpjes: Shorts of Journaals (zelfde regels als src/video.tsx soortVan, worker/src/videos.ts en filmpjes.py)
+const JOURNAAL_RE = /journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur/i;
+function soortVan(v) {
+  if (v.soort === "short" || v.soort === "journaal") return v.soort;
+  if (JOURNAAL_RE.test(v.titel || "")) return "journaal";
+  const u = `${v.href || ""} ${v.embed || ""}`;
+  if (/youtube\.com\/shorts\//i.test(u)) return "short";
+  if (/youtube(?:-nocookie)?\.com\/(?:watch|embed|live)|youtu\.be\//i.test(u) && !/dumpert/i.test(v.bron || "")) return "journaal";
+  return "short";
+}
+if (Array.isArray(data.filmpjes)) data.filmpjes = data.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }));
+
 // Basiscontrole van de vormen
 if (typeof data.datum !== "string") throw new Error("datum ongeldig");
 for (const k of ["filmpjes", "dumpert", "items"]) {
@@ -106,4 +118,11 @@ try {
   execFileSync(process.execPath, [path.join(here, "scripts", "fix-dumpert.mjs"), out], { stdio: "inherit", timeout: 120000 });
 } catch (e) {
   console.warn("Let op: fix-dumpert mislukt:", e?.message || e);
+}
+
+// Foto's per bericht (RSS-foto's + og:image van elke bron, dubbele/kleine/logo's eruit).
+try {
+  execFileSync(process.execPath, [path.join(here, "scripts", "add-beelden.mts"), out], { stdio: "inherit", timeout: 300000 });
+} catch (e) {
+  console.warn("Let op: foto's ophalen mislukt (site toont dan berichten zonder foto):", e?.message || e);
 }

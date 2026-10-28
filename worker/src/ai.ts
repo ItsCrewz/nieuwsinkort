@@ -1,6 +1,8 @@
 // Workers AI: samenvattingen in simpele, informele taal. Houdt neuronen bij (geschat uit tokens).
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
   "@cf/google/gemma-4-26b-a4b-it": [9091, 27273],
+  "@cf/meta/llama-3.2-1b-instruct": [2457, 18252],
+  "@cf/meta/llama-3.2-3b-instruct": [4625, 30475],
   "@cf/qwen/qwen3-30b-a3b-fp8": [4625, 30475],
   "@cf/meta/llama-3.1-8b-instruct-fp8-fast": [4119, 34868],
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [26668, 204805],
@@ -46,7 +48,9 @@ export async function summarize(ai: Ai, model: string, items: In[], u: Usage): P
     `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
     JSON.stringify(items.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
   const out = new Map<number, Sum>();
-  const txt = await chat(ai, model, sys, user, 260 * items.length + 100, u, true);
+  // kleine modellen: geen JSON-modus (niet overal ondersteund), wel JSON vragen en eruit vissen
+  const small = /llama-3\.2-[13]b/.test(model);
+  const txt = await chat(ai, model, sys, user, (small ? 200 : 260) * items.length + 100, u, !small);
   const j = jsonFrom(txt);
   const arr = Array.isArray(j) ? j : j?.items;
   for (const x of Array.isArray(arr) ? arr : []) {

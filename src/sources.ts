@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Bron, Data, Item, Video } from "./types";
 
-export type GroupId = "nl" | "tech" | "haarlem" | "showbizz" | "filmpjes" | "dumpert";
+export type GroupId = "nl" | "tech" | "haarlem" | "showbizz" | "politiek" | "filmpjes" | "dumpert";
 export type CatSource = { id: string; naam: string; alias?: string[]; hosts?: string[]; info?: string };
 export type Catalog = { gegenereerd?: string; groepen: { id: GroupId; label: string; bronnen: CatSource[] }[] };
 export type SourceRow = CatSource & {
@@ -21,6 +21,7 @@ export const GROUP_ORDER: { id: GroupId; label: string }[] = [
   { id: "tech", label: "Tech & AI" },
   { id: "haarlem", label: "Haarlem" },
   { id: "showbizz", label: "Showbizz" },
+  { id: "politiek", label: "Politiek" },
   { id: "filmpjes", label: "Filmpjes" },
   { id: "dumpert", label: "Dumpert" },
 ];

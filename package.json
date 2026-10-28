@@ -9,7 +9,8 @@
     "build": "node scripts/build-bronnen.mjs && tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
     "export": "node export_from_canvas.mjs",
-    "deploy": "bash deploy.sh"
+    "deploy": "bash deploy.sh",
+    "test": "esbuild tests/dedup.test.ts --bundle --platform=node --format=esm --outfile=/tmp/nik-test.mjs --log-level=warning && node /tmp/nik-test.mjs"
   },
   "dependencies": {
     "hls.js": "^1.5.0",

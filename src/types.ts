@@ -1,4 +1,4 @@
-export type Cat = "nl" | "tech" | "haarlem" | "showbizz";
+export type Cat = "nl" | "tech" | "haarlem" | "showbizz" | "politiek";
 export type Bron = { site: string; href: string };
 export type Item = {
   cat: Cat;
@@ -8,7 +8,9 @@ export type Item = {
   punten: string[];
   tijd: string;
   bronnen: Bron[];
-  beeld?: string; // optioneel: afbeelding bij het bericht (nu nog niet in de data)
+  beeld?: string; // oud veld: één afbeelding
+  /** Foto's uit alle bronnen van dit bericht (ontdubbeld, eerste = beste). */
+  beelden?: string[];
 };
 export type WeerDag = { dag: string; min: number; max: number; omschrijving?: string };
 export type Weer = {
@@ -30,7 +32,13 @@ export type Video = {
   thumb: string;
   populariteit: string;
   tijd: string;
+  /** "short" = kort clipje (YouTube Shorts, Reels, Reddit, X); "journaal" = uitzending/reportage. */
+  soort?: Soort;
+  /** Zelfde filmpje bij andere bronnen (na ontdubbelen). */
+  ook?: Bron2[];
 };
+export type Bron2 = { bron: string; href: string };
+export type Soort = "short" | "journaal";
 export type Data = {
   datum: string;
   dag_samenvatting: string;
@@ -41,7 +49,9 @@ export type Data = {
   gegenereerd?: string;
   /** Per bron ("<groep>|<bron-id>" uit bronnen.json): door de pipeline zelf geteld uit de feeds. */
   bronstats?: Record<string, BronStat>;
+  /** uur-update: ai = "normaal" | "zuinig" | "krap" | "op" */
+  uur?: { gegenereerd?: string; nieuw?: number; model?: string; ai?: string };
 };
 /** vandaag = items gepubliceerd sinds 00:00 Europe/Amsterdam; null = feed niet bereikbaar/onleesbaar. */
-export type BronStat = { vandaag: number | null; laatste?: string; fout?: string };
+export type BronStat = { vandaag: number | null; laatste?: string; fout?: string; /** laatste keer dat ophalen lukte */ ok?: string };
 export type View = "alles" | Cat | "filmpjes" | "dumpert";
