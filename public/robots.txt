@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://nieuwsinkort.nl/sitemap.xml

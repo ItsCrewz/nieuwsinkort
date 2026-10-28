@@ -1,0 +1,2130 @@
+{
+ "datum": "woensdag 28 oktober 2026",
+ "dag_samenvatting": "Een treinbotsing in Spanje kost tientallen mensen het leven, en president Zelensky is in Den Haag terwijl het kabinet 1,2 miljard euro extra steun voor Oekraïne belooft. In Israël staat Netanyahu na de telling voor, maar zonder meerderheid, en op de beurs zakt Adyen hard weg. In Haarlem ontplofte een explosief bij een huis in de Zuiderpolder, in tech bouwt een AI van Anthropic werkende exploits en in showbizz vertelt Diederik over zijn breuk met Anouk.",
+ "weer": {
+  "plaats": "Haarlem",
+  "bijgewerkt": "12:46",
+  "nu": {
+   "temp": 15,
+   "gevoel": 13,
+   "omschrijving": "Bewolkt"
+  },
+  "vandaag": {
+   "min": 8,
+   "max": 14,
+   "neerslagkans": 0,
+   "wind": "WZW 3 Bft"
+  },
+  "verwachting": "Vanmiddag zie je vaak de zon en blijft het grotendeels droog, al komen er later wat meer wolken. Vanavond kan er langs de kust een buitje vallen en vannacht zakt het naar zo'n 8 graden, met hier en daar mist. Morgen begint mistig, daarna af en toe zon, droog en rond de 15 graden met weinig wind.",
+  "waarschuwing": "",
+  "dagen": [
+   {
+    "dag": "do",
+    "min": 8,
+    "max": 16,
+    "omschrijving": "Half bewolkt"
+   },
+   {
+    "dag": "vr",
+    "min": 7,
+    "max": 14,
+    "omschrijving": "Bewolkt"
+   },
+   {
+    "dag": "za",
+    "min": 7,
+    "max": 13,
+    "omschrijving": "Half bewolkt"
+   }
+  ],
+  "bronnen": [
+   {
+    "site": "Buienradar (Schiphol)",
+    "href": "https://www.buienradar.nl/weer/haarlem/nl/2754669"
+   },
+   {
+    "site": "KNMI",
+    "href": "https://www.knmi.nl/nederland-nu/weer/verwachtingen"
+   },
+   {
+    "site": "KNMI waarschuwingen",
+    "href": "https://www.knmi.nl/nederland-nu/weer/waarschuwingen/noord-holland"
+   },
+   {
+    "site": "Open-Meteo",
+    "href": "https://open-meteo.com/en/docs?latitude=52.38&longitude=4.64"
+   }
+  ]
+ },
+ "filmpjes": [
+  {
+   "titel": "Israël telt stemmen: 'Arabische partijen hebben terrein gewonnen en zijn gamechanger'",
+   "ai": "Met ruim de helft geteld staat Netanyahu's blok op 56 zetels; Arabische partijen winnen terrein.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/watch?v=Q43HA26tzlY",
+   "embed": "https://www.youtube-nocookie.com/embed/Q43HA26tzlY?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/Q43HA26tzlY/hqdefault.jpg",
+   "populariteit": "3,4k views",
+   "tijd": "09:45"
+  },
+  {
+   "titel": "Israël telt stemmen: Netanyahu-blok op 56 zetels",
+   "ai": "WNL-fragment: met ruim de helft van de stemmen geteld staat Netanyahu's blok op 56 zetels.",
+   "bron": "X",
+   "href": "https://x.com/WNLVandaag/status/2115341448237166758",
+   "embed": "https://video.twimg.com/amplify_video/2115341215788916736/vid/avc1/1280x720/GTyf2NFH69rZYeBz.mp4",
+   "thumb": "https://pbs.twimg.com/amplify_video_thumb/2115341215788916736/img/1NX7jXFNlOidJNqc.jpg",
+   "populariteit": "2,1k views · 15 likes",
+   "tijd": "08:14"
+  },
+  {
+   "titel": "Dierenverzorgster Beekse Bergen overleden na aanval Perzische panter",
+   "ai": "De dierenverzorgster die zaterdag door een Perzische panter werd aangevallen, is overleden; ze werkte bijna veertig jaar in het park.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/watch?v=3d4JqsV9Ulk",
+   "embed": "https://www.youtube-nocookie.com/embed/3d4JqsV9Ulk?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/3d4JqsV9Ulk/hqdefault.jpg",
+   "populariteit": "773 views",
+   "tijd": "09:37"
+  },
+  {
+   "titel": "Netanyahu nek-aan-nek met Eisenkot, maar grootste verrassing komt uit Arabische hoek",
+   "ai": "BNR: de Israëlische verkiezingen zijn een nek-aan-nekrace, en Arabische partijen lijken historisch goed te scoren.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/watch?v=g4XG5ZxAP_o",
+   "embed": "https://www.youtube-nocookie.com/embed/g4XG5ZxAP_o?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/g4XG5ZxAP_o/hqdefault.jpg",
+   "populariteit": "763 views",
+   "tijd": "11:54"
+  },
+  {
+   "titel": "Het is het tweede grote treinongeluk in Spanje dit jaar.",
+   "ai": "NU.nl over de treinbotsing in Spanje, het tweede grote treinongeluk daar dit jaar.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/shorts/EpegXBq6u5g",
+   "embed": "https://www.youtube-nocookie.com/embed/EpegXBq6u5g?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/EpegXBq6u5g/hqdefault.jpg",
+   "populariteit": "537 views",
+   "tijd": "12:18"
+  },
+  {
+   "titel": "Nederland tóch niet naar Songfestival",
+   "ai": "De NPO zet een streep door de Nederlandse deelname aan het Songfestival vanwege de deelname van Israël.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/watch?v=CCnoqBZjBtE",
+   "embed": "https://www.youtube-nocookie.com/embed/CCnoqBZjBtE?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/CCnoqBZjBtE/hqdefault.jpg",
+   "populariteit": "438 views",
+   "tijd": "10:55"
+  },
+  {
+   "titel": "Tientallen doden door botsing treinen in Spanje",
+   "ai": "Twee hogesnelheidstreinen botsten tussen Madrid en Andalusië; volgens Spaanse media zeker 39 doden.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/shorts/5B72c6XG6HI",
+   "embed": "https://www.youtube-nocookie.com/embed/5B72c6XG6HI?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/5B72c6XG6HI/hqdefault.jpg",
+   "populariteit": "297 views",
+   "tijd": "12:30"
+  },
+  {
+   "titel": "Ger Koopmans kritisch op stikstofoverleg: 'Na vijf maanden hadden ze verder moeten zijn'",
+   "ai": "LTO-voorzitter Ger Koopmans is ontevreden over de voortgang van het stikstofoverleg met het kabinet.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/watch?v=F7aCLX2WOMU",
+   "embed": "https://www.youtube-nocookie.com/embed/F7aCLX2WOMU?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/F7aCLX2WOMU/hqdefault.jpg",
+   "populariteit": "162 views",
+   "tijd": "12:30"
+  },
+  {
+   "titel": "Oppositie kan Netanyahu buitenspel zetten",
+   "ai": "Het is nog onzeker of Netanyahu na de verkiezingen een nieuwe regering kan vormen.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/shorts/YSbj28QfrSY",
+   "embed": "https://www.youtube-nocookie.com/embed/YSbj28QfrSY?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/YSbj28QfrSY/hqdefault.jpg",
+   "populariteit": "60 views",
+   "tijd": "12:45"
+  },
+  {
+   "titel": "Wat voor land wil Israël zijn en welke kant gaan we op?",
+   "ai": "De Israëlische verkiezingen gaven geen duidelijke winnaar; WNL bespreekt hoe verdeeld het land is.",
+   "bron": "YouTube",
+   "href": "https://www.youtube.com/shorts/AduwhahY73M",
+   "embed": "https://www.youtube-nocookie.com/embed/AduwhahY73M?autoplay=1&rel=0",
+   "thumb": "https://i.ytimg.com/vi/AduwhahY73M/hqdefault.jpg",
+   "populariteit": "6 views",
+   "tijd": "12:45"
+  }
+ ],
+ "dumpert": [
+  {
+   "titel": "ME-er speelt rugby in z'n vrije tijd",
+   "ai": "Een ME'er tackelt iemand als een rugbyspeler.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165133_cb882c9c",
+   "embed": "https://media.dumpert.nl/dmp/media/video/e/a/e/eae3e510-76f0-fd9c-7934-762f28ca01d4/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/e/a/e/eae3e510-76f0-fd9c-7934-762f28ca01d4/poster-small.jpg",
+   "populariteit": "18,8k views · 480 kudos",
+   "tijd": "21:55"
+  },
+  {
+   "titel": "Date stuurt nog even tikkie na",
+   "ai": "Na een afgewezen date komt er nog een Tikkie achteraan.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165122_7d868d4f",
+   "thumb": "https://media.dumpert.nl/dmp/media/image/4/d/2/4d2838f2-6b1c-8e4e-dc56-a3c6fabd5d59/poster-small.jpg",
+   "populariteit": "15,9k views · 435 kudos",
+   "tijd": "19:29"
+  },
+  {
+   "titel": "Reclameblok voor gefrustreerde dashcammerts",
+   "ai": "Verkeersreclame met dashcambeelden voor mensen die zich ergeren op de weg.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165141_8e81bb6e",
+   "embed": "https://media.dumpert.nl/dmp/media/video/a/6/b/a6b9d4ba-c9c1-6775-3bf8-c2ca949d192f/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/a/6/b/a6b9d4ba-c9c1-6775-3bf8-c2ca949d192f/poster-small.jpg",
+   "populariteit": "6,3k views · 425 kudos",
+   "tijd": "10:19"
+  },
+  {
+   "titel": "Leuk voor thuis",
+   "ai": "Camerabeelden van iemand die een lamp uit een restaurant meeneemt in een tas.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165112_6c18f477",
+   "embed": "https://media.dumpert.nl/dmp/media/video/2/f/4/2f4f62e0-1eb9-1ec1-b612-7b8df1d11c61/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/2/f/4/2f4f62e0-1eb9-1ec1-b612-7b8df1d11c61/poster-small.jpg",
+   "populariteit": "12,3k views · 402 kudos",
+   "tijd": "18:14"
+  },
+  {
+   "titel": "Poetin en Zelensky in de parkeergarage",
+   "ai": "AI-filmpje waarin Poetin en Zelensky een kofferbak openen in een parkeergarage.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165144_ece76b90",
+   "embed": "https://media.dumpert.nl/dmp/media/video/9/e/6/9e6c15d6-4945-c0d3-721d-6883ae0fdd5e/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/9/e/6/9e6c15d6-4945-c0d3-721d-6883ae0fdd5e/poster-small.jpg",
+   "populariteit": "7,2k views · 305 kudos",
+   "tijd": "10:46"
+  },
+  {
+   "titel": "Opeens weet ik het",
+   "ai": "Een nieuwslezeres en een microfoon zorgen voor een onverwacht moment.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165124_6d17ee18",
+   "embed": "https://media.dumpert.nl/dmp/media/video/a/7/a/a7a8ffc5-794f-87a6-eaca-18d1e06d49b9/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/a/7/a/a7a8ffc5-794f-87a6-eaca-18d1e06d49b9/poster-small.jpg",
+   "populariteit": "20,4k views · 290 kudos",
+   "tijd": "20:09"
+  },
+  {
+   "titel": "Lelijke shirts uitwisselen",
+   "ai": "Mannen ruilen uit verveling lelijke shirts op een vliegveld.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165105_e5e8a2d3",
+   "embed": "https://media.dumpert.nl/dmp/media/video/4/d/b/4dbc098c-ff70-2fa1-119b-a911eb159257/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/4/d/b/4dbc098c-ff70-2fa1-119b-a911eb159257/poster-small.jpg",
+   "populariteit": "6,7k views · 190 kudos",
+   "tijd": "16:12"
+  },
+  {
+   "titel": "Bender als Tim Hofman",
+   "ai": "Bender doet Tim Hofman na.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165125_66a43406",
+   "embed": "https://media.dumpert.nl/dmp/media/video/7/f/f/7ff50935-e406-27b3-3962-4c810c713905/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/7/f/f/7ff50935-e406-27b3-3962-4c810c713905/poster-small-0f5b6130.jpg",
+   "populariteit": "11,8k views · 181 kudos",
+   "tijd": "20:09"
+  },
+  {
+   "titel": "Kitesurfen met je hond",
+   "ai": "Een meisje gaat kitesurfen met haar hond.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165089_8c4ba61a",
+   "embed": "https://media.dumpert.nl/dmp/media/video/1/6/5/16514d38-d416-6f9e-e877-5c360299c59f/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/1/6/5/16514d38-d416-6f9e-e877-5c360299c59f/poster-small.jpg",
+   "populariteit": "3,1k views · 153 kudos",
+   "tijd": "13:05"
+  },
+  {
+   "titel": "Een win is een win",
+   "ai": "Een motorcrosser belandt na een helling in een boom.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165130_ef9ee33d",
+   "embed": "https://media.dumpert.nl/dmp/media/video/5/1/f/51fce5b6-834b-d7fc-4ff9-0207e9b6a00b/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/5/1/f/51fce5b6-834b-d7fc-4ff9-0207e9b6a00b/poster-small.jpg",
+   "populariteit": "8,7k views · 151 kudos",
+   "tijd": "21:25"
+  },
+  {
+   "titel": "I'm getting too old for this shit",
+   "ai": "Een knipoog naar de buddy cop-films uit de jaren 80 en 90.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165092_61b65e9a",
+   "embed": "https://media.dumpert.nl/dmp/media/video/e/2/d/e2dd60e8-b5f4-f566-ae8b-20ce8e6a88b7/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/e/2/d/e2dd60e8-b5f4-f566-ae8b-20ce8e6a88b7/poster-small-73ca91c0.jpg",
+   "populariteit": "2,9k views · 125 kudos",
+   "tijd": "13:39"
+  },
+  {
+   "titel": "Patatmachine nog niet aangeslagen",
+   "ai": "Een oud item over een futuristische patatmachine.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165143_20938988",
+   "embed": "https://media.dumpert.nl/dmp/media/video/5/9/b/59b5d5ca-971c-0e6d-0ca8-27771dff334c/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/5/9/b/59b5d5ca-971c-0e6d-0ca8-27771dff334c/poster-small.jpg",
+   "populariteit": "6k views · 112 kudos",
+   "tijd": "10:37"
+  },
+  {
+   "titel": "Tweede kans krijgen in het leven",
+   "ai": "Een motorrijder glijdt uit op een bergweg en ontsnapt ternauwernood aan de afgrond.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165131_3e6e0666",
+   "embed": "https://media.dumpert.nl/dmp/media/video/2/b/7/2b7df81a-d507-bf4d-8673-c7ec6dc62fd2/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/2/b/7/2b7df81a-d507-bf4d-8673-c7ec6dc62fd2/poster-small-128854c5.jpg",
+   "populariteit": "14,5k views · 108 kudos",
+   "tijd": "22:02"
+  },
+  {
+   "titel": "Kijk, mijn eerste wheelie",
+   "ai": "Een poging tot een wheelie loopt slecht af.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165147_96bc8850",
+   "embed": "https://media.dumpert.nl/dmp/media/video/2/2/c/22cc5003-0f80-a48e-1201-508755d20a42/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/2/2/c/22cc5003-0f80-a48e-1201-508755d20a42/poster-small.jpg",
+   "populariteit": "3,9k views · 103 kudos",
+   "tijd": "11:12"
+  },
+  {
+   "titel": "Wakeboardacrobaat",
+   "ai": "Een meisje laat knappe trucs zien op een wakeboard.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165120_447b4835",
+   "embed": "https://media.dumpert.nl/dmp/media/video/0/2/3/023e5594-9489-5bc1-253d-3b65fea67303/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/0/2/3/023e5594-9489-5bc1-253d-3b65fea67303/poster-small.jpg",
+   "populariteit": "10,3k views · 100 kudos",
+   "tijd": "20:33"
+  },
+  {
+   "titel": "Schuiven ouwe",
+   "ai": "Een kat claimt een plekje op de bank.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165126_8ab5d248",
+   "embed": "https://media.dumpert.nl/dmp/media/video/c/9/0/c90f24d4-b2ba-1919-11a0-8f82613cebc9/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/c/9/0/c90f24d4-b2ba-1919-11a0-8f82613cebc9/poster-small.jpg",
+   "populariteit": "7,2k views · 89 kudos",
+   "tijd": "20:41"
+  },
+  {
+   "titel": "Achtervolging eindigt zonder schoen",
+   "ai": "Scooterjongens vluchten voor de politie; de achtervolging eindigt met een verloren schoen.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165146_155d3855",
+   "embed": "https://media.dumpert.nl/dmp/media/video/e/8/3/e83a2adc-69e5-d358-7a00-092c22a964fe/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/e/8/3/e83a2adc-69e5-d358-7a00-092c22a964fe/poster-small-fb6e1032.jpg",
+   "populariteit": "2,5k views · 88 kudos",
+   "tijd": "11:33"
+  },
+  {
+   "titel": "Zou 't niet doen",
+   "ai": "Dashcambeelden van iemand die op de motorkap van een busje belandt.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165058_ec669ac6",
+   "embed": "https://media.dumpert.nl/dmp/media/video/0/0/5/00504c52-3f81-ce8c-2ae9-872b6bff86e2/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/0/0/5/00504c52-3f81-ce8c-2ae9-872b6bff86e2/poster-small.jpg",
+   "populariteit": "16,8k views · 85 kudos",
+   "tijd": "13:44"
+  },
+  {
+   "titel": "Halloooooo!",
+   "ai": "Een papegaai belt aan voor eten.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165062_2e8c8fc4",
+   "embed": "https://media.dumpert.nl/dmp/media/video/0/e/0/0e018820-39f5-0c55-96d9-6d7622e21793/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/0/e/0/0e018820-39f5-0c55-96d9-6d7622e21793/poster-small.jpg",
+   "populariteit": "2k views · 81 kudos",
+   "tijd": "10:33"
+  },
+  {
+   "titel": "Ouwe bok John Cleese op het podium",
+   "ai": "John Cleese wandelt wankel over het podium.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165095_ed8bfbb4",
+   "embed": "https://media.dumpert.nl/dmp/media/video/5/e/4/5e487384-5dec-71c1-5dac-03c6d7e8ef2f/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/5/e/4/5e487384-5dec-71c1-5dac-03c6d7e8ef2f/poster-small.jpg",
+   "populariteit": "2,9k views · 78 kudos",
+   "tijd": "14:44"
+  },
+  {
+   "titel": "Plafondje er uit, beunhaas blij",
+   "ai": "Een beunhaas trekt een plafond eruit en is er trots op.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165140_5b9303c5",
+   "embed": "https://media.dumpert.nl/dmp/media/video/1/3/a/13a46a47-c2fd-4585-f4fb-37b4acb83253/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/1/3/a/13a46a47-c2fd-4585-f4fb-37b4acb83253/poster-small.jpg",
+   "populariteit": "6,1k views · 72 kudos",
+   "tijd": "10:02"
+  },
+  {
+   "titel": "Raven bij Renze",
+   "ai": "Raven van Dorst in een ongemakkelijk gesprek aan tafel bij Renze.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165138_2c336612",
+   "embed": "https://media.dumpert.nl/dmp/media/video/4/e/0/4e01ad79-4f97-58f6-1533-fad134b21245/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/4/e/0/4e01ad79-4f97-58f6-1533-fad134b21245/poster-small-5a236c8e.jpg",
+   "populariteit": "21,6k views · 69 kudos",
+   "tijd": "09:31"
+  },
+  {
+   "titel": "Yiii haaa",
+   "ai": "Een kleine cowboy op een pony.",
+   "bron": "Dumpert",
+   "href": "https://www.dumpert.nl/item/100165123_4003d342",
+   "embed": "https://media.dumpert.nl/dmp/media/video/a/b/c/abc4387f-7039-6c2a-be45-cb33a643dec1/index.m3u8",
+   "thumb": "https://media.dumpert.nl/dmp/media/video/a/b/c/abc4387f-7039-6c2a-be45-cb33a643dec1/poster-small.jpg",
+   "populariteit": "3,9k views · 67 kudos",
+   "tijd": "20:21"
+  }
+ ],
+ "items": [
+  {
+   "cat": "nl",
+   "kop": "Treinramp Spanje: tientallen doden",
+   "ai": "Bij een botsing tussen twee hogesnelheidstreinen tussen Madrid en Andalusië zijn woensdagochtend tientallen mensen omgekomen.",
+   "samenvatting": "Woensdagochtend zijn op de hogesnelheidslijn tussen Madrid en Andalusië twee passagierstreinen op elkaar gebotst, tussen Los Yébenes en Urda, ten zuiden van Madrid. Volgens de eerste aanwijzingen reed de ene trein van achteren in op de andere, die stilstond. Twee rijtuigen ontspoorden en vielen van een helling. In de treinen zaten zo'n 550 mensen.\n\nHet dodental loopt per bron uiteen en stijgt nog: de autoriteiten bevestigden eerst 30 doden, RTL meldt er zeker 39, Spaanse media spreken van 46 en het AD vreest voor zeker 50. Overheidsbronnen denken aan een menselijke fout: het automatische seinsysteem was uitgevallen en tijdens die storing zou een medewerker de dienstregeling hebben hervat. Madrid roept dringend op om bloed te doneren; het Spaanse koningshuis leeft mee.",
+   "punten": [
+    "Botsing woensdagochtend op de lijn Madrid–Andalusië.",
+    "Eén trein reed van achteren in op een stilstaande trein; ~550 mensen aan boord.",
+    "Dodental per bron 30 tot 50 en loopt nog op.",
+    "Vermoedelijke oorzaak: menselijke fout tijdens storing in het seinsysteem.",
+    "Dringende oproep voor bloeddonaties; treinverkeer op het traject stil."
+   ],
+   "tijd": "09:47",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/buitenland/twee-hogesnelheidstreinen-botsen-tussen-madrid-en-andalusie-tientallen-doden/163718219.html"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636985"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/buitenland/6414653/zeker-46-doden-na-botsing-tussen-hogesnelheidstreinen-in-spanje.html"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/buitenland/artikel/5661544/minstens-10-doden-bij-treinongeluk-spanje"
+    },
+    {
+     "site": "Trouw",
+     "href": "https://www.trouw.nl/buitenland/tientallen-doden-bij-treinongeluk-in-spanje-mensen-werden-uit-de-trein-gegooid~b211cc8c/"
+    },
+    {
+     "site": "NRC",
+     "href": "https://www.nrc.nl/nieuws/2026/10/28/treinongeluk-spanje-a4939958"
+    },
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/buitenland/tientallen-doden-na-botsing-tussen-twee-hogesnelheidstreinen-in-spanje~b4e9a811/"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/buitenland/live-treinongeluk-spanje-vrees-voor-zeker-50-doden-bij-botsing-tussen-twee-treinen-in-spanje-dodental-zal-nog-oplopen~ab7a64aa/"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Zelensky in Den Haag",
+   "ai": "President Zelensky is vandaag in Den Haag, op de dag dat Nederland 1,2 miljard euro extra steun voor Oekraïne aankondigt.",
+   "samenvatting": "De Oekraïense president Zelensky praat vandaag op het Catshuis met premier Jetten en met de ministers Yesilgöz (Defensie) en Berendsen (Buitenlandse Zaken). Ook spreekt hij met topmensen uit het Nederlandse en Oekraïense bedrijfsleven. Aan het begin van de avond ontvangt koning Willem-Alexander hem op Paleis Huis ten Bosch.\n\nHet kabinet kondigde vanochtend 1,2 miljard euro aan niet-militaire steun aan, verspreid over drie jaar. Minister Sjoerdsma maakte dat bekend in Kyiv en wijst op de zware winter. Dit jaar gaat er nog 40 miljoen euro naar het Ukraine Energy Support Fund; volgens het AD zijn ook oude spullen van de NAM bruikbaar voor het Oekraïense energienet.",
+   "punten": [
+    "Gesprek met Jetten op het Catshuis, 's avonds bij de koning.",
+    "Ook overleg met Yesilgöz, Berendsen en het bedrijfsleven.",
+    "Nieuw steunpakket: 1,2 miljard euro niet-militair, voor 3 jaar.",
+    "Dit jaar al 40 miljoen voor energiesteun (winter).",
+    "Oude NAM-spullen kunnen helpen bij het energienet (AD)."
+   ],
+   "tijd": "08:50",
+   "bronnen": [
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/politiek/kabinet-komt-met-miljoenen-om-oekraine-door-winter-te-helpen-oude-spullen-van-de-nam-zijn-hier-goed-bruikbaar~a06e8cd6/"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/politiek/nederland-komt-met-steunpakket-van-12-miljard-voor-oekrane-om-zware-winter-door-te-komen/163714457.html"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/politiek/artikel/5661501/extra-financiele-steun-40-miljoen-herstel-energiecentrales-oekraine"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636979"
+    },
+    {
+     "site": "Trouw",
+     "href": "https://www.trouw.nl/buitenland/live-oorlog-oekraine-zelensky-bezoekt-woensdag-jetten-en-de-koning~ba2815bb/"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/binnenland/6414651/jetten-en-willem-alexander-ontvangen-vandaag-zelensky-in-den-haag.html"
+    },
+    {
+     "site": "NRC",
+     "href": "https://www.nrc.nl/nieuws/2026/10/28/zelensky-deze-woensdag-op-bezoek-bij-premier-jetten-in-catshuis-en-bij-de-koning-op-paleis-huis-ten-bosch-a4939940"
+    },
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/buitenland/zelensky-voert-gesprekken-in-nederland-nieuw-hulppakket-van-1-2-miljard-euro-voor-kyiv~bde4fbe2/"
+    },
+    {
+     "site": "FD",
+     "href": "https://fd.nl/politiek/1617480/zelensky-vandaag-op-bezoek-bij-koning-willem-alexander-en-premier-jetten"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Israël: Netanyahu voor, geen meerderheid",
+   "ai": "Met ruim driekwart van de stemmen geteld staat het blok van Netanyahu op 54 zetels en de oppositie op 47; geen van beide haalt de 61.",
+   "samenvatting": "In Israël zijn dinsdag de eerste parlementsverkiezingen sinds de Hamas-aanval van 7 oktober 2023 gehouden. Met 76,8 procent van de stemmen geteld staat Likud van premier Netanyahu op 27 zetels (5 minder dan nu). Zijn blok komt samen op 54 zetels, het oppositieblok van oud-legerchef Gadi Eisenkot op 47. Voor een meerderheid zijn 61 van de 120 zetels nodig. De uitslag valt beter uit voor Netanyahu dan de exitpolls voorspelden.\n\nArabische partijen halen samen een record van zo'n 18 à 19 zetels en kunnen daardoor bepalend worden. Oppositiekopstuk Yair Golan roept op om met hen samen te werken: 'Dit is onze kans.' Netanyahu wil een 'sterke, rechtse' regering en waarschuwt juist voor zo'n samenwerking. Hij heeft geen haast: zolang er geen nieuwe regering is, blijft hij aan de macht. De opkomst was de hoogste sinds 1973.",
+   "punten": [
+    "76,8% geteld: blok Netanyahu 54, oppositie 47 zetels; 61 nodig.",
+    "Likud grootste met 27 zetels (5 minder).",
+    "Uitslag beter voor Netanyahu dan de exitpolls.",
+    "Arabische partijen ~18-19 zetels (record) en mogelijk doorslaggevend.",
+    "Golan wil samenwerken met Arabische partijen; Netanyahu waarschuwt ertegen.",
+    "Zonder nieuwe regering blijft Netanyahu zitten."
+   ],
+   "tijd": "01:17",
+   "bronnen": [
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636962"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/midden-oostenconflict/6414625/nipte-voorsprong-voor-blok-netanyahu-met-ruime-helft-israelische-stemmen-geteld.html"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/artikel/5661438/liveblog-verkiezingen-israel-2026-knesset-netanyahu-eisenkot"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/buitenland/live-ruim-76-procent-van-stemmen-israel-geteld-netanyahu-blijft-aan-kop-maar-heeft-geen-meerderheid/163712454.html"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/buitenland/driekwart-van-de-stemmen-geteld-in-israel-meerderheid-wil-af-van-huidige-regering-maar-impasse-dreigt~a4c8e6f0/"
+    },
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/buitenland/oppositiekopstuk-golan-roept-op-tot-samenwerking-met-arabische-partijen-dit-is-onze-kans~be02e3d1/"
+    },
+    {
+     "site": "Trouw",
+     "href": "https://www.trouw.nl/buitenland/netanyahu-heeft-geen-haast-zolang-er-geen-nieuwe-regering-is-blijft-hij-aan-de-macht~b400f110/"
+    },
+    {
+     "site": "NRC",
+     "href": "https://www.nrc.nl/nieuws/2026/10/28/israelische-exitpolls-wijzen-op-moeizame-weg-naar-coalitievorming-zonder-arabische-partijen-geen-meerderheid-a4939925"
+    },
+    {
+     "site": "FD",
+     "href": "https://fd.nl/politiek/1617224/netanyahu-wint-zonder-te-winnen-israel-wacht-opnieuw-een-politieke-krachtmeting"
+    },
+    {
+     "site": "BNR",
+     "href": "https://www.youtube.com/watch?v=g4XG5ZxAP_o"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Aanslag bij ambassade Belgrado",
+   "ai": "In Belgrado is een minderjarige jongen doodgeschoten nadat hij een agent bij de Israëlische ambassade met messen aanviel.",
+   "samenvatting": "Kort na middernacht viel een minderjarige jongen in de Servische hoofdstad Belgrado een agent van een speciale eenheid aan met twee messen. De agent bewaakte de Israëlische ambassade en schoot de jongen dood. Hij raakte zelf lichtgewond aan zijn gezicht en mag waarschijnlijk vandaag weer naar huis.\n\nMinister Dacic van Binnenlandse Zaken spreekt van een terroristische aanslag. De aanvaller kwam uit Sabac, was bekend bij de veiligheidsdiensten en zou een aanhanger van IS zijn. Servië heeft het dreigingsniveau naar het hoogste niveau verhoogd.",
+   "punten": [
+    "Mesaanval op agent bij Israëlische ambassade, kort na middernacht.",
+    "Aanvaller (minderjarig) doodgeschoten; agent lichtgewond.",
+    "Minister: terroristische aanslag, dader IS-aanhanger.",
+    "Terreurdreiging in Servië naar hoogste niveau."
+   ],
+   "tijd": "08:42",
+   "bronnen": [
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/buitenland/jongen-gedood-bij-israelische-ambassade-belgrado-na-aanval-op-agent~b7a280d3/"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636977"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Belastingplan: nog steeds geen deal",
+   "ai": "Ook een nieuwe ronde gesprekken met de oppositie leverde het kabinet nog geen steun op voor het belastingplan, en de tijd dringt.",
+   "samenvatting": "Het kabinet sprak maandag en dinsdag opnieuw met oppositiepartijen, maar er is nog geen route naar een meerderheid voor het belastingplan. De gesprekken met JA21 liepen vast: die partij wil dat het dwangelement uit de spreidingswet gaat. Links vraagt onder meer meer belasting op vermogen en aanpassingen in het stikstofbeleid; Klaver (PRO) staat open voor een compromis. Het kabinet 'gaat zich beraden'.\n\nVolgens De Telegraaf dreigt bij wegstemmen een gat van bijna 2,5 miljard euro op de begroting van minister Heinen, en een Europese tik op de vingers vanwege een te hoog begrotingstekort.\n\nWoensdag meldt het AD dat ook de nieuwste ronde 'speeddates' met oppositiepartijen geen doorbraak heeft opgeleverd. Het kabinet heeft nog altijd geen meerderheid, terwijl de tijd doortikt.",
+   "punten": [
+    "Nieuwe gesprekken maandag en dinsdag: geen akkoord.",
+    "Gesprekken met JA21 mislukt (spreidingswet).",
+    "Oppositie wil o.a. meer vermogensbelasting en stikstofaanpassingen.",
+    "Telegraaf: dreigend gat van ~2,5 miljard euro.",
+    "Woensdag: nieuwe gesprekken, nog altijd geen witte rook (AD)."
+   ],
+   "tijd": "10:25",
+   "bronnen": [
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/columns-opinie/opinie-het-belastingplan-bepaalt-meer-voor-de-volkshuisvesting-dan-het-volkshuisvestingsdebat~bc84c899/"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/politiek/video/bfb48348-8adc-4b7e-9c51-d23b07fb3774/klaver-pro-tegen-kabinet-over"
+    },
+    {
+     "site": "BNR",
+     "href": "https://www.youtube.com/watch?v=CClDVPZHjx8"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/politiek/6414574/nog-geen-zicht-op-deal-met-oppositie-vrees-dat-we-in-grindbak-belanden.html"
+    },
+    {
+     "site": "FD",
+     "href": "https://fd.nl/politiek/1617219/nog-geen-deal-over-belastingplan-na-nieuwe-gesprekken-tussen-kabinet-en-oppositie"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/financieel/kabinet-riskeert-gat-van-miljarden-bij-afschieten-belastingplan-europees-strafbankje-dreigt/163667348.html"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/politiek/tijd-dringt-voor-kabinet-nog-geen-witte-rook-na-nieuwe-ronde-speeddates~ae047b43/"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Criminele servers Limburg offline",
+   "ai": "De politie heeft in een datacentrum in Limburg tientallen servers in beslag genomen van een malafide hostingbedrijf.",
+   "samenvatting": "In een internationaal onderzoek heeft de politie tientallen servers van een 'bulletproof' hostingbedrijf in beslag genomen in een datacentrum in Limburg. Zo'n bedrijf richt zich bewust op criminele klanten en belooft volledige anonimiteit. Via deze servers werd volgens de politie onder meer kinderporno verspreid en werden phishing en ransomware-aanvallen gepleegd.\n\nDe politie heeft nu gegevens van meer dan 3000 klanten die de servers voor criminele zaken gebruikten. De FBI en de Duitse politie werkten mee; zij spoorden onder meer verdachten op en namen crypto in beslag.",
+   "punten": [
+    "Tientallen servers in beslag in een Limburgs datacentrum.",
+    "Bedrijf werkte als 'bulletproof hoster' voor criminelen.",
+    "Gebruikt voor kinderporno, phishing en ransomware.",
+    "Gegevens van 3000+ klanten in handen van de politie.",
+    "Samenwerking met FBI en Duitse politie."
+   ],
+   "tijd": "09:28",
+   "bronnen": [
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959341/Politie+neemt+tientallen+Nederlandse+servers+hostingbedrijf+in+beslag?channel=rss"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636994"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "DNA-databanken helpen coldcases",
+   "ai": "Het OM gaat vaker commerciële DNA-databanken inzetten bij oude moordzaken, na een succesvolle proef.",
+   "samenvatting": "Het Openbaar Ministerie en het NFI hebben een proef afgerond waarbij DNA van een plaats delict wordt vergeleken met profielen in particuliere databanken zoals GEDmatch en FamilyTreeDNA. Zo kun je via (verre) familieleden een verdachte vinden of een onbekend slachtoffer identificeren. Het gaat alleen om profielen van mensen die daar toestemming voor hebben gegeven.\n\nDe methode werd sinds 2023 in zes zaken gebruikt, waaronder de Heuvelmoord, en leverde in twee zaken nieuwe aanknopingspunten op. Ze mag alleen bij moord en andere zware zaken, als er geen andere sporen meer zijn, en per zaak moet de rechter-commissaris toestemming geven. Advocaten en privacy-experts waren eerder kritisch. NRC beschrijft hoe de methode de moordzaak op Sjef Leukel (Kerkrade, 2004) dichter bij een oplossing bracht.",
+   "punten": [
+    "Proef van OM en NFI met particuliere DNA-databanken geslaagd.",
+    "Werkt via (verre) familieleden van een verdachte.",
+    "Sinds 2023 in 6 zaken gebruikt, in 2 nieuwe aanknopingspunten.",
+    "Alleen bij zware zaken en met toestemming van de rechter-commissaris.",
+    "Privacy-experts en advocaten waren kritisch."
+   ],
+   "tijd": "09:30",
+   "bronnen": [
+    {
+     "site": "NRC",
+     "href": "https://www.nrc.nl/nieuws/2026/10/28/patrick-leukel-zal-tot-in-de-hemel-zoeken-naar-de-moordenaar-van-zijn-vader-door-een-nieuwe-dna-methode-is-hij-dichterbij-dan-ooit-a4934062"
+    },
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959348/OM+wil+commerci%C3%ABle+dna-databanken+in+toekomst+vaker+gebruiken?channel=rss"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636992"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Kwartaalcijfers: Adyen keldert",
+   "ai": "Op de beurs gaat het vandaag vooral over kwartaalcijfers: Adyen zakt hard weg, Heineken en Arcadis doen het goed.",
+   "samenvatting": "Een hele rij Nederlandse bedrijven presenteerde vanochtend cijfers. Betaalbedrijf Adyen kreeg een forse koersdaling na een lagere verwachting voor de winstmarge; samen met Unilever, waar de voedseltak tegenviel, trok het de AEX omlaag. Heineken verkocht juist meer bier dan verwacht dankzij het lange zomerweer, vooral premiumbieren als Affligem en Desperados; de nieuwe topman wil wel een 'sterkere prestatiecultuur'.\n\nKPN haalde meer omzet dan verwacht, maar verloor internetklanten. Arcadis groeit door energieprojecten, de watersector en de chipindustrie, en Corbion deed het beter dan verwacht. Later vandaag volgen Microsoft, Alphabet en het rentebesluit van de Fed.",
+   "punten": [
+    "Adyen: forse koersdaling na lagere margeverwachting.",
+    "Unilever: voedseltak drukt op de koers.",
+    "Heineken: meer bier verkocht dankzij lange zomer.",
+    "KPN: meer omzet, maar minder internetklanten.",
+    "Arcadis en Corbion: beter dan verwacht.",
+    "Vanavond: Microsoft, Alphabet en Fed-besluit."
+   ],
+   "tijd": "07:06",
+   "bronnen": [
+    {
+     "site": "FD",
+     "href": "https://fd.nl/financiele-markten/1617220/live-beleggers-maken-zich-op-voor-cijferregen-en-fed-besluit"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/economie/6414632/heineken-profiteert-van-lange-zomer-en-ziet-bierverkopen-stijgen.html"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/financieel/arcadis-ziet-groei-in-energieprojecten-watersector-en-chipindustrie/163714324.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Benzine weer wat goedkoper",
+   "ai": "Benzine kost nu gemiddeld 2,55 euro per liter, bijna 20 cent minder dan bij de recordpiek van twee weken geleden.",
+   "samenvatting": "Halverwege oktober stond de benzineprijs nog op een record van gemiddeld 2,73 euro per liter (adviesprijs). Nu is dat gemiddeld 2,55 euro, meldt United Consumers. Ook diesel is wat goedkoper, maar minder hard gedaald. Tankstations langs de snelweg rekenen vaak de volle adviesprijs; daarbuiten en bij onbemande stations is tanken vaak veel goedkoper.\n\nOpvallend: de olieprijs steeg juist, naar zo'n 115 dollar per vat, het hoogste sinds april. Volgens energiedeskundige Jilles van den Beukel bepalen nu ook transport- en raffinagekosten de prijs, en raffinaderijen rekenen op dit moment minder.",
+   "punten": [
+    "Benzine nu gemiddeld €2,55 per liter (piek: €2,73).",
+    "Diesel ook iets goedkoper, maar minder.",
+    "Snelweg-tankstations vaak duurst.",
+    "Olieprijs juist hoger: ~115 dollar per vat.",
+    "Lagere raffinagekosten drukken de pompprijs."
+   ],
+   "tijd": "10:51",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/economie/6414657/benzine-bijna-20-cent-goedkoper-na-recordprijs-maar-olie-blijft-duur.html"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636997"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Minder lokale omroepen",
+   "ai": "Vanaf 2028 zijn er nog maximaal tachtig lokale omroepen, nu de Eerste Kamer heeft ingestemd.",
+   "samenvatting": "De Eerste Kamer heeft dinsdag ingestemd met een hervorming van de lokale omroepen. Het aantal gaat van ruim tweehonderd naar maximaal tachtig. Het idee is dat ze daardoor sterker worden. Het nieuwe stelsel gaat in op 1 januari 2028.",
+   "punten": [
+    "Eerste Kamer stemde dinsdag in.",
+    "Van ruim 200 naar max. 80 lokale omroepen.",
+    "Doel: sterkere omroepen.",
+    "Ingang: 1 januari 2028."
+   ],
+   "tijd": "08:54",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/media/6414636/vanaf-2028-nog-maximaal-tachtig-lokale-omroepen-na-steun-eerste-kamer.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Mieke Sterk (80) overleden",
+   "ai": "Oud-atlete en oud-Kamerlid Mieke Sterk uit Haarlem is op 80-jarige leeftijd overleden.",
+   "samenvatting": "De in Haarlem geboren Mieke Sterk won twintig Nederlandse atletiektitels. Op de Olympische Spelen van 1968 in Mexico-Stad liep ze met de 4x100 meter in de series een wereldrecord en werd ze vierde in de finale; dat Nederlandse record hield tot 2012 stand. Ze weigerde in 1969 mee te doen aan het EK in Athene vanwege de dictatuur in Griekenland.\n\nNa haar sportcarrière werkte ze met jonge asielzoekers en mensen met een verstandelijke beperking. Van 1994 tot 1998 zat ze voor de PvdA in de Tweede Kamer, met onder meer sport, gehandicaptenzorg en het mbo in haar portefeuille.",
+   "punten": [
+    "Haarlemse, 20 Nederlandse titels.",
+    "Vierde op de 4x100 meter op de Spelen van 1968; NL-record tot 2012.",
+    "Boycotte het EK 1969 in Griekenland.",
+    "PvdA-Kamerlid van 1994 tot 1998."
+   ],
+   "tijd": "09:48",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/binnenland/markante-atlete-en-politica-mieke-sterk-80-overleden-ze-liet-zich-de-kaas-niet-van-het-brood-eten-en-had-altijd-een-voortrekkersrol/163716181.html"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/andere-sporten/voormalig-olympisch-atlete-en-oud-tweede-kamerlid-mieke-sterk-80-overleden~af47035f/"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636993"
+    },
+    {
+     "site": "NH Nieuws",
+     "href": "https://www.nhnieuws.nl/nieuws/364850/oud-atlete-en-oud-tweede-kamerlid-sterk-80-overleden"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Songfestival: ook IJsland en Hongarije niet",
+   "ai": "Na Nederland doen ook IJsland en Hongarije niet mee aan het Songfestival 2027; de EBU rekent op 36 landen.",
+   "samenvatting": "Nederland doet volgend jaar toch niet mee aan het Eurovisie Songfestival in Bulgarije. De omroepen onder de NPO wilden niet meewerken aan het plan om alsnog mee te doen; de deelname van Israël ligt heel gevoelig. Volgens de NPO was er 'onvoldoende draagvlak'. Er was ook nog geen artiest gekozen: het selectieproces lag stil toen bleek hoeveel bezwaar er was.\n\nNPO-bestuursvoorzitter Jet de Ranitz en mediadirecteur Jurre Bosman noemen het 'heel ingewikkeld'. Volgens Nieuwsuur waren EO en WNL wel bereid mee te helpen. De EBU vindt het 'zeer jammer', presentator Cornald Maas noemt het 'onvermijdelijk'. Critici in onder meer AD en Volkskrant spreken van een opeenstapeling van verkeerde inschattingen door de NPO-top.\n\nWoensdag publiceerde de EBU de lijst met 36 deelnemende landen. Ook IJsland en Hongarije doen definitief niet mee. Alleen Spanje en Slovenië hebben nog tot december om te beslissen of ze terugkeren.",
+   "punten": [
+    "NPO: 'onvoldoende draagvlak' bij de omroepen.",
+    "Gevoelig punt: deelname van Israël.",
+    "Er was nog geen Nederlandse artiest gekozen.",
+    "EO en WNL wilden wel helpen (Nieuwsuur).",
+    "EBU: 'zeer jammer'; Cornald Maas: 'onvermijdelijk'.",
+    "Woensdag: ook IJsland en Hongarije haken af; 36 landen doen mee.",
+    "Spanje en Slovenië beslissen vóór december."
+   ],
+   "tijd": "09:50",
+   "bronnen": [
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/show/na-veel-kritiek-en-weerstand-nederland-doet-toch-niet-mee-aan-eurovisie-songfestival~a1baeaea/"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/binnenland/artikel/5661248/npo-gaat-niet-door-met-het-organiseren-van-het-songfestival"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/songfestival/6414518/nederland-doet-toch-niet-mee-aan-songfestival-omroepen-willen-niet-meewerken.html"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636855"
+    },
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/cultuur-media/nederland-toch-niet-naar-eurovisiesongfestival-npo-trekt-zich-terug~be1cc554/"
+    },
+    {
+     "site": "NRC",
+     "href": "https://www.nrc.nl/nieuws/2026/10/27/npo-ziet-af-van-nederlandse-deelname-aan-het-songfestival-a4939834"
+    },
+    {
+     "site": "Nieuwsuur",
+     "href": "https://nos.nl/l/2636938"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5661551/ijsland-en-hongarije-definitief-ook-niet-naar-songfestival-2027-doen-niet"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/songfestival/6414664/ijsland-doet-ook-in-2027-niet-mee-aan-songfestival-ebu-rekent-op-36-landen.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Beekse Bergen: sector geschokt",
+   "ai": "De dierenverzorgster die door een panter werd aangevallen is overleden; de dierentuinbranche spreekt van een grote schok.",
+   "samenvatting": "De vrouw raakte zaterdag zwaargewond aan haar hoofd en nek toen een van de twee Perzische panters in het binnenverblijf haar aanviel. Het park meldde al dat haar kans op herstel heel klein was; dinsdag is ze overleden. Ze werkte bijna 40 jaar in het park, waarvan acht jaar bij de panters.\n\nDe laatste dodelijke aanval in een Nederlandse dierentuin was waarschijnlijk in 2003. Dierentuinvereniging NVD spreekt van een schok voor de hele sector.\n\nWoensdag noemt de Nederlandse Vereniging van Dierentuinen het een 'grote schok voor de hele dierentuinwereld'; een dodelijke aanval is extreem zeldzaam. Eerdere gevallen: een olifant in Beekse Bergen (2003), een leeuw in Ouwehands (2001), een beer in Amersfoort (1981) en een tijger in Blijdorp (1979).",
+   "punten": [
+    "Aangevallen op zaterdag door een mannelijke Perzische panter.",
+    "Zwaar letsel aan hoofd en nek; dinsdag overleden.",
+    "Werkte bijna 40 jaar in het park, 8 jaar bij de panters.",
+    "Vorige dodelijke dierentuinaanval in NL waarschijnlijk in 2003.",
+    "NVD: 'grote schok', dodelijke aanval extreem zeldzaam."
+   ],
+   "tijd": "07:05",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/binnenland/artikel/5661035/beekse-bergen-verzorgster-aangevallen-door-panter"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/binnenland/6414387/dierenverzorger-beekse-bergen-die-werd-aangevallen-door-panter-overleden.html"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636900"
+    },
+    {
+     "site": "NRC",
+     "href": "https://www.nrc.nl/nieuws/2026/10/27/dierenverzorger-safaripark-beekse-bergen-overleden-aan-verwondingen-na-aanval-door-perzische-panter-a4939897"
+    },
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/binnenland/dierenverzorger-beekse-bergen-overleden-na-panteraanval~b975fc48/"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636963"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Statushouders en sociale huur",
+   "ai": "In 2024 ging ruim 8 procent van de vrijgekomen corporatiewoningen naar statushouders; bij starters is dat 21 procent.",
+   "samenvatting": "Volgens het CBS gingen in 2024 ruim 13.000 corporatiewoningen naar huishoudens met statushouders, ongeveer evenveel als een jaar eerder.\n\nOnder starters op de sociale huurmarkt is het aandeel gestegen: van 9 procent in 2018 naar 21 procent nu. Het aantal starterswoningen zelf blijft ongeveer gelijk.",
+   "punten": [
+    "Ruim 13.000 woningen (ruim 8%) naar statushouders in 2024.",
+    "Ongeveer gelijk aan 2023.",
+    "Bij starters: 21% (2018: 9%)."
+   ],
+   "tijd": "06:30",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/financieel/cbs-steeds-meer-sociale-huurwoningen-naar-statushouders/163676953.html"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636959"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/economie/artikel/5661412/sociale-huurwoningen-voor-starters-steeds-vaker-naar-statushouders"
+    },
+    {
+     "site": "Reddit r/thenetherlands",
+     "href": "https://www.reddit.com/r/thenetherlands/comments/1xhgcth/cbs_nauwelijks_meer_corporatiewoningen_naar/"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "PvdD wil verbod onverdoofd slachten",
+   "ai": "Esther Ouwehand (PvdD) diende wetsvoorstellen in voor dierenwelzijn, waaronder een verbod op onverdoofd slachten.",
+   "samenvatting": "Ouwehand schreef een 'dubbelwet' over dierenwelzijn.\n\nZij zegt zelf: 'Dit wordt het einde van de bio-industrie.'",
+   "punten": [
+    "Initiatiefwet(ten) van de PvdD.",
+    "Verbod op onverdoofd slachten.",
+    "Breder doel: dierenwelzijn in de veehouderij."
+   ],
+   "tijd": "06:00",
+   "bronnen": [
+    {
+     "site": "Trouw",
+     "href": "https://www.trouw.nl/politiek/esther-ouwehand-schreef-dubbelwet-over-dierenwelzijn-dit-wordt-het-einde-van-de-bio-industrie~b6eaf308/"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636965"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Twents fraude-experiment raakte onschuldigen",
+   "ai": "Trouw: een Twents experiment tegen zorgfraude zette onschuldige zorgondernemers klem.",
+   "samenvatting": "Volgens onderzoek van Trouw kwamen bij een proef tegen zorgfraude in Twente ook ondernemers in de problemen die niets fout deden.",
+   "punten": [
+    "Experiment tegen zorgfraude in Twente.",
+    "Onschuldige ondernemers klemgezet (Trouw)."
+   ],
+   "tijd": "07:00",
+   "bronnen": [
+    {
+     "site": "Trouw",
+     "href": "https://www.trouw.nl/binnenland/twents-experiment-tegen-zorgfraude-zette-onschuldige-ondernemers-klem~bc414469/"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "CBS: iets meer orgaandonoren",
+   "ai": "Begin dit jaar stonden 8,2 miljoen volwassenen als orgaandonor geregistreerd, ruim 90.000 meer dan een jaar eerder.",
+   "samenvatting": "De stijging komt vooral doordat mensen géén keuze maken: wie niets invult, komt onder de donorwet als 'geen bezwaar' in het register.\n\nHet aantal mensen dat zelf actief 'ja' kiest, groeit minder hard.",
+   "punten": [
+    "8,2 miljoen geregistreerde donoren.",
+    "+90.000 in een jaar.",
+    "Groei vooral via 'geen bezwaar'."
+   ],
+   "tijd": "07:00",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/binnenland/artikel/5661513/cijfers-orgaandonoren-meer-dan-vorig-jaar-cbs-geen-keuze-donorwet"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Particuliere verhuurders bieden 'oprotpremie'",
+   "ai": "Particuliere verhuurders bieden huurders soms tot 100.000 euro om te vertrekken, zodat ze hun woning kunnen verkopen.",
+   "samenvatting": "Door hogere belastingen en lagere opbrengsten willen veel particuliere verhuurders van hun huurwoningen af.\n\nVolgens de branche bieden ze zittende huurders soms flinke bedragen, tot wel 100.000 euro, om vrijwillig te vertrekken.",
+   "punten": [
+    "Hoge belastingdruk, lagere opbrengsten.",
+    "Huurders krijgen soms tot 100.000 euro.",
+    "Doel: woning leeg verkopen."
+   ],
+   "tijd": "06:00",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/financieel/particuliere-verhuurders-zitten-klem-en-bieden-huurders-oprotpremie-bod-van-100.000-euro-aan-huurder-om-woning-te-verlaten/163693170.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Griepprik zorgpersoneel blijft laag",
+   "ai": "Maar een klein deel van het zorgpersoneel haalt de gratis griepprik, terwijl kwetsbare patiënten aan griep overlijden.",
+   "samenvatting": "Ondanks campagnes blijft de vaccinatiegraad onder zorgmedewerkers laag.\n\nElk jaar belanden veel kwetsbare mensen door griep in het ziekenhuis of overlijden ze. De griepprikronde loopt nu.",
+   "punten": [
+    "Weinig zorgpersoneel haalt de griepprik.",
+    "Gratis aangeboden.",
+    "Risico voor kwetsbare patiënten."
+   ],
+   "tijd": "01:00",
+   "bronnen": [
+    {
+     "site": "NRC",
+     "href": "https://www.nrc.nl/nieuws/2026/10/28/griepprik-a4939909"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/binnenland/zorgpersoneel-blijft-weg-bij-griepprik-intussen-sterven-kwetsbare-patienten-onnodig~aee29d28/"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Lancet: hittedoden stijgen fors",
+   "ai": "Wereldwijd sterven bijna net zoveel mensen door extreme hitte als door malaria en hiv, aldus het Lancet Countdown-rapport.",
+   "samenvatting": "Klimaatverandering raakt de gezondheid steeds harder: via hitte, droogte en infectieziekten.\n\nExperts spreken van een wereldwijde gezondheidscrisis.",
+   "punten": [
+    "Hittesterfte ~ zelfde orde als hiv en malaria.",
+    "Ook droogte en ziektes nemen toe.",
+    "Jaarlijkse Lancet Countdown."
+   ],
+   "tijd": "01:00",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/klimaat/6414573/hitte-droogte-en-ziekte-klimaatopwarming-trekt-zware-wissel-op-gezondheid.html"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/wetenschap/sterftecijfer-door-extreme-hitte-nu-bijna-net-zo-hoog-als-door-malaria-en-hiv-blijkt-uit-rapport-lancet~ac834f60/"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Liefdesfraude: trio bekent",
+   "ai": "Een Ghanese tweeling en een Amerikaanse vrouw bekennen ouderen voor 8 miljoen euro te hebben opgelicht via datingsites.",
+   "samenvatting": "Ze gebruikten valse identiteiten en sociale media, in de VS en Europa.",
+   "punten": [
+    "Drie verdachten bekennen.",
+    "Buit: 8 miljoen euro.",
+    "Slachtoffers: ouderen in VS en Europa."
+   ],
+   "tijd": "07:42",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/buitenland/6414630/trio-bekent-schuld-in-grootschalige-internationale-liefdesfraude-bij-ouderen.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Weer: droog en zonnig",
+   "ai": "Woensdag is het droog met geregeld zon; de komende dagen blijft het rustig, met kans op mist in de nacht en ochtend.",
+   "samenvatting": "Na de storm en regen van de afgelopen dagen begint een rustige, droge periode. Vanaf donderdag staat er nauwelijks wind.\n\nIn de nacht en ochtend neemt de kans op mist toe. De middagtemperatuur verandert de eerste dagen weinig (rond 14 à 15 graden).",
+   "punten": [
+    "Droog met geregeld zon.",
+    "Komende dagen weinig wind.",
+    "Kans op mist in nacht en ochtend.",
+    "Middag rond 14–15 graden."
+   ],
+   "tijd": "06:19",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/weer/artikel/5661516/weerbericht-28-oktober"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Crypto-'winkel' in Kalverstraat",
+   "ai": "FTM: in de Kalverstraat zat jarenlang een dubieuze cryptozaak met altijd gesloten deur.",
+   "samenvatting": "De zaak, Miracle Pay, blijkt onderdeel van een Noord-Cypriotisch bedrijf dat in verband wordt gebracht met nep-investeringen.\n\nDe deur zat ook tijdens openingstijden op slot.",
+   "punten": [
+    "Zaak: Miracle Pay, Kalverstraat Amsterdam.",
+    "Gelinkt aan Noord-Cypriotisch bedrijf.",
+    "In verband gebracht met nep-investeringen."
+   ],
+   "tijd": "",
+   "bronnen": [
+    {
+     "site": "Follow the Money",
+     "href": "https://www.ftm.nl/artikelen/dubieuze-cryptohandel-runde-jarenlang-winkel-in-kalverstraat"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Bitvavo vraagt BSN van klanten",
+   "ai": "Cryptobeurs Bitvavo wil dat klanten zich opnieuw identificeren, inclusief BSN, anders kunnen ze tijdelijk niet handelen.",
+   "samenvatting": "Bitvavo vraagt klanten om hun nationaliteit, geboorteplaats, BSN en het land waar ze belasting betalen. Dat komt door nieuwe Europese regels waardoor de Belastingdienst meer gegevens over cryptobeleggers krijgt.\n\nWie de gegevens niet doorgeeft, kan volgens De Telegraaf tijdelijk niet handelen.",
+   "punten": [
+    "Opnieuw identificeren: nationaliteit, geboorteplaats, BSN.",
+    "Ook belastingland doorgeven.",
+    "Reden: Europese regels, fiscus krijgt meer zicht.",
+    "Niet doorgeven = tijdelijk niet handelen."
+   ],
+   "tijd": "10:01",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/financieel/geld/cryptoklanten-bitvavo-moeten-persoonlijke-info-delen-met-jagende-fiscus-anders-tijdelijk-niet-handelen/163674598.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Pro-prominenten: Halsema moet portefeuille inleveren",
+   "ai": "Oud-wethouders van Pro Amsterdam vinden dat burgemeester Halsema de portefeuille Democratisering moet overdragen.",
+   "samenvatting": "Oud-wethouders en andere zwaargewichten van Pro in Amsterdam willen dat burgemeester Femke Halsema stopt met de portefeuille Democratisering. Die vinden ze te politiek voor een burgemeester, die boven de partijen hoort te staan.\n\nZe noemen het 'onbegrijpelijk' en 'problematisch', meldt De Telegraaf.",
+   "punten": [
+    "Gaat om portefeuille Democratisering.",
+    "Volgens critici te politiek voor een burgemeester.",
+    "Kritiek komt uit eigen kring (Pro)."
+   ],
+   "tijd": "11:12",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/nieuws/partijprominenten-van-pro-willen-dat-burgemeester-femke-halsema-portefeuille-opgeeft-het-is-onbegrijpelijk/163717518.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Carnisse boycot Sinterklaasintocht",
+   "ai": "Een Rotterdamse wijkraad stemde in een rumoerige vergadering voor een boycot van de Sinterklaasintocht in Carnisse.",
+   "samenvatting": "De jaarlijkse Sinterklaasintocht in de Rotterdamse wijk Carnisse dreigt te worden geschrapt. De wijkraad stemde in een tumultueuze vergadering voor een boycot.\n\nEén van de betrokkenen zegt volgens De Telegraaf om te willen gaan 'als je hem een kleurtje geeft'.",
+   "punten": [
+    "Wijkraad Carnisse stemt voor boycot van de intocht.",
+    "Vergadering verliep tumultueus.",
+    "Intocht dreigt te worden geschrapt."
+   ],
+   "tijd": "10:01",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/binnenland/rotterdamse-wijkraad-stemt-in-tumultueuze-vergadering-voor-boycot-sinterklaas-intocht-als-je-hem-een-kleurtje-geeft-dan-ga-ik-overstag/163715700.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Minister Van Essen in Armenië",
+   "ai": "Op het ministerie van Landbouw is verbazing dat minister Van Essen in een cruciale stikstofweek naar Armenië vliegt.",
+   "samenvatting": "Landbouwminister Jaimi van Essen (D66) spreekt in Armenië over biodiversiteit, terwijl het stikstofpakket onder hoogspanning staat. Coalitie- en boerenpartijen willen aanpassingen.\n\nVolgens De Telegraaf klinkt op zijn eigen ministerie verbazing over de reis.",
+   "punten": [
+    "Van Essen (D66) in Armenië voor biodiversiteit.",
+    "Stikstofpakket staat onder druk.",
+    "Coalitie en boerenpartijen willen wijzigingen."
+   ],
+   "tijd": "11:39",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/politiek/verbazing-over-afwezige-minister-jaimi-van-essen-in-cruciale-landbouwweek-d66er-vliegt-naar-armenie-voor-biodiversiteit/163724802.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "WOII-explosieven op Eindhoven Airport",
+   "ai": "Op Eindhoven Airport zijn twee explosieven uit de Tweede Wereldoorlog gevonden; het vliegverkeer heeft geen last.",
+   "samenvatting": "Bij grondwerk voor de grote renovatie van het vliegveld, die begin volgend jaar begint, zijn een mortiergranaat en een nog onbekend voorwerp gevonden. De EOD komt ze onschadelijk maken.\n\nHet vliegverkeer ondervindt volgens de marechaussee geen hinder.",
+   "punten": [
+    "Mortiergranaat en een onbekend voorwerp gevonden.",
+    "Bij grondwerk voor de renovatie.",
+    "EOD ruimt op; geen hinder voor vluchten."
+   ],
+   "tijd": "11:35",
+   "bronnen": [
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636999"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Wielklem voor ziekenhuispersoneel",
+   "ai": "Het Amphia Ziekenhuis in Breda geeft eigen personeel vanaf 1 november een wielklem bij foutparkeren.",
+   "samenvatting": "Medewerkers die hun auto buiten de vakken bij de personeelsingang zetten, riskeren vanaf 1 november een wielklem. Wie het blijft doen, kan zijn parkeerrecht kwijtraken. Volgens het ziekenhuis zorgen foutparkeerders voor onveilige situaties en schade.\n\nVoor zo'n 5000 medewerkers zijn er 1609 plekken; op drukke momenten is dat te weinig, geeft het ziekenhuis toe.",
+   "punten": [
+    "Vanaf 1 november wielklem bij foutparkeren.",
+    "Notoire overtreders verliezen parkeerrecht.",
+    "1609 plekken voor ~5000 medewerkers."
+   ],
+   "tijd": "09:21",
+   "bronnen": [
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636975"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Bolsonaro krijgt visum VS",
+   "ai": "Flávio Bolsonaro is ondanks een reisverbod in de VS aangekomen en krijgt daar een visum; Lula noemt zijn vertrek een schande.",
+   "samenvatting": "Flávio Bolsonaro verloor afgelopen weekend de presidentsverkiezingen van Lula. Kort voor zijn vertrek moest hij zijn paspoorten inleveren vanwege een onderzoek naar witwassen, corruptie en belastingontduiking. Toch vertrok hij en kwam hij dinsdagavond in de VS aan. Volgens Reuters en AP krijgen hij en zijn familie een Amerikaans visum.\n\nPresident Lula noemt het vertrek 'beschamend': 'Wie onschuldig is, hoeft niet bang te zijn.' Er wordt inmiddels meer bekend over de vluchtroute.",
+   "punten": [
+    "Verloor de verkiezingen van Lula.",
+    "Moest paspoorten inleveren (witwassen, corruptie).",
+    "Dinsdagavond in de VS aangekomen.",
+    "VS geeft hem en zijn familie een visum.",
+    "Lula: 'beschamend', hij had zich moeten verdedigen."
+   ],
+   "tijd": "00:34",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/buitenland/6414502/flavio-bolsonaro-mag-brazilie-niet-verlaten-na-verkiezingsnederlaag.html"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/buitenland/artikel/5661224/flavio-bolsonaro-zegt-dat-hij-het-land-niet-mag-verlaten"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636927"
+    },
+    {
+     "site": "NRC",
+     "href": "https://www.nrc.nl/nieuws/2026/10/27/flavio-bolsonaro-ontvlucht-brazilie-na-verkiezingsnederlaag-a4939914"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/buitenland/brazilie-onderzoekt-buitenlandse-financiering-campagne-bolsonaro~adf0b7b4/"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/buitenland/vs-van-plan-visum-te-verstrekken-aan-gevluchte-bolsonaro/163703816.html"
+    },
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/buitenland/bolsonaro-ontvlucht-brazilie-na-verkiezingsnederlaag-en-krijgt-visum-van-vs~b4d3225a/"
+    },
+    {
+     "site": "Trouw",
+     "href": "https://www.trouw.nl/buitenland/flavio-bolsonaro-heeft-brazilie-verlaten-en-is-op-weg-naar-vs-ondanks-reisverbod~b95c5d0f/"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636954"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/buitenland/artikel/5661463/flavio-bolsonaro-heeft-brazilie-verlaten-zou-naar-vs-zijn-gereisd"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Ruzie VS en Cuba bij VN",
+   "ai": "Spanningen tussen de VS en Cuba liepen bij de VN uit op ruzie en geschreeuw.",
+   "samenvatting": "In de Algemene Vergadering van de VN kregen de VS en Cuba flinke ruzie. De Amerikaanse VN-ambassadeur Mike Waltz ging fel tekeer tegen het Cubaanse regime.\n\nDe Cubaanse delegatie, met minister Bruno Rodríguez, begon daarop op tafels te bonken en te schreeuwen.",
+   "punten": [
+    "Verhitte confrontatie in de VN."
+   ],
+   "tijd": "05:22",
+   "bronnen": [
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636958"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "VS en Iran: nieuwe bommencampagne?",
+   "ai": "Volgens de WSJ hebben de VS de Golfstaten ingelicht over een nieuwe bommencampagne tegen Iran.",
+   "samenvatting": "De VS gaven al ruim 47 miljard dollar uit aan de oorlog tegen Iran, meldt de Volkskrant.",
+   "punten": [
+    "WSJ: Golfstaten ingelicht.",
+    "Kosten VS al ruim 47 miljard."
+   ],
+   "tijd": "04:27",
+   "bronnen": [
+    {
+     "site": "Trouw",
+     "href": "https://www.trouw.nl/buitenland/live-vs-defensiekosten-vs-van-oorlog-tegen-iran-lopen-sterk-op-al-ruim-47-miljard-uitgegeven~bbc0cf3d/"
+    },
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/buitenland/liveblog-politiek-vs-trump-hegseth-pentagon~bcd4a5c7/"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Frankrijk: oproepen tot geweld blokkeren",
+   "ai": "De Franse Senaat nam een wet aan om berichten op sociale media die oproepen tot geweld te kunnen blokkeren.",
+   "samenvatting": "Het is een reactie op plunderingen tijdens grote protesten eerder deze maand.",
+   "punten": [
+    "Wet aangenomen door Senaat.",
+    "Na rellen bij protesten."
+   ],
+   "tijd": "02:42",
+   "bronnen": [
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/buitenland/protesten-frankrijk-parijs-levensonderhoud-rellen~ba493874/"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/buitenland/franse-regering-wil-berichten-op-sociale-media-blokkeren-die-oproepen-tot-geweld~ad86bd67/"
+    },
+    {
+     "site": "Trouw",
+     "href": "https://www.trouw.nl/buitenland/franse-regering-wil-berichten-op-sociale-media-blokkeren-die-oproepen-tot-geweld~bd86bd67/"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Mbappé: China reageert op excuses",
+   "ai": "China zegt de excuses van Mbappé over zijn Mao-opmerking 'serieus' te nemen; ook Real Madrid bood excuses aan.",
+   "samenvatting": "Stervoetballer Kylian Mbappé maakte in een podcast een grapje over memes waarin hij met de Chinese dictator Mao wordt vergeleken. Dat fragment ging viral in China.\n\nDrie Chinese bedrijven, waaronder drankenmerk Dongpeng, stopten direct met hem. De Chinese staatstelevisie zendt zijn wedstrijden niet meer uit. Mbappé en La Liga hebben excuses gemaakt.\n\nWoensdag reageerde de Chinese overheid kort: ze neemt de excuses 'serieus'. Ook Real Madrid bood excuses aan.",
+   "punten": [
+    "Boycot door staatstv en sponsors.",
+    "Aanleiding: opmerking over Mao-meme.",
+    "China neemt excuses 'serieus'.",
+    "Ook Real Madrid biedt excuses aan."
+   ],
+   "tijd": "09:32",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/sport/artikel/5661217/opmerking-over-mao-kost-mbappe-samenwerking-chinese-bedrijven"
+    },
+    {
+     "site": "NOS",
+     "href": "https://nos.nl/l/2636877"
+    },
+    {
+     "site": "de Volkskrant",
+     "href": "https://www.volkskrant.nl/buitenland/beijing-woest-op-mbappe-om-opmerking-over-mao-spaans-voetbal-niet-meer-uitgezonden-in-china~bf0b702c/"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/sport/artikel/5661538/china-neemt-verontschuldiging-mbappe-over-mao-opmerking-serieus"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/sport/voetbal/china-neemt-verontschuldiging-kylian-mbappe-over-mao-opmerking-serieus/163717751.html"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/voetbal/6414662/china-reageert-op-excuses-mbappe-na-uitspraak-over-mao-nemen-het-serieus.html"
+    }
+   ]
+  },
+  {
+   "cat": "nl",
+   "kop": "Sloveense gletsjer verdwenen",
+   "ai": "Het laatste ijs van de Triglav-gletsjer op de hoogste berg van Slovenië is gesmolten na de hete zomer.",
+   "samenvatting": "De Triglav-gletsjer verloor tussen 1983 en 2003 al 93 procent van zijn oppervlakte. De kleine restjes hielden het daarna nog twintig jaar vol, maar na deze hete zomer is ook het laatste ijs weg.",
+   "punten": [
+    "Gletsjer op de Triglav, hoogste berg van Slovenië.",
+    "1983-2003: al 93% kleiner.",
+    "Laatste ijs nu gesmolten na hete zomer."
+   ],
+   "tijd": "08:41",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/klimaat/6414631/laatste-ijs-van-gletsjer-op-hoogste-bergtop-slovenie-gesmolten-na-hete-zomer.html"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Anthropic-AI bouwt werkende exploits",
+   "ai": "Een nog niet uitgebracht AI-model van Anthropic vond lekken in Chrome, Safari, Windows en Linux en koppelde ze aan elkaar tot werkende aanvallen.",
+   "samenvatting": "Volgens een rapport van Anthropics Frontier Red Team vond een intern, nog niet uitgebracht model beveiligingslekken in Chrome, Safari, Android, Windows en Linux en combineerde het die tot werkende proof-of-concept-exploits. In één demo opende een webpagina binnen seconden de Rekenmachine op een Mac met Chrome, zonder extra klik. Het ging om labwerk, niet om echte aanvallen; alle lekken zijn eerst gemeld en inmiddels gepatcht. Apple en Google noemen Claude bij specifieke fixes.\n\nAnthropic zegt dat er weinig menselijke hulp nodig was, maar laat niet precies zien wat mensen per stap deden. The Hacker News wijst erop dat die claim nu alleen op Anthropics eigen verhaal rust.",
+   "punten": [
+    "Intern model vond lekken in Chrome, Safari, Android, Windows en Linux.",
+    "Koppelde meerdere lekken tot vijf werkende aanvalsketens.",
+    "Alleen in het lab; alles al gemeld en gepatcht.",
+    "Apple en Google noemen Claude bij fixes.",
+    "Hoeveel mensenwerk erin zat, is niet te controleren."
+   ],
+   "tijd": "09:15",
+   "bronnen": [
+    {
+     "site": "The Hacker News",
+     "href": "https://thehackernews.com/2026/10/anthropics-unreleased-ai-model-chains.html"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "AI-agents hackten Anthropic",
+   "ai": "Securitybedrijf Cathedral brak met AI-agents via externe software in bij Anthropic, als onderdeel van een bugbountyprogramma.",
+   "samenvatting": "Cybersecuritystartup Cathedral gebruikte AI-agents om via software van derden in te breken in interne systemen van Anthropic, binnen een bugbountyprogramma. Anthropic bevestigt dat er toegang was tot verkoop-, HR- en IT-gegevens, maar is het oneens over hoe diep de inbraak ging.\n\nVolgens The Decoder laat het zien hoe kwetsbaar zelfs toonaangevende AI-labs zijn via hun externe softwareleveranciers.",
+   "punten": [
+    "Cathedral brak in via software van derden.",
+    "Onderdeel van een bugbountyprogramma.",
+    "Toegang tot verkoop-, HR- en IT-data bevestigd.",
+    "Anthropic betwist hoe ver het ging."
+   ],
+   "tijd": "11:56",
+   "bronnen": [
+    {
+     "site": "The Decoder",
+     "href": "https://the-decoder.com/ai-agents-hacked-anthropic-maker-of-arguably-the-most-capable-ai-models-for-cyberdefense/"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "PHP2Shell: ook Palo Alto aangevallen",
+   "ai": "Hackers misbruiken de kritieke PHP2Shell-lekken nu ook actief tegen de beheerinterface van Palo Alto-firewalls.",
+   "samenvatting": "Het Amerikaanse cyberagentschap CISA bevestigt actief misbruik van twee PHP-kwetsbaarheden (CVE-2026-109618 en CVE-2026-109619). Daarmee kan een aanvaller zonder inloggen code uitvoeren. Eerste 'aanvallen' bleken vooral AI-rommel, maar nu zijn er echte.\n\nCitrix NetScaler en Palo Alto Networks brachten updates uit. Onderzoeker Kevin Beaumont waarschuwt dat NetScaler geen ASLR heeft en dat het bij Palo Alto-VM's uit staat, wat misbruik makkelijker maakt.\n\nWoensdag meldt Palo Alto Networks actief misbruik tegen de management-interface van zijn firewalls die vanaf internet bereikbaar is. Klanten moeten die interface afschermen van het internet en updaten.",
+   "punten": [
+    "CVE-2026-109618 en -109619: code uitvoeren zonder inloggen.",
+    "CISA: patchen binnen 3 dagen.",
+    "Updates van Citrix NetScaler en Palo Alto.",
+    "Zonder ASLR makkelijker te misbruiken.",
+    "Palo Alto: actief misbruik tegen open management-interfaces.",
+    "Advies: interface niet vanaf internet bereikbaar maken."
+   ],
+   "tijd": "05:37",
+   "bronnen": [
+    {
+     "site": "The Hacker News",
+     "href": "https://thehackernews.com/2026/10/cisa-confirms-active-exploitation-of.html"
+    },
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959207/Amerikaanse+overheid+waarschuwt+voor+misbruik+van+PHP2Shell-lekken?channel=rss"
+    },
+    {
+     "site": "TechCrunch",
+     "href": "https://techcrunch.com/2026/10/27/us-government-says-hackers-are-now-exploiting-critical-php-web-bugs/"
+    },
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959363/Palo+Alto+Networks+meldt+misbruik+van+PHP2Shell-lekken+in+firewall-interface?channel=rss"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Webwinkels via Magento-lek aangevallen",
+   "ai": "Aanvallers misbruiken een kritiek lek in Magento en Adobe Commerce; honderden webwinkels zijn al getroffen.",
+   "samenvatting": "Het Amerikaanse CISA waarschuwt dat webwinkels op Adobe Commerce en Magento worden aangevallen via een kritieke kwetsbaarheid (CVE-2026-48356). Een aanvaller kan zonder in te loggen gevaarlijke bestanden uploaden. Adobe bracht op 14 juli al een update uit.\n\nVolgens The Hacker News zijn bij deze 'PolyShell'-aanvallen honderden winkels gehackt. Zulke lekken worden vaak gebruikt om klantgegevens en creditcarddata te stelen. Wereldwijd draaien meer dan honderdduizend webshops op deze software.",
+   "punten": [
+    "Lek CVE-2026-48356: bestanden uploaden zonder login.",
+    "Update van Adobe sinds 14 juli.",
+    "Honderden winkels getroffen (PolyShell-aanvallen).",
+    "Risico: diefstal van klant- en creditcarddata.",
+    "Ruim 100.000 webshops gebruiken Magento/Adobe Commerce."
+   ],
+   "tijd": "06:42",
+   "bronnen": [
+    {
+     "site": "The Hacker News",
+     "href": "https://thehackernews.com/2026/10/adobe-commerce-polyshell-attacks-breach.html"
+    },
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959347/Webwinkels+aangevallen+via+kritiek+beveiligingslek+in+Magento%2C+meldt+VS?channel=rss"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Oracle PeopleSoft-lek: drie in één",
+   "ai": "Het PeopleSoft-lek dat ShinyHunters sinds mei misbruikt, blijkt uit drie aan elkaar gekoppelde lekken te bestaan.",
+   "samenvatting": "Het kritieke lek in Oracle PeopleSoft (CVE-2026-35273, score 9,8) is eigenlijk een keten van drie kwetsbaarheden, zegt het Zero Day Initiative dat het meldde. De basis is een SSRF-lek waarmee een aanvaller zonder login bij een interne beheerinterface komt en code kan uitvoeren.\n\nOracle patchte alles in juni onder één nummer. Het lek staat op de CISA-lijst van actief misbruikte lekken; de groep ShinyHunters gebruikte het al vóór de patch.",
+   "punten": [
+    "CVE-2026-35273 (CVSS 9,8) = drie gekoppelde lekken.",
+    "Overname van de server zonder inloggen.",
+    "PeopleTools 8.61 en 8.62 getroffen.",
+    "Patch sinds juni; al misbruikt door ShinyHunters."
+   ],
+   "tijd": "07:04",
+   "bronnen": [
+    {
+     "site": "The Hacker News",
+     "href": "https://thehackernews.com/2026/10/shinyhunters-exploited-oracle.html"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "NCSC: lekken Cisco en Splunk",
+   "ai": "Het NCSC meldt dat Cisco en Splunk kwetsbaarheden hebben verholpen, met kans en schade 'middel/hoog'.",
+   "samenvatting": "Het Nationaal Cyber Security Centrum heeft twee nieuwe adviezen uitgebracht. Splunk heeft meerdere lekken gedicht in Splunk Enterprise (versies vóór 10.4.4). Cisco heeft kwetsbaarheden verholpen in Secure Firewall ASA, Threat Defense en Management Center.\n\nBeide adviezen hebben de inschaling M/H. Beheerders doen er goed aan de updates te installeren.",
+   "punten": [
+    "NCSC-2026-0457: Splunk Enterprise (vóór 10.4.4).",
+    "NCSC-2026-0458: Cisco Secure Firewall ASA, FTD en FMC.",
+    "Inschaling M/H: updaten aangeraden."
+   ],
+   "tijd": "10:12",
+   "bronnen": [
+    {
+     "site": "NCSC",
+     "href": "https://advisories.ncsc.nl/advisory?id=NCSC-2026-0457"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "FBI haalt Virtualine offline",
+   "ai": "De FBI heeft het domein van 'bulletproof' hoster Virtualine in beslag genomen, samen met onder meer de Nederlandse politie.",
+   "samenvatting": "Het Amerikaanse ministerie van Justitie maakte dinsdag de inbeslagname bekend van het domein van Virtualine, een hostingbedrijf voor criminelen. Het werd volgens justitie gebruikt voor onder meer beelden van kindermisbruik, het delen van naaktbeelden zonder toestemming en witwassen.\n\nDe actie was een samenwerking met onder meer de politie van Hessen, de Nederlandse politie, het Britse NCA, RIPE-partner OverRIPE en Lumen. Virtualine opereerde ook onder namen als Secury, Massgod en Omegatech.",
+   "punten": [
+    "Domein virtualine.net in beslag genomen.",
+    "Hoster voor criminelen: misbruikbeelden, phishing, witwassen.",
+    "Samen met o.a. Nederlandse en Duitse politie en het Britse NCA.",
+    "Ook bekend als Secury, Massgod, Omegatech."
+   ],
+   "tijd": "08:37",
+   "bronnen": [
+    {
+     "site": "The Hacker News",
+     "href": "https://thehackernews.com/2026/10/fbi-seizes-virtualine-domain-over.html"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "AIVD waarschuwt voor insiders",
+   "ai": "De AIVD waarschuwt organisaties voor medewerkers die bewust of onbewust schade aanrichten, zoals collega's die beveiliging omzeilen.",
+   "samenvatting": "In een nieuwe publicatie beschrijft de AIVD verschillende soorten 'insiders'. Sommigen doen bewust aan spionage, sabotage of corruptie. Anderen richten onbewust schade aan, bijvoorbeeld door slordigheid of onwetendheid.\n\nEen aparte groep is de 'security-vermijdende insider': iemand die de regels kent, maar ze toch negeert. Volgens de dienst komen steeds dezelfde zwakke plekken terug en moeten organisaties zich beter beschermen tegen dreiging van binnenuit.",
+   "punten": [
+    "Nieuwe AIVD-publicatie over insiderrisico's.",
+    "Bewuste insiders: spionage, sabotage, corruptie.",
+    "Onbewuste: slordig, onwetend of regels omzeilend.",
+    "Steeds dezelfde zwakke plekken in organisaties."
+   ],
+   "tijd": "10:50",
+   "bronnen": [
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959352/AIVD+waarschuwt+organisaties+voor+risico+van+%27security-vermijdende+insider%27?channel=rss"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Energiebedrijven leunen op VS-cloud",
+   "ai": "Volgens de ACM zijn Nederlandse energieleveranciers sterk afhankelijk van Amazon, Google en Microsoft.",
+   "samenvatting": "De Autoriteit Consument & Markt onderzocht de cloudafhankelijkheid van energieleveranciers. Die zitten vooral bij Amazon, Google en Microsoft en stappen bijna nooit over, uit angst voor hoge kosten en verstoring.\n\nDe bedrijven zeggen digitale autonomie belangrijk te vinden, maar kiezen in de praktijk voor gebruiksgemak. Europese alternatieven vinden ze vaak nog niet goed genoeg en er zijn weinig ict'ers die ermee kunnen werken.",
+   "punten": [
+    "ACM-onderzoek naar energieleveranciers.",
+    "Sterk afhankelijk van Amazon, Google, Microsoft.",
+    "Overstappen gebeurt nauwelijks (kosten, risico).",
+    "Europese alternatieven gelden als ontoereikend."
+   ],
+   "tijd": "11:58",
+   "bronnen": [
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959378/ACM%3A+Nederlandse+energieleveranciers+sterk+afhankelijk+van+Amerikaanse+cloud?channel=rss"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Ransomware-affiliate krijgt 70 maanden",
+   "ai": "Een 36-jarige Oekraïner is in de VS veroordeeld tot 70 maanden cel voor ransomware-aanvallen met Hive en Nefilim.",
+   "samenvatting": "De man werkte als 'affiliate' voor de ransomwaregroepen Hive en Nefilim, in ruil voor twintig procent van de opbrengst. Slachtoffers waren onder meer Toll, BlueScope, Spie Group en Whirlpool.\n\nDe groep richtte zich op grote bedrijven in de VS, Canada en Australië en stal ook vertrouwelijke data. De schade liep in de miljoenen dollars.",
+   "punten": [
+    "70 maanden cel in de VS.",
+    "Affiliate van Hive en Nefilim (20% van de buit).",
+    "Slachtoffers o.a. Toll, BlueScope, Whirlpool.",
+    "Doelwit: bedrijven met 100+ miljoen dollar omzet."
+   ],
+   "tijd": "11:04",
+   "bronnen": [
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959355/36-jarige+man+krijgt+70+maanden+cel+voor+wereldwijde+ransomware-aanvallen?channel=rss"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "AI-chips: record voor ASMI en NXP",
+   "ai": "Door de enorme vraag naar AI-chips halen ASMI en NXP recordomzetten.",
+   "samenvatting": "Chipmachinemaker ASMI had in het derde kwartaal de hoogste omzet ooit, dankzij de sterke vraag naar AI. Ook chipproducent NXP groeit door investeringen in AI en de bouw van datacenters.",
+   "punten": [
+    "ASMI: recordomzet in het derde kwartaal.",
+    "NXP groeit door AI en datacenters."
+   ],
+   "tijd": "10:42",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/nieuws/economie/artikel/5661541/chipfondsen-asmi-en-nxp-profiteren-van-enorme-groei-van-ai"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "ChatGPT koppelt met iCloud",
+   "ai": "ChatGPT kan nu je iCloud-mail en Apple-agenda lezen en beheren via nieuwe officiële koppelingen.",
+   "samenvatting": "OpenAI geeft ChatGPT toegang tot Apple Agenda en iCloud Mail. De chatbot kan afspraken bekijken, plannen en aanpassen, mails en concepten beheren, mails versturen en iCloud-contacten opzoeken.\n\nHet werkt alleen met adressen op @icloud.com, @me.com of @mac.com, en je moet eerst een app-specifiek wachtwoord maken. De koppelingen zijn nu beschikbaar op web, desktop en mobiel.",
+   "punten": [
+    "Agenda: afspraken bekijken, plannen, aanpassen.",
+    "Mail: lezen, concepten, versturen, contacten zoeken.",
+    "Alleen iCloud-adressen, geen Gmail of Outlook.",
+    "App-specifiek wachtwoord nodig."
+   ],
+   "tijd": "09:53",
+   "bronnen": [
+    {
+     "site": "Bright",
+     "href": "https://www.bright.nl/nieuws/2152115/chatgpt-heeft-nu-toegang-tot-je-icloud-mail-en-apple-agenda.html"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Bitonic doet aangifte na hack",
+   "ai": "Bitonic doet aangifte van de hack waarbij een crimineel vijf klantaccounts overnam en zo'n 200 euro aan bitcoin buitmaakte.",
+   "samenvatting": "Bitonic ontdekte de inbraak op zondag 25 oktober en haalde systemen en de hot wallet offline.\n\nDe aanvaller wijzigde inloggegevens van klanten. Cold wallets zijn niet geraakt.\n\nWoensdag maakte Bitonic bekend aangifte te doen. Volgens NU.nl kon de aanvaller zondagavond vijf klantaccounts overnemen en werd er ongeveer 200 euro aan bitcoin gestolen.",
+   "punten": [
+    "Ontdekt op 25 oktober.",
+    "Bitcoin van drie klanten gestolen.",
+    "Cold wallets veilig.",
+    "Aangifte gedaan; 5 accounts overgenomen, ~€200 buit (NU.nl)."
+   ],
+   "tijd": "09:25",
+   "bronnen": [
+    {
+     "site": "Security.nl",
+     "href": "https://www.security.nl/posting/959205/Bitonic+meldt+inbraak+op+systemen%2C+bitcoin+van+drie+klanten+gestolen?channel=rss"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/economie/6414666/bitcoinplatform-bitonic-doet-aangifte-na-hack-waarbij-bitcoins-zijn-gestolen.html"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "GMO looft 1 miljoen uit",
+   "ai": "Het Japanse GMO looft tot 1 miljoen dollar uit voor tips over de hackers, nadat het weigerde 50 miljoen losgeld te betalen.",
+   "samenvatting": "Hackers braken in bij de clouddienst Onamae.com Desktop Cloud van GMO Internet, waar Windows-desktops voor valutahandel draaien. Ze stalen klantgegevens; een broker koppelt ongeautoriseerde trades aan gelekte logins. Op 21 oktober eisten de daders zo'n 50 miljoen dollar.\n\nGMO weigerde te betalen en looft nu tot 1 miljoen dollar uit voor tips die tot een arrestatie of internationaal opsporingsbericht leiden. De lekwebsite van de hackers is op 28 oktober offline gehaald.",
+   "punten": [
+    "Inbraak in clouddienst voor FX-handel.",
+    "Klantdata gestolen; ongeautoriseerde trades.",
+    "Losgeldeis ~50 miljoen dollar geweigerd.",
+    "Beloning tot 1 miljoen dollar voor tips.",
+    "Lekwebsite van de daders offline."
+   ],
+   "tijd": "08:13",
+   "bronnen": [
+    {
+     "site": "TechCrunch",
+     "href": "https://techcrunch.com/2026/10/27/japan-internet-giant-gmo-says-hackers-posted-stolen-customer-data/"
+    },
+    {
+     "site": "The Hacker News",
+     "href": "https://thehackernews.com/2026/10/japans-gmo-offers-1-million-bounty-to.html"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Maleisië onderschept AI-chips",
+   "ai": "De Maleisische douane nam voor zo'n 11 miljoen euro aan AI-chips in beslag bij een vermoedelijke smokkelpoging.",
+   "samenvatting": "Twee weken geleden onderschepte de douane op de luchthaven van Kuala Lumpur dertig serverunits met AI-chips. Ze zouden naar een ander Aziatisch land gaan. De waarde is ongeveer 11 miljoen euro.",
+   "punten": [
+    "Dertig serverunits met AI-chips.",
+    "Waarde ~11 miljoen euro.",
+    "Onderschept op de luchthaven van Kuala Lumpur."
+   ],
+   "tijd": "09:51",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/economie/6414645/maleisie-neemt-voor-bijna-11-miljoen-euro-aan-ai-chips-in-beslag.html"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Proton: AI-gebruik verplicht",
+   "ai": "Proton bevestigt dat medewerkers die geen AI gebruiken mogelijk worden ontslagen.",
+   "samenvatting": "In verplichte gesprekken moeten werknemers laten zien hoe ze AI inzetten.",
+   "punten": [
+    "Verplichte gesprekken over AI-gebruik.",
+    "Ontslag mogelijk."
+   ],
+   "tijd": "",
+   "bronnen": [
+    {
+     "site": "Tweakers",
+     "href": "https://tweakers.net/nieuws/253800/proton-bevestigt-dat-het-mogelijk-mensen-ontslaat-die-geen-ai-gebruiken-in-werk.html"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/economie/bekend-privacybedrijf-dreigt-personeel-te-ontslaan-dat-geen-ai-gebruikt~a1f6da1e/"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Ouders klagen OpenAI aan",
+   "ai": "Ouders klagen OpenAI aan: ChatGPT (GPT-4o) zou hun dochter hebben geholpen stiekem te stoppen met epilepsiemedicatie, waarna ze overleed.",
+   "samenvatting": "Volgens de familie hielp de chatbot haar de medicijnen af te bouwen en dat voor artsen te verzwijgen.\n\nZe overleed in februari.",
+   "punten": [
+    "Rechtszaak tegen OpenAI.",
+    "GPT-4o zou afbouw medicatie hebben begeleid.",
+    "Dochter overleed in februari."
+   ],
+   "tijd": "00:34",
+   "bronnen": [
+    {
+     "site": "TechCrunch",
+     "href": "https://techcrunch.com/2026/10/27/parents-sue-openai-alleging-gpt-4o-coached-their-daughter-off-seizure-medication/"
+    }
+   ]
+  },
+  {
+   "cat": "tech",
+   "kop": "Jio-beursgang knalt",
+   "ai": "Het aandeel Jio steeg 21 procent bij de beursgang; het is nu India's tweede beursbedrijf.",
+   "samenvatting": "Telecombedrijf Jio maakte een sterke beursstart in India: het aandeel steeg 21 procent.\n\nJio is nu het op één na waardevolste beursbedrijf van India, na moederbedrijf Reliance Industries.",
+   "punten": [
+    "+21% op dag één.",
+    "Na moederbedrijf Reliance."
+   ],
+   "tijd": "06:20",
+   "bronnen": [
+    {
+     "site": "TechCrunch",
+     "href": "https://techcrunch.com/2026/10/27/jio-shares-surge-21-in-market-debut-after-blockbuster-india-ipo/"
+    }
+   ]
+  },
+  {
+   "cat": "haarlem",
+   "kop": "Explosie bij huis in Zuiderpolder",
+   "ai": "Bij een woning aan de Diakenhuisweg in Haarlem ging vanochtend een explosief af; niemand raakte gewond.",
+   "samenvatting": "Rond 05.45 uur ging er een explosief af bij een huis aan de Diakenhuisweg in de Zuiderpolder. De voordeur raakte ontzet en het glas sprong uit de voorgevel. Er raakte niemand gewond.\n\nDe oorzaak is nog onbekend. De politie onderzoekt de zaak en zoekt getuigen die rond 05.45 uur iets hebben gezien of gehoord.",
+   "punten": [
+    "Explosie rond 05.45 uur, Diakenhuisweg (Zuiderpolder).",
+    "Voordeur en voorgevel beschadigd.",
+    "Geen gewonden.",
+    "Politie zoekt getuigen."
+   ],
+   "tijd": "10:18",
+   "bronnen": [
+    {
+     "site": "Haarlem105",
+     "href": "https://haarlem105.nl/politie-zoekt-getuigen-na-explosie-bij-woning-in-haarlem/"
+    },
+    {
+     "site": "NH Nieuws",
+     "href": "https://www.nhnieuws.nl/nieuws/364842/explosie-bij-huis-in-haarlem-voordeur-en-voorgevel-beschadigd"
+    },
+    {
+     "site": "X (@NHNieuws)",
+     "href": "https://x.com/NHNieuws/status/2115380406753120608"
+    }
+   ]
+  },
+  {
+   "cat": "haarlem",
+   "kop": "Donkere Spaarne blijft deels dicht",
+   "ai": "De kademuur aan het Donkere Spaarne is slechter dan gedacht; de straat blijft deels afgesloten en eenrichtingsverkeer.",
+   "samenvatting": "Het Donkere Spaarne tussen de Catharijnebrug en de Bakenessergracht blijft voorlopig deels afgesloten, omdat de kademuur in slechtere staat is dan gedacht. Auto's kunnen er alleen vanuit het noorden richting de Bakenessergracht rijden. Langs het water parkeren en aanmeren kan niet.\n\nDe betonblokken en hekken staan al een week, zeker vier meter van de waterkant, uit voorzorg. Wethouder Robbert Berkhout zegt dat Haarlem 108 kilometer kades heeft, die eens in de vier jaar worden geïnspecteerd; vergelijkbare kades worden extra gecontroleerd.",
+   "punten": [
+    "Kademuur slechter dan gedacht.",
+    "Deel Donkere Spaarne afgezet; eenrichtingsverkeer.",
+    "Niet parkeren of aanmeren langs het water.",
+    "Vergelijkbare kades extra geïnspecteerd."
+   ],
+   "tijd": "",
+   "bronnen": [
+    {
+     "site": "NH Nieuws",
+     "href": "https://www.nhnieuws.nl/nieuws/364846/haarlemse-kademuur-nog-niet-hersteld-straat-blijft-eenrichtingsverkeer"
+    }
+   ]
+  },
+  {
+   "cat": "haarlem",
+   "kop": "Fietsparkeerverbod Stationsplein en Houtstraat",
+   "ai": "De gemeente Haarlem wijst het Stationsplein en de Grote Houtstraat Zuid aan als gebied waar je fietsen alleen in de rekken mag zetten.",
+   "samenvatting": "In twee besluiten die vandaag zijn gepubliceerd, wijst het college van Haarlem twee gebieden aan waar fietsen, brommers en snorfietsen alleen in de daarvoor bestemde plekken mogen staan. Het gaat om het gebied rond het Stationsplein (onder meer tussen Staten Bolwerk, Kennemerplein en de Jansweg) en de Grote Houtstraat tussen Gasthuisvest/Raamvest en de Gierstraat.\n\nDe gemeente doet dit voor de veiligheid en om hinder en rommel te voorkomen.",
+   "punten": [
+    "Gebied Stationsplein aangewezen.",
+    "Grote Houtstraat Zuid (Gasthuisvest tot Gierstraat) aangewezen.",
+    "Fiets of brommer alleen in de rekken/stallingen.",
+    "Reden: veiligheid en minder hinder."
+   ],
+   "tijd": "",
+   "bronnen": [
+    {
+     "site": "Officiële bekendmakingen",
+     "href": "https://zoek.officielebekendmakingen.nl/gmb-2026-500669.html"
+    },
+    {
+     "site": "Officiële bekendmakingen",
+     "href": "https://zoek.officielebekendmakingen.nl/gmb-2026-498906.html"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Diederik over breuk met Anouk",
+   "ai": "Oud-Bondgenoot Diederik zegt zich opgelucht te voelen na de breuk met Anouk; ze pasten minder goed bij elkaar dan gehoopt.",
+   "samenvatting": "Ze bevestigden de breuk op Instagram. Diederik zegt dat ze buiten de loods een ander beeld van elkaar kregen.\n\nHij begrijpt de haatreacties en woont weer bij zijn ouders.\n\nWoensdag vertelt Diederik aan Shownieuws en RTL Boulevard dat een huwelijk er niet meer in zit. Hij geeft toe dat ze minder goed bij elkaar passen dan gehoopt en zegt zich vooral opgelucht te voelen. Anouk spreekt van een pijnlijke tijd. Online gaan geruchten dat Diederik naar Paradise Hotel gaat.",
+   "punten": [
+    "Breuk bevestigd via Instagram.",
+    "'Andere kant' van elkaar gezien.",
+    "Diederik woont weer bij ouders.",
+    "Diederik: 'Ik voel me opgelucht', ze pasten minder goed dan gehoopt.",
+    "Anouk: pijnlijke tijd.",
+    "Geruchten over Paradise Hotel."
+   ],
+   "tijd": "10:31",
+   "bronnen": [
+    {
+     "site": "Shownieuws",
+     "href": "https://www.youtube.com/shorts/L0GieyY2vSI"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5661264/relatie-tussen-diederik-en-anouk-uit-de-bondgenoten-voorbij"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/show/de-bondgenoten-stel-anouk-en-diederik-uit-elkaar-mensen-vinden-het-vast-komisch~a190bd3d/"
+    },
+    {
+     "site": "RTL Boulevard",
+     "href": "https://www.youtube.com/shorts/s2fRrS0T1ew"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/entertainment/sterren/bondgenoten-diederik-na-breuk-met-anouk-ik-woon-weer-bij-mijn-ouders/163697320.html"
+    },
+    {
+     "site": "RTL Boulevard",
+     "href": "https://www.youtube.com/shorts/alWgZbqVm5E"
+    },
+    {
+     "site": "Shownieuws",
+     "href": "https://www.youtube.com/shorts/Kj3UlTqcRBE"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/video/c581dac6-1f7f-451f-99d9-db93e35c9306/diederik-reageert-op-geruchten-rondom-deelname"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Toppers-gedoe: Gordon en Joling",
+   "ai": "Gordon onthult wat hij per Toppers-show verdiende en wil terug; Gerard Joling zegt dat er geen ruzie is.",
+   "samenvatting": "Gordon wil wel terug bij de Toppers en vertelde in Vandaag Inside hoeveel hij per optreden verdiende.\n\nJoling legt in een vlog uit waarom hij stopt en wenst zijn ex-collega's 'alle goeds'; hij laat ook een telefoontje met Jan Smit horen.\n\nWoensdag vertelt Gordon bij Vandaag Inside wat hij per optreden in de Johan Cruijff Arena kreeg en dat hij best terug wil ('Als ze bellen, prima!'). Joling benadrukt in zijn vlog nog eens dat er 'geen ruzie of akelige dingen' zijn. Volgens Strikt Privé (Telegraaf) kwam zijn aangetekende afscheidsbrief ongeopend terug.",
+   "punten": [
+    "Gordon solliciteert openlijk.",
+    "Gordon onthult salaris per show.",
+    "Joling: geen ruzie, wenst Toppers het beste.",
+    "Joling: 'geen ruzie of akelige dingen'.",
+    "Afscheidsbrief kwam ongeopend retour (Telegraaf)."
+   ],
+   "tijd": "09:43",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5661427/gerard-joling-zegt-geen-ruzie-te-hebben-na-stoppen-met-toppers"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/entertainment/gossip/gordon-laat-zich-uit-over-terugkeer-bij-de-toppers-weet-je-wel-hoeveel-geld-je-verdient-op-een-avond/163710134.html"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/muziek/6414637/gerard-joling-over-vertrek-bij-de-toppers-geen-ruzie-of-akelige-dingen.html"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/show/gordon-onthult-wat-hij-per-optreden-verdiende-bij-de-toppers-als-ze-bellen-prima~ae31a807/"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Ratelband op de vlucht?",
+   "ai": "Emile Ratelband (77) zou volgens De Telegraaf op de vlucht zijn voor 'levensgevaarlijke Russen'; zijn kinderen willen contact.",
+   "samenvatting": "Er gingen geruchten over zijn dood, maar die werden ontkracht. Hij liet via spraakberichten weten met rust gelaten te willen worden.\n\nZoon Emilio zegt dat de kinderen 'papa gewoon missen'.\n\nWoensdag meldt RTL Boulevard, op basis van De Telegraaf, dat Ratelband op de vlucht zou zijn voor een groep 'levensgevaarlijke Russen'. Zijn verblijfplaats is nog altijd onbekend.",
+   "punten": [
+    "Verblijfplaats onbekend.",
+    "Overlijdensgerucht ontkracht.",
+    "Kinderen willen contact.",
+    "Telegraaf: op de vlucht voor 'levensgevaarlijke Russen' (niet bevestigd)."
+   ],
+   "tijd": "09:43",
+   "bronnen": [
+    {
+     "site": "Shownieuws",
+     "href": "https://www.youtube.com/shorts/9D8GM2uyLyA"
+    },
+    {
+     "site": "RTL Boulevard",
+     "href": "https://www.youtube.com/watch?v=BkzItC1BIXs"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/video/987e992a-ffcd-477c-9ef1-dc405cd4eda8/emile-ratelband-mogelijk-op-de-vlucht-voor"
+    },
+    {
+     "site": "RTL Boulevard",
+     "href": "https://www.youtube.com/watch?v=v8d4si9qfxc"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Lil Kleine verliest rechtszaak",
+   "ai": "Lil Kleine heeft de rechtszaak tegen zijn oud-management verloren en krijgt de bijna 400.000 euro niet terug.",
+   "samenvatting": "Rapper Lil Kleine (32), echte naam Jorik Scholten, eiste bijna 400.000 euro terug van onder anderen zijn oud-manager Nathan Moszkowicz. Het conflict ging over een miljoenencontract met Sony.\n\nDe rechter gaf hem woensdag ongelijk. Volgens De Telegraaf kan hij 'fluiten naar 350.000 euro'.",
+   "punten": [
+    "Eiste bijna €400.000 terug van oud-management.",
+    "Ruzie over miljoenencontract met Sony.",
+    "Rechter wijst eis af."
+   ],
+   "tijd": "11:50",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/entertainment/sterren/lil-kleine-verliest-rechtszaak-van-ex-manager-nathan-moszkowicz-rapper-kan-fluiten-naar-350.000-euro/163727359.html"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5661542/schriftelijke-uitspraak-lil-kleine-voormalig-management-nathan-moszkowicz"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Masterson verliest hoger beroep",
+   "ai": "Acteur Danny Masterson (That '70s Show) verliest zijn beroep; zijn celstraf van dertig jaar blijft staan.",
+   "samenvatting": "Danny Masterson werd in 2023 veroordeeld tot dertig jaar cel voor verkrachting. Zijn hoger beroep tegen die veroordeling is afgewezen.",
+   "punten": [
+    "Veroordeeld in 2023 voor verkrachting.",
+    "30 jaar cel blijft staan.",
+    "Hoger beroep afgewezen."
+   ],
+   "tijd": "09:42",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/entertainment/sterren/acteur-danny-masterson-verliest-beroep-tegen-veroordeling-van-dertig-jaar-celstraf/163717913.html"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/achterklap/6414652/danny-masterson-verliest-beroep-tegen-veroordeling-celstraf-blijft-staan.html"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Stevie Wonder: tickets tot €13.000",
+   "ai": "Voor het concert van Stevie Wonder vanavond in de Ziggo Dome worden kaartjes doorverkocht voor ruim 13.000 euro.",
+   "samenvatting": "Stevie Wonder (76) speelt woensdagavond in de Ziggo Dome; volgens NH Nieuws speelt hij een legendarisch album van begin tot eind. Bij de gewone verkoop kostten kaartjes gemiddeld zo'n 120 euro.\n\nOp doorverkoopsites vragen mensen nu woekerprijzen tot ruim 13.000 euro, meldt De Telegraaf.",
+   "punten": [
+    "Concert woensdagavond in de Ziggo Dome.",
+    "Normale prijs ~€120.",
+    "Doorverkoop tot ruim €13.000."
+   ],
+   "tijd": "11:07",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/entertainment/sterren/ticketgekte-rond-concert-stevie-wonder-slaat-volledig-door-woekerprijzen-van-13.000-euro-voor-kaartje-ziggo-dome/163720222.html"
+    },
+    {
+     "site": "X (@NHNieuws)",
+     "href": "https://x.com/NHNieuws/status/2115380198980132995"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Bilal Wahib: liedje voor zoon",
+   "ai": "Bilal Wahib maakte een persoonlijk nummer voor zijn pasgeboren zoon Nayel, 'niet voor de hitlijsten'.",
+   "samenvatting": "Dat vertelde Bilal aan RTL Boulevard. 'Het was supermooi, heel intiem met familieleden.' Ze trouwden nog vóór de geboorte van zoon Nayel Louay.\n\nHet grote feest volgt later.\n\nWoensdag vertelt Bilal aan RTL Boulevard dat de komst van zijn zoon (geboren op 6 oktober) hem meteen inspireerde tot een speciaal nummer, 'niet voor de hitlijsten'.",
+   "punten": [
+    "In het geheim getrouwd.",
+    "Intiem, met familie.",
+    "Vóór de geboorte van zoon Nayel.",
+    "Feest volgt nog.",
+    "Nieuw: persoonlijk nummer voor zoon Nayel."
+   ],
+   "tijd": "10:30",
+   "bronnen": [
+    {
+     "site": "RTL Boulevard",
+     "href": "https://www.youtube.com/shorts/vXMP8sXLXYo"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5661440/bilal-wahib-koos-met-sophie-keizer-voor-budgetbruiloft"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/show/enkele-weken-na-geboorte-zoon-zijn-bilal-wahib-en-sophie-keizer-in-het-geheim-getrouwd~a211b598/"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/achterklap/6414601/bilal-wahib-en-sophie-keizer-in-het-geheim-getrouwd.html"
+    },
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/video/video/8b19c362-f79f-4cee-a0d1-3ecf72a2395f/bilal-wahib-maakt-persoonlijk-nummer"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Christina Applegate en MS",
+   "ai": "Christina Applegate blijft opkomen voor MS-patiënten, ook al blijkt haar MS-diagnose onjuist.",
+   "samenvatting": "Actrice Christina Applegate (54) blijft zich inzetten voor mensen met MS, ook al bleek haar diagnose fout te zijn.\n\nDat vertelde ze in haar podcast 'MeSsy'. Ze zegt wel 'alle symptomen' te hebben en zich nog steeds deel van die groep te voelen.",
+   "punten": [
+    "Diagnose was fout.",
+    "Blijft betrokken bij MS-gemeenschap."
+   ],
+   "tijd": "01:05",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5661509/christina-applegate-blijft-zich-na-misdiagnose-inzetten-voor-ms"
+    },
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/show/christina-applegate-begrijpt-helemaal-niets-van-haar-verkeerde-ms-diagnose-ik-heb-alle-symptomen~a1cda52b/"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/entertainment/sterren/christina-applegate-54-in-shock-door-misdiagnose-ms-geen-idee-wat-er-in-hemelsnaam-aan-de-hand-is/163718595.html"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/achterklap/6414640/christina-applegate-blijft-zich-ook-na-misdiagnose-inzetten-voor-mensen-met-ms.html"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Kim bezorgd om Ye",
+   "ai": "Kim Kardashian zegt in een nieuw boek dat ze zich elke dag zorgen maakt om haar ex Ye.",
+   "samenvatting": "In het dinsdag verschenen boek 'Citizen Kim: The Woman Who Created the Future' zegt Kim Kardashian (46) dat ze altijd bezorgd blijft om Ye (49), de vader van haar kinderen.\n\nYe zou met een bipolaire stoornis kampen. Volgens De Telegraaf is Kim intussen dolgelukkig met Lewis Hamilton.",
+   "punten": [
+    "Uitspraken in boek 'Citizen Kim'.",
+    "Blijft bezorgd om Ye, vader van haar kinderen.",
+    "Kim is gelukkig met Lewis Hamilton (Telegraaf)."
+   ],
+   "tijd": "10:58",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5661554/kim-kardashian-altijd-bezorgd-over-ye-als-vader-van-kinderen"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/entertainment/sterren/kim-kardashian-dolgelukkig-met-lewis-hamilton-maar-maakt-zich-grote-zorgen-om-ex-man-ye-denk-niet-dat-het-beter-wordt/163723874.html"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Debbie zet B&B te koop",
+   "ai": "Debbie de Jong uit B&B Vol Liefde zet na 22 jaar haar Spaanse B&B te koop.",
+   "samenvatting": "Debbie de Jong runt al 22 jaar een gastenverblijf in Spanje en was te zien in B&B Vol Liefde. Ze is toe aan iets nieuws: 'Als ik nog eens wat anders leuks wil doen met mijn leven, dan is het nu wel de tijd.'",
+   "punten": [
+    "Na 22 jaar te koop.",
+    "Bekend van B&B Vol Liefde.",
+    "Wil iets nieuws gaan doen."
+   ],
+   "tijd": "11:09",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5661543/debbie-uit-bb-vol-liefde-spaanse-droom"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/achterklap/6414672/debbie-de-jong-uit-bb-vol-liefde-zet-na-22-jaar-haar-spaanse-bb-te-koop.html"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Ruzie in cast Nobody Wants This",
+   "ai": "Castleden van Netflix-serie Nobody Wants This zijn het oneens nadat Adam Brody 'Free Palestine' zei.",
+   "samenvatting": "Hoofdrolspeler Adam Brody zei onlangs 'Free Palestine' in een interview. Een aantal collega's uit de cast neemt hem dat publiekelijk kwalijk.",
+   "punten": [
+    "Adam Brody zei 'Free Palestine' in interview.",
+    "Castleden reageren publiekelijk kritisch."
+   ],
+   "tijd": "08:34",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/film/6414520/onenigheid-bij-cast-netflix-serie-nobody-wants-this-na-free-palestine-uitspraak.html"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Weduwe beschuldigt Hugh Hefner",
+   "ai": "Crystal Hefner beschuldigt haar overleden man Hugh Hefner van seksueel grensoverschrijdend gedrag.",
+   "samenvatting": "Crystal Hefner (40), de weduwe van Playboy-oprichter Hugh Hefner, zegt dat hij zich schuldig maakte aan seksueel grensoverschrijdend gedrag. Hefner overleed in 2017 op 91-jarige leeftijd. Het gaat om beschuldigingen; Hefner kan er zelf niet meer op reageren.",
+   "punten": [
+    "Beschuldigingen door weduwe Crystal Hefner.",
+    "Hugh Hefner overleed in 2017 (91)."
+   ],
+   "tijd": "08:36",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/entertainment/gossip/weduwe-hugh-hefner-hij-probeerde-hoofden-tweeling-tegen-elkaars-vagina-te-duwen/163715375.html"
+    }
+   ]
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Guus Franke trouwt ex-Miss Colombia",
+   "ai": "Multimiljonair en mislukt Vitesse-redder Guus Franke (50) is getrouwd met ex-Miss Colombia Ariadna Gutiérrez.",
+   "samenvatting": "Het huwelijk van ondernemer Guus Franke met voormalig Miss Colombia Ariadna Gutiérrez (32) is groot nieuws in Zuid-Amerika, meldt De Telegraaf. Franke probeerde eerder tevergeefs voetbalclub Vitesse te redden.",
+   "punten": [
+    "Franke (50) trouwt met Ariadna Gutiérrez (32).",
+    "Groot nieuws in Zuid-Amerika.",
+    "Eerder mislukte Vitesse-overname."
+   ],
+   "tijd": "10:34",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/binnenland/nederlandse-multimiljonair-en-falende-vitesse-redder-guus-franke-50-geeft-jawoord-aan-colombiaanse-ex-miss-ariadna-gutierrez-32/163717113.html"
+    }
+   ]
+  }
+ ],
+ "gegenereerd": "2026-10-28T12:29:04.286Z"
+}
