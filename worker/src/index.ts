@@ -7,6 +7,7 @@ import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW, KNMI_WAARSCH } from "./weer";
 import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, type Usage, type In, type Sum } from "./ai";
+import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
 import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
@@ -116,6 +117,21 @@ async function get(url: string, timeout = 15000, ua = UA): Promise<Response> {
   return fetch(url, { headers: { "User-Agent": ua, Accept: accept, "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8" }, signal: AbortSignal.timeout(timeout), redirect: "follow" });
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+let redlibN = 0;
+async function viaRedlib(url: string): Promise<Response | null> {
+  const path = redlibPath(url); if (!path) return null;
+  const start = new Date().getUTCHours() + redlibN++;
+  for (let k = 0; k < 2; k++) {
+    const host = REDLIB[(start + k) % REDLIB.length];
+    try {
+      const r = await get(`https://${host}${path}`, 10000, UA);
+      if (!r.ok) continue;
+      const atom = redlibToAtom(await r.text(), host);
+      if (atom) return new Response(atom, { status: 200, headers: { "x-via": `redlib:${host}` } });
+    } catch { /* volgende instance */ }
+  }
+  return null;
+}
 
 async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
   const t0 = Date.now();
@@ -131,7 +147,11 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
     let r = await get(u, 15000, ua1).catch(async () => { await sleep(1500); return get(u, 20000, ua1); }); // 1x opnieuw bij time-out/netwerkfout
     // 403/429: nog één keer rustig; Reddit via old.reddit, anderen met een gewone browser-UA
     if (r.status === 403 || r.status === 429) {
-      if (j.kind === "reddit") { await sleep(5000); r = await get(u.replace("://www.reddit.com", "://old.reddit.com"), 15000, FEED_UA); }
+      if (j.kind === "reddit") {
+        await sleep(5000); r = await get(u.replace("://www.reddit.com", "://old.reddit.com"), 15000, FEED_UA);
+        // daarna Redlib: 2 instances per bron, per uur roterend; alleen een pagina met echte posts telt
+        if (!r.ok) { const rl = await viaRedlib(u); if (rl) r = rl; }
+      }
       else { await sleep(1500); r = await get(u, 15000, BR_UA); }
     }
     status = r.status;
