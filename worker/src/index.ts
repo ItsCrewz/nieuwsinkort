@@ -105,6 +105,8 @@ async function runX(j: Job, since: number, t0: number): Promise<Res> {
   };
 }
 
+const FEED_UA = "Feedly/1.0 (+http://www.feedly.com/fetcher.html; like FeedFetcher-Google)";
+const HN_RSS = /^https?:\/\/news\.ycombinator\.com\/rss\/?$/;
 const BR_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 async function get(url: string, timeout = 15000, ua = UA): Promise<Response> {
   // SRU (overheid.nl) geeft JSON terug zodra "application/json" in Accept staat: dan alleen XML vragen
@@ -122,9 +124,16 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
     if (j.kind === "insta") return await runInsta(j, since, t0, kv);
     if (j.kind === "og") return await runOg(j, t0, kv);
     if (j.kind === "x") return await runX(j, since, t0);
-    let r = await get(j.url).catch(async () => { await sleep(1500); return get(j.url, 20000); }); // 1x opnieuw bij time-out/netwerkfout
-    // 403/429: nog één keer, rustig en met een gewone browser-UA (sommige sites/Reddit weigeren bot-UA's of bursts)
-    if (r.status === 403 || r.status === 429) { await sleep(j.kind === "reddit" ? 8000 : 1500); r = await get(j.url, 15000, BR_UA); }
+    // news.ycombinator.com/rss geeft 419 aan Cloudflare-IP's: dezelfde HN-lijst via hnrss.org (werkt wel)
+    const u = HN_RSS.test(j.url) ? "https://hnrss.org/best" : j.url;
+    // Reddit: RSS met een feedlezer-UA (Feedly) wordt wél doorgelaten; bot/browser-UA krijgt 429/403 vanaf Cloudflare
+    const ua1 = j.kind === "reddit" ? FEED_UA : UA;
+    let r = await get(u, 15000, ua1).catch(async () => { await sleep(1500); return get(u, 20000, ua1); }); // 1x opnieuw bij time-out/netwerkfout
+    // 403/429: nog één keer rustig; Reddit via old.reddit, anderen met een gewone browser-UA
+    if (r.status === 403 || r.status === 429) {
+      if (j.kind === "reddit") { await sleep(5000); r = await get(u.replace("://www.reddit.com", "://old.reddit.com"), 15000, FEED_UA); }
+      else { await sleep(1500); r = await get(u, 15000, BR_UA); }
+    }
     status = r.status;
     if (!r.ok) return { url: j.url, ok: false, status, err: `HTTP ${status}`, ms: Date.now() - t0 };
     const body = await r.text();
@@ -156,7 +165,7 @@ export class Fetcher extends DurableObject<Env> {
     const reddit = jobs.map((j, i) => [j, i] as const).filter(([j]) => j.kind === "reddit");
     const rest = jobs.map((j, i) => [j, i] as const).filter(([j]) => j.kind !== "reddit");
     const pool = async () => { for (let x; (x = rest.shift()); ) out[x[1]] = await this.mem(x[0], await runJob(x[0], since, this.env.NIEUWS), since); };
-    const seq = async () => { for (let k = 0; k < reddit.length; k++) { if (k) await sleep(4000); out[reddit[k][1]] = await this.mem(reddit[k][0], await runJob(reddit[k][0], since), since); } };
+    const seq = async () => { for (let k = 0; k < reddit.length; k++) { if (k) await sleep(2000); out[reddit[k][1]] = await this.mem(reddit[k][0], await runJob(reddit[k][0], since), since); } };
     await Promise.all([seq(), ...Array.from({ length: reddit.length ? 3 : 4 }, pool)]);
     return Response.json(out);
   }
