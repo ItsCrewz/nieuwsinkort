@@ -8,6 +8,7 @@ import { VideoGrid, playerFor, soortVan, startSoort } from "./video";
 import { videoSlug, zaaiSamenvattingen } from "./feed";
 import { schoon } from "./schoon";
 import { Beelden, Thumb } from "./beelden";
+import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "./filters";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
@@ -497,14 +498,14 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
   );
 });
 
-function NewsList({ items, view, bionic, focusKey, onOpen }: { items: Item[]; view: View; bionic: boolean; focusKey: string | null; onOpen: OpenFn }) {
+function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: { items: Item[]; view: View; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const [enter] = useState(() => !introDone && motionOK());
   const [showAll, setShowAll] = useState(false);
-  const sorted = useMemo(() => sortItems(items), [items]);
-  const leadIdx = useMemo(() => pickLead(sorted), [sorted]);
+  const sorted = useMemo(() => (keepOrder ? items : sortItems(items)), [items, keepOrder]);
+  const leadIdx = useMemo(() => (keepOrder ? 0 : pickLead(sorted)), [sorted, keepOrder]);
   if (sorted.length === 0)
     return (
-      <div className="empty">
+      empty ?? <div className="empty">
         <Icon name="clock" />
         Nog geen berichten van vandaag in deze rubriek. Om 08:00 en 12:00 komt er nieuws bij.
       </div>
@@ -665,12 +666,13 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { it
   );
 });
 
-function NewsFeed({ items, head, bionic, focusKey, onOpen }: { items: Item[]; head: ReactNode; bionic: boolean; focusKey: string | null; onOpen: OpenFn }) {
+function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty }: { items: Item[]; head: ReactNode; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
+    if (keepOrder) return items;
     const s = sortItems(items);
     const li = pickLead(s);
     return li > 0 ? [s[li], ...s.filter((_, k) => k !== li)] : s;
-  }, [items]);
+  }, [items, keepOrder]);
   const ref = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLSpanElement>(null);
   const startRef = useRef<HTMLButtonElement>(null);
@@ -760,7 +762,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen }: { items: Item[]; he
       <div className="nf" ref={ref} tabIndex={-1} aria-label="Berichten, één per scherm">
         <section className="nc-head">{head}</section>
         {total === 0 ? (
-          <div className="empty">
+          empty ?? <div className="empty">
             <Icon name="clock" />
             Nog geen berichten van vandaag in deze rubriek. Om 08:00 en 12:00 komt er nieuws bij.
           </div>
@@ -1079,6 +1081,12 @@ export default function App() {
   const [route, setRoute] = useState<Route>(() => parseHash());
   const [bionic, setBionic] = useState(true);
   const [sheet, setSheet] = useState(false);
+  const [fsheet, setFsheet] = useState(false);
+  const flt = useFilters();
+  const vids = useMemo(
+    () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
+    [data, flt.f, flt.vorig]
+  );
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const routeRef = useRef(route);
   routeRef.current = route;
@@ -1135,7 +1143,8 @@ export default function App() {
     // Mobiel: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht).
     if ((v === "filmpjes" || v === "dumpert") && data && window.matchMedia?.("(max-width: 640px)").matches) {
       // Filmpjes: start in Shorts (of Journaals als er geen shorts zijn); wisselen kan bovenin de feed.
-      const list = v === "filmpjes" ? data.filmpjes.filter((x) => soortVan(x) === startSoort(data.filmpjes)) : data.dumpert;
+      const fl = vids ?? data;
+      const list = v === "filmpjes" ? fl.filmpjes.filter((x) => soortVan(x) === startSoort(fl.filmpjes)) : fl.dumpert;
       if (list.length) {
         feedPushed = false;
         window.location.hash = `#/${v}/${encodeURIComponent(videoSlug(list[0]))}`;
@@ -1272,6 +1281,26 @@ export default function App() {
       </button>
     </div>
   ) : null;
+  const alles = view === "alles";
+  const basisItems = alles ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === view);
+  const uitkomst = isVideo ? null : filterNieuws(basisItems, flt.f, flt.vorig, raw.gegenereerd, alles);
+  const sortBronnen = flt.f.sort === "bronnen";
+  const filterLeeg = (
+    <div className="empty">
+      <Icon name="clock" />
+      Geen berichten met deze filters.
+      <button type="button" className="linkbtn" onClick={() => setFsheet(true)}>
+        Filters aanpassen
+      </button>
+      <button type="button" className="linkbtn" onClick={flt.reset}>
+        Standaard
+      </button>
+    </div>
+  );
+  const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
+  const filterBlad = fsheet ? (
+    <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={() => setFsheet(false)} />
+  ) : null;
   if (!isVideo) {
     return (
       <Frame top={top} feed>
@@ -1279,12 +1308,16 @@ export default function App() {
           <div className="nf-tabs">
             <div className="wrap">
               <Tabs data={data} view={view} onChange={setView} />
+              {filterBalk}
               {filterNote}
             </div>
           </div>
+          {filterBlad}
           <NewsFeed
             key={view}
-            items={view === "alles" ? data.items.filter((i) => i.cat !== "politiek") : data.items.filter((i) => i.cat === view)}
+            items={uitkomst!.items}
+            keepOrder={sortBronnen}
+            empty={filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
@@ -1310,6 +1343,8 @@ export default function App() {
           <WeatherBox W={raw.weer} bionic={bionic} />
         </Front>
         <Tabs data={data} view={view} onChange={setView} />
+        {filterBalk}
+        {filterBlad}
         {off.size ? (
           <div className="filternote" role="status">
             <span>
@@ -1327,7 +1362,7 @@ export default function App() {
           <VideoGrid
             key={view}
             cat={view}
-            list={view === "filmpjes" ? data.filmpjes : data.dumpert}
+            list={view === "filmpjes" ? vids!.filmpjes : vids!.dumpert}
             bionic={bionic}
             bronFilter={view === "filmpjes"}
             enter={!introDone && motionOK()}
@@ -1339,7 +1374,9 @@ export default function App() {
           <NewsList
             key={view}
             view={view}
-            items={view === "alles" ? data.items.filter((i) => i.cat !== "politiek") : data.items.filter((i) => i.cat === view)}
+            items={uitkomst?.items ?? []}
+            keepOrder={sortBronnen}
+            empty={filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

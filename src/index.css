@@ -262,12 +262,13 @@ li:last-child > .srcrow,.srcrow:last-child{border-bottom:0}
 .feed-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
 .feed-scroll::-webkit-scrollbar{display:none}
 .fslide{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;justify-content:center;contain:strict}
-.fcol{position:relative;height:100%;width:min(100%,calc(100dvh * 9 / 16));background:#000;overflow:hidden}
+.fcol{position:relative;height:100%;width:min(100%,calc(100dvh * 9 / 16));background:#000;overflow:hidden;container-type:size}
 .f-poster,.f-media{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border:0;display:block}
 .f-media{opacity:0;transition:opacity var(--base) var(--ease);background:transparent}
 .f-media.on{opacity:1}
 video.f-media.on{background:#000}
-.f-yt{inset:auto 0;top:50%;height:auto;aspect-ratio:16/9;transform:translate3d(0,-50%,0)}
+/* gecentreerd zonder transform (transform op een spelende video/iframe kan op iOS het beeld laten bevriezen) */
+.f-yt{inset:auto 0;height:auto;aspect-ratio:16/9;top:calc(50% - min(100vw, 100vh * 9 / 16) * 9 / 32);top:calc(50% - min(100vw, 100dvh * 9 / 16) * 9 / 32);top:calc(50% - 28.125cqw)}
 .f-yt.short{top:0;height:100%;aspect-ratio:auto;transform:none}
 .ftap{position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:1}
 .fstate{display:flex;align-items:center;justify-content:center;width:68px;height:68px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;animation:pop 160ms var(--ease) both}
@@ -585,3 +586,26 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 :root[data-theme="dark"] .sv-sheet{background:#1c1c1e;color:#f2f2f2}:root[data-theme="dark"] .sv-x{color:#f2f2f2}:root[data-theme="dark"] .sv-titel{color:rgba(255,255,255,.6)}:root[data-theme="dark"] .sv-bron{color:rgba(255,255,255,.5)}:root[data-theme="dark"] .sv-laden{color:rgba(255,255,255,.7)}:root[data-theme="dark"] .sv-dot{border-color:rgba(255,255,255,.2);border-top-color:var(--accent)}:root[data-theme="dark"] .sv-sheet .f-btn{background:#fff;color:#111}
 /* samenvatting staat al klaar: klein groen bolletje */
 .sv-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle;box-shadow:0 0 0 2px rgba(34,197,94,.25);flex:none}
+
+/* ---------- Filters: één knop onder de rubrieken, onderblad met chips ---------- */
+.fbar{display:flex;align-items:center;gap:8px;padding:6px 0 8px;min-width:0}
+.fpill{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 7px;max-width:100%;min-height:32px;padding:5px 12px;border-radius:16px;border:1px solid var(--rule);background:var(--card);color:var(--ink);font-size:13px;line-height:1.3;text-align:left;cursor:pointer}
+.fpill .ic{width:14px;height:14px;flex:none;color:var(--muted)}
+.fpill.has{border-color:var(--accent)}
+.fpill.has .ic{color:var(--accent)}
+.fpill-t{white-space:normal;overflow-wrap:anywhere}
+.fpill-n{color:var(--muted);font-size:12px}
+.fpill-n::before{content:"· "}
+.fpill-x{padding:1px 7px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px;font-weight:600}
+.fpill:active{transform:scale(.98)}
+.app-feed .fbar{padding:4px 0 6px}
+.fbody{padding-top:0}
+.fgroup{padding-top:20px}
+.fgroup .kicker{color:var(--ink);font-size:14px}
+.fchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.fchip{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:36px;padding:7px 13px;border-radius:18px;border:1px solid var(--rule);background:var(--card);color:var(--ink);font-size:14px;line-height:1.3;text-align:left;cursor:pointer}
+.fchip > span:first-child{white-space:normal;overflow-wrap:anywhere}
+.fchip-n{font-size:12px;color:var(--muted)}
+.fchip.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.fchip.on .fchip-n{color:inherit;opacity:.7}
+.fhint{font-size:12.5px;line-height:1.45;color:var(--muted);margin-top:8px}

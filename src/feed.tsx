@@ -14,15 +14,25 @@ const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").
 export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
 
-// Geluid aan/uit geldt voor de hele sessie.
-const SOUND_KEY = "nieuwsinkort-feed-geluid";
+// Geluid staat standaard aan en de keuze wordt onthouden (localStorage). Weigert de browser geluid zonder tik
+// (iPhone Safari), dan start het filmpje zonder geluid en gaat het geluid aan bij de eerste tik of swipe.
+const SOUND_KEY = "nieuwsinkort-geluid";
 function soundOn() {
   try {
-    return sessionStorage.getItem(SOUND_KEY) === "1";
+    return localStorage.getItem(SOUND_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
+function saveSound(on: boolean) {
+  try {
+    localStorage.setItem(SOUND_KEY, on ? "1" : "0");
+  } catch {
+    /* privémodus */
+  }
+}
+// Teller voor tests/diagnose: hoe vaak de waakhond een vastgelopen beeld herlaadde.
+const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number } }).__nikVideo ??= { herladen: 0, vast: 0 });
 
 // ------------------------------------------------------------- voortgangsbalk
 type Bar = { set: (cur: number, dur: number, playing: boolean) => void; stop: () => void };
@@ -138,6 +148,10 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
   rankRef.current = preload;
   const activeNow = useRef(active);
   activeNow.current = active;
+  // Waakhond: herladen op dezelfde plek als het beeld vastloopt terwijl de tijd (en dus het geluid) doorloopt.
+  const [reloadKey, setReloadKey] = useState(0);
+  const resumeAt = useRef(0);
+  const reloads = useRef<number[]>([]);
   // bron koppelen (HLS: native op Safari/iOS, anders hls.js via onze proxy)
   useEffect(() => {
     const video = ref.current;
@@ -161,6 +175,8 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
         video.load();
       };
     }
+    video.dataset.mse = "1";
+    let recovered = false;
     let destroyed = false;
     let cancelWait = () => {};
     let hls: { destroy: () => void } | null = null;
@@ -185,12 +201,31 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
         maxBufferLength: on ? 30 : 8,
         maxMaxBufferLength: on ? 60 : 8,
         backBufferLength: 10,
+        startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
+      });
+      // Niet hoger dan 720p, en H.264 (avc1) als die er is: soepel decoderen op telefoons.
+      h.on(Hls.Events.MANIFEST_PARSED, (_e, d) => {
+        const lv = d.levels as { height?: number; videoCodec?: string }[];
+        const avc = lv.some((l) => /avc1/i.test(l.videoCodec || ""));
+        let cap = -1;
+        lv.forEach((l, k) => {
+          if ((l.height || 0) <= 720 && (!avc || /avc1/i.test(l.videoCodec || ""))) cap = k;
+        });
+        if (cap >= 0 && cap < lv.length - 1) h.autoLevelCapping = cap;
       });
       hls = h;
       hlsRef.current = h as unknown as typeof hlsRef.current;
       h.on(Hls.Events.ERROR, (_e, d) => {
         if (DEBUG) console.log("[hls]", v.titel, d.type, d.details, d.fatal);
-        if (d.fatal) onFail();
+        if (!d.fatal) return;
+        // Mediafout: eerst één keer herstellen (standaard hls.js-recept), pas daarna opgeven.
+        if (d.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) {
+          recovered = true;
+          h.recoverMediaError();
+          if (activeNow.current && !pausedRef.current) video.play().catch(() => {});
+          return;
+        }
+        onFail();
       });
       if (DEBUG) {
         h.on(Hls.Events.LEVEL_SWITCHED, (_e, d) => console.log("[hls] level", v.titel, d.level));
@@ -213,8 +248,10 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
       cancelWait();
       hlsRef.current = null;
       hls?.destroy();
+      video.removeAttribute("src");
+      video.load();
     };
-  }, [kind, src, onFail]);
+  }, [kind, src, onFail, reloadKey]);
 
   // Buffergrootte meeschalen met de positie in de feed (hls.js leest de config live).
   useEffect(() => {
@@ -259,10 +296,84 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     if (video) video.muted = muted;
   }, [muted]);
 
+  // Na herladen: terug naar dezelfde tijd en verder spelen.
+  useEffect(() => {
+    const video = ref.current;
+    if (!video || !reloadKey) return;
+    const go = () => {
+      const t = resumeAt.current;
+      if (t > 0 && Math.abs(video.currentTime - t) > 0.5) {
+        try {
+          video.currentTime = t;
+        } catch {
+          /* negeer */
+        }
+      }
+      resumeAt.current = 0;
+      video.muted = mutedRef.current;
+      if (activeNow.current && !pausedRef.current) video.play().catch(() => {});
+    };
+    video.addEventListener("loadedmetadata", go, { once: true });
+    return () => video.removeEventListener("loadedmetadata", go);
+  }, [reloadKey]);
+
+  // Waakhond: loopt de tijd door maar komt er >2,5 s geen nieuw beeld, dan de bron herladen (max 2× per minuut).
+  useEffect(() => {
+    const video = ref.current;
+    if (!video || !active || paused) return;
+    let lastFrame = performance.now();
+    let frames = -1;
+    let lastT = video.currentTime;
+    let rvfc = 0;
+    const vv = video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number; cancelVideoFrameCallback?: (h: number) => void };
+    const onFrame = () => {
+      lastFrame = performance.now();
+      rvfc = vv.requestVideoFrameCallback!(onFrame);
+    };
+    if (vv.requestVideoFrameCallback) rvfc = vv.requestVideoFrameCallback(onFrame);
+    const iv = window.setInterval(() => {
+      const now = performance.now();
+      const t = video.currentTime;
+      const moving = t > lastT + 0.5 || t + 1 < lastT; // ook een loop telt als beweging
+      lastT = t;
+      if (!vv.requestVideoFrameCallback) {
+        const q = video.getVideoPlaybackQuality?.();
+        const n = q ? q.totalVideoFrames : -1;
+        if (n !== frames) {
+          frames = n;
+          lastFrame = now;
+        }
+      }
+      if (video.paused || document.hidden || video.readyState < 3 || !video.videoWidth || !moving) {
+        if (!moving || video.paused || document.hidden) lastFrame = now;
+        return;
+      }
+      if (now - lastFrame < 2500) return;
+      diag.vast++;
+      reloads.current = reloads.current.filter((x) => now - x < 60e3);
+      if (reloads.current.length >= 2) return;
+      reloads.current.push(now);
+      diag.herladen++;
+      if (DEBUG) console.log("[waakhond] beeld staat stil, herladen op", t, v.titel);
+      resumeAt.current = t;
+      lastFrame = now + 5000;
+      setReloadKey((k) => k + 1);
+    }, 1000);
+    return () => {
+      window.clearInterval(iv);
+      if (rvfc && vv.cancelVideoFrameCallback) vv.cancelVideoFrameCallback(rvfc);
+    };
+  }, [active, paused, reloadKey, v.titel]);
+
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   useEffect(() => {
     const video = ref.current;
     if (!video) return;
     if (active && !paused) {
+      video.muted = mutedRef.current;
       const p = video.play();
       p?.catch((err: DOMException) => {
         // Geluid zonder tik mag niet: dan zonder geluid verder.
@@ -272,6 +383,26 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
           video.play().catch(() => {});
         }
       });
+      // Net gemount (bv. terug swipen): de bron komt soms pas na play() (hls.js laadt async) en dan blijft hij
+      // stilstaan. Zodra er data is nog een keer starten.
+      const kick = () => {
+        if (activeNow.current && !pausedRef.current && video.paused) {
+          video.muted = mutedRef.current;
+          video.play().catch((err: DOMException) => {
+            if (err?.name === "NotAllowedError" && !video.muted) {
+              onAutoplayBlocked();
+              video.muted = true;
+              video.play().catch(() => {});
+            }
+          });
+        }
+      };
+      video.addEventListener("loadeddata", kick);
+      video.addEventListener("canplay", kick);
+      return () => {
+        video.removeEventListener("loadeddata", kick);
+        video.removeEventListener("canplay", kick);
+      };
     } else {
       video.pause();
       if (!active) {
@@ -323,7 +454,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
       ref={ref}
       className={`f-media ${shown ? "on" : ""}`}
       playsInline
-      muted
+      muted={muted}
       loop
       preload={active || preload ? "auto" : "metadata"}
       aria-label={v.titel}
@@ -823,18 +954,22 @@ export function Feed({
     [gs, gi, onGroup]
   );
   const [paused, setPaused] = useState(false);
-  const [muted, setMuted] = useState(() => !soundOn());
+  // want = jouw keuze (onthouden); blocked = de browser weigerde geluid zonder tik. Te horen = want && !blocked.
+  const [want, setWant] = useState(soundOn);
+  const [blocked, setBlocked] = useState(false);
+  const muted = !want || blocked;
+  const unmutedAt = useRef(0);
   const [closing, setClosing] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
-  // Spelers: huidige, vorige en de volgende twee staan klaar; eenmaal geladen blijven ze tot ±3, verder weg weg.
+  // Spelers: alleen de huidige en de volgende hebben een <video>/<iframe>. De rest wordt gestopt en ontladen
+  // (bron eraf), zodat iOS niet te veel decoders tegelijk heeft (daardoor bleef het beeld soms staan met geluid).
   const mountedRef = useRef<Set<number>>(new Set());
   const mounted = useMemo(() => {
     const next = new Set<number>();
-    for (const i of mountedRef.current) if (Math.abs(i - active) <= 3) next.add(i);
-    for (let i = active - 1; i <= active + 2; i++) if (i >= 0 && i < items.length) next.add(i);
+    for (let i = active; i <= active + 1; i++) if (i >= 0 && i < items.length) next.add(i);
     mountedRef.current = next;
     return next;
   }, [active, items]);
@@ -923,19 +1058,72 @@ export function Feed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [close, go]);
 
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      try {
-        sessionStorage.setItem(SOUND_KEY, next ? "0" : "1");
-      } catch {
-        /* privémodus */
+  // Binnen een tik/swipe (gebruikersgebaar): geluid aanzetten op de huidige video en de volgende alvast
+  // "vrijgeven" (play+pause met geluid), zodat iOS die straks ook met geluid laat starten.
+  const unmuteNow = useCallback(() => {
+    const r = root.current;
+    if (!r) return;
+    const cur = r.querySelector<HTMLElement>(`.fslide[data-i="${activeRef.current}"]`);
+    r.querySelectorAll<HTMLVideoElement>("video.f-media").forEach((el) => {
+      el.muted = false;
+      if (cur?.contains(el)) {
+        if (!pausedRef.current) el.play().catch(() => {});
+      } else if (el.paused && el.dataset.mse !== "1") {
+        // (niet bij hls.js/MSE: daar is vrijgeven niet nodig en kan play+pause de MediaSource breken)
+        const p = el.play();
+        el.pause();
+        p?.catch(() => {});
       }
-      return next;
     });
+    r.querySelectorAll<HTMLIFrameElement>("iframe.f-yt").forEach((f) =>
+      f.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "unMute", args: [] }), "https://www.youtube-nocookie.com")
+    );
   }, []);
-  const onTap = useCallback(() => setPaused((p) => !p), []);
-  const onBlocked = useCallback(() => setMuted(true), []);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const soundRef = useRef({ want, blocked });
+  soundRef.current = { want, blocked };
+  useEffect(() => {
+    const r = root.current;
+    if (!r) return;
+    const onGesture = (e: Event) => {
+      const { want: w, blocked: b } = soundRef.current;
+      if ((e.target as HTMLElement)?.closest?.(".f-sound")) return; // die knop regelt het zelf
+      if (e.type === "keydown" && /^m$/i.test((e as KeyboardEvent).key)) return; // M = geluid aan/uit
+      if (w) {
+        if (b) {
+          unmuteNow();
+          unmutedAt.current = Date.now();
+          setBlocked(false);
+        } else if (e.type !== "keydown") unmuteNow(); // volgende video's blijven vrijgegeven
+      }
+    };
+    const types = ["touchend", "pointerup", "click"];
+    types.forEach((t) => r.addEventListener(t, onGesture, { capture: true, passive: true }));
+    window.addEventListener("keydown", onGesture, { capture: true, passive: true });
+    return () => {
+      types.forEach((t) => r.removeEventListener(t, onGesture, { capture: true }));
+      window.removeEventListener("keydown", onGesture, { capture: true });
+    };
+  }, [unmuteNow]);
+  const toggleMute = useCallback(() => {
+    const { want: w, blocked: b } = soundRef.current;
+    if (!w || b) {
+      saveSound(true);
+      setWant(true);
+      setBlocked(false);
+      unmuteNow();
+    } else {
+      saveSound(false);
+      setWant(false);
+    }
+  }, [unmuteNow]);
+  // De tik die het geluid aanzette pauzeert het filmpje niet.
+  const onTap = useCallback(() => {
+    if (Date.now() - unmutedAt.current < 700) return;
+    setPaused((p) => !p);
+  }, []);
+  const onBlocked = useCallback(() => setBlocked(true), []);
 
   const label = cat === "dumpert" ? "Dumpert" : gs ? gs[gi].label : "Filmpjes";
   return createPortal(
@@ -960,7 +1148,7 @@ export function Feed({
               cat={cat}
               active={i === active}
               mount={mounted.has(i)}
-              preload={i === active + 1 ? 1 : i === active + 2 || i === active - 1 ? 2 : 0}
+              preload={i === active + 1 ? 1 : 0}
               paused={i === active && paused}
               muted={muted}
               onTap={onTap}
