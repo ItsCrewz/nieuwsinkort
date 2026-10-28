@@ -78,8 +78,7 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
         </span>
       </div>
       <div className="vbody">
-        <div className="kicker">
-          <i className="mk" />
+        <div className="meta">
           {v.bron}
           {v.tijd ? <time className="tnum">{v.tijd}</time> : null}
         </div>

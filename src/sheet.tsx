@@ -88,8 +88,7 @@ export function SourcesSheet({
                   <div className="sh-ghead">
                     <div>
                       <h3 id={`grp-${g.id}`} className="kicker">
-                        <i className="mk" />
-                        {g.label}
+                                                {g.label}
                       </h3>
                       <span className="sh-gmeta">
                         {g.sources.length} {g.sources.length === 1 ? "bron" : "bronnen"} · {g.total} vandaag
@@ -125,8 +124,7 @@ export function SourcesSheet({
                 <div className="sh-ghead">
                   <div>
                     <h3 id="grp-weer" className="kicker">
-                      <i className="mk" />
-                      Weer
+                                            Weer
                     </h3>
                     <span className="sh-gmeta">Altijd aan</span>
                   </div>

@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -99,3 +100,10 @@ for (const it of data.items) per[it.cat] = (per[it.cat] || 0) + 1;
 console.log(
   `Geschreven: ${out}\n  datum: ${data.datum}\n  items: ${data.items.length} ${JSON.stringify(per)}\n  filmpjes: ${data.filmpjes.length}\n  dumpert: ${data.dumpert.length}\n  weer: ${data.weer?.nu?.temp ?? "?"}° (${data.weer?.bijgewerkt ?? "?"})`
 );
+
+// Dumpert: elk item een afspeelbare stream geven (of weglaten als het geen video is).
+try {
+  execFileSync(process.execPath, [path.join(here, "scripts", "fix-dumpert.mjs"), out], { stdio: "inherit", timeout: 120000 });
+} catch (e) {
+  console.warn("Let op: fix-dumpert mislukt:", e?.message || e);
+}

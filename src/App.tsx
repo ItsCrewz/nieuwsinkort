@@ -4,7 +4,7 @@ import { BionicText, FocusSwitch, host } from "./ui";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { SourcesSheet } from "./sheet";
 import { Icon, IconSprite, type IconName } from "./icons";
-import { VideoGrid } from "./video";
+import { VideoGrid, playerFor } from "./video";
 import { videoSlug } from "./feed";
 
 const CATS: { id: Cat; label: string; slug: string }[] = [
@@ -210,7 +210,7 @@ function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
 function Briefing({ text, bionic, sources, time }: { text: string; bionic: boolean; sources: number; time: string }) {
   return (
     <section className="brief" aria-label="In het kort">
-      <h2 className="kicker accent">In het kort</h2>
+      <h2 className="kicker">In het kort</h2>
       {text ? (
         <p className="brief-text bn">
           <BionicText text={text} on={bionic} />
@@ -287,9 +287,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               onChange(o.value);
             }}
           >
-            {o.id !== "all" ? <i className="mk" /> : null}
             {o.label}
-            <span className="tcount tnum">{o.count}</span>
           </button>
         ))}
         <span className="ind" ref={indRef} aria-hidden="true" />
@@ -334,8 +332,7 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
   const n = item.bronnen?.length ?? 0;
   return (
     <a className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
-      <div className="kicker">
-        <i className="mk" />
+      <div className="meta">
         {CAT_LABEL[item.cat] ?? item.cat}
         {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
       </div>
@@ -347,9 +344,6 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
       ) : null}
       <div className="row-foot">
         <span className="src">{n > 0 ? `${bronLabel(item.bronnen)} · ${bronnenTekst(n)}` : "Geen bron"}</span>
-        <span className="more">
-          Lees verder <Icon name="next" className="sm" />
-        </span>
       </div>
     </a>
   );
@@ -368,11 +362,10 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
       style={anim ? ({ "--i": i + 1 } as React.CSSProperties) : undefined}
       onClick={click}
     >
-      <time className="row-time tnum">{item.tijd || ""}</time>
       <div className="row-main">
-        <div className="kicker">
-          <i className="mk" />
+        <div className="meta">
           {CAT_LABEL[item.cat] ?? item.cat}
+          {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
         </div>
         <h3 className="row-title">{item.kop}</h3>
         {item.ai ? (
@@ -383,9 +376,6 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
         <div className="row-foot">
           <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
             {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
-          </span>
-          <span className="more" aria-hidden="true">
-            <Icon name="next" className="sm" />
           </span>
         </div>
       </div>
@@ -472,11 +462,10 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
         Terug naar het nieuws
       </button>
       <header className="d-head">
-        <div className="kicker">
-          <i className="mk" />
+        <div className="meta">
           {CAT_LABEL[item.cat] ?? item.cat}
           {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
-          {bronnen.length ? <span className="muted">{bronnenTekst(bronnen.length)}</span> : null}
+          {bronnen.length ? <span>{bronnenTekst(bronnen.length)}</span> : null}
         </div>
         <h1 className="d-title">{item.kop}</h1>
         {item.ai ? (
@@ -534,6 +523,7 @@ function useData() {
       d.items ??= [];
       d.filmpjes ??= [];
       d.dumpert ??= [];
+      d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
       setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
       setError(false);
     } catch {
@@ -568,7 +558,7 @@ function savedTheme(): Theme | null {
 }
 function applyTheme(t: Theme) {
   document.documentElement.dataset.theme = t;
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", t === "dark" ? "#141311" : "#f5f2ea"));
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", t === "dark" ? "#0f0f0f" : "#ffffff"));
 }
 function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme as Theme) || savedTheme() || systemTheme());
@@ -626,8 +616,7 @@ function TopBar({
             onHome();
           }}
         >
-          Nieuws <em>in het kort</em>
-          <span className="stop">.</span>
+          Nieuws in het kort
         </a>
         <div className="ctrls">
           <FocusSwitch value={bionic} onChange={onBionic} />
@@ -655,10 +644,7 @@ function TopBar({
 function Footer() {
   return (
     <footer className="foot">
-      <div className="foot-brand">
-        Nieuws <em>in het kort</em>
-        <span className="stop">.</span>
-      </div>
+      <div className="foot-brand">Nieuws in het kort</div>
       <p>Samengevat uit de bronnen die bij elk bericht staan. Elke dag om 08:00 en 12:00 bijgewerkt, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
     </footer>
   );

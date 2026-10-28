@@ -85,6 +85,13 @@ type PlayerProps = {
 };
 
 // ------------------------------------------------------------- MP4 / HLS
+const DEBUG = (() => {
+  try {
+    return localStorage.getItem("nieuwsinkort-debug") === "1";
+  } catch {
+    return false;
+  }
+})();
 function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFail, onAutoplayBlocked }: PlayerProps & { kind: "hls" | "mp4"; src: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [shown, setShown] = useState(false);
@@ -99,7 +106,12 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFai
         video.load();
       };
     }
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    // Native HLS alleen op Apple (Safari/iOS). Chrome zegt sinds kort ook "maybe" op HLS, maar zijn eigen
+    // speler blijft op Dumpert-streams vaak op 0:00 hangen; daar dus altijd hls.js (MSE) via onze proxy.
+    const native = !!video.canPlayType("application/vnd.apple.mpegurl");
+    const apple = /Apple/.test(navigator.vendor || "") || /iP(hone|ad|od)/.test(navigator.userAgent);
+    const mse = typeof window !== "undefined" && ("MediaSource" in window || "ManagedMediaSource" in window);
+    if (native && (apple || !mse)) {
       video.src = src;
       return () => {
         video.removeAttribute("src");
@@ -110,12 +122,24 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFai
     let hls: { destroy: () => void } | null = null;
     import("hls.js").then(({ default: Hls }) => {
       if (destroyed) return;
-      if (!Hls.isSupported()) return onFail();
+      if (!Hls.isSupported()) {
+        if (native) {
+          video.src = src;
+          return;
+        }
+        return onFail();
+      }
       const h = new Hls({ enableWorker: true, maxBufferLength: 12, capLevelToPlayerSize: true });
       hls = h;
       h.on(Hls.Events.ERROR, (_e, d) => {
+        if (DEBUG) console.log("[hls]", v.titel, d.type, d.details, d.fatal);
         if (d.fatal) onFail();
       });
+      if (DEBUG) {
+        h.on(Hls.Events.LEVEL_SWITCHED, (_e, d) => console.log("[hls] level", v.titel, d.level));
+        h.on(Hls.Events.BUFFER_FLUSHING, (_e, d) => console.log("[hls] flush", v.titel, d.startOffset, d.endOffset, d.type));
+        video.addEventListener("seeking", () => console.log("[hls] seeking", v.titel, video.currentTime));
+      }
       h.loadSource(viaProxy(src));
       h.attachMedia(video);
     });
@@ -348,11 +372,10 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
           </div>
         )}
         <div className="f-info">
-          <div className="kicker">
-            <i className="mk" />
+          <div className="meta">
             {v.bron}
             {v.tijd ? <time className="tnum">{v.tijd}</time> : null}
-            {v.populariteit ? <span className="tnum f-pop">{v.populariteit}</span> : null}
+            {v.populariteit ? <span className="tnum">{v.populariteit}</span> : null}
           </div>
           <h2 className="f-title">{v.titel}</h2>
           {v.ai ? <p className="f-ai">{v.ai}</p> : null}

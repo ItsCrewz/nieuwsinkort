@@ -39,7 +39,10 @@ pages_deploy() { # <map> <branch>
 }
 
 if [ -n "${CANVAS_SRC:-}" ]; then
-  node export_from_canvas.mjs "$CANVAS_SRC"
+  node export_from_canvas.mjs "$CANVAS_SRC"   # draait zelf ook scripts/fix-dumpert.mjs
+else
+  # Dumpert-items zonder afspeelbare stream aanvullen of weglaten (ook zonder verse export)
+  node scripts/fix-dumpert.mjs public/data.json || true
 fi
 
 [ -d node_modules ] || npm ci
