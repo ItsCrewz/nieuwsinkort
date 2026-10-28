@@ -5,6 +5,7 @@ import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./source
 import { SourcesSheet } from "./sheet";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { VideoGrid } from "./video";
+import { videoSlug } from "./feed";
 
 const CATS: { id: Cat; label: string; slug: string }[] = [
   { id: "nl", label: "Nederland", slug: "nederland" },
@@ -17,6 +18,8 @@ const ALLES_FIRST = 24; // op "Alles" eerst zoveel kaarten, daarna "Toon alle"
 const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
+// feed geopend vanuit het overzicht (dan is sluiten = history.back())
+let feedPushed = false;
 // Intro-animatie alleen bij de eerste keer laden; daarna (tabwissel, herladen) niet opnieuw.
 let introDone = false;
 
@@ -51,14 +54,15 @@ function amsterdamTime(iso?: string) {
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 // ---- routing via hash: #/nederland, #/filmpjes, #/bericht/<slug>
-type Route = { view: View; selected: string | null };
+type Route = { view: View; selected: string | null; video: string | null };
 function parseHash(): Route {
   const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
-  if (h.startsWith("bericht/")) return { view: "alles", selected: h.slice(8) };
+  if (h.startsWith("bericht/")) return { view: "alles", selected: h.slice(8), video: null };
   const c = CATS.find((c) => c.slug === h);
-  if (c) return { view: c.id, selected: null };
-  if (h === "filmpjes" || h === "dumpert") return { view: h, selected: null };
-  return { view: "alles", selected: null };
+  if (c) return { view: c.id, selected: null, video: null };
+  const m = /^(filmpjes|dumpert)(?:\/(.+))?$/.exec(h);
+  if (m) return { view: m[1] as View, selected: null, video: m[2] || null };
+  return { view: "alles", selected: null, video: null };
 }
 function viewHash(v: View) {
   if (v === "alles") return "#/";
@@ -741,9 +745,30 @@ export default function App() {
     }
   };
   const setView = (v: View) => {
+    // Mobiel: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht).
+    if ((v === "filmpjes" || v === "dumpert") && data && window.matchMedia?.("(max-width: 640px)").matches) {
+      const list = v === "filmpjes" ? data.filmpjes : data.dumpert;
+      if (list.length) {
+        feedPushed = false;
+        window.location.hash = `#/${v}/${encodeURIComponent(videoSlug(list[0]))}`;
+        return;
+      }
+    }
     if (viewHash(v) === (window.location.hash || "#/")) return;
     window.location.hash = viewHash(v);
   };
+  const openFeed = useCallback((cat: "filmpjes" | "dumpert", slug: string) => {
+    feedPushed = true;
+    window.location.hash = `#/${cat}/${encodeURIComponent(slug)}`;
+  }, []);
+  const closeFeed = useCallback((cat: "filmpjes" | "dumpert") => {
+    if (feedPushed) {
+      feedPushed = false;
+      window.history.back();
+    } else {
+      window.location.replace(`${window.location.pathname}${window.location.search}#/${cat}`);
+    }
+  }, []);
   const open = useCallback((key: string) => {
     openedInside = true;
     window.location.hash = `#/bericht/${key}`;
@@ -868,6 +893,9 @@ export default function App() {
             bionic={bionic}
             bronFilter={view === "filmpjes"}
             enter={!introDone && motionOK()}
+            video={route.video}
+            onOpen={(slug) => openFeed(view, slug)}
+            onCloseFeed={() => closeFeed(view)}
           />
         ) : (
           <NewsList

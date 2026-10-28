@@ -1,7 +1,7 @@
 // SVG-sprite uit het design (lucide-achtige iconen). Eén keer renderen, gebruiken met <Icon name="…" />.
 export type IconName =
   | "sun" | "cloud" | "rain" | "partly" | "moon" | "back" | "next" | "ext" | "play" | "x" | "pin"
-  | "alert" | "spark" | "up" | "eye" | "layers" | "clock" | "film" | "sliders";
+  | "alert" | "spark" | "up" | "eye" | "layers" | "clock" | "film" | "sliders" | "volume" | "mute" | "chevup" | "chevdown";
 
 export function IconSprite() {
   return (
@@ -26,6 +26,10 @@ export function IconSprite() {
         <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></symbol>
         <symbol id="i-film" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" /><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5" /></symbol>
         <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></symbol>
+        <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></symbol>
+        <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="m22 9-6 6" /><path d="m16 9 6 6" /></symbol>
+        <symbol id="i-chevup" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6" /></symbol>
+        <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
       </defs>
     </svg>
   );

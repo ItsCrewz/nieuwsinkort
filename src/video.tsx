@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import type { Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
+import { Feed, videoSlug } from "./feed";
 
 type Player =
   | { kind: "youtube"; src: string }
@@ -10,7 +10,7 @@ type Player =
   | { kind: "mp4"; src: string }
   | null;
 
-function youtubeId(url: string): string | null {
+export function youtubeId(url: string): string | null {
   const m =
     /youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|live\/|watch\?(?:.*&)?v=)([\w-]{6,})/.exec(url) ||
     /youtu\.be\/([\w-]{6,})/.exec(url);
@@ -33,7 +33,7 @@ export function playerFor(v: Video): Player {
 
 // media.dumpert.nl staat geen andere sites toe (CORS). Native HLS (Safari/iOS) heeft daar geen last
 // van; hls.js (Chrome/Firefox) haalt Dumpert via onze eigen proxy /media/dumpert/... (Pages Function).
-function viaProxy(src: string): string {
+export function viaProxy(src: string): string {
   try {
     const u = new URL(src);
     if (u.hostname === "media.dumpert.nl") return `/media/dumpert${u.pathname}${u.search}`;
@@ -43,164 +43,20 @@ function viaProxy(src: string): string {
   return src;
 }
 
-function HlsVideo({ src, poster, onFail, label }: { src: string; poster?: string; onFail: () => void; label: string }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    let destroyed = false;
-    let hls: { destroy: () => void } | null = null;
-    // Safari/iOS: native HLS
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = src;
-      video.play().catch(() => {});
-      return;
-    }
-    import("hls.js").then(({ default: Hls }) => {
-      if (destroyed) return;
-      if (!Hls.isSupported()) {
-        onFail();
-        return;
-      }
-      const h = new Hls({ enableWorker: true });
-      hls = h;
-      h.on(Hls.Events.ERROR, (_e, data) => {
-        if (data.fatal) onFail();
-      });
-      h.loadSource(viaProxy(src));
-      h.attachMedia(video);
-      h.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {});
-      });
-    });
-    return () => {
-      destroyed = true;
-      hls?.destroy();
-    };
-  }, [src, onFail]);
-  return <video ref={ref} poster={poster || undefined} controls playsInline preload="metadata" aria-label={label} />;
-}
-
-const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
 function popIcon(p: string) {
   return /weergaven|views/i.test(p) ? "eye" : "up";
-}
-
-export function VideoModal({ v, cat, onClose }: { v: Video; cat: string; onClose: () => void }) {
-  const p = playerFor(v);
-  const [failed, setFailed] = useState(false);
-  const [closing, setClosing] = useState(false);
-  // De speler (iframe/hls) pas laden als het paneel staat: anders concurreert het laden met de animatie.
-  const [ready, setReady] = useState(() => !motionOK());
-  const fail = useCallback(() => setFailed(true), []);
-  const panel = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => {
-    if (!motionOK()) return onClose();
-    setClosing(true);
-    window.setTimeout(onClose, 320); // vangnet als animationend niet komt
-  }, [onClose]);
-  const closeBtn = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    closeBtn.current?.focus({ preventScroll: true });
-    const t = window.setTimeout(() => setReady(true), 320); // vangnet als animationend niet komt
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-      window.clearTimeout(t);
-    };
-  }, [close]);
-  const isShort = /\/shorts\//.test(v.href) && p?.kind === "youtube";
-  // Via een portal naar <body>: .shell heeft container-type (layout containment), dat breekt position:fixed.
-  return createPortal(
-    <div className="app modal-root">
-    <div className={`modal ${closing ? "out" : ""}`} role="dialog" aria-modal="true" aria-label={`Videospeler: ${v.titel}`}>
-      <button className="backdrop" aria-label="Sluit de speler" onClick={close} tabIndex={-1} />
-      <div
-        ref={panel}
-        className={`panel cat-${cat}`}
-        onAnimationEnd={(e) => {
-          if (e.target !== panel.current) return;
-          if (closing) onClose();
-          else setReady(true);
-        }}
-      >
-        <div className={`player ${isShort ? "short" : ""}`}>
-          {!p || failed ? (
-            <div className="p-fail">
-              Dit filmpje speelt hier helaas niet af.
-              <a href={v.href} target="_blank" rel="noreferrer">
-                Open bij {v.bron} ↗
-              </a>
-            </div>
-          ) : !ready ? (
-            v.thumb ? <img className="p-poster" src={v.thumb} alt="" referrerPolicy="no-referrer" decoding="async" /> : null
-          ) : p.kind === "youtube" ? (
-            <iframe
-              src={p.src}
-              title={v.titel}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
-          ) : p.kind === "hls" ? (
-            <HlsVideo src={p.src} poster={v.thumb} onFail={fail} label={v.titel} />
-          ) : (
-            <video
-              src={p.src}
-              poster={v.thumb || undefined}
-              controls
-              autoPlay
-              playsInline
-              preload="metadata"
-              aria-label={v.titel}
-              onError={() => setFailed(true)}
-            />
-          )}
-        </div>
-        <div className="pinfo">
-          <div className="pinfo-main">
-            <div className="kicker"><i className="mk" />{v.bron}{v.tijd ? <time className="tnum">{v.tijd}</time> : null}</div>
-            <h2 className="p-title">{v.titel}</h2>
-            <p className="note">
-              {v.populariteit ? <span className="tnum">{v.populariteit} · </span> : null}
-              Speelt het niet af?{" "}
-              <a href={v.href} target="_blank" rel="noreferrer">
-                Open het bij {v.bron}
-              </a>
-              .
-            </p>
-          </div>
-          <button ref={closeBtn} className="iconbtn" aria-label="Sluit de speler" onClick={close}>
-            <Icon name="x" />
-          </button>
-        </div>
-      </div>
-    </div>
-    </div>,
-    document.body
-  );
 }
 
 function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; cat: string; bionic: boolean; enter: boolean; onPlay: (v: Video) => void }) {
   const [failed, setFailed] = useState(false);
   const playable = !!playerFor(v);
-  const activate = () => {
-    if (playable) onPlay(v);
-    else window.open(v.href, "_blank", "noreferrer");
-  };
+  const activate = () => onPlay(v);
   const anim = enter && i < 12;
   return (
     <div
       role="button"
       tabIndex={0}
-      aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (opent bij ${v.bron})`}
+      aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (speelt alleen bij ${v.bron})`}
       onClick={activate}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -246,15 +102,34 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
   );
 }
 
-export function VideoGrid({ list, cat, bionic, bronFilter, enter: enterProp }: { list: Video[]; cat: "filmpjes" | "dumpert"; bionic: boolean; bronFilter: boolean; enter: boolean }) {
+export function VideoGrid({
+  list,
+  cat,
+  bionic,
+  bronFilter,
+  enter: enterProp,
+  video,
+  onOpen,
+  onCloseFeed,
+}: {
+  list: Video[];
+  cat: "filmpjes" | "dumpert";
+  bionic: boolean;
+  bronFilter: boolean;
+  enter: boolean;
+  video: string | null;
+  onOpen: (slug: string) => void;
+  onCloseFeed: () => void;
+}) {
   const [first] = useState(enterProp); // alleen bij het eerste tonen
   const [touched, setTouched] = useState(false);
   const enter = first && !touched;
   const [bron, setBron] = useState("alle");
-  const [playing, setPlaying] = useState<Video | null>(null);
   const bronnen: string[] = [];
   for (const v of list) if (v.bron && !bronnen.includes(v.bron)) bronnen.push(v.bron);
   const shown = bron === "alle" || !bronnen.includes(bron) ? list : list.filter((v) => v.bron === bron);
+  // De feed volgt het bron-chipje als de video daarin zit, anders de hele lijst (deep link).
+  const feedList = video && shown.some((v) => videoSlug(v) === video) ? shown : list;
   if (list.length === 0) {
     return (
       <div className="empty">
@@ -280,10 +155,10 @@ export function VideoGrid({ list, cat, bionic, bronFilter, enter: enterProp }: {
       ) : null}
       <div className={`vgrid ${enter ? "" : "swap"}`} key={bron}>
         {shown.map((v, i) => (
-          <VideoCard key={v.href + i} v={v} i={i} cat={cat} bionic={bionic} enter={enter} onPlay={setPlaying} />
+          <VideoCard key={v.href + i} v={v} i={i} cat={cat} bionic={bionic} enter={enter} onPlay={(x) => onOpen(videoSlug(x))} />
         ))}
       </div>
-      {playing ? <VideoModal v={playing} cat={cat} onClose={() => setPlaying(null)} /> : null}
+      {video ? <Feed key={cat} list={feedList} cat={cat} start={video} onClose={onCloseFeed} /> : null}
     </>
   );
 }
