@@ -17,9 +17,12 @@ fi
 
 [ -d node_modules ] || npm ci
 if [ -z "${SKIP_BUILD:-}" ]; then
+  # npm run build draait eerst scripts/build-bronnen.mjs: public/bronnen.json wordt
+  # opnieuw opgebouwd uit ${FEEDS_JSON:-/workspace/nieuws/feeds.json} (+ filmpjes.py),
+  # zodat het Bronnen-paneel gelijk loopt met de feeds.
   npm run build
 fi
-test -f dist/index.html && test -f dist/data.json
+test -f dist/index.html && test -f dist/data.json && test -f dist/bronnen.json
 
 # Project aanmaken als het nog niet bestaat (eenmalig; faalt stil als het al bestaat)
 npx wrangler pages project create "$PROJECT" --production-branch main >/dev/null 2>&1 || true

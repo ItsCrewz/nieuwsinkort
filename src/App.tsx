@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { flushSync } from "react-dom";
+import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Cat, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch, host } from "./ui";
+import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { SourcesSheet } from "./sheet";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { VideoGrid } from "./video";
 
@@ -16,6 +17,8 @@ const ALLES_FIRST = 24; // op "Alles" eerst zoveel kaarten, daarna "Toon alle"
 const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
+// Intro-animatie alleen bij de eerste keer laden; daarna (tabwissel, herladen) niet opnieuw.
+let introDone = false;
 
 // ---------------------------------------------------------------- helpers
 function slugify(s: string) {
@@ -39,23 +42,6 @@ function bronLabel(bronnen: Bron[]) {
 const bronnenTekst = (n: number) => `${n} ${n === 1 ? "bron" : "bronnen"}`;
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-type VTDoc = Document & { startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> } };
-const canVT = () => motionOK() && typeof (document as VTDoc).startViewTransition === "function";
-function withVT(update: () => void, after?: () => void) {
-  if (!canVT()) {
-    update();
-    after?.();
-    return;
-  }
-  try {
-    const t = (document as VTDoc).startViewTransition!(() => update());
-    t.finished.then(after, after);
-  } catch {
-    update();
-    after?.();
-  }
-}
-
 function amsterdamTime(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -117,13 +103,13 @@ function WarnBanner({ text }: { text: string }) {
   const m = /^(.{0,80}?[.:])\s+(.*)$/s.exec(text);
   return (
     <div className={`alert ${lvl}`} role="status">
-      <Icon name="alert" />
+      <Icon name="alert" className="sm" />
       <div>{m ? <><strong>{m[1]}</strong> {m[2]}</> : <strong>{text}</strong>}</div>
     </div>
   );
 }
 
-function WeatherCard({ W, bionic, anim }: { W?: Weer; bionic: boolean; anim: boolean }) {
+function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   const nu = W?.nu ?? {};
   const vd = W?.vandaag ?? {};
   const dagen = (W?.dagen ?? []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
@@ -138,78 +124,78 @@ function WeatherCard({ W, bionic, anim }: { W?: Weer; bionic: boolean; anim: boo
   const kind = weatherKind(nu.omschrijving);
   const dates = dayDates(dagen.slice(0, 4));
   return (
-    <section className={`card weather ${anim ? "fade" : ""}`} aria-label={`Weer in ${plaats}`}>
-      {W?.waarschuwing ? <WarnBanner text={W.waarschuwing} /> : null}
-      <div className="w-head">
-        <div className="w-place">
-          <Icon name="pin" className="sm" />
-          {plaats} <span>nu</span>
-        </div>
-        {W?.bijgewerkt ? <span className="w-upd">Weer bijgewerkt {W.bijgewerkt}</span> : null}
+    <section className="wx" aria-label={`Weer in ${plaats}`}>
+      <div className="wx-head">
+        <h2 className="kicker">Weer · {plaats}</h2>
+        {W?.bijgewerkt ? <span className="wx-upd tnum">{W.bijgewerkt}</span> : null}
       </div>
+      {W?.waarschuwing ? <WarnBanner text={W.waarschuwing} /> : null}
       {leeg ? (
-        <div className="empty" style={{ padding: "8px 0" }}>
-          <Icon name="cloud" />
-          Het weerbericht is er nu even niet. Kom straks nog eens kijken.
-        </div>
+        <p className="wx-empty">Het weerbericht is er nu even niet. Kom straks nog eens kijken.</p>
       ) : (
         <>
-          {heeftNu || W?.verwachting ? (
-            <div className="w-main">
-              {heeftNu ? (
-                <div className="w-now">
-                  <Icon name={kind as IconName} className={`w-icon ${KIND_CLASS[kind]}`} />
-                  <div>
-                    <div className="w-temp">{nu.temp}°</div>
-                    <div className="w-cond">
-                      {nu.omschrijving || ""}
-                      {typeof nu.gevoel === "number" ? `${nu.omschrijving ? " · " : ""}voelt als ${nu.gevoel}°` : ""}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              {W?.verwachting ? (
-                <p className="w-text bn">
-                  <BionicText text={W.verwachting} on={bionic} />
-                </p>
-              ) : null}
+          {heeftNu ? (
+            <div className="wx-now">
+              <span className="wx-temp tnum">{nu.temp}°</span>
+              <div className="wx-cond">
+                <Icon name={kind as IconName} className={`wx-icon ${KIND_CLASS[kind]}`} />
+                <span>
+                  {nu.omschrijving || ""}
+                  {typeof nu.gevoel === "number" ? (
+                    <>
+                      <br />
+                      <span className="muted">voelt als {nu.gevoel}°</span>
+                    </>
+                  ) : null}
+                </span>
+              </div>
             </div>
+          ) : null}
+          {W?.verwachting ? (
+            <p className="wx-text bn">
+              <BionicText text={W.verwachting} on={bionic} />
+            </p>
           ) : null}
           {stats.length ? (
-            <div className="w-stats">
+            <dl className="wx-stats">
               {stats.map((s) => (
-                <span key={s.k}>
-                  {s.k} <b>{s.v}</b>
-                </span>
+                <div key={s.k}>
+                  <dt>{s.k}</dt>
+                  <dd className="tnum">{s.v}</dd>
+                </div>
               ))}
-            </div>
+            </dl>
           ) : null}
           {dagen.length ? (
-            <div className="w-days" style={{ gridTemplateColumns: `repeat(${Math.min(dagen.length, 4)},minmax(0,1fr))` }}>
+            <ol className="wx-days" style={{ gridTemplateColumns: `repeat(${Math.min(dagen.length, 4)},minmax(0,1fr))` }}>
               {dagen.slice(0, 4).map((d, i) => {
                 const k = weatherKind(d.omschrijving);
                 const label = d.omschrijving || { sun: "Zonnig", rain: "Regen", partly: "Half bewolkt", cloud: "Bewolkt" }[k];
                 return (
-                  <div className="day" key={d.dag + i} title={label} style={anim ? undefined : { animation: "none" }}>
+                  <li className="day" key={d.dag + i} title={label}>
                     <span className="dn">{cap(d.dag)}</span>
-                    <span className="dd">{dates[i] || label}</span>
+                    <span className="dd tnum">{dates[i] || ""}</span>
                     <Icon name={k} className={KIND_CLASS[k]} label={label} />
-                    <span className="hi">{typeof d.max === "number" ? `${d.max}°` : "–"}</span>
-                    <span className="lo">{typeof d.min === "number" ? `${d.min}°` : "–"}</span>
-                  </div>
+                    <span className="hl tnum">
+                      <b>{typeof d.max === "number" ? `${d.max}°` : "–"}</b> {typeof d.min === "number" ? `${d.min}°` : "–"}
+                    </span>
+                  </li>
                 );
               })}
-            </div>
+            </ol>
           ) : null}
         </>
       )}
       {W?.bronnen?.length ? (
-        <div className="w-src">
-          <span>Bron:</span>
-          {W.bronnen.map((b) => (
-            <a key={b.href} href={b.href} target="_blank" rel="noreferrer">
-              {b.site}
-            </a>
+        <div className="wx-src">
+          Bron:{" "}
+          {W.bronnen.map((b, i) => (
+            <span key={b.href}>
+              {i ? ", " : ""}
+              <a href={b.href} target="_blank" rel="noreferrer">
+                {b.site}
+              </a>
+            </span>
           ))}
         </div>
       ) : null}
@@ -217,27 +203,22 @@ function WeatherCard({ W, bionic, anim }: { W?: Weer; bionic: boolean; anim: boo
   );
 }
 
-function SummaryCard({ text, bionic, sources, time, anim }: { text: string; bionic: boolean; sources: number; time: string; anim: boolean }) {
+function Briefing({ text, bionic, sources, time }: { text: string; bionic: boolean; sources: number; time: string }) {
   return (
-    <section className={`card kort ${anim ? "fade" : ""}`} style={{ animationDelay: "80ms" }} aria-label="In het kort">
-      <div className="eyebrow">
-        <Icon name="spark" className="sm" />
-        In het kort
-      </div>
+    <section className="brief" aria-label="In het kort">
+      <h2 className="kicker accent">In het kort</h2>
       {text ? (
-        <p className="k-text bn">
+        <p className="brief-text bn">
           <BionicText text={text} on={bionic} />
         </p>
       ) : (
-        <p className="k-text" style={{ color: "var(--muted-fg)" }}>
-          De samenvatting van vandaag komt er zo aan.
-        </p>
+        <p className="brief-text muted">De samenvatting van vandaag komt er zo aan.</p>
       )}
       {sources > 0 ? (
-        <div className="k-meta">
+        <p className="brief-meta">
           Samengevat uit {bronnenTekst(sources)}
-          {time ? ` · ${time}` : ""}
-        </div>
+          {time ? <> · <span className="tnum">{time}</span></> : null}
+        </p>
       ) : null}
     </section>
   );
@@ -254,43 +235,42 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
     { value: "filmpjes", id: "filmpjes", label: "Filmpjes", count: data.filmpjes.length },
     { value: "dumpert", id: "dumpert", label: "Dumpert", count: data.dumpert.length },
   ];
-  const measure = useCallback(() => {
+  // Indicator alleen via transform (translateX + scaleX op een 100px-balk): loopt op de compositor, ook op 120 Hz.
+  const place = useCallback((sel: HTMLElement | null, instant = false) => {
     const list = listRef.current;
     const ind = indRef.current;
-    if (!list || !ind) return;
-    const sel = list.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (!sel) return;
-    const fresh = first.current;
-    if (fresh) ind.style.transition = "none";
-    list.style.setProperty("--ix", sel.offsetLeft + "px");
-    list.style.setProperty("--iw", sel.offsetWidth + "px");
-    if (fresh) {
+    if (!list || !ind || !sel) return;
+    if (instant) ind.style.transition = "none";
+    ind.style.transform = `translate3d(${sel.offsetLeft}px,0,0) scaleX(${sel.offsetWidth / 100})`;
+    if (instant) {
       void ind.offsetWidth;
       ind.style.transition = "";
-      first.current = false;
     }
     ind.classList.add("ready");
     if (list.scrollWidth > list.clientWidth) {
       const left = Math.max(0, sel.offsetLeft - (list.clientWidth - sel.offsetWidth) / 2);
-      list.scrollTo({ left, behavior: fresh || !motionOK() ? "auto" : "smooth" });
+      list.scrollTo({ left, behavior: instant || !motionOK() ? "auto" : "smooth" });
     }
   }, []);
+  const measure = useCallback(
+    (instant = false) => place(listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]') ?? null, instant),
+    [place]
+  );
   useLayoutEffect(() => {
-    measure();
-  });
+    measure(first.current);
+    first.current = false;
+  }, [view, measure]);
   useEffect(() => {
     const list = listRef.current;
     if (!list || !window.ResizeObserver) return;
-    const ro = new ResizeObserver(() => measure());
+    const ro = new ResizeObserver(() => measure(true));
     ro.observe(list);
-    list.querySelectorAll(".tab").forEach((n) => ro.observe(n));
-    document.fonts?.ready.then(() => measure()).catch(() => {});
+    document.fonts?.ready.then(() => measure(true)).catch(() => {});
     return () => ro.disconnect();
   }, [measure]);
   return (
     <nav className="tabs" aria-label="Rubrieken">
       <div className="tablist" role="tablist" ref={listRef}>
-        <span className="ind" ref={indRef} aria-hidden="true" />
         {options.map((o) => (
           <button
             key={o.value}
@@ -298,13 +278,17 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
             className={`tab cat-${o.id}`}
             role="tab"
             aria-selected={view === o.value}
-            onClick={() => onChange(o.value)}
+            onClick={(e) => {
+              place(e.currentTarget); // meteen bewegen, de inhoud volgt
+              onChange(o.value);
+            }}
           >
-            <i className="tdot" />
-            <span>{o.label}</span>
-            <span className="tcount">{o.count}</span>
+            {o.id !== "all" ? <i className="mk" /> : null}
+            {o.label}
+            <span className="tcount tnum">{o.count}</span>
           </button>
         ))}
+        <span className="ind" ref={indRef} aria-hidden="true" />
       </div>
     </nav>
   );
@@ -317,77 +301,129 @@ function sortItems(items: Item[]) {
     return a.tijd < b.tijd ? 1 : a.tijd > b.tijd ? -1 : 0;
   });
 }
+// Openingsverhaal: het bericht met de meeste bronnen (meest gedekt), bij gelijkspel het nieuwste.
+function pickLead(sorted: Item[]) {
+  let best = -1;
+  let n = -1;
+  sorted.forEach((it, i) => {
+    const c = new Set((it.bronnen ?? []).map((b) => b.site)).size;
+    if (c > n) {
+      n = c;
+      best = i;
+    }
+  });
+  return best;
+}
 
-function NewsCard({ item, i, bionic, anim, hero, onOpen }: { item: Item; i: number; bionic: boolean; anim: boolean; hero: boolean; onOpen: (k: string, el: HTMLElement) => void }) {
+type OpenFn = (k: string) => void;
+function useOpen(key: string, onOpen: OpenFn) {
+  return (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    onOpen(key);
+  };
+}
+
+const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { item: Item; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
   const key = itemKey(item);
+  const click = useOpen(key, onOpen);
   const n = item.bronnen?.length ?? 0;
   return (
-    <a
-      className={`card ncard cat-${item.cat} ${anim ? "fade" : ""}`}
-      data-id={key}
-      href={`#/bericht/${key}`}
-      style={{ animationDelay: `${Math.min(i, 9) * 45}ms`, viewTransitionName: hero ? "hero" : undefined } as React.CSSProperties}
-      onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-        e.preventDefault();
-        onOpen(key, e.currentTarget);
-      }}
-    >
-      <div className="n-top">
-        <span className="label">
-          <i />
-          {CAT_LABEL[item.cat] ?? item.cat}
-        </span>
-        {item.tijd ? <time>{item.tijd}</time> : null}
+    <a className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
+      <div className="kicker">
+        <i className="mk" />
+        {CAT_LABEL[item.cat] ?? item.cat}
+        {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
       </div>
-      <h3 className="n-title">{item.kop}</h3>
+      <h2 className="lead-title">{item.kop}</h2>
       {item.ai ? (
-        <p className="n-sum bn">
+        <p className="lead-sum bn">
           <BionicText text={item.ai} on={bionic} />
         </p>
       ) : null}
-      <div className="n-foot">
-        <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
-          <Icon name="layers" className="sm" />
-          {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
-        </span>
+      <div className="row-foot">
+        <span className="src">{n > 0 ? `${bronLabel(item.bronnen)} · ${bronnenTekst(n)}` : "Geen bron"}</span>
         <span className="more">
-          Lees meer <Icon name="next" className="sm" />
+          Lees verder <Icon name="next" className="sm" />
         </span>
       </div>
     </a>
   );
-}
+});
 
-function NewsGrid({ items, view, bionic, anim, heroKey, onOpen }: { items: Item[]; view: View; bionic: boolean; anim: boolean; heroKey: string | null; onOpen: (k: string, el: HTMLElement) => void }) {
+const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item: Item; i: number; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
+  const key = itemKey(item);
+  const click = useOpen(key, onOpen);
+  const n = item.bronnen?.length ?? 0;
+  const anim = enter && i < 12;
+  return (
+    <a
+      className={`row cat-${item.cat} ${anim ? "enter" : ""}`}
+      data-id={key}
+      href={`#/bericht/${key}`}
+      style={anim ? ({ "--i": i + 1 } as React.CSSProperties) : undefined}
+      onClick={click}
+    >
+      <time className="row-time tnum">{item.tijd || ""}</time>
+      <div className="row-main">
+        <div className="kicker">
+          <i className="mk" />
+          {CAT_LABEL[item.cat] ?? item.cat}
+        </div>
+        <h3 className="row-title">{item.kop}</h3>
+        {item.ai ? (
+          <p className="row-sum bn">
+            <BionicText text={item.ai} on={bionic} />
+          </p>
+        ) : null}
+        <div className="row-foot">
+          <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
+            {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
+          </span>
+          <span className="more" aria-hidden="true">
+            <Icon name="next" className="sm" />
+          </span>
+        </div>
+      </div>
+    </a>
+  );
+});
+
+function NewsList({ items, view, bionic, focusKey, onOpen }: { items: Item[]; view: View; bionic: boolean; focusKey: string | null; onOpen: OpenFn }) {
+  const [enter] = useState(() => !introDone && motionOK());
   const [showAll, setShowAll] = useState(false);
-  const sorted = sortItems(items);
-  const limit = view === "alles" && !showAll && sorted.length > ALLES_FIRST + 6;
-  // kaart waar je vandaan kwam altijd laten zien
-  const heroIdx = heroKey ? sorted.findIndex((x) => itemKey(x) === heroKey) : -1;
-  const shown = limit && heroIdx < ALLES_FIRST ? sorted.slice(0, ALLES_FIRST) : sorted;
+  const sorted = useMemo(() => sortItems(items), [items]);
+  const leadIdx = useMemo(() => pickLead(sorted), [sorted]);
   if (sorted.length === 0)
     return (
-      <div className="card empty fade">
+      <div className="empty">
         <Icon name="clock" />
         Nog geen berichten van vandaag in deze rubriek. Om 08:00 en 12:00 komt er nieuws bij.
       </div>
     );
+  const lead = sorted[leadIdx];
+  const rest = sorted.filter((_, i) => i !== leadIdx);
+  const limit = view === "alles" && !showAll && rest.length > ALLES_FIRST + 6;
+  const focusIdx = focusKey ? rest.findIndex((x) => itemKey(x) === focusKey) : -1;
+  const shown = limit && focusIdx < ALLES_FIRST ? rest.slice(0, ALLES_FIRST) : rest;
   return (
-    <>
-      <div className="grid">
-        {shown.map((it, i) => (
-          <NewsCard key={itemKey(it)} item={it} i={i} bionic={bionic} anim={anim} hero={heroKey === itemKey(it)} onOpen={onOpen} />
-        ))}
-      </div>
-      {shown.length < sorted.length ? (
+    <div className={enter ? "" : "swap"}>
+      <LeadStory item={lead} bionic={bionic} enter={enter} onOpen={onOpen} />
+      {shown.length ? (
+        <div className="rows">
+          {shown.map((it, i) => (
+            <NewsRow key={itemKey(it)} item={it} i={i} bionic={bionic} enter={enter} onOpen={onOpen} />
+          ))}
+        </div>
+      ) : null}
+      {shown.length < rest.length ? (
         <div className="morewrap">
-          <button type="button" className="back" onClick={() => setShowAll(true)}>
-            Toon alle {sorted.length} berichten <Icon name="next" className="sm" />
+          <button type="button" className="btn" onClick={() => setShowAll(true)}>
+            Toon alle {sorted.length} berichten
           </button>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
 
@@ -398,24 +434,24 @@ function SourceRow({ b }: { b: Bron }) {
   const [imgOk, setImgOk] = useState(true);
   const h = host(b.href);
   return (
-    <a className="srcrow" href={b.href} target="_blank" rel="noopener noreferrer">
-      <span className="mono" aria-hidden="true">
-        {imgOk && h ? (
-          <img src={`https://icons.duckduckgo.com/ip3/${h}.ico`} alt="" width={20} height={20} loading="lazy" referrerPolicy="no-referrer" onError={() => setImgOk(false)} />
-        ) : (
-          monoOf(b.site)
-        )}
-      </span>
-      <span className="s-text">
-        <span className="s-out">{h}</span>
+    <li>
+      <a className="srcrow" href={b.href} target="_blank" rel="noopener noreferrer">
+        <span className="mono" aria-hidden="true">
+          {imgOk && h ? (
+            <img src={`https://icons.duckduckgo.com/ip3/${h}.ico`} alt="" width={16} height={16} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setImgOk(false)} />
+          ) : (
+            monoOf(b.site)
+          )}
+        </span>
         <span className="s-title">{b.site}</span>
-      </span>
-      <Icon name="ext" className="sm" label="Opent in nieuw tabblad" />
-    </a>
+        <span className="s-out">{h}</span>
+        <Icon name="ext" className="sm" label="Opent in nieuw tabblad" />
+      </a>
+    </li>
   );
 }
 
-function DetailView({ item, onBack, bionic, anim }: { item: Item; onBack: () => void; bionic: boolean; anim: boolean }) {
+function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
     return () => {
@@ -426,29 +462,17 @@ function DetailView({ item, onBack, bionic, anim }: { item: Item; onBack: () => 
   const punten = item.punten ?? [];
   const bronnen = item.bronnen ?? [];
   return (
-    <article className={`detail cat-${item.cat} ${anim ? "fade" : ""}`}>
+    <article className={`detail cat-${item.cat}`}>
       <button type="button" className="back" onClick={onBack}>
         <Icon name="back" className="sm" />
-        Terug naar nieuws
+        Terug naar het nieuws
       </button>
       <header className="d-head">
-        <div className="d-meta">
-          <span className="label">
-            <i />
-            {CAT_LABEL[item.cat] ?? item.cat}
-          </span>
-          {item.tijd ? (
-            <span>
-              <Icon name="clock" className="sm" />
-              {item.tijd}
-            </span>
-          ) : null}
-          {bronnen.length ? (
-            <span>
-              <Icon name="layers" className="sm" />
-              {bronnenTekst(bronnen.length)}
-            </span>
-          ) : null}
+        <div className="kicker">
+          <i className="mk" />
+          {CAT_LABEL[item.cat] ?? item.cat}
+          {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
+          {bronnen.length ? <span className="muted">{bronnenTekst(bronnen.length)}</span> : null}
         </div>
         <h1 className="d-title">{item.kop}</h1>
         {item.ai ? (
@@ -458,7 +482,7 @@ function DetailView({ item, onBack, bionic, anim }: { item: Item; onBack: () => 
         ) : null}
       </header>
       {paragraphs.length ? (
-        <div className="d-sum bn">
+        <div className="d-body bn">
           {paragraphs.map((p, n) => (
             <p key={n}>
               <BionicText text={p} on={bionic} />
@@ -467,30 +491,27 @@ function DetailView({ item, onBack, bionic, anim }: { item: Item; onBack: () => 
         </div>
       ) : null}
       {punten.length ? (
-        <section className="card d-block" aria-label="Belangrijkste punten">
+        <section className="d-sec" aria-label="Belangrijkste punten">
           <h2 className="d-h">Belangrijkste punten</h2>
-          <ul className="points bn">
+          <ol className="points bn">
             {punten.map((p, i) => (
               <li key={i}>
-                <i />
-                <span>
-                  <BionicText text={p} on={bionic} />
-                </span>
+                <BionicText text={p} on={bionic} />
               </li>
             ))}
-          </ul>
+          </ol>
         </section>
       ) : null}
-      <section className="d-srcs" aria-label="Bronnen">
+      <section className="d-sec" aria-label="Bronnen">
         <h2 className="d-h">Bronnen</h2>
         {bronnen.length ? (
-          <div className="card srclist">
+          <ul className="srclist">
             {bronnen.map((b, i) => (
               <SourceRow key={b.href + i} b={b} />
             ))}
-          </div>
+          </ul>
         ) : (
-          <div className="card empty">Geen bronnen bij dit bericht.</div>
+          <p className="muted">Geen bronnen bij dit bericht.</p>
         )}
       </section>
     </article>
@@ -509,7 +530,7 @@ function useData() {
       d.items ??= [];
       d.filmpjes ??= [];
       d.dumpert ??= [];
-      setData(d);
+      setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
       setError(false);
     } catch {
       setError(true);
@@ -543,7 +564,7 @@ function savedTheme(): Theme | null {
 }
 function applyTheme(t: Theme) {
   document.documentElement.dataset.theme = t;
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", t === "dark" ? "#09090b" : "#fafafa"));
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", t === "dark" ? "#141311" : "#f5f2ea"));
 }
 function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme as Theme) || savedTheme() || systemTheme());
@@ -557,6 +578,7 @@ function useTheme() {
     mq.addEventListener?.("change", on);
     return () => mq.removeEventListener?.("change", on);
   }, []);
+  // Direct wisselen: geen kleurovergang op elk element (dat hapert), één repaint en klaar.
   const toggle = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     try {
@@ -564,25 +586,30 @@ function useTheme() {
     } catch {
       /* negeer */
     }
-    if (canVT()) {
-      withVT(() => {
-        flushSync(() => setTheme(next));
-        applyTheme(next);
-      });
-    } else {
-      const root = document.documentElement;
-      if (motionOK()) {
-        root.classList.add("theme-fade");
-        window.setTimeout(() => root.classList.remove("theme-fade"), 350);
-      }
-      setTheme(next);
-    }
+    applyTheme(next);
+    setTheme(next);
   };
   return { theme, toggle };
 }
 
 // ---------------------------------------------------------------- app
-function TopBar({ theme, onTheme, bionic, onBionic, onHome }: { theme: Theme; onTheme: () => void; bionic: boolean; onBionic: (v: boolean) => void; onHome: () => void }) {
+function TopBar({
+  theme,
+  onTheme,
+  bionic,
+  onBionic,
+  onHome,
+  onSources,
+  filtered,
+}: {
+  theme: Theme;
+  onTheme: () => void;
+  bionic: boolean;
+  onBionic: (v: boolean) => void;
+  onHome: () => void;
+  onSources: () => void;
+  filtered: number;
+}) {
   return (
     <header className="topbar">
       <div className="bar">
@@ -595,20 +622,25 @@ function TopBar({ theme, onTheme, bionic, onBionic, onHome }: { theme: Theme; on
             onHome();
           }}
         >
-          <svg className="logo" viewBox="0 0 32 32" aria-hidden="true">
-            <rect width="32" height="32" rx="9" fill="currentColor" />
-            <rect className="l" x="8" y="10" width="16" height="3" rx="1.5" />
-            <rect className="l" x="8" y="15" width="12" height="3" rx="1.5" />
-            <rect className="l" x="8" y="20" width="7" height="3" rx="1.5" />
-          </svg>
-          <span>
-            Nieuws <span className="sub">in het kort</span>
-          </span>
+          Nieuws <em>in het kort</em>
+          <span className="stop">.</span>
         </a>
         <div className="ctrls">
           <FocusSwitch value={bionic} onChange={onBionic} />
+          <button
+            type="button"
+            className={`srcbtn ${filtered ? "has" : ""}`}
+            onClick={onSources}
+            aria-haspopup="dialog"
+            aria-label={filtered ? `Bronnen: ${filtered} uit` : "Bronnen"}
+            title="Bronnen kiezen"
+          >
+            <Icon name="sliders" />
+            <span className="srcbtn-l">Bronnen</span>
+            {filtered ? <span className="badge tnum">{filtered}</span> : null}
+          </button>
           <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
-            <Icon key={theme} name={theme === "dark" ? "sun" : "moon"} />
+            <Icon name={theme === "dark" ? "sun" : "moon"} />
           </button>
         </div>
       </div>
@@ -619,14 +651,18 @@ function TopBar({ theme, onTheme, bionic, onBionic, onHome }: { theme: Theme; on
 function Footer() {
   return (
     <footer className="foot">
-      <div>
-        <strong>Nieuws in het kort</strong>
-        <br />
-        nieuwsinkort.nl
+      <div className="foot-brand">
+        Nieuws <em>in het kort</em>
+        <span className="stop">.</span>
       </div>
-      <p>Samengevat uit de bronnen die bij elk bericht staan. Elke dag om 08:00 en 12:00 bijgewerkt, met nieuws vanaf middernacht.</p>
+      <p>Samengevat uit de bronnen die bij elk bericht staan. Elke dag om 08:00 en 12:00 bijgewerkt, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
     </footer>
   );
+}
+
+function Front({ children }: { children: ReactNode }) {
+  const [enter] = useState(() => !introDone && motionOK());
+  return <div className={`front ${enter ? "enter" : ""}`}>{children}</div>;
 }
 
 function Frame({ children, top }: { children: ReactNode; top: ReactNode }) {
@@ -642,12 +678,17 @@ function Frame({ children, top }: { children: ReactNode; top: ReactNode }) {
 }
 
 export default function App() {
-  const { data, error, reload } = useData();
+  const { data: raw, error, reload } = useData();
   const { theme, toggle } = useTheme();
+  const catalog = useCatalog();
+  const { off, setMany, reset } = useSourceFilter();
+  const { groups, index } = useMemo(() => buildSources(catalog, raw), [catalog, raw]);
+  const filtered = useFiltered(raw, index, off);
+  const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => parseHash());
   const [bionic, setBionic] = useState(true);
-  const [still, setStill] = useState(false); // geen fade-in tijdens een view transition
-  const [heroKey, setHeroKey] = useState<string | null>(null);
+  const [sheet, setSheet] = useState(false);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
   const routeRef = useRef(route);
   routeRef.current = route;
 
@@ -662,36 +703,34 @@ export default function App() {
     const onHash = () => {
       const next = parseHash();
       const prev = routeRef.current;
-      const detailChange = next.selected !== prev.selected;
-      if (!detailChange) {
-        setStill(false);
+      const back = prev.selected && !next.selected ? prev.selected : null;
+      // concurrent renderen: de browser blijft frames tekenen terwijl React de nieuwe weergave bouwt
+      startTransition(() => {
+        setFocusKey(back);
         setRoute(next);
-        return;
-      }
-      const back = !!prev.selected && !next.selected ? prev.selected : null;
-      const vt = canVT();
-      withVT(
-        () => {
-          flushSync(() => {
-            setStill(vt);
-            setHeroKey(back);
-            setRoute(next);
-          });
-          if (back) {
-            const n = document.querySelector(`[data-id="${CSS.escape(back)}"]`);
-            if (n) n.scrollIntoView({ block: "center" });
-            else window.scrollTo(0, 0);
-          } else window.scrollTo(0, 0);
-        },
-        () => {
-          setHeroKey(null);
-          document.querySelectorAll<HTMLElement>(".ncard").forEach((el) => (el.style.viewTransitionName = ""));
-        }
-      );
+      });
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  // Scroll na het wisselen van pagina: naar boven bij detail, terug naar het bericht bij "terug".
+  const prevSel = useRef(route.selected);
+  useLayoutEffect(() => {
+    const was = prevSel.current;
+    prevSel.current = route.selected;
+    if (was === route.selected) return;
+    if (route.selected) window.scrollTo(0, 0);
+    else if (was) {
+      const n = document.querySelector(`[data-id="${CSS.escape(was)}"]`);
+      if (n) n.scrollIntoView({ block: "center" });
+      else window.scrollTo(0, 0);
+    }
+  }, [route.selected]);
+
+  useEffect(() => {
+    if (data) introDone = true;
+  }, [data]);
 
   const setBionicPersist = (v: boolean) => {
     setBionic(v);
@@ -705,11 +744,10 @@ export default function App() {
     if (viewHash(v) === (window.location.hash || "#/")) return;
     window.location.hash = viewHash(v);
   };
-  const open = (key: string, el: HTMLElement) => {
+  const open = useCallback((key: string) => {
     openedInside = true;
-    if (canVT()) el.style.viewTransitionName = "hero";
     window.location.hash = `#/bericht/${key}`;
-  };
+  }, []);
   const goHome = () => {
     if (window.location.hash && window.location.hash !== "#/" && window.location.hash !== "#") window.location.hash = "#/";
     else window.scrollTo({ top: 0, behavior: motionOK() ? "smooth" : "auto" });
@@ -717,25 +755,34 @@ export default function App() {
 
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} />
-      <div className="datebar">
-        <span className="date">{data ? cap(data.datum) : "\u00a0"}</span>
-        {data ? (
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} />
+      <div className="dateline">
+        <span className="date">{raw ? cap(raw.datum) : "\u00a0"}</span>
+        {raw ? (
           <span className="upd">
             <i className={`live ${error ? "off" : ""}`} />
-            {amsterdamTime(data.gegenereerd) ? `Bijgewerkt om ${amsterdamTime(data.gegenereerd)}` : "Bijgewerkt vandaag"}
+            {amsterdamTime(raw.gegenereerd) ? (
+              <>
+                Bijgewerkt <span className="tnum">{amsterdamTime(raw.gegenereerd)}</span>
+              </>
+            ) : (
+              "Bijgewerkt vandaag"
+            )}
           </span>
         ) : null}
       </div>
+      {sheet ? (
+        <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
+      ) : null}
     </>
   );
 
-  if (!data) {
+  if (!data || !raw) {
     return (
       <Frame top={top}>
         <main className="wrap" id="top">
           {error ? (
-            <div className="card empty" style={{ marginTop: 16 }}>
+            <div className="empty" style={{ marginTop: 24 }}>
               <Icon name="alert" />
               Het nieuws laden lukt even niet.
               <button type="button" className="linkbtn" onClick={reload}>
@@ -743,16 +790,20 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div aria-busy="true" aria-label="Nieuws laden">
-              <div className="hero">
-                <div className="skel" style={{ flex: "1.5 1 420px", height: 300 }} />
-                <div className="skel" style={{ flex: "1 1 300px", height: 300 }} />
+            <div aria-busy="true" aria-label="Nieuws laden" className="skeleton">
+              <div className="front">
+                <div>
+                  <div className="skel" style={{ width: 90, height: 12 }} />
+                  <div className="skel" style={{ height: 22, marginTop: 14 }} />
+                  <div className="skel" style={{ height: 22, marginTop: 10 }} />
+                  <div className="skel" style={{ height: 22, marginTop: 10, width: "70%" }} />
+                </div>
+                <div className="skel" style={{ height: 240 }} />
               </div>
-              <div className="grid" style={{ marginTop: 92 }}>
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="skel" style={{ height: 220 }} />
-                ))}
-              </div>
+              <div className="skel" style={{ height: 40, marginTop: 40 }} />
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="skel" style={{ height: 96, marginTop: 20 }} />
+              ))}
             </div>
           )}
           <Footer />
@@ -761,17 +812,18 @@ export default function App() {
     );
   }
 
-  const selectedItem = route.selected ? data.items.find((i) => itemKey(i) === route.selected) ?? null : null;
-  const anim = !still;
+  // Detail: eerst in de gefilterde lijst (met alleen de actieve bronnen), anders het origineel (directe link).
+  const selectedItem = route.selected
+    ? data.items.find((i) => itemKey(i) === route.selected) ?? raw.items.find((i) => itemKey(i) === route.selected) ?? null
+    : null;
 
   if (selectedItem) {
     return (
       <Frame top={top}>
-        <main className="wrap" id="top">
+        <main className="wrap page-in" id="top" key={`d-${route.selected}`}>
           <DetailView
             item={selectedItem}
             bionic={bionic}
-            anim={anim}
             onBack={() => {
               if (openedInside) window.history.back();
               else window.location.hash = "#/";
@@ -785,25 +837,45 @@ export default function App() {
 
   const view = route.view;
   const isVideo = view === "filmpjes" || view === "dumpert";
-  const kortSources = data.items.reduce((n, a) => n + (a.bronnen?.length ?? 0), 0);
+  const kortSources = raw.items.reduce((n, a) => n + (a.bronnen?.length ?? 0), 0);
+  const hidden = filtered?.hidden ?? 0;
   return (
     <Frame top={top}>
       <main className="wrap" id="top">
-        <div className="hero">
-          <WeatherCard W={data.weer} bionic={bionic} anim={anim} />
-          <SummaryCard text={data.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(data.gegenereerd)} anim={anim} />
-        </div>
+        <Front>
+          <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} />
+          <WeatherBox W={raw.weer} bionic={bionic} />
+        </Front>
         <Tabs data={data} view={view} onChange={setView} />
+        {off.size ? (
+          <div className="filternote" role="status">
+            <span>
+              {hidden ? `${hidden} ${hidden === 1 ? "bericht" : "berichten"} verborgen` : "Bronnenfilter staat aan"} · {off.size} {off.size === 1 ? "bron" : "bronnen"} uit
+            </span>
+            <button type="button" className="textbtn" onClick={() => setSheet(true)}>
+              Aanpassen
+            </button>
+            <button type="button" className="textbtn" onClick={reset}>
+              Alles tonen
+            </button>
+          </div>
+        ) : null}
         {isVideo ? (
-          <VideoGrid key={view} cat={view} list={view === "filmpjes" ? data.filmpjes : data.dumpert} bionic={bionic} bronFilter={view === "filmpjes"} />
+          <VideoGrid
+            key={view}
+            cat={view}
+            list={view === "filmpjes" ? data.filmpjes : data.dumpert}
+            bionic={bionic}
+            bronFilter={view === "filmpjes"}
+            enter={!introDone && motionOK()}
+          />
         ) : (
-          <NewsGrid
+          <NewsList
             key={view}
             view={view}
             items={view === "alles" ? data.items : data.items.filter((i) => i.cat === view)}
             bionic={bionic}
-            anim={anim}
-            heroKey={heroKey}
+            focusKey={focusKey}
             onOpen={open}
           />
         )}

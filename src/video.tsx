@@ -91,11 +91,14 @@ export function VideoModal({ v, cat, onClose }: { v: Video; cat: string; onClose
   const p = playerFor(v);
   const [failed, setFailed] = useState(false);
   const [closing, setClosing] = useState(false);
+  // De speler (iframe/hls) pas laden als het paneel staat: anders concurreert het laden met de animatie.
+  const [ready, setReady] = useState(() => !motionOK());
   const fail = useCallback(() => setFailed(true), []);
+  const panel = useRef<HTMLDivElement>(null);
   const close = useCallback(() => {
     if (!motionOK()) return onClose();
     setClosing(true);
-    window.setTimeout(onClose, 190);
+    window.setTimeout(onClose, 320); // vangnet als animationend niet komt
   }, [onClose]);
   const closeBtn = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -106,9 +109,11 @@ export function VideoModal({ v, cat, onClose }: { v: Video; cat: string; onClose
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeBtn.current?.focus({ preventScroll: true });
+    const t = window.setTimeout(() => setReady(true), 320); // vangnet als animationend niet komt
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
+      window.clearTimeout(t);
     };
   }, [close]);
   const isShort = /\/shorts\//.test(v.href) && p?.kind === "youtube";
@@ -117,7 +122,15 @@ export function VideoModal({ v, cat, onClose }: { v: Video; cat: string; onClose
     <div className="app modal-root">
     <div className={`modal ${closing ? "out" : ""}`} role="dialog" aria-modal="true" aria-label={`Videospeler: ${v.titel}`}>
       <button className="backdrop" aria-label="Sluit de speler" onClick={close} tabIndex={-1} />
-      <div className={`panel cat-${cat}`}>
+      <div
+        ref={panel}
+        className={`panel cat-${cat}`}
+        onAnimationEnd={(e) => {
+          if (e.target !== panel.current) return;
+          if (closing) onClose();
+          else setReady(true);
+        }}
+      >
         <div className={`player ${isShort ? "short" : ""}`}>
           {!p || failed ? (
             <div className="p-fail">
@@ -126,6 +139,8 @@ export function VideoModal({ v, cat, onClose }: { v: Video; cat: string; onClose
                 Open bij {v.bron} ↗
               </a>
             </div>
+          ) : !ready ? (
+            v.thumb ? <img className="p-poster" src={v.thumb} alt="" referrerPolicy="no-referrer" decoding="async" /> : null
           ) : p.kind === "youtube" ? (
             <iframe
               src={p.src}
@@ -151,15 +166,10 @@ export function VideoModal({ v, cat, onClose }: { v: Video; cat: string; onClose
         </div>
         <div className="pinfo">
           <div className="pinfo-main">
+            <div className="kicker"><i className="mk" />{v.bron}{v.tijd ? <time className="tnum">{v.tijd}</time> : null}</div>
             <h2 className="p-title">{v.titel}</h2>
-            <div className="v-meta" style={{ justifyContent: "flex-start", gap: "8px 16px" }}>
-              <span className="v-src"><i />{v.bron}</span>
-              {v.populariteit ? (
-                <span className="v-pop"><Icon name={popIcon(v.populariteit)} className="sm" />{v.populariteit}</span>
-              ) : null}
-              {v.tijd ? <span className="v-time">{v.tijd}</span> : null}
-            </div>
             <p className="note">
+              {v.populariteit ? <span className="tnum">{v.populariteit} · </span> : null}
               Speelt het niet af?{" "}
               <a href={v.href} target="_blank" rel="noreferrer">
                 Open het bij {v.bron}
@@ -178,25 +188,14 @@ export function VideoModal({ v, cat, onClose }: { v: Video; cat: string; onClose
   );
 }
 
-// Kleurverloop als er geen (werkende) thumbnail is, zoals in het design.
-function hueOf(s: string) {
-  let h = 0;
-  for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return h;
-}
-function thumbBg(seed: string) {
-  const h1 = hueOf(seed);
-  const h2 = (h1 + 40) % 360;
-  return `radial-gradient(120% 90% at 15% 0%, oklch(0.8 0.13 ${h1}) 0%, transparent 58%), radial-gradient(90% 90% at 95% 100%, oklch(0.6 0.16 ${h2}) 0%, transparent 62%), linear-gradient(160deg, oklch(0.46 0.1 ${h1}), oklch(0.3 0.08 ${h2}))`;
-}
-
-function VideoCard({ v, i, cat, bionic, onPlay }: { v: Video; i: number; cat: string; bionic: boolean; onPlay: (v: Video) => void }) {
+function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; cat: string; bionic: boolean; enter: boolean; onPlay: (v: Video) => void }) {
   const [failed, setFailed] = useState(false);
   const playable = !!playerFor(v);
   const activate = () => {
     if (playable) onPlay(v);
     else window.open(v.href, "_blank", "noreferrer");
   };
+  const anim = enter && i < 12;
   return (
     <div
       role="button"
@@ -209,18 +208,25 @@ function VideoCard({ v, i, cat, bionic, onPlay }: { v: Video; i: number; cat: st
           activate();
         }
       }}
-      className={`card vcard cat-${cat} fade`}
-      style={{ animationDelay: `${Math.min(i, 9) * 45}ms` }}
+      className={`vcard cat-${cat} ${anim ? "enter" : ""}`}
+      style={anim ? ({ "--i": i } as React.CSSProperties) : undefined}
     >
-      <div className="vthumb" style={{ background: thumbBg(v.bron + v.titel) }}>
+      <div className="vthumb">
         {v.thumb && !failed ? (
-          <img src={v.thumb} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
-        ) : null}
+          <img src={v.thumb} alt="" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+        ) : (
+          <span className="vthumb-name">{v.bron}</span>
+        )}
         <span className="playbtn">
           <Icon name={playable ? "play" : "ext"} className={playable ? "fill" : ""} />
         </span>
       </div>
       <div className="vbody">
+        <div className="kicker">
+          <i className="mk" />
+          {v.bron}
+          {v.tijd ? <time className="tnum">{v.tijd}</time> : null}
+        </div>
         <h3 className="v-title">{v.titel}</h3>
         {v.ai ? (
           <p className="v-ai bn">
@@ -228,12 +234,8 @@ function VideoCard({ v, i, cat, bionic, onPlay }: { v: Video; i: number; cat: st
           </p>
         ) : null}
         <div className="v-meta">
-          <span className="v-src"><i />{v.bron}</span>
-          {v.tijd ? <span className="v-time">{v.tijd}</span> : null}
-        </div>
-        <div className="v-meta">
           {v.populariteit ? (
-            <span className="v-pop"><Icon name={popIcon(v.populariteit)} className="sm" />{v.populariteit}</span>
+            <span className="v-pop tnum"><Icon name={popIcon(v.populariteit)} className="sm" />{v.populariteit}</span>
           ) : <span />}
           <a href={v.href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="v-ext">
             Open bij bron <Icon name="ext" className="sm" />
@@ -244,15 +246,18 @@ function VideoCard({ v, i, cat, bionic, onPlay }: { v: Video; i: number; cat: st
   );
 }
 
-export function VideoGrid({ list, cat, bionic, bronFilter }: { list: Video[]; cat: "filmpjes" | "dumpert"; bionic: boolean; bronFilter: boolean }) {
+export function VideoGrid({ list, cat, bionic, bronFilter, enter: enterProp }: { list: Video[]; cat: "filmpjes" | "dumpert"; bionic: boolean; bronFilter: boolean; enter: boolean }) {
+  const [first] = useState(enterProp); // alleen bij het eerste tonen
+  const [touched, setTouched] = useState(false);
+  const enter = first && !touched;
   const [bron, setBron] = useState("alle");
   const [playing, setPlaying] = useState<Video | null>(null);
   const bronnen: string[] = [];
   for (const v of list) if (v.bron && !bronnen.includes(v.bron)) bronnen.push(v.bron);
-  const shown = bron === "alle" ? list : list.filter((v) => v.bron === bron);
+  const shown = bron === "alle" || !bronnen.includes(bron) ? list : list.filter((v) => v.bron === bron);
   if (list.length === 0) {
     return (
-      <div className="card empty fade">
+      <div className="empty">
         <Icon name="film" />
         {cat === "dumpert" ? "Nog geen Dumpert-filmpjes vandaag." : "Nog geen filmpjes vandaag."} Kom straks nog eens kijken.
       </div>
@@ -263,16 +268,19 @@ export function VideoGrid({ list, cat, bionic, bronFilter }: { list: Video[]; ca
       {bronFilter && bronnen.length > 1 ? (
         <div className="chips" role="group" aria-label="Filter op bron">
           {["alle", ...bronnen].map((b) => (
-            <button key={b} type="button" className="chip" aria-pressed={bron === b} onClick={() => setBron(b)}>
-              {b === "alle" ? "Alle bronnen" : b}
-              <span>{b === "alle" ? list.length : list.filter((v) => v.bron === b).length}</span>
+            <button key={b} type="button" className="chip" aria-pressed={bron === b || (b === "alle" && !bronnen.includes(bron))} onClick={() => {
+              setTouched(true);
+              setBron(b);
+            }}>
+              {b === "alle" ? "Alle" : b}
+              <span className="tnum">{b === "alle" ? list.length : list.filter((v) => v.bron === b).length}</span>
             </button>
           ))}
         </div>
       ) : null}
-      <div className="grid" key={bron}>
+      <div className={`vgrid ${enter ? "" : "swap"}`} key={bron}>
         {shown.map((v, i) => (
-          <VideoCard key={v.href + i} v={v} i={i} cat={cat} bionic={bionic} onPlay={setPlaying} />
+          <VideoCard key={v.href + i} v={v} i={i} cat={cat} bionic={bionic} enter={enter} onPlay={setPlaying} />
         ))}
       </div>
       {playing ? <VideoModal v={playing} cat={cat} onClose={() => setPlaying(null)} /> : null}

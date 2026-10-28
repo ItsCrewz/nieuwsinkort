@@ -40,26 +40,48 @@ function exprEnd(s, i) {
   throw new Error("Geen einde gevonden");
 }
 
-function extract(name) {
-  const re = new RegExp(`^const ${name}(?:\\s*:\\s*[^=]+)?\\s*=`, "m");
+// Zoekt `const|let|var NAAM [: Type] = ...` (ook met `export`), slaat een eventuele
+// type-annotatie over (die mag zelf `=>`, `<...>`, `{...}` bevatten) en geeft de
+// waarde terug. Ontbreekt een optionele constante, dan komt de standaardwaarde terug.
+function extract(name, fallback) {
+  const re = new RegExp(`^[ \\t]*(?:export\\s+)?(?:const|let|var)\\s+${name}\\b`, "m");
   const m = re.exec(src);
-  if (!m) throw new Error(`Constante ${name} niet gevonden`);
-  const start = m.index + m[0].length;
+  if (!m) {
+    if (fallback !== undefined) {
+      warnings.push(`${name} ontbreekt in de bron, standaard ${JSON.stringify(fallback)} gebruikt`);
+      return fallback;
+    }
+    throw new Error(`Constante ${name} niet gevonden`);
+  }
+  // Zoek de '=' van de toewijzing op top-niveau (niet '=>' of '==' in een type).
+  let i = m.index + m[0].length, depth = 0;
+  for (; i < src.length; i++) {
+    const c = src[i];
+    if ("([{<".includes(c)) depth++;
+    else if (")]}>".includes(c) && src[i - 1] !== "=") depth--;
+    else if (c === "=" && depth === 0 && src[i + 1] !== ">" && src[i + 1] !== "=") break;
+    else if (c === ";" && depth === 0) throw new Error(`Constante ${name} heeft geen waarde`);
+  }
+  const start = i + 1;
   const end = exprEnd(src, start);
-  const code = src.slice(start, end);
+  let code = src.slice(start, end).trim();
+  // TypeScript-staartjes weghalen: `as const`, `as Type`, `satisfies Type`.
+  code = code.replace(/\s+(?:as\s+const|as\s+[A-Za-z_$][\w$.<>\[\], |]*|satisfies\s+[A-Za-z_$][\w$.<>\[\], |]*)\s*$/, "");
   // Alleen data-literals: evalueren in een lege sandbox zonder globals.
   return vm.runInNewContext(`(${code})`, Object.create(null), { timeout: 2000 });
 }
 
+const warnings = [];
 const data = {
   datum: extract("DATUM"),
-  dag_samenvatting: extract("DAG_SAMENVATTING"),
-  weer: extract("WEER"),
-  filmpjes: extract("FILMPJES"),
-  dumpert: extract("DUMPERT"),
+  dag_samenvatting: extract("DAG_SAMENVATTING", ""),
+  weer: extract("WEER", {}),
+  filmpjes: extract("FILMPJES", []),
+  dumpert: extract("DUMPERT", []),
   items: extract("ITEMS"),
   gegenereerd: new Date().toISOString(),
 };
+for (const w of warnings) console.warn("Let op: " + w);
 
 // Basiscontrole van de vormen
 if (typeof data.datum !== "string") throw new Error("datum ongeldig");
