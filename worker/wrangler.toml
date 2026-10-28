@@ -1,0 +1,37 @@
+name = "nieuwsinkort-uur"
+main = "src/index.ts"
+compatibility_date = "2025-07-01"
+workers_dev = false  # geen workers.dev-subdomein op dit account; handmatig starten gaat via de site (/uur/run)
+
+# Elk uur op :00. Cron is UTC: 04–22 UTC dekt 06:00–23:00 Amsterdam in zomer- én wintertijd;
+# de code slaat de uren buiten 06–23 Amsterdam-tijd over.
+[triggers]
+crons = ["0 4-22 * * *"]
+
+[vars]
+SITE = "https://nieuwsinkort.pages.dev"
+MODEL = "@cf/google/gemma-4-26b-a4b-it"
+CAP = "40"       # max. nieuwe samenvattingen per run
+BUDGET = "9000"  # stop met AI boven zoveel (geschatte) neuronen per dag; gratis = 10.000
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "NIEUWS"
+id = "bfaf3ab8bca5422dac12d33495d1f837"
+
+[[durable_objects.bindings]]
+name = "RUNNER"
+class_name = "Runner"
+
+[[durable_objects.bindings]]
+name = "FETCHER"
+class_name = "Fetcher"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Runner", "Fetcher"]
+
+[observability]
+enabled = true

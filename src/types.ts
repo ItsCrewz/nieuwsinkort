@@ -39,5 +39,9 @@ export type Data = {
   dumpert: Video[];
   items: Item[];
   gegenereerd?: string;
+  /** Per bron ("<groep>|<bron-id>" uit bronnen.json): door de pipeline zelf geteld uit de feeds. */
+  bronstats?: Record<string, BronStat>;
 };
+/** vandaag = items gepubliceerd sinds 00:00 Europe/Amsterdam; null = feed niet bereikbaar/onleesbaar. */
+export type BronStat = { vandaag: number | null; laatste?: string; fout?: string };
 export type View = "alles" | Cat | "filmpjes" | "dumpert";

@@ -6,8 +6,15 @@ import type { Bron, Data, Item, Video } from "./types";
 export type GroupId = "nl" | "tech" | "haarlem" | "showbizz" | "filmpjes" | "dumpert";
 export type CatSource = { id: string; naam: string; alias?: string[]; hosts?: string[]; info?: string };
 export type Catalog = { gegenereerd?: string; groepen: { id: GroupId; label: string; bronnen: CatSource[] }[] };
-export type SourceRow = CatSource & { key: string; count: number; fromData: boolean };
-export type SourceGroup = { id: GroupId; label: string; sources: SourceRow[]; total: number };
+export type SourceRow = CatSource & {
+  key: string;
+  /** aantal verhalen in het overzicht (data.items/filmpjes/dumpert) dat deze bron noemt */
+  count: number;
+  fromData: boolean;
+  /** door de pipeline geteld uit de feed zelf; undefined = geen bronstats in data.json */
+  stat?: import("./types").BronStat;
+};
+export type SourceGroup = { id: GroupId; label: string; sources: SourceRow[]; total: number; published: number | null };
 
 export const GROUP_ORDER: { id: GroupId; label: string }[] = [
   { id: "nl", label: "Nederland" },
@@ -91,11 +98,19 @@ export function buildSources(catalog: Catalog | null, data: Data | null): { grou
   }
   for (const v of data?.filmpjes ?? []) add("filmpjes", v.bron, v.href);
   for (const v of data?.dumpert ?? []) add("dumpert", v.bron || "Dumpert", v.href);
+  const stats = data?.bronstats;
+  if (stats) for (const ix of index.values()) for (const row of ix.rows.values()) if (stats[row.key]) row.stat = stats[row.key];
+  const pub = (s: SourceRow) => s.stat?.vandaag ?? -1;
   const groups: SourceGroup[] = GROUP_ORDER.map((g) => {
     const sources = [...index.get(g.id)!.rows.values()].sort(
-      (a, b) => b.count - a.count || a.naam.localeCompare(b.naam, "nl", { sensitivity: "base" })
+      (a, b) => b.count - a.count || pub(b) - pub(a) || a.naam.localeCompare(b.naam, "nl", { sensitivity: "base" })
     );
-    return { ...g, sources, total: sources.reduce((n, s) => n + s.count, 0) };
+    return {
+      ...g,
+      sources,
+      total: sources.reduce((n, s) => n + s.count, 0),
+      published: stats ? sources.reduce((n, s) => n + (s.stat?.vandaag ?? 0), 0) : null,
+    };
   }).filter((g) => g.sources.length > 0);
   return { groups, index };
 }
@@ -104,6 +119,10 @@ function resolveIn(ix: { byName: Map<string, string>; byHost: Map<string, string
   const n = norm(site);
   const byName = n ? ix.byName.get(n) : undefined;
   if (byName) return byName;
+  // "X (@NHNieuws)" -> NH Nieuws: probeer de handle als naam
+  const xh = /^x\s*\(@([a-z0-9_]+)\)$/i.exec(String(site || "").trim());
+  const byHandle = xh ? ix.byName.get(norm(xh[1])) : undefined;
+  if (byHandle) return byHandle;
   const h = hostOf(href);
   const byHost = h ? ix.byHost.get(h) : undefined;
   if (byHost && !n) return byHost;

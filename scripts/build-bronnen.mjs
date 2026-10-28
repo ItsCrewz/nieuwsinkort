@@ -104,8 +104,9 @@ for (const f of feeds) {
   if (!g) continue;
   const naam = brand(f);
   const id = norm(naam);
-  const s = g.get(id) || { id, naam, alias: new Set(), hosts: new Set(), soort: new Set(), feeds: 0 };
+  const s = g.get(id) || { id, naam, alias: new Set(), hosts: new Set(), soort: new Set(), feeds: 0, urls: [] };
   s.feeds++;
+  s.urls.push(f.ua ? { url: f.url, ua: f.ua } : { url: f.url });
   s.alias.add(norm(f.naam));
   s.alias.add(norm(naam.replace(/\s*\(X\)$/, "")));
   const xh = /x\.com\/([A-Za-z0-9_]+)/.exec(f.url || "");
@@ -146,6 +147,8 @@ const out = {
         if (s.hosts.size) o.hosts = [...s.hosts];
         const info = s.info || [...s.soort].join(", ");
         if (info) o.info = info;
+        // Voor de uur-pipeline: welke feeds bij deze bron horen (sleutel in data.bronstats = "<groep>|<id>")
+        if (s.urls?.length) o.feeds = s.urls;
         return o;
       })
       .sort((a, b) => a.naam.localeCompare(b.naam, "nl", { sensitivity: "base" })),

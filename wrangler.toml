@@ -1,3 +1,8 @@
 name = "nieuwsinkort"
 pages_build_output_dir = "dist"
 compatibility_date = "2025-07-01"
+
+# Uur-data van de Worker "nieuwsinkort-uur" (map worker/); functions/data.json.ts voegt die samen met dist/data.json.
+[[kv_namespaces]]
+binding = "NIEUWS"
+id = "bfaf3ab8bca5422dac12d33495d1f837"

@@ -1,7 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Bron } from "./types";
-import type { SourceGroup } from "./sources";
+import type { SourceGroup, SourceRow } from "./sources";
+
+const hhmm = (iso?: string) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(+d)) return "";
+  const opt: Intl.DateTimeFormatOptions = { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" };
+  const day = (x: Date) => x.toLocaleDateString("nl-NL", { timeZone: "Europe/Amsterdam" });
+  return day(d) === day(new Date()) ? d.toLocaleTimeString("nl-NL", opt) : d.toLocaleDateString("nl-NL", { timeZone: "Europe/Amsterdam", weekday: "short", day: "numeric", month: "short", ...(Date.now() - +d > 300 * 864e5 ? { weekday: undefined, year: "numeric" } : {}) });
+};
+
+/** Tekst per bron. "Vandaag niets" alleen als de feed zelf vandaag echt niets publiceerde. */
+function sourceLine(s: SourceRow): string {
+  const inOverzicht = s.count ? `${s.count} in overzicht` : "";
+  const st = s.stat;
+  if (!st) return inOverzicht || "Niet in overzicht"; // oude data.json zonder bronstats: niets beweren over 'vandaag'
+  if (st.vandaag == null) return ["Feed niet bereikbaar", inOverzicht].filter(Boolean).join(" · ");
+  if (st.vandaag === 0) return `Vandaag niets${st.laatste ? ` · laatste ${hhmm(st.laatste)}` : ""}`;
+  return [`${st.vandaag} vandaag`, inOverzicht].filter(Boolean).join(" · ");
+}
 import { Icon } from "./icons";
 import { Switch } from "./ui";
 
@@ -91,7 +110,8 @@ export function SourcesSheet({
                                                 {g.label}
                       </h3>
                       <span className="sh-gmeta">
-                        {g.sources.length} {g.sources.length === 1 ? "bron" : "bronnen"} · {g.total} vandaag
+                        {g.sources.length} {g.sources.length === 1 ? "bron" : "bronnen"} ·{" "}
+                        {g.published != null ? `${g.published} berichten vandaag` : `${g.total} in overzicht`}
                       </span>
                     </div>
                     <label className="sh-all">
@@ -107,7 +127,7 @@ export function SourcesSheet({
                           <div className="sh-name">
                             <span>{s.naam}</span>
                             <small>
-                              <span className="tnum">{s.count ? `${s.count} vandaag` : "Vandaag niets"}</span>
+                              <span className="tnum">{sourceLine(s)}</span>
                               {s.info ? ` · ${s.info}` : ""}
                             </small>
                           </div>

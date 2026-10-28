@@ -1000,6 +1000,8 @@ function TopBar({
   );
 }
 
+// true zodra data.json van de uur-Worker komt (functions/data.json.ts zet "uur")
+let UUR_ACTIEF = false;
 function Footer() {
   return (
     <footer className="foot">
@@ -1011,7 +1013,7 @@ function Footer() {
         </span>
         Nieuws in het kort
       </div>
-      <p>Samengevat uit de bronnen die bij elk bericht staan. Elke dag om 08:00 en 12:00 bijgewerkt, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
+      <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk uur bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
     </footer>
   );
 }
@@ -1035,6 +1037,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
 
 export default function App() {
   const { data: raw, error, reload } = useData();
+  UUR_ACTIEF = Date.now() - Date.parse((raw as any)?.uur?.gegenereerd || "") < 2.5 * 3600e3; // alleen als de uur-run recent draaide
   const { theme, toggle } = useTheme();
   const catalog = useCatalog();
   const { off, setMany, reset } = useSourceFilter();
@@ -1141,7 +1144,7 @@ export default function App() {
             <i className={`live ${error ? "off" : ""}`} />
             {amsterdamTime(raw.gegenereerd) ? (
               <>
-                Bijgewerkt <span className="tnum">{amsterdamTime(raw.gegenereerd)}</span>
+                Bijgewerkt om <span className="tnum">{amsterdamTime(raw.gegenereerd)}</span>
               </>
             ) : (
               "Bijgewerkt vandaag"

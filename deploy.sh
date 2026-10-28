@@ -12,6 +12,7 @@
 #   SKIP_BUILD=1       niet bouwen (dist/ moet al bestaan)
 #   DRY_RUN=1          alles voorbereiden en controleren, maar niets uploaden (toont de commando's)
 #   FROZEN_BRANCH=x    (alleen om te testen) bevroren productie naar branch x i.p.v. main
+#   DEPLOY_WORKER=1    ook de uur-Worker (worker/, cron 06:00-23:00) deployen
 #   CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN (optioneel; inloggen kan via wrangler OAuth)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -57,6 +58,11 @@ node -e 'const d=require("./public/data.json"); if(!Array.isArray(d.items)||!d.i
 
 # Project aanmaken als het nog niet bestaat (eenmalig; faalt stil als het al bestaat)
 [ -n "${DRY_RUN:-}" ] || npx wrangler pages project create "$PROJECT" --production-branch main >/dev/null 2>&1 || true
+
+if [ -n "${DEPLOY_WORKER:-}" ]; then
+  echo "== uur-Worker (nieuwsinkort-uur) deployen"
+  ( cd worker && { [ -d node_modules ] || npm ci; } && run npx wrangler deploy )
+fi
 
 if [ "$BRANCH" = "main" ]; then
   echo "== DEPLOY_BRANCH=main: nieuwe build naar productie"
