@@ -8,6 +8,7 @@ export type Item = {
   punten: string[];
   tijd: string;
   bronnen: Bron[];
+  beeld?: string; // optioneel: afbeelding bij het bericht (nu nog niet in de data)
 };
 export type WeerDag = { dag: string; min: number; max: number; omschrijving?: string };
 export type Weer = {

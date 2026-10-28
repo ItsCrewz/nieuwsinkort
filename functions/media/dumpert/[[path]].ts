@@ -17,6 +17,7 @@ export const onRequest = async ({ request, params }: Ctx): Promise<Response> => 
   if (!ALLOWED.test(p)) return new Response("Not found", { status: 404 });
 
   const upstream = `https://media.dumpert.nl/${p}`;
+  const isList = p.endsWith(".m3u8");
   const headers: Record<string, string> = { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" };
   const range = request.headers.get("Range");
   if (range) headers["Range"] = range;
@@ -25,14 +26,16 @@ export const onRequest = async ({ request, params }: Ctx): Promise<Response> => 
     method: request.method,
     headers,
     // @ts-ignore - Cloudflare-specifieke cache-optie
-    cf: { cacheEverything: true, cacheTtl: p.endsWith(".m3u8") ? 600 : 86400 },
+    // Playlists kort (5 min), stukjes video veranderen nooit: een jaar aan de rand van Cloudflare.
+    cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": isList ? 300 : 31536000, "404": 30, "500-599": 0 } },
   });
   const out = new Headers();
   for (const h of ["content-type", "content-length", "content-range", "accept-ranges", "last-modified", "etag"]) {
     const v = r.headers.get(h);
     if (v) out.set(h, v);
   }
-  out.set("Cache-Control", p.endsWith(".m3u8") ? "public, max-age=600" : "public, max-age=86400");
+  if (r.ok) out.set("Cache-Control", isList ? "public, max-age=300, stale-while-revalidate=600" : "public, max-age=31536000, immutable");
+  else out.set("Cache-Control", "no-store");
   out.set("Access-Control-Allow-Origin", "*");
   return new Response(r.body, { status: r.status, headers: out });
 };

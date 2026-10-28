@@ -3,7 +3,7 @@
 // - Alleen huidige ±1 heeft een speler; de volgende wordt vooraf geladen, de rest is alleen een poster.
 // - Actieve video via IntersectionObserver (60%); die speelt (standaard zonder geluid), de rest pauzeert.
 // - Voortgangsbalk via de Web Animations API op transform: loopt op de compositor, geen JS per frame.
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
@@ -76,13 +76,45 @@ function useBar(ref: React.RefObject<HTMLElement>): Bar {
 type PlayerProps = {
   v: Video;
   active: boolean;
-  preload: boolean;
+  preload: number; // 0 = niet, 1 = de volgende, 2 = +2 / -1
   paused: boolean;
   muted: boolean;
   bar: Bar;
   onFail: () => void;
   onAutoplayBlocked: () => void;
 };
+
+// ------------------------------------------------------------- voorrang voor het actieve filmpje
+// Voorladen begint pas als het filmpje dat je nu kijkt genoeg buffer heeft (of na 1,5 s), zodat de buren
+// de bandbreedte niet afsnoepen bij een koude start. Daarna: eerst +1, even later +2 en -1.
+let activeReady = false;
+let readyTimer = 0;
+const waiters = new Set<() => void>();
+function signalReady() {
+  if (activeReady) return;
+  activeReady = true;
+  window.clearTimeout(readyTimer);
+  const ws = [...waiters];
+  waiters.clear();
+  ws.forEach((f) => f());
+}
+function resetReady() {
+  activeReady = false;
+  window.clearTimeout(readyTimer);
+  readyTimer = window.setTimeout(signalReady, 1500);
+}
+function whenReady(fn: () => void, delay = 0) {
+  let t = 0;
+  const run = () => {
+    t = window.setTimeout(fn, delay);
+  };
+  if (activeReady) run();
+  else waiters.add(run);
+  return () => {
+    waiters.delete(run);
+    window.clearTimeout(t);
+  };
+}
 
 // ------------------------------------------------------------- MP4 / HLS
 const DEBUG = (() => {
@@ -95,6 +127,12 @@ const DEBUG = (() => {
 function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFail, onAutoplayBlocked }: PlayerProps & { kind: "hls" | "mp4"; src: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [shown, setShown] = useState(false);
+  const hlsRef = useRef<{ config: { maxBufferLength: number; maxMaxBufferLength: number }; startLoad: (p?: number) => void } | null>(null);
+  const started = useRef(false);
+  const rankRef = useRef(preload);
+  rankRef.current = preload;
+  const activeNow = useRef(active);
+  activeNow.current = active;
   // bron koppelen (HLS: native op Safari/iOS, anders hls.js via onze proxy)
   useEffect(() => {
     const video = ref.current;
@@ -119,6 +157,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFai
       };
     }
     let destroyed = false;
+    let cancelWait = () => {};
     let hls: { destroy: () => void } | null = null;
     import("hls.js").then(({ default: Hls }) => {
       if (destroyed) return;
@@ -129,8 +168,21 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFai
         }
         return onFail();
       }
-      const h = new Hls({ enableWorker: true, maxBufferLength: 12, capLevelToPlayerSize: true });
+      // TikTok-achtig voorladen: ook de volgende filmpjes laden meteen hun eerste ~8 s, op het laagste
+      // niveau (snelste start); ABR schaalt daarna op. Het actieve filmpje mag verder bufferen.
+      const on = activeNow.current;
+      const h = new Hls({
+        enableWorker: true,
+        startLevel: 0,
+        capLevelToPlayerSize: true,
+        startFragPrefetch: true,
+        autoStartLoad: on,
+        maxBufferLength: on ? 30 : 8,
+        maxMaxBufferLength: on ? 60 : 8,
+        backBufferLength: 10,
+      });
       hls = h;
+      hlsRef.current = h as unknown as typeof hlsRef.current;
       h.on(Hls.Events.ERROR, (_e, d) => {
         if (DEBUG) console.log("[hls]", v.titel, d.type, d.details, d.fatal);
         if (d.fatal) onFail();
@@ -140,14 +192,62 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFai
         h.on(Hls.Events.BUFFER_FLUSHING, (_e, d) => console.log("[hls] flush", v.titel, d.startOffset, d.endOffset, d.type));
         video.addEventListener("seeking", () => console.log("[hls] seeking", v.titel, video.currentTime));
       }
+      started.current = on;
       h.loadSource(viaProxy(src));
       h.attachMedia(video);
+      if (!on) {
+        cancelWait = whenReady(() => {
+          if (destroyed || started.current) return;
+          started.current = true;
+          h.startLoad(-1);
+        }, rankRef.current === 1 ? 0 : 350);
+      }
     });
     return () => {
       destroyed = true;
+      cancelWait();
+      hlsRef.current = null;
       hls?.destroy();
     };
   }, [kind, src, onFail]);
+
+  // Buffergrootte meeschalen met de positie in de feed (hls.js leest de config live).
+  useEffect(() => {
+    const h = hlsRef.current;
+    if (!h) return;
+    h.config.maxBufferLength = active ? 30 : 8;
+    h.config.maxMaxBufferLength = active ? 60 : 8;
+    if (active && !started.current) {
+      started.current = true;
+      h.startLoad(-1);
+    }
+  }, [active]);
+  // Actief: zodra er ~4 s buffer is (of het kan doorspelen) mogen de buren gaan voorladen.
+  useEffect(() => {
+    const video = ref.current;
+    if (!active || !video) return;
+    resetReady();
+    const check = () => {
+      const b = video.buffered;
+      const ahead = b.length ? b.end(b.length - 1) - video.currentTime : 0;
+      if (video.readyState >= 4 || ahead >= 4) signalReady();
+    };
+    check();
+    video.addEventListener("progress", check);
+    video.addEventListener("canplaythrough", check);
+    video.addEventListener("timeupdate", check);
+    return () => {
+      video.removeEventListener("progress", check);
+      video.removeEventListener("canplaythrough", check);
+      video.removeEventListener("timeupdate", check);
+    };
+  }, [active]);
+  // MP4/native: bij voorladen meteen de data ophalen
+  useEffect(() => {
+    const video = ref.current;
+    if (!video || !(active || preload)) return;
+    if (video.readyState < 2 && video.networkState === 1 /* IDLE */) video.load();
+  }, [active, preload]);
 
   useEffect(() => {
     const video = ref.current;
@@ -192,6 +292,9 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFai
       setShown(true);
       sync();
     };
+    // eerste beeld staat klaar (ook gepauzeerd bij het voorladen): video al tonen, geen zwarte flits
+    const onFrame = () => setShown(true);
+    video.addEventListener("loadeddata", onFrame);
     const onStop = () => bar.set(video.currentTime, video.duration, false);
     video.addEventListener("playing", onPlaying);
     video.addEventListener("pause", onStop);
@@ -201,6 +304,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFai
     video.addEventListener("timeupdate", onTime);
     return () => {
       video.removeEventListener("playing", onPlaying);
+      video.removeEventListener("loadeddata", onFrame);
       video.removeEventListener("pause", onStop);
       video.removeEventListener("waiting", onStop);
       video.removeEventListener("seeked", sync);
@@ -318,7 +422,7 @@ type SlideProps = {
   cat: string;
   active: boolean;
   mount: boolean;
-  preload: boolean;
+  preload: number;
   paused: boolean;
   muted: boolean;
   onTap: () => void;
@@ -396,6 +500,44 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
   );
 });
 
+// ------------------------------------------------------------- cache opwarmen
+const warmed = new Set<string>();
+function warmHls(v: Video) {
+  const p = playerFor(v);
+  if (!p || p.kind !== "hls" || warmed.has(p.src)) return;
+  if (/Apple/.test(navigator.vendor || "")) return; // Safari speelt HLS zelf, rechtstreeks van Dumpert
+  warmed.add(p.src);
+  const master = viaProxy(p.src);
+  const get = (u: string) => fetch(u, { credentials: "omit", priority: "low" } as RequestInit).then((r) => (r.ok ? r.text() : ""));
+  const lowestVariant = (txt: string, base: string) => {
+    const lines = txt.split("\n").map((l) => l.trim());
+    let best = "";
+    let bw = Infinity;
+    lines.forEach((l, i) => {
+      const m = /^#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)/.exec(l);
+      const u = lines[i + 1];
+      if (m && u && !u.startsWith("#") && +m[1] < bw) {
+        bw = +m[1];
+        best = u;
+      }
+    });
+    return best ? new URL(best, base).href : "";
+  };
+  get(master)
+    .then((m) => {
+      const base = new URL(master, location.href).href;
+      if (!/#EXT-X-STREAM-INF/.test(m)) return { txt: m, base };
+      const variant = lowestVariant(m, base); // hls.js start ook op het laagste niveau (startLevel 0)
+      return variant ? get(variant).then((txt) => ({ txt, base: variant })) : null;
+    })
+    .then((r) => {
+      if (!r) return;
+      const segs = r.txt.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")).slice(0, 2);
+      for (const sg of segs) fetch(new URL(sg, r.base).href, { credentials: "omit", priority: "low" } as RequestInit).catch(() => {});
+    })
+    .catch(() => {});
+}
+
 // ------------------------------------------------------------- de feed
 export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmpjes" | "dumpert"; start: string | null; onClose: () => void }) {
   // Lijst vastzetten zolang de feed open is (de 15-minuten-verversing schuift dan niets onder je duim weg).
@@ -409,6 +551,21 @@ export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmp
   const root = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
+  // Spelers: huidige, vorige en de volgende twee staan klaar; eenmaal geladen blijven ze tot ±3, verder weg weg.
+  const mountedRef = useRef<Set<number>>(new Set());
+  const mounted = useMemo(() => {
+    const next = new Set<number>();
+    for (const i of mountedRef.current) if (Math.abs(i - active) <= 3) next.add(i);
+    for (let i = active - 1; i <= active + 2; i++) if (i >= 0 && i < items.length) next.add(i);
+    mountedRef.current = next;
+    return next;
+  }, [active, items.length]);
+  // Cache opwarmen: playlist + eerste stukjes van de komende HLS-filmpjes via onze proxy (edge + browsercache).
+  useEffect(() => {
+    return whenReady(() => {
+      for (let i = active + 1; i <= active + 3 && i < items.length; i++) warmHls(items[i]);
+    }, 500);
+  }, [active, items]);
 
   const close = useCallback(() => {
     if (!motionOK()) return onClose();
@@ -524,8 +681,8 @@ export function Feed({ list, cat, start, onClose }: { list: Video[]; cat: "filmp
               total={items.length}
               cat={cat}
               active={i === active}
-              mount={Math.abs(i - active) <= 1}
-              preload={i === active + 1}
+              mount={mounted.has(i)}
+              preload={i === active + 1 ? 1 : i === active + 2 || i === active - 1 ? 2 : 0}
               paused={i === active && paused}
               muted={muted}
               onTap={onTap}
