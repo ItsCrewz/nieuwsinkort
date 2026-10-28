@@ -337,7 +337,7 @@ video.f-media.on{background:#000}
 .sh-list li:last-child{border-bottom:0}
 .sh-name{display:flex;flex-direction:column;min-width:0}
 .sh-name > span{font-size:15px;font-weight:400}
-.sh-name small{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
+.sh-name small{font-size:12.5px;color:var(--muted);white-space:normal;overflow-wrap:anywhere;line-height:1.35}
 a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .sh-list li.is-off .sh-name{opacity:.45}
 .sh-list .ic.muted{color:var(--muted)}
