@@ -364,8 +364,15 @@ export class Runner extends DurableObject<Env> {
       const bb = beelden.length ? { beelden } : {};
       if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true });
       else {
-        const desc = k.c[0].s || k.c[0].t;
-        items.push({ cat: k.cat, kop: k.c[0].t.slice(0, 120), ai: firstSentence(desc), samenvatting: desc.slice(0, 700), punten: [], tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true, ruw: true });
+        const desc = (k.c[0].s || k.c[0].t.replace(/\s*(…|\.\.\.)$/, "")).replace(/\s+/g, " ").trim();
+        // kop = eerste zin van de post (partijposts hebben geen aparte titel); korte tekst = wat daarna komt, nooit twee keer hetzelfde
+        const zin = desc.match(/^.{15,120}?[.!?](\s|$)/)?.[0]?.trim();
+        const knip = desc.length > 120 ? desc.slice(0, 117).replace(/\s+\S*$/, "") : desc;
+        const kop = zin || (knip.length < desc.length ? knip + "…" : knip);
+        const rest = desc.slice((zin || knip).length).replace(/^[\s.!?,:;…-]+/, "");
+        const ai = rest ? firstSentence(rest) : "";
+        if (k.cat === "politiek") items.push({ cat: k.cat, kop, ai, samenvatting: rest.slice(0, 700), punten: [], tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true, ruw: true });
+        else items.push({ cat: k.cat, kop: k.c[0].t.slice(0, 120), ai: firstSentence(desc), samenvatting: desc.slice(0, 700), punten: [], tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true, ruw: true });
       }
     }
     items.sort((a, b) => b._t - a._t);

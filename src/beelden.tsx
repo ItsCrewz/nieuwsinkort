@@ -8,6 +8,16 @@ export const Beelden = memo(function Beelden({ urls, eager = false, className = 
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
   const track = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  // Pas foto's laden als het bericht (bijna) in beeld is: de huidige en de volgende kaart, niet alle 150.
+  const [near, setNear] = useState(eager);
+  useEffect(() => {
+    const el = box.current;
+    if (near || !el || !window.IntersectionObserver) { if (!window.IntersectionObserver) setNear(true); return; }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setNear(true); io.disconnect(); } }, { rootMargin: "120% 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [near]);
   const raf = useRef(0);
   useEffect(() => { setList(urls); setI(0); }, [urls]);
   useEffect(() => { onChange?.(); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -28,7 +38,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, className = 
   if (!list.length) return null;
   const multi = list.length > 1;
   return (
-    <div className={`bl ${multi ? "multi" : ""} ${className}`} aria-roledescription={multi ? "fotocarrousel" : undefined}>
+    <div ref={box} className={`bl ${multi ? "multi" : ""} ${className}`} aria-roledescription={multi ? "fotocarrousel" : undefined}>
       <div
         className="bl-track"
         ref={track}
@@ -42,7 +52,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, className = 
       >
         {list.map((u, k) => (
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
-            {k <= i + 1 || k === list.length - 1 && i === 0 ? (
+            {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
               <img
                 src={u}
                 alt=""

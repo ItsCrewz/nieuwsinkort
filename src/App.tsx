@@ -580,23 +580,38 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { it
   useLayoutEffect(() => {
     const el = cardRef.current;
     if (!el) return;
-    let raf = 0;
+    // Alleen kaarten in/naast beeld passend maken: 150+ kaarten tegelijk meten blokkeert een iPhone seconden lang.
+    let raf = 0, near = false, dirty = true;
     const run = () => {
+      dirty = true;
+      if (!near) return;
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => fitCard(el));
+      raf = requestAnimationFrame(() => { dirty = false; fitCard(el); });
     };
-    fitCard(el);
+    const r = el.getBoundingClientRect();
+    if (r.top < innerHeight * 3 && r.bottom > -innerHeight * 2) { near = true; dirty = false; fitCard(el); }
+    const io = new IntersectionObserver((es) => { near = es[es.length - 1].isIntersecting; if (near && dirty) run(); }, { rootMargin: "200% 0px" });
+    io.observe(el);
     const ro = new ResizeObserver(run);
     ro.observe(el);
+    el.addEventListener("nc-dirty", run);
     document.fonts?.ready.then(run).catch(() => {});
     return () => {
       ro.disconnect();
+      io.disconnect();
+      el.removeEventListener("nc-dirty", run);
       cancelAnimationFrame(raf);
     };
   }, [bionic, item]);
   const click = useOpen(key, onOpen);
   const beelden = useMemo(() => fotos(item), [item]);
-  const refit = useCallback(() => { const el = cardRef.current; if (el) requestAnimationFrame(() => fitCard(el)); }, []);
+  const refit = useCallback(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.top < innerHeight * 3 && r.bottom > -innerHeight * 2) requestAnimationFrame(() => fitCard(el));
+    else el.dispatchEvent(new Event("nc-dirty")); // wordt bij in-beeld-komen alsnog gepast (ResizeObserver/IO)
+  }, []);
   const bronnen = item.bronnen ?? [];
   const first = bronnen[0];
   const sum = item.ai || item.samenvatting;
