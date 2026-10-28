@@ -132,7 +132,8 @@ if (existsSync(FILMPJES)) {
     const id = norm(b);
     const info = b === "YouTube" && kanalen.length ? kanalen.join(", ") : b === "Reddit" && subreddits.length ? subreddits.join(", ") : b === "Dumpert" ? "Toppers van vandaag" : "";
     groups.get(cat).set(id, { id, naam: b, alias: new Set([id]), hosts: new Set(), soort: new Set(), feeds: 1, info });
-  }
+  }  // X-video's: elk uur door de uur-Worker (fxtwitter/syndication), niet meer via de routine
+  groups.get("filmpjes").set("x", { id: "x", naam: "X", alias: new Set(["x", "twitter"]), hosts: new Set(), soort: new Set(), feeds: 1, info: "Video's van RTL Nieuws, De Telegraaf, AD, PowNed, GeenStijl, NH Nieuws, BNR en de politieke accounts" });
 }
 
 const out = {

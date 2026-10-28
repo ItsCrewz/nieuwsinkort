@@ -7,6 +7,7 @@ import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW, KNMI_WAARSCH } from "./weer";
 import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, type Usage, type In, type Sum } from "./ai";
+import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
 
@@ -31,8 +32,8 @@ const hhmm = (t: number) => ams(t).hhmm;
 const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(t));
 
 // ---------------------------------------------------------------- fetcher-DO
-type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og"; label?: string; sub?: string; max?: number };
-type Res = { url: string; ok: boolean; status: number; err?: string; ms: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
+type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x"; label?: string; sub?: string; max?: number; alleenVideo?: boolean };
+type Res = { url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
@@ -89,12 +90,28 @@ async function runOg(j: Job, t0: number, kv?: KVNamespace): Promise<Res> {
   return { url: j.url, ok: r.ok, status: r.status, ms: Date.now() - t0, text: img, ...(r.ok ? {} : { err: `HTTP ${r.status}` }) };
 }
 
-async function get(url: string, timeout = 15000): Promise<Response> {
+// X: fxtwitter -> syndication. Tekstposts als entries (bronstats + politiek), video's van vandaag als filmpjes.
+async function runX(j: Job, since: number, t0: number): Promise<Res> {
+  const user = xUser(j.url);
+  if (!user) throw new Error("onbekend X-account");
+  const { posts, via, err } = await xPosts(user);
+  const now = Date.now() + 15 * 60e3;
+  const entries = posts.filter((p) => !p.mp4).map(xEntry); // tekst/foto-posts naar het nieuws, video's naar Filmpjes
+  const videos = posts.filter((p) => p.mp4 && p.t >= since).slice(0, j.max ?? 3).map((p) => xVideo(p, j.label || user, hhmm));
+  return {
+    url: j.url, ok: true, status: 200, ms: Date.now() - t0, via, ...(err ? { err } : {}), total: entries.length, videos,
+    newest: entries.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null),
+    entries: j.alleenVideo ? [] : entries.filter((e) => e.d != null && e.d >= since && e.d <= now),
+  };
+}
+
+const BR_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
+async function get(url: string, timeout = 15000, ua = UA): Promise<Response> {
   // SRU (overheid.nl) geeft JSON terug zodra "application/json" in Accept staat: dan alleen XML vragen
   const accept = /\/sru\?/.test(url) ? "application/xml, text/xml" : "application/rss+xml, application/atom+xml, application/xml, text/xml, application/json, text/html;q=0.8, */*;q=0.5";
   // ORI-elastic zonder query geeft willekeurige documenten: nieuwste eerst
   if (/openraadsinformatie\.nl\/.*\/_search$/.test(url)) url += "?size=50&sort=start_date:desc&_source=name,start_date,last_discussed_at,date_modified,@type";
-  return fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8" }, signal: AbortSignal.timeout(timeout), redirect: "follow" });
+  return fetch(url, { headers: { "User-Agent": ua, Accept: accept, "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8" }, signal: AbortSignal.timeout(timeout), redirect: "follow" });
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -104,8 +121,10 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
   try {
     if (j.kind === "insta") return await runInsta(j, since, t0, kv);
     if (j.kind === "og") return await runOg(j, t0, kv);
+    if (j.kind === "x") return await runX(j, since, t0);
     let r = await get(j.url).catch(async () => { await sleep(1500); return get(j.url, 20000); }); // 1x opnieuw bij time-out/netwerkfout
-    if (j.kind === "reddit" && r.status === 429) { await sleep(6000); r = await get(j.url); }
+    // 403/429: nog één keer, rustig en met een gewone browser-UA (sommige sites/Reddit weigeren bot-UA's of bursts)
+    if (r.status === 403 || r.status === 429) { await sleep(j.kind === "reddit" ? 8000 : 1500); r = await get(j.url, 15000, BR_UA); }
     status = r.status;
     if (!r.ok) return { url: j.url, ok: false, status, err: `HTTP ${status}`, ms: Date.now() - t0 };
     const body = await r.text();
@@ -136,10 +155,22 @@ export class Fetcher extends DurableObject<Env> {
     const out: Res[] = new Array(jobs.length);
     const reddit = jobs.map((j, i) => [j, i] as const).filter(([j]) => j.kind === "reddit");
     const rest = jobs.map((j, i) => [j, i] as const).filter(([j]) => j.kind !== "reddit");
-    const pool = async () => { for (let x; (x = rest.shift()); ) out[x[1]] = await runJob(x[0], since, this.env.NIEUWS); };
-    const seq = async () => { for (let k = 0; k < reddit.length; k++) { if (k) await sleep(2500); out[reddit[k][1]] = await runJob(reddit[k][0], since); } };
-    await Promise.all([seq(), ...Array.from({ length: reddit.length ? 5 : 6 }, pool)]);
+    const pool = async () => { for (let x; (x = rest.shift()); ) out[x[1]] = await this.mem(x[0], await runJob(x[0], since, this.env.NIEUWS), since); };
+    const seq = async () => { for (let k = 0; k < reddit.length; k++) { if (k) await sleep(4000); out[reddit[k][1]] = await this.mem(reddit[k][0], await runJob(reddit[k][0], since), since); } };
+    await Promise.all([seq(), ...Array.from({ length: reddit.length ? 3 : 4 }, pool)]);
     return Response.json(out);
+  }
+  // Social (X/Reddit/Instagram): laatste gelukte resultaat bewaren (DO-opslag, niet KV: geen schrijflimiet-zorgen).
+  // Mislukt het ophalen, dan blijven de berichten van vandaag staan (ok blijft false, dus Bronnen zegt eerlijk "Ophalen mislukt").
+  async mem(j: Job, r: Res, since: number): Promise<Res> {
+    if (!["x", "reddit", "insta"].includes(j.kind)) return r;
+    const key = `lg:${j.url}`;
+    try {
+      if (r.ok) { await this.ctx.storage.put(key, { at: Date.now(), entries: r.entries || [], videos: r.videos || [], newest: r.newest ?? null }); return r; }
+      const c: any = await this.ctx.storage.get(key);
+      if (c && c.at >= since) return { ...r, cachedAt: c.at, entries: c.entries, videos: c.videos, newest: c.newest };
+    } catch { /* opslag optioneel */ }
+    return r;
   }
 }
 
@@ -168,7 +199,7 @@ function cluster(cands: Cand[]): Cluster[] {
 }
 
 // ---------------------------------------------------------------- runner-DO
-const SOCIAL_INFO = /YouTube|Instagram|Reddit|^X$|Podcast/;
+const SOCIAL_INFO = /YouTube|Instagram|Reddit|Podcast/; // X (bv. Politie Haarlem) telt wel als nieuws
 const NIET_ALS_NIEUWS = new Set(["burgernet", "gemeenteraadhaarlem"]);
 const BEKENDMAKING_HINTS = /raadsbesluit|collegebesluit|verordening|verkeersbesluit|omgevingsplan|bestemmingsplan|apv|referendum|parkeer|evenement|sluiting|aanwijzing|exploitatie/i;
 const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz", "politiek"];
@@ -207,16 +238,17 @@ export class Runner extends DurableObject<Env> {
     const add = (j: Job) => { if (!jobs.has(j.url)) jobs.set(j.url, j); };
     const srcFeeds: { key: string; g: string; s: any; urls: string[] }[] = [];
     for (const g of bronnen.groepen || []) for (const s of g.bronnen || []) {
-      const urls: string[] = (s.feeds || []).map((f: any) => f.url).filter((x: string) => !/^https?:\/\/(x|twitter)\.com\//.test(x));
+      const urls: string[] = (s.feeds || []).map((f: any) => f.url).filter(Boolean);
       if (!urls.length) continue;
       srcFeeds.push({ key: `${g.id}|${s.id}`, g: g.id, s, urls });
       for (const url of urls) {
         const sub = /reddit\.com\/r\/([^/]+)/.exec(url)?.[1];
-        add({ url, kind: sub ? "reddit" : igUser(url) ? "insta" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(g.id === "politiek" ? { max: 2 } : {}) });
+        add({ url, kind: sub ? "reddit" : igUser(url) ? "insta" : xUser(url) ? "x" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(g.id === "politiek" ? { max: 2 } : {}) });
       }
     }
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) add({ url: ytUrl(cid), kind: "feed", label: naam });
     for (const sub of REDDIT_SUBS) add({ url: redditUrl(sub), kind: "reddit", sub });
+    for (const [u, naam] of Object.entries(X_VIDEO)) add({ url: `https://x.com/${u}`, kind: "x", label: naam, alleenVideo: true });
     // reddit-URL uit bronnen.json kan ?t=day zonder sub-label zijn: label alsnog zetten
     for (const j of jobs.values()) if (j.kind === "reddit") j.sub ||= /reddit\.com\/r\/([^/]+)/.exec(j.url)?.[1];
     add({ url: DUMPERT_URL, kind: "dumpert" });
@@ -224,14 +256,18 @@ export class Runner extends DurableObject<Env> {
     add({ url: KNMI_VERW, kind: "text" }); add({ url: KNMI_WAARSCH, kind: "text" });
 
     const all = [...jobs.values()];
-    const reddit = all.filter((j) => j.kind === "reddit"), insta = all.filter((j) => j.kind === "insta"), rest = all.filter((j) => j.kind !== "reddit" && j.kind !== "insta");
+    const reddit = all.filter((j) => j.kind === "reddit"), insta = all.filter((j) => j.kind === "insta"), xj = all.filter((j) => j.kind === "x");
+    const rest = all.filter((j) => !["reddit", "insta", "x"].includes(j.kind));
     const batches: Job[][] = [reddit];
+    // X apart en vast verdeeld (zelfde DO = zelfde 'laatst gelukt'-geheugen): 1 verzoek per account, terugval 1 extra
+    for (let i = 0; i < xj.length; i += 15) batches.push(xj.slice(i, i + 15));
     // Instagram apart: per account 1 profiel + max 3 video-embeds = max 4 verzoeken (DO-limiet 50)
     for (let i = 0; i < insta.length; i += 10) batches.push(insta.slice(i, i + 10));
     for (let i = 0; i < rest.length; i += 30) batches.push(rest.slice(i, i + 30));
     const results = (await Promise.all(batches.map(async (b, i) => {
       if (!b.length) return [] as Res[];
-      const stub = env.FETCHER.get(env.FETCHER.idFromName(`f${i}`));
+      const naam = b[0].kind === "reddit" ? "reddit" : b[0].kind === "x" ? `x${i}` : b[0].kind === "insta" ? `ig${i}` : `f${i}`;
+      const stub = env.FETCHER.get(env.FETCHER.idFromName(naam));
       const r = await stub.fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) });
       return (await r.json()) as Res[];
     }))).flat();
@@ -252,11 +288,27 @@ export class Runner extends DurableObject<Env> {
         for (const e of r.entries || []) seen.add(normLink(e.l || e.t));
         if (r.newest && (newest == null || r.newest > newest)) newest = r.newest;
       }
-      const o: any = { vandaag: seen.size };
+      const o: any = { vandaag: seen.size, ok: nowIso };
       if (newest) o.laatste = new Date(newest).toISOString();
       if (ok.length < rs.length) o.fout = `${rs.length - ok.length} van ${rs.length} feeds niet bereikbaar`;
       bronstats[f.key] = o;
     }
+
+    // Filmpjes/Dumpert: per platform één regel in Bronnen (laatst gelukt / Ophalen mislukt)
+    const vidStat = (key: string, js: Job[]) => {
+      const rs = js.map((j) => R.get(j.url)).filter(Boolean) as Res[];
+      if (!rs.length) return;
+      const ok = rs.filter((r) => r.ok);
+      const n = rs.reduce((a, r) => a + (r.videos?.length || 0), 0);
+      if (!ok.length) { bronstats[key] = { vandaag: null, fout: [...new Set(rs.map((r) => r.err).filter(Boolean))].join("; ").slice(0, 80) || "geen antwoord", ...(st.okAt![key] ? { ok: st.okAt![key] } : {}) }; return; }
+      st.okAt![key] = nowIso;
+      bronstats[key] = { vandaag: n, ok: nowIso, ...(ok.length < rs.length ? { fout: `${rs.length - ok.length} van ${rs.length} niet bereikbaar` } : {}) };
+    };
+    vidStat("filmpjes|youtube", Object.values(YT_NIEUWS).map((cid) => ({ url: ytUrl(cid), kind: "feed" } as Job)));
+    vidStat("filmpjes|reddit", REDDIT_SUBS.map((sub) => ({ url: redditUrl(sub), kind: "reddit" } as Job)));
+    vidStat("filmpjes|instagram", insta);
+    vidStat("filmpjes|x", xj);
+    vidStat("dumpert|dumpert", [{ url: DUMPERT_URL, kind: "dumpert" }]);
 
     // ---- nieuws-kandidaten
     const cands: Cand[] = [];
@@ -413,6 +465,9 @@ export class Runner extends DurableObject<Env> {
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) for (const v of R.get(ytUrl(cid))?.videos || []) fv.push({ ...v, ai: kortAi(v.ai), ...({ _k: naam } as any) });
     for (const sub of REDDIT_SUBS) for (const v of R.get(redditUrl(sub))?.videos || []) fv.push(v);
     for (const j of insta) for (const v of R.get(j.url)?.videos || []) fv.push(v);
+    for (const j of xj) for (const v of R.get(j.url)?.videos || []) if (v.embed) fv.push({ ...v, ai: kortAi(v.ai) });
+    // YouTube-kanalen van partijen/overheid (bronnen.json, Politiek): max 2 per kanaal
+    for (const f of srcFeeds) if (f.g === "politiek") for (const u of f.urls) if (/youtube\.com\/feeds/.test(u)) for (const v of (R.get(u)?.videos || []).slice(0, 2)) fv.push({ ...v, ai: kortAi(v.ai) });
     // Shorts en Journaals apart, elk met een eigen plafond (anders drukken de Shorts de journaals weg)
     // Geen dubbele filmpjes: zelfde video-id/clip op meerdere platforms, tracking-parameters, bijna-gelijke titels.
     // Beste kopie blijft (in de site afspeelbaar, beste kwaliteit, populairst); wat al bij Dumpert staat valt hier weg.
