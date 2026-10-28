@@ -11,27 +11,8 @@ import { playerFor, viaProxy, youtubeId } from "./video";
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-export function videoSlug(v: Video): string {
-  const yt = youtubeId(v.embed || "") || youtubeId(v.href);
-  if (yt) return `yt-${yt}`;
-  let m = /dumpert\.nl\/item\/([\w-]+)/.exec(v.href);
-  if (m) return `d-${m[1]}`;
-  m = /\/status\/(\d+)/.exec(v.href);
-  if (m) return `x-${m[1]}`;
-  m = /reddit\.com\/r\/[\w-]+\/comments\/(\w+)/.exec(v.href);
-  if (m) return `r-${m[1]}`;
-  m = /instagram\.com\/(?:reel|p)\/([\w-]+)/.exec(v.href);
-  if (m) return `ig-${m[1]}`;
-  return (
-    v.titel
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 60) || "video"
-  );
-}
+export { videoSlug } from "./slug";
+import { videoSlug } from "./slug";
 
 // Geluid aan/uit geldt voor de hele sessie.
 const SOUND_KEY = "nieuwsinkort-feed-geluid";
@@ -656,6 +637,7 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
             <a className="f-btn" href={v.href} target="_blank" rel="noreferrer">
               Open bij bron <Icon name="ext" className="sm" />
             </a>
+            <SamenvattingKnop v={v} />
             <button type="button" className="f-btn ghost" onClick={onClose}>
               Sluiten
             </button>
@@ -666,6 +648,96 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
     </section>
   );
 });
+
+// ------------------------------------------------------------- samenvatting op verzoek
+// Knop + onderblad. De server (functions/samenvatting.ts) haalt ondertiteling of luistert de eerste minuten,
+// vat samen in simpele punten en bewaart dat per filmpje, dus de tweede keer is het meteen klaar.
+type Sv = { ok: true; punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number; model?: string; neuronen?: number; cached?: boolean } | { ok: false; code: string; fout: string };
+const svCache = new Map<string, Sv>();
+async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
+  const hit = svCache.get(id);
+  if (hit) return hit;
+  for (let poging = 0; poging < 8; poging++) {
+    let r: Response;
+    try {
+      r = await fetch("/samenvatting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }), signal });
+    } catch (e) {
+      if (signal.aborted) throw e;
+      return { ok: false, code: "net", fout: "Geen verbinding. Check je internet en probeer het nog eens." };
+    }
+    const j = (await r.json().catch(() => null)) as Sv | null;
+    if (j && !j.ok && j.code === "bezig") { await new Promise((ok) => setTimeout(ok, 4000)); continue; }
+    if (!j) return { ok: false, code: "fout", fout: "Samenvatten lukt even niet. Probeer het later nog eens." };
+    if (j.ok || ["geen-tekst", "te-lang", "onbekend"].includes(j.code)) svCache.set(id, j);
+    return j;
+  }
+  return { ok: false, code: "fout", fout: "Het duurt te lang. Probeer het zo nog eens." };
+}
+const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+function SamenvattingKnop({ v }: { v: Video }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="f-btn" onClick={(e) => { e.stopPropagation(); setOpen(true); }} aria-haspopup="dialog">
+        Samenvatting
+      </button>
+      {open ? createPortal(<SamenvattingBlad v={v} onClose={() => setOpen(false)} />, document.body) : null}
+    </>
+  );
+}
+function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
+  const id = videoSlug(v);
+  const [res, setRes] = useState<Sv | null>(() => svCache.get(id) || null);
+  const [n, setN] = useState(0);
+  const closeBtn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (svCache.has(id) && n === 0) return;
+    const ac = new AbortController();
+    setRes(null);
+    haalSamenvatting(id, ac.signal).then(setRes, () => {});
+    return () => ac.abort();
+  }, [id, n]);
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    closeBtn.current?.focus({ preventScroll: true });
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); onClose(); } };
+    window.addEventListener("keydown", key, true);
+    return () => { window.removeEventListener("keydown", key, true); prev?.focus?.({ preventScroll: true }); };
+  }, [onClose]);
+  const min = res && res.ok && res.sec ? Math.max(1, Math.round(res.sec / 60)) : 0;
+  return (
+    <div className="sv-wrap" onClick={(e) => { e.stopPropagation(); onClose(); }} onPointerDown={stop} onTouchStart={stop} onTouchMove={stop} onWheel={stop} onKeyDown={stop}>
+      <div className="sv-sheet" role="dialog" aria-modal="true" aria-labelledby="sv-kop" onClick={stop}>
+        <div className="sv-head">
+          <h2 id="sv-kop" className="sv-kop">Samenvatting</h2>
+          <button ref={closeBtn} type="button" className="sv-x" onClick={onClose} aria-label="Sluit samenvatting">
+            <Icon name="x" />
+          </button>
+        </div>
+        <p className="sv-titel">{v.titel}</p>
+        <div className="sv-body" aria-live="polite" aria-busy={!res}>
+          {!res ? (
+            <p className="sv-laden"><span className="sv-dot" aria-hidden="true" />Even kijken en luisteren…</p>
+          ) : res.ok ? (
+            <>
+              <ul className="sv-punten">{res.punten.map((p, k) => <li key={k}>{p}</li>)}</ul>
+              <p className="sv-bron">
+                {res.bron === "spraak" ? `Uit wat er gezegd wordt${min ? ` (eerste ${min} min)` : ""}` : "Uit de ondertiteling"} · samengevat door AI, kan foutjes bevatten
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="sv-fout">{res.fout}</p>
+              {["fout", "net", "bezig", "geblokkeerd"].includes(res.code) ? (
+                <button type="button" className="f-btn" onClick={() => { svCache.delete(id); setN((x) => x + 1); }}>Probeer opnieuw</button>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ------------------------------------------------------------- cache opwarmen
 const warmed = new Set<string>();
