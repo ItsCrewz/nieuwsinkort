@@ -530,8 +530,60 @@ function NewsList({ items, view, bionic, focusKey, onOpen }: { items: Item[]; vi
 // ---------------------------------------------------------------- nieuwsfeed (TikTok-achtig)
 // Eén bericht per kaart op schermhoogte, met scroll-snap. De bovenbalk en de rubrieken staan vast
 // (de pagina zelf scrolt niet); alleen deze lijst scrolt. Beweging: alleen transform/opacity.
+// Laat een kaart altijd passen zonder tekst half af te snijden: eerst het grote nummer weg, dan de
+// punten, dan de samenvatting inkorten op HELE regels (met …; volledige tekst via "Lees verder"),
+// en pas als het dan nog niet past mag de kaart zelf scrollen. De kop wordt nooit ingekort.
+function fitCard(el: HTMLElement) {
+  const sum = el.querySelector<HTMLElement>(".nc-sum");
+  el.classList.remove("fit-nonum", "fit-nopts", "fit-scroll");
+  el.querySelectorAll<HTMLElement>(".nc-pts li").forEach((li) => (li.hidden = false));
+  if (sum) {
+    sum.classList.remove("clamp");
+    sum.style.removeProperty("--sum-lines");
+  }
+  const over = () => el.scrollHeight - el.clientHeight > 1;
+  if (!el.clientHeight || !over()) return;
+  el.classList.add("fit-nonum");
+  if (!over()) return;
+  // punten één voor één van achteren weghalen; pas als er geen meer past, de hele lijst weg
+  const pts = [...el.querySelectorAll<HTMLElement>(".nc-pts li")];
+  for (let k = pts.length - 1; k >= 0 && over(); k--) pts[k].hidden = true;
+  if (pts.length && !over()) return;
+  if (pts.length) el.classList.add("fit-nopts");
+  if (sum) {
+    const lh = parseFloat(getComputedStyle(sum).lineHeight) || 26;
+    const lines = Math.round(sum.getBoundingClientRect().height / lh);
+    let keep = lines - Math.ceil((el.scrollHeight - el.clientHeight) / lh);
+    sum.classList.add("clamp");
+    for (keep = Math.max(2, Math.min(keep, lines)); ; keep--) {
+      sum.style.setProperty("--sum-lines", String(keep));
+      if (!over() || keep <= 2) break;
+    }
+    if (!over()) return;
+  }
+  el.classList.add("fit-scroll");
+}
+
 const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn }) {
   const key = itemKey(item);
+  const cardRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    let raf = 0;
+    const run = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => fitCard(el));
+    };
+    fitCard(el);
+    const ro = new ResizeObserver(run);
+    ro.observe(el);
+    document.fonts?.ready.then(run).catch(() => {});
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [bionic, item]);
   const click = useOpen(key, onOpen);
   const bronnen = item.bronnen ?? [];
   const first = bronnen[0];
@@ -539,7 +591,7 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { it
   const punten = (item.punten ?? []).slice(0, 3);
   return (
     <section className={`nc cat-${item.cat}`} data-id={key} data-i={i} aria-label={`${i + 1} van ${total}: ${item.kop}`}>
-      <article className={`nc-in ${item.beeld ? "has-img" : ""}`}>
+      <article ref={cardRef} className={`nc-in ${item.beeld ? "has-img" : ""}`}>
         <span className="nc-num tnum" aria-hidden="true">
           {String(i + 1).padStart(2, "0")}
         </span>

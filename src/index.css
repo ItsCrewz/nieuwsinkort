@@ -273,7 +273,7 @@ video.f-media.on{background:#000}
 .fstate{display:flex;align-items:center;justify-content:center;width:68px;height:68px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;animation:pop 160ms var(--ease) both}
 .fstate .ic{width:28px;height:28px;margin-left:3px}
 .f-fail{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:rgba(0,0,0,.55);font-size:14.5px;color:rgba(255,255,255,.86)}
-.f-info{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;flex-direction:column;gap:7px;padding:56px 16px calc(18px + env(safe-area-inset-bottom));background:linear-gradient(to top,rgba(0,0,0,.82),rgba(0,0,0,.55) 55%,rgba(0,0,0,0));pointer-events:none}
+.f-info{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;flex-direction:column;gap:7px;padding:56px 16px calc(26px + env(safe-area-inset-bottom));background:linear-gradient(to top,rgba(0,0,0,.82),rgba(0,0,0,.55) 55%,rgba(0,0,0,0));pointer-events:none}
 .f-info > *{pointer-events:auto}
 .f-info .meta{color:rgba(255,255,255,.7)}
 .f-title{font-size:18px;line-height:1.35;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
@@ -282,8 +282,20 @@ video.f-media.on{background:#000}
 .f-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:17px;background:#fff;color:#111;font-size:13px;font-weight:500;border:0;cursor:pointer;transition:opacity var(--fast) var(--ease)}
 .f-btn:hover{opacity:.86}
 .f-btn.ghost{background:rgba(255,255,255,.14);color:#fff}
-.f-bar{position:absolute;left:0;right:0;bottom:0;height:2px;z-index:3;background:rgba(255,255,255,.18)}
+/* voortgangsbalk = doorspoelbalk: dun in rust, dikker tijdens slepen; ruim raakvlak eronder */
+.f-scrub{position:absolute;left:0;right:0;bottom:0;height:24px;z-index:3;touch-action:none;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;outline:0}
+.f-scrub.off{pointer-events:none}
+.f-bar{position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(255,255,255,.18);transform:scaleY(.334);transform-origin:50% 100%;transition:transform 160ms var(--ease)}
 .f-bar > span{position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:0 50%}
+.f-scrub.drag .f-bar,.f-scrub:focus-visible .f-bar{transform:none}
+@media (hover:hover){.f-scrub:hover .f-bar{transform:scaleY(.667)}}
+.f-time{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);padding:6px 12px;border-radius:16px;background:rgba(0,0,0,.6);color:rgba(255,255,255,.72);font-size:15px;font-weight:500;white-space:nowrap;pointer-events:none;animation:pop 140ms var(--ease) both}
+.f-time b{color:#fff;font-weight:600}
+.f-scrub.drag ~ .f-info,.fcol:has(.f-scrub.drag) .f-info{opacity:0;transition:opacity 120ms var(--ease)}
+.fjump{position:absolute;top:50%;padding:10px 16px;border-radius:22px;background:rgba(0,0,0,.5);color:#fff;font-size:15px;font-weight:600;animation:jump 600ms var(--ease) both;pointer-events:none}
+.fjump.l{left:12%}
+.fjump.r{right:12%}
+@keyframes jump{0%{opacity:0;transform:translate3d(0,-50%,0) scale(.85)}20%{opacity:1;transform:translate3d(0,-50%,0) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate3d(0,-50%,0)}}
 .feed-top{position:absolute;left:0;right:0;top:0;z-index:4;display:flex;justify-content:center;pointer-events:none}
 .feed-topcol{width:min(100%,calc(100dvh * 9 / 16));display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0))}
 .feed-topcol > *{pointer-events:auto}
@@ -437,27 +449,33 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   transition:opacity 380ms var(--ease),transform 460ms var(--ease)}
 .nc:not(.seen) .nc-in{opacity:0;transform:translateY(18px) scale(.985)}
 .nc-body{display:flex;flex-direction:column;gap:18px;min-height:0}
+/* Nooit tekst half afsnijden: niets in de kaart mag krimpen (flex-shrink maakte de kop halve regels).
+   Past het niet, dan haalt fitCard() eerst het grote nummer en de punten weg, kort daarna de samenvatting
+   in op hele regels (met …) en laat in het uiterste geval de kaart zelf scrollen. De kop wordt nooit ingekort. */
+.nc-in > *, .nc-body > *{flex:none}
+.nc-in.fit-nonum .nc-num{display:none}
+.nc-in.fit-nopts .nc-pts{display:none}
+.nc-in.fit-scroll{overflow-y:auto;overscroll-behavior:contain;justify-content:flex-start;scrollbar-width:none}
+.nc-in.fit-scroll::-webkit-scrollbar{display:none}
 .nc-num{font-size:clamp(64px,15cqw,128px);line-height:.9;font-weight:600;letter-spacing:-.06em;color:var(--ink);opacity:.07;margin-left:-.04em;flex:none}
 .nc-img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:var(--seg);flex:none;max-height:38cqh}
 .nc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:13.5px;line-height:1.4;color:var(--muted)}
 .nc-meta > * + *::before{content:"·";margin-right:8px;color:var(--muted)}
 .nc-cat{color:var(--accent);font-weight:600}
 .nc-src{color:var(--ink-2);font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
-.nc-title{font-size:clamp(26px,5.4cqw,46px);line-height:1.1;font-weight:600;letter-spacing:-.032em;text-wrap:balance;
-  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}
+.nc-title{font-size:clamp(26px,5.4cqw,46px);line-height:1.1;font-weight:600;letter-spacing:-.032em;text-wrap:balance;overflow-wrap:anywhere;hyphens:auto}
 .nc-title a{transition:opacity var(--fast) var(--ease)}
 .nc-title a:hover{opacity:.75}
-.nc-sum{font-size:18px;line-height:1.6;color:var(--ink-2);max-width:62ch;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:7;overflow:hidden}
+.nc-sum{font-size:18px;line-height:1.6;color:var(--ink-2);max-width:62ch}
+.nc-sum.clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--sum-lines,6);overflow:hidden;max-height:calc(var(--sum-lines,6) * 1lh)}
 .nc-pts{display:grid;gap:8px;max-width:62ch}
-.nc-pts li{position:relative;padding-left:18px;font-size:15.5px;line-height:1.5;color:var(--ink-2);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.nc-pts li{position:relative;padding-left:18px;font-size:15.5px;line-height:1.5;color:var(--ink-2)}
 .nc-pts li::before{content:"";position:absolute;left:0;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
 .nc-act{display:flex;flex-wrap:wrap;align-items:center;gap:10px 10px;margin-top:6px}
 .btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--rule)}
 .btn.ghost:hover{opacity:1;background:var(--hover)}
 .btn .ic{width:15px;height:15px}
 .nc-more{font-size:13px;color:var(--muted)}
-@container nc (max-height: 600px){ .nc-pts{display:none} }
-@container nc (max-height: 560px){ .nc-sum{-webkit-line-clamp:4} .nc-title{-webkit-line-clamp:4} }
 
 /* voortgang: dunne rail rechts + teller "3/24" */
 .nf-ui{position:absolute;inset:0;pointer-events:none}
@@ -484,7 +502,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   .nc-in{border-radius:18px;padding:22px 20px 24px;gap:14px;max-height:none}
   .nc-body{gap:14px}
   .nc-title{font-size:clamp(26px,8.4cqw,34px)}
-  .nc-sum{font-size:16.5px;-webkit-line-clamp:8}
+  .nc-sum{font-size:16.5px}
   .nc-head .dateline{padding-top:22px}
   .nc-end .foot{padding-left:16px;padding-right:16px}
   .nf-btn{display:none}

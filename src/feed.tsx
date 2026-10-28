@@ -73,8 +73,13 @@ function useBar(ref: React.RefObject<HTMLElement>): Bar {
   return { set, stop };
 }
 
+// Doorspoelen: de speler meldt zich hier aan, de balk onderaan stuurt hem aan.
+export type SeekApi = { dur: () => number; cur: () => number; seek: (t: number) => void };
+type SeekRef = React.MutableRefObject<SeekApi | null>;
+
 type PlayerProps = {
   v: Video;
+  seek: SeekRef;
   active: boolean;
   preload: number; // 0 = niet, 1 = de volgende, 2 = +2 / -1
   paused: boolean;
@@ -124,8 +129,27 @@ const DEBUG = (() => {
     return false;
   }
 })();
-function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFail, onAutoplayBlocked }: PlayerProps & { kind: "hls" | "mp4"; src: string }) {
+function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek, onFail, onAutoplayBlocked }: PlayerProps & { kind: "hls" | "mp4"; src: string }) {
   const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const api: SeekApi = {
+      dur: () => ref.current?.duration ?? 0,
+      cur: () => ref.current?.currentTime ?? 0,
+      // hls.js laadt zelf het juiste stukje (via de proxy) als je buiten de buffer springt;
+      // Safari doet hetzelfde met zijn eigen HLS-speler.
+      seek: (t) => {
+        const video = ref.current;
+        if (!video || !(video.duration > 0)) return;
+        const max = Math.max(0, video.duration - 0.25);
+        const to = Math.min(max, Math.max(0, t));
+        video.currentTime = to;
+      },
+    };
+    seek.current = api;
+    return () => {
+      if (seek.current === api) seek.current = null;
+    };
+  }, [seek]);
   const [shown, setShown] = useState(false);
   const hlsRef = useRef<{ config: { maxBufferLength: number; maxMaxBufferLength: number }; startLoad: (p?: number) => void } | null>(null);
   const started = useRef(false);
@@ -329,7 +353,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, onFai
 
 // ------------------------------------------------------------- YouTube (IFrame API via postMessage)
 const YT_ORIGIN = "https://www.youtube-nocookie.com";
-function YouTubePlayer({ v, id, active, paused, muted, bar }: PlayerProps & { id: string }) {
+function YouTubePlayer({ v, id, active, paused, muted, bar, seek }: PlayerProps & { id: string }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const loaded = useRef(false);
   const [shown, setShown] = useState(false);
@@ -385,9 +409,26 @@ function YouTubePlayer({ v, id, active, paused, muted, bar }: PlayerProps & { id
     const since = { current: 0 };
     const base = { current: 0 };
     const expect = () => base.current + (ps.current === 1 ? (performance.now() - since.current) / 1000 : 0);
+    const api: SeekApi = {
+      dur: () => dur.current,
+      cur: () => expect(),
+      seek: (t) => {
+        if (!(dur.current > 0)) return;
+        const to = Math.min(Math.max(0, dur.current - 0.5), Math.max(0, t));
+        post("seekTo", [to, true]);
+        cur.current = to;
+        base.current = to;
+        since.current = performance.now();
+        bar.set(to, dur.current, ps.current === 1);
+      },
+    };
+    seek.current = api;
     window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, [apply, bar]);
+    return () => {
+      window.removeEventListener("message", onMsg);
+      if (seek.current === api) seek.current = null;
+    };
+  }, [apply, bar, post, seek]);
 
   useEffect(() => {
     apply();
@@ -414,6 +455,98 @@ function YouTubePlayer({ v, id, active, paused, muted, bar }: PlayerProps & { id
   );
 }
 
+// ------------------------------------------------------------- doorspoelen op de voortgangsbalk
+const fmt = (t: number) => {
+  if (!isFinite(t) || t < 0) t = 0;
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+};
+// De bestaande dunne balk onderaan, maar dan aanraakbaar: tikken of slepen = doorspoelen. Een ruim (onzichtbaar)
+// raakvlak met touch-action:none, zodat slepen op de balk de feed niet verticaal laat swipen.
+function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.RefObject<HTMLSpanElement>; seek: SeekRef; enabled: boolean; title: string }) {
+  const hit = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<{ p: number; d: number } | null>(null);
+  const st = useRef<{ id: number; p: number } | null>(null);
+  const ratio = (x: number) => {
+    const r = hit.current!.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (x - r.left) / (r.width || 1)));
+  };
+  const preview = (p: number, d: number) => {
+    bar.set(p * d, d, false);
+    setDrag({ p, d });
+  };
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    const api = seek.current;
+    const d = api?.dur() ?? 0;
+    e.stopPropagation();
+    if (!api || !(d > 0) || !isFinite(d)) return;
+    e.preventDefault();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* oude browsers */
+    }
+    const p = ratio(e.clientX);
+    st.current = { id: e.pointerId, p };
+    preview(p, d);
+  };
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = st.current;
+    if (!s || s.id !== e.pointerId) return;
+    e.stopPropagation();
+    e.preventDefault();
+    s.p = ratio(e.clientX);
+    preview(s.p, drag?.d ?? seek.current?.dur() ?? 0);
+  };
+  const up = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = st.current;
+    if (!s || s.id !== e.pointerId) return;
+    e.stopPropagation();
+    st.current = null;
+    const api = seek.current;
+    const d = api?.dur() ?? 0;
+    if (e.type !== "pointercancel" && api && d > 0) api.seek(s.p * d);
+    setDrag(null);
+  };
+  const key = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const api = seek.current;
+    if (!api) return;
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      e.stopPropagation();
+      api.seek(api.cur() + (e.key === "ArrowRight" ? 5 : -5));
+    }
+  };
+  return (
+    <div
+      ref={hit}
+      className={`f-scrub ${drag ? "drag" : ""} ${enabled ? "" : "off"}`}
+      role="slider"
+      aria-label={`Doorspoelen: ${title}`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={drag ? Math.round(drag.p * 100) : undefined}
+      tabIndex={enabled ? 0 : -1}
+      onPointerDown={enabled ? down : undefined}
+      onPointerMove={enabled ? move : undefined}
+      onPointerUp={enabled ? up : undefined}
+      onPointerCancel={enabled ? up : undefined}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={enabled ? key : undefined}
+    >
+      {drag ? (
+        <span className="f-time tnum" aria-hidden="true">
+          <b>{fmt(drag.p * drag.d)}</b> / {fmt(drag.d)}
+        </span>
+      ) : null}
+      <span className="f-bar" aria-hidden="true">
+        <span ref={barEl} />
+      </span>
+    </div>
+  );
+}
+
 // ------------------------------------------------------------- één scherm
 type SlideProps = {
   v: Video;
@@ -435,9 +568,39 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
   const fail = useCallback(() => setFailed(true), []);
   const barEl = useRef<HTMLSpanElement>(null);
   const bar = useBar(barEl);
+  const seek = useRef<SeekApi | null>(null);
   const [posterOk, setPosterOk] = useState(true);
   const playable = !!p && !failed;
-  const props: PlayerProps = { v, active, preload, paused, muted, bar, onFail: fail, onAutoplayBlocked };
+  const props: PlayerProps = { v, active, preload, paused, muted, bar, seek, onFail: fail, onAutoplayBlocked };
+  // Dubbel tikken links/rechts = 5 s terug/vooruit. De eerste tik pauzeert meteen (geen vertraging);
+  // blijkt het een dubbele tik, dan draaien we die pauze terug en springen we.
+  const lastTap = useRef({ t: 0, side: 0 });
+  const [jump, setJump] = useState<{ side: number; n: number } | null>(null);
+  const tap = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      const x = (e.clientX - r.left) / (r.width || 1);
+      const side = e.detail === 0 ? 0 : x < 0.35 ? -1 : x > 0.65 ? 1 : 0;
+      const now = performance.now();
+      const prev = lastTap.current;
+      const api = seek.current;
+      if (side && prev.side === side && now - prev.t < 320 && api) {
+        lastTap.current = { t: 0, side: 0 };
+        onTap(); // eerste tik terugdraaien
+        api.seek(api.cur() + side * 5);
+        setJump((j) => ({ side, n: (j?.n ?? 0) + 1 }));
+        return;
+      }
+      lastTap.current = { t: now, side };
+      onTap();
+    },
+    [onTap]
+  );
+  useEffect(() => {
+    if (!jump) return;
+    const t = window.setTimeout(() => setJump(null), 600);
+    return () => window.clearTimeout(t);
+  }, [jump]);
   return (
     <section className={`fslide cat-${cat}`} data-i={i} aria-label={`${i + 1} van ${total}: ${v.titel}`} aria-current={active ? "true" : undefined}>
       <div className="fcol">
@@ -460,10 +623,15 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
           )
         ) : null}
         {playable ? (
-          <button type="button" className="ftap" aria-label={paused && active ? "Afspelen" : "Pauzeren"} onClick={onTap} tabIndex={-1}>
-            {active && paused ? (
+          <button type="button" className="ftap" aria-label={paused && active ? "Afspelen" : "Pauzeren"} onClick={tap} tabIndex={-1}>
+            {active && paused && !jump ? (
               <span className="fstate">
                 <Icon name="play" className="fill" />
+              </span>
+            ) : null}
+            {jump ? (
+              <span key={jump.n} className={`fjump ${jump.side < 0 ? "l" : "r"}`} aria-hidden="true">
+                {jump.side < 0 ? "−5 s" : "+5 s"}
               </span>
             ) : null}
           </button>
@@ -492,9 +660,7 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
             </button>
           </div>
         </div>
-        <span className="f-bar" aria-hidden="true">
-          <span ref={barEl} />
-        </span>
+        <Scrub bar={bar} barEl={barEl} seek={seek} enabled={playable && mount} title={v.titel} />
       </div>
     </section>
   );
