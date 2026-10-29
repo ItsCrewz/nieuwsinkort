@@ -609,3 +609,20 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .fchip.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .fchip.on .fchip-n{color:inherit;opacity:.7}
 .fhint{font-size:12.5px;line-height:1.45;color:var(--muted);margin-top:8px}
+
+/* "Lees verder": extra tekst in het bericht (uitleg, per bron, uit het artikel). Nooit afkappen. */
+.d-meer .d-body{margin-top:0}
+.d-meer .d-body p,.perbron li{overflow-wrap:anywhere;hyphens:auto;-webkit-hyphens:auto}
+.d-quote{padding-left:16px;border-left:3px solid var(--rule);color:var(--ink-2)}
+.d-more{margin-top:18px;max-width:100%;height:auto;min-height:42px;padding:10px 20px;line-height:1.35;white-space:normal;text-align:left}
+.perbron{display:flex;flex-direction:column;gap:14px}
+.pb{background:var(--card);border:1px solid var(--card-line);border-radius:var(--r);padding:14px 16px}
+.pb-site{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--accent);margin-bottom:8px}
+.pb-site .ic{width:13px;height:13px}
+.pb ul{display:flex;flex-direction:column;gap:8px;padding-left:18px;list-style:disc}
+.pb li{font-size:16px;line-height:1.6}
+.d-meer-laden{display:flex;flex-direction:column;gap:12px;margin-top:40px}
+.d-meer-laden span{display:block;height:14px;border-radius:7px;background:var(--rule);opacity:.6;animation:mlaad 1.2s ease-in-out infinite alternate}
+.d-meer-laden span:nth-child(2){width:92%}.d-meer-laden span:nth-child(3){width:70%}
+@keyframes mlaad{to{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.d-meer-laden span{animation:none}}

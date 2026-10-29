@@ -1,5 +1,5 @@
 import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Bron, Cat, Data, Item, View, Weer, WeerDag } from "./types";
+import type { Meer, Bron, Cat, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch, host } from "./ui";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { SourcesSheet } from "./sheet";
@@ -575,6 +575,16 @@ function fitCard(el: HTMLElement) {
   el.classList.add("fit-scroll");
 }
 
+// "Lees verder" alleen tonen als er echt meer te lezen is dan op de kaart staat: extra tekst van de uur-Worker
+// (uitleg/artikel), of een samenvatting die flink langer is dan de korte zin op de kaart.
+const kaal = (s = "") => s.replace(/\s+/g, " ").trim().toLowerCase();
+function heeftMeer(item: Item): boolean {
+  if (item.meer) return true;
+  const a = kaal(item.ai), s = kaal(item.samenvatting);
+  const extra = !s ? 0 : !a ? s.length - 160 : s.includes(a) || a.includes(s) ? s.length - a.length : s.length;
+  return extra >= 220 || (item.punten?.length || 0) > 3;
+}
+
 const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn }) {
   const key = itemKey(item);
   const cardRef = useRef<HTMLElement>(null);
@@ -617,6 +627,7 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { it
   const first = bronnen[0];
   const sum = item.ai || item.samenvatting;
   const punten = (item.punten ?? []).slice(0, 3);
+  const meer = heeftMeer(item);
   return (
     <section className={`nc cat-${item.cat}`} data-id={key} data-i={i} aria-label={`${i + 1} van ${total}: ${item.kop}`}>
       <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
@@ -649,11 +660,13 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { it
           </ul>
         ) : null}
         <div className="nc-act">
-          <a className="btn" href={`#/bericht/${key}`} onClick={click}>
-            Lees verder
-          </a>
+          {meer ? (
+            <a className="btn" href={`#/bericht/${key}`} onClick={click} onTouchStart={() => prefetchMeer(item)} onMouseEnter={() => prefetchMeer(item)}>
+              Lees verder
+            </a>
+          ) : null}
           {first ? (
-            <a className="btn ghost" href={first.href} target="_blank" rel="noopener noreferrer">
+            <a className={`btn${meer ? " ghost" : ""}`} href={first.href} target="_blank" rel="noopener noreferrer">
               Origineel bij {first.site}
               <Icon name="ext" />
             </a>
@@ -825,6 +838,97 @@ function SourceRow({ b }: { b: Bron }) {
   );
 }
 
+// Extra tekst per bericht (/meer), één keer per sessie opgehaald; al vooraf bij aanraken van "Lees verder".
+const meerCache = new Map<string, Promise<Meer | null>>();
+function prefetchMeer(item: Item): Promise<Meer | null> {
+  const k = item.meer;
+  if (!k) return Promise.resolve(null);
+  let p = meerCache.get(k);
+  if (!p) {
+    p = fetch(`/meer?k=${encodeURIComponent(k)}`)
+      .then((r) => (r.ok ? (r.json() as Promise<Meer>) : null))
+      .catch(() => null);
+    p.then((m) => { if (!m) meerCache.delete(k); });
+    meerCache.set(k, p);
+  }
+  return p;
+}
+function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
+  const [st, setSt] = useState<{ k?: string; meer: Meer | null; laden: boolean }>({ meer: null, laden: !!item.meer });
+  useEffect(() => {
+    let weg = false;
+    if (!item.meer) { setSt({ meer: null, laden: false }); return; }
+    setSt({ k: item.meer, meer: null, laden: true });
+    prefetchMeer(item).then((m) => { if (!weg) setSt({ k: item.meer, meer: m, laden: false }); });
+    return () => { weg = true; };
+  }, [item]);
+  return st;
+}
+
+function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
+  const { meer, laden } = useMeer(item);
+  if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
+  if (!meer) return null;
+  const uitleg = meer.uitleg ?? [];
+  const per = (meer.perBron ?? []).filter((b) => b.punten?.length);
+  // het artikel zelf alleen als er geen AI-uitleg is (anders dubbel)
+  const uit = uitleg.length ? [] : (meer.uittreksel ?? []).filter((b) => b.alineas?.length);
+  return (
+    <>
+      {uitleg.length ? (
+        <section className="d-sec d-meer" aria-label="Uitgebreid">
+          <h2 className="d-h">Uitgebreid</h2>
+          <div className="d-body bn">
+            {uitleg.map((p, n) => (
+              <p key={n}>
+                <BionicText text={p} on={bionic} />
+              </p>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {per.length ? (
+        <section className="d-sec" aria-label="Wat elke bron meldt">
+          <h2 className="d-h">Wat elke bron meldt</h2>
+          <div className="perbron">
+            {per.map((b, n) => (
+              <div className="pb" key={b.site + n}>
+                <a className="pb-site" href={b.href || undefined} target="_blank" rel="noopener noreferrer">
+                  {b.site}
+                  <Icon name="ext" className="sm" />
+                </a>
+                <ul className="bn">
+                  {b.punten.map((p, k) => (
+                    <li key={k}>
+                      <BionicText text={p} on={bionic} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {uit.map((b, n) => (
+        <section className="d-sec d-meer" key={b.href + n} aria-label={`Uit het artikel bij ${b.site}`}>
+          <h2 className="d-h">Uit het artikel bij {b.site}</h2>
+          <div className="d-body d-quote bn">
+            {b.alineas.map((p, k) => (
+              <p key={k}>
+                <BionicText text={p} on={bionic} />
+              </p>
+            ))}
+          </div>
+          <a className="btn ghost d-more" href={b.href} target="_blank" rel="noopener noreferrer">
+            Lees het hele artikel bij {b.site}
+            <Icon name="ext" />
+          </a>
+        </section>
+      ))}
+    </>
+  );
+}
+
 function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
@@ -876,6 +980,7 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
           </ol>
         </section>
       ) : null}
+      <MeerTekst item={item} bionic={bionic} />
       <section className="d-sec" aria-label="Bronnen">
         <h2 className="d-h">Bronnen</h2>
         {bronnen.length ? (

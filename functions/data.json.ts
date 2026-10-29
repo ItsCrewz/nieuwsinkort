@@ -29,13 +29,20 @@ export function merge(S: any, H: any) {
   // Per soort (Shorts/Journaals) apart begrensd, zodat de ene soort de andere niet wegdrukt.
   const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.bron === "Instagram" || (v.tijd || "") >= sTijd));
   const extraF = [...extra.filter((v: any) => v.soort !== "journaal").slice(0, 12), ...extra.filter((v: any) => v.soort === "journaal").slice(0, 10)];
-  const { meta, ...h } = H;
+  const { meta, meerKeys, ...h } = H;
+  // "Lees verder": ook berichten van de routine krijgen hun extra tekst (sleutel = eerste bron met tekst in KV "meer")
+  const mk = new Set<string>(Array.isArray(meerKeys) ? meerKeys : []);
+  const metMeer = (i: any) => {
+    if (i.meer || !mk.size) return i;
+    const k = (i.bronnen || []).map((b: any) => norm(b.href)).find((x: string) => mk.has(x));
+    return k ? { ...i, meer: k } : i;
+  };
   return {
     ...base,
     datum: H.datum || base.datum,
     dag_samenvatting: (hNieuwer && H.dag_samenvatting) || base.dag_samenvatting || H.dag_samenvatting || "",
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
-    items: [...nieuw, ...(base.items || [])],
+    items: [...nieuw, ...(base.items || [])].map(metMeer),
     filmpjes: sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || [],
     dumpert: (H.dumpert || []).length >= 5 ? H.dumpert : base.dumpert || H.dumpert || [],
     bronstats: h.bronstats || base.bronstats,

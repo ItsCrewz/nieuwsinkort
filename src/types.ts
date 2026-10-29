@@ -11,6 +11,14 @@ export type Item = {
   beeld?: string; // oud veld: één afbeelding
   /** Foto's uit alle bronnen van dit bericht (ontdubbeld, eerste = beste). */
   beelden?: string[];
+  /** Sleutel voor /meer?k=… : er staat extra tekst klaar achter "Lees verder" (uur-Worker). */
+  meer?: string;
+};
+/** Extra tekst achter "Lees verder" (/meer). */
+export type Meer = {
+  uitleg?: string[];
+  perBron?: { site: string; href: string; punten: string[] }[];
+  uittreksel?: { site: string; href: string; alineas: string[] }[];
 };
 export type WeerDag = { dag: string; min: number; max: number; omschrijving?: string };
 export type Weer = {

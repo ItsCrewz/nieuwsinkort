@@ -79,3 +79,32 @@ export async function simpelWeer(ai: Ai, model: string, knmi: string, u: Usage):
   const user = `Herschrijf dit weerbericht voor Haarlem in 2 of 3 korte, simpele zinnen (max 60 woorden). Noem vanmiddag/vanavond/morgen als dat erin staat. Getallen precies overnemen.\n\n${knmi.slice(0, 1500)}`;
   return (await chat(ai, model, sys, user, 160, u)).replace(/\s+/g, " ").trim();
 }
+
+// "Lees verder": per bericht een langere uitleg (3–5 alinea's) en per bron de kernpunten, uit de artikeltekst zelf.
+export type DiepIn = { id: number; kop: string; kort: string; bronnen: { site: string; tekst: string }[] };
+export type Diep = { uitleg: string[]; perBron: { site: string; punten: string[] }[] };
+export async function verdiep(ai: Ai, model: string, items: DiepIn[], u: Usage): Promise<Map<number, Diep>> {
+  const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
+  const user =
+    `Schrijf voor elk bericht een langere uitleg voor wie meer wil weten dan de korte samenvatting ("kort").\n` +
+    `- "uitleg": 3 tot 5 korte alinea's (samen 120 tot 220 woorden): wat er precies gebeurde, de achtergrond, wie erbij betrokken zijn, wat het betekent en wat er nu gaat gebeuren. Herhaal "kort" niet letterlijk. Alleen wat in de bronteksten staat.\n` +
+    `- "perBron": per bron 2 tot 4 korte kernpunten (elk max 15 woorden) met wat díe bron meldt; "site" precies zoals aangeleverd.\n` +
+    `Antwoord als {"items":[{"id":1,"uitleg":["alinea","..."],"perBron":[{"site":"...","punten":["..."]}]}]}\n\nBerichten:\n` +
+    JSON.stringify(items);
+  const out = new Map<number, Diep>();
+  const txt = await chat(ai, model, sys, user, 750 * items.length + 100, u, true);
+  const j = jsonFrom(txt);
+  const arr = Array.isArray(j) ? j : j?.items;
+  for (const x of Array.isArray(arr) ? arr : []) {
+    const id = Number(x?.id);
+    const src = items.find((i) => i.id === id);
+    if (!src) continue;
+    const uitleg = (Array.isArray(x.uitleg) ? x.uitleg : String(x.uitleg || "").split(/\n\s*\n/)).map((p: any) => str(p, 900)).filter((p: string) => p.length > 20).slice(0, 6);
+    const perBron = (Array.isArray(x.perBron) ? x.perBron : [])
+      .map((b: any) => ({ site: str(b?.site, 60), punten: (Array.isArray(b?.punten) ? b.punten : []).map((p: any) => str(p, 160)).filter(Boolean).slice(0, 4) }))
+      .filter((b: any) => b.punten.length && src.bronnen.some((s) => s.site === b.site));
+    if (uitleg.join(" ").length >= 250) out.set(id, { uitleg, perBron });
+  }
+  if (!out.size) u.fails++;
+  return out;
+}
