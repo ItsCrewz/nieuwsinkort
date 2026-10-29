@@ -14,6 +14,14 @@ Dumpert-HLS loopt voor hls.js via de Pages Function `functions/media/dumpert/[[p
 (media.dumpert.nl staat alleen dumpert.nl toe via CORS). MP4 (X) via `<video>`; daarvoor staat
 `<meta name="referrer" content="no-referrer">` (video.twimg.com weigert een vreemde referrer).
 
+## Filters
+
+Filter artikelen op tijd, rubriek (bij Alles), regio, video en meerdere bronnen.
+Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
+Bij Nieuwste eerst staat het openingsartikel met de meeste bronnen bovenaan, gevolgd door de overige artikelen op tijd.
+Bij Oudste eerst en Meeste bronnen geldt de gekozen volgorde ook voor het openingsartikel.
+Je filters worden in localStorage onthouden.
+
 ## Elk uur bijwerken (zonder LLM-routine)
 
 - `worker/` = Cloudflare Worker **nieuwsinkort-uur** (Free plan). Cron `0 4-22 * * *` (UTC); de code draait alleen

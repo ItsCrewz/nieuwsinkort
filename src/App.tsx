@@ -1389,7 +1389,6 @@ export default function App() {
   const alles = view === "alles";
   const basisItems = alles ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === view);
   const uitkomst = isVideo ? null : filterNieuws(basisItems, flt.f, flt.vorig, raw.gegenereerd, alles);
-  const sortBronnen = flt.f.sort === "bronnen";
   const filterLeeg = (
     <div className="empty">
       <Icon name="clock" />
@@ -1421,7 +1420,7 @@ export default function App() {
           <NewsFeed
             key={view}
             items={uitkomst!.items}
-            keepOrder={sortBronnen}
+            keepOrder={flt.f.sort !== "nieuw"}
             empty={filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
@@ -1480,7 +1479,7 @@ export default function App() {
             key={view}
             view={view}
             items={uitkomst?.items ?? []}
-            keepOrder={sortBronnen}
+            keepOrder={flt.f.sort !== "nieuw"}
             empty={filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
