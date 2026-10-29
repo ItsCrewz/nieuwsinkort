@@ -36,3 +36,8 @@ Dumpert-HLS loopt voor hls.js via de Pages Function `functions/media/dumpert/[[p
 - Lokaal testen: `cd worker && npx wrangler dev --test-scheduled --var RUN_KEY:test`, daarna
   `curl 'localhost:8787/run?key=test'` (draai nu) en `curl 'localhost:8787/uur?key=test'` (resultaat).
   KV is lokaal gesimuleerd. Workers AI is altijd remote en telt dus mee voor de neuronen.
+
+## Werkafspraak: documentatie bijwerken
+
+- Bij elke issue of PR wordt in dezelfde PR de toepasselijke documentatie bijgewerkt: README, AGENTS.md/CLAUDE.md, docs/, het securityregister en een changelog, voor zover die bestaan.
+- De PR-beschrijving noemt welke documentatie is bijgewerkt, of waarom geen documentatie van toepassing was.
