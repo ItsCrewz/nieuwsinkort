@@ -16,6 +16,6 @@ Regels voor Codex en andere agents in deze repo (nieuwsinkort, Nederlandstalige 
 - Stack: Vite 5, React 18, TypeScript 5, Tailwind 3, hls.js; Cloudflare Pages Functions (`functions/`); Worker `nieuwsinkort-uur` (`worker/`, Durable Objects `Runner`/`Fetcher`, KV `NIEUWS`, Workers AI).
 - Commando's: `npm ci`, `npm run dev`, `npm run build` (bronnen + tsc + vite), `npm test`.
 - Indeling: `src/` frontend, `functions/` Pages Functions (`data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/`), `worker/src/` uur-Worker, `scripts/` hulpscripts, `tests/` tests, `public/` statisch (`data.json`, `bronnen.json`), `prod-frozen/` bevroren oude build.
-- Stijl: TypeScript, ES modules, 2 spaties, dubbele quotes, puntkomma's; compacte code; commentaar in het Nederlands en kort (het waarom). Gedeelde code staat in `src/`. Functions en Worker gebruiken eigen kleine interfaces, geen `@cloudflare/workers-types`.
+- Stijl: TypeScript, ES modules, 2 spaties, dubbele quotes, puntkomma's; compacte code; commentaar in het Nederlands en kort (het waarom). Gedeelde code staat in `src/`. Functions en Worker gebruiken eigen kleine interfaces (`KV`, `Env`, `Ctx`); de Worker heeft daarnaast wel `@cloudflare/workers-types` (`worker/package.json`, `worker/tsconfig.json`).
 - Worker draait op het Free plan: max 50 subrequests per aanroep, daarom batches via `Fetcher`.
 - Alle teksten (UI, docs, commits, commentaar) zijn Nederlands.

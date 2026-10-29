@@ -35,7 +35,7 @@ Worker: `cd worker && npm ci`; typecheck zie `worker/tsconfig.json`. Lokaal draa
 
 - TypeScript, ES modules, 2 spaties inspringen, dubbele quotes, puntkomma's. Compacte, dichte stijl; bestaande bestanden zijn het voorbeeld.
 - Commentaar in het Nederlands, kort, vooral het *waarom* (bovenaan een bestand wat het doet). Namen mogen Nederlands zijn (`beeld`, `bronnen`, `schoon`).
-- Functions en Worker hebben eigen kleine interfaces (`KV`, `Env`, `Ctx`) in plaats van `@cloudflare/workers-types`; volg dat.
+- Functions en Worker hebben eigen kleine interfaces (`KV`, `Env`, `Ctx`) naast `@cloudflare/workers-types` in de Worker (`worker/package.json`, `worker/tsconfig.json`); houd ze klein en volg dat.
 - Code gedeeld tussen frontend, Functions en Worker staat in `src/` (bijv. `slug.ts`, `beeld.ts`, `schoon.ts`) en wordt geïmporteerd.
 - Worker draait op het Free plan: max 50 subrequests per aanroep. Ophalen gaat daarom in batches via Durable Object `Fetcher`. Houd daar rekening mee.
 - Alle uitgaande verzoeken van de Worker gebruiken de UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)` (uitzonderingen staan in de code, bijv. Reddit en AD).

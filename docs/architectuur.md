@@ -10,7 +10,7 @@ Alles draait op Cloudflare (Free plan). Geen eigen server.
    DO Runner (run, budget, state) ── Workers AI (samenvatten)
         │ schrijft
         ▼
-   KV NIEUWS: uur, meer, sv-klaar, vs:<id>, vooraf-log, state, og-cache
+   KV NIEUWS: uur, meer, sv-klaar, vs:<id>, vooraf-log, state, og:<genormaliseerde-url>, vid-neurons:<datum> (gedeeld AI-budget)
         │ leest
         ▼
  Pages Functions: /data.json (merge KV uur + statische data.json)
@@ -38,7 +38,7 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 
 - Cron `0 4-22 * * *` (UTC). `scheduled()` slaat uren buiten 06–23 Amsterdam over (zomer- en wintertijd). `workers_dev = false`.
 - Durable Objects (sqlite): `RUNNER` (klasse `Runner`: de uurrun, budget, state, alarm voor video-samenvattingen vooraf) en `FETCHER` (klasse `Fetcher`: ophalen in batches, eigen limiet van 50 subrequests per instantie).
-- KV `NIEUWS`. Resultaat van de run staat onder `uur` (items, filmpjes, dumpert, weer, bronstats, meta). Verder o.a. `meer`, `sv-klaar`, `vooraf-log`, `vs:<id>`, og-cache en state.
+- KV `NIEUWS`. Resultaat van de run staat onder `uur` (items, filmpjes, dumpert, weer, bronstats, meta). Verder o.a. `meer`, `sv-klaar`, `vooraf-log`, `vs:<id>`, `og:<genormaliseerde-url>` (og:image, 3 dagen), `vid-neurons:<datum>` (neuronen van vandaag, gedeeld door Worker en `functions/samenvatting.ts`) en state.
 - Endpoints: `/run?key=` (run starten, optioneel `force`), `/uur?key=` (KV `uur` als JSON), beide met secret `RUN_KEY`; `/status` (open, alleen meta + vooraf-log).
 - Vars: `SITE`, `MODEL`, `CAP`, `BUDGET`, optioneel `SMALL_MODEL`. Secret: `RUN_KEY`.
 - Stappen van een run: bronnen ophalen → berichten van vandaag ontdubbelen/clusteren → bestaande samenvattingen uit state hergebruiken → nieuwe clusters samenvatten (5 per prompt) → foto's (feed, anders og:image, 3 dagen gecachet) → "In het kort" en weertekst alleen bij gewijzigde invoer → "Lees verder"-tekst → `uur` schrijven → alarm: video-samenvattingen vooraf (`vooraf.ts`, roept `/samenvatting` aan met `pre:true`).
@@ -64,7 +64,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - **RSS**: lijst in `public/bronnen.json` (gebouwd uit `/workspace/nieuws/feeds.json`, zie `scripts/build-bronnen.mjs`).
 - **Hacker News**: `hnrss.org/best` (news.ycombinator.com/rss geeft 419 aan Cloudflare).
 - **X**: fxtwitter-API, terugval syndication. Tekstposts en video's van politieke accounts en Politie Haarlem.
-- **YouTube**: kanaal-RSS (NOS, RTL, NU.nl e.a.) en ondertiteling. Geeft vanaf Cloudflare vaak LOGIN_REQUIRED; de Worker slaat YouTube dan 3 uur over.
+- **YouTube**: kanaal-RSS (NOS, RTL, NU.nl e.a.) en ondertiteling. Geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
 - **Instagram**: profiel-embed, reels als filmpjes.
 - **Dumpert**: toppers-pagina en HLS via de proxy (max 720p, H.264).
 - **Reddit**: RSS (`top/.rss?t=day`) → old.reddit → Redlib-instances (roterend, HTML omgezet naar Atom) → laatste gelukte kopie van vandaag. Publieke Redlib-instances blokkeren Cloudflare nu vaak.
@@ -83,7 +83,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 
 ## Deploy
 
-`deploy.sh` (zie README). `DEPLOY_BRANCH=main` zet de nieuwe build in productie; een andere waarde zet productie op de bevroren site `prod-frozen/` met verse data en de nieuwe build op een preview-branch. De Worker gaat apart (`DEPLOY_WORKER=1` of `wrangler deploy` in `worker/`). Alleen met goedkeuring van Joey.
+`deploy.sh` (zie README). `main` in het bestand `DEPLOY_BRANCH` (geen omgevingsvariabele; `deploy.sh` leest het bestand) zet de nieuwe build in productie; een andere waarde zet productie op de bevroren site `prod-frozen/` met verse data en de nieuwe build op een preview-branch. De Worker gaat apart (`DEPLOY_WORKER=1` of `wrangler deploy` in `worker/`). Alleen met goedkeuring van Joey.
 
 ## Domein
 
@@ -96,5 +96,5 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 - "Lees verder" (`/meer`, `worker/src/artikel.ts`): artikeltekst ophalen wordt door sommige sites geweigerd; het werk hieraan is gestopt, de status is onbepaald.
 - Redlib-instances blokkeren Cloudflare; Reddit valt daardoor soms terug op een oude kopie.
 - YouTube geeft vaak LOGIN_REQUIRED vanaf Cloudflare.
-- De bronnenlijst hangt af van `/workspace/nieuws/feeds.json` buiten de repo (alleen op de oorspronkelijke machine).
+- De bronnenlijst hangt af van `/workspace/nieuws/feeds.json` buiten de repo (staat op de gedeelde box in `/workspace/nieuws`; een kopie komt in `scripts/pipeline/` via PR #1).
 - `scripts/pipeline/` (PR #1) nog niet op `main`.
