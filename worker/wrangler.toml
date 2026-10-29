@@ -6,7 +6,7 @@ workers_dev = false  # geen workers.dev-subdomein op dit account; handmatig star
 # Elk uur op :00. Cron is UTC: 04–22 UTC dekt 06:00–23:00 Amsterdam in zomer- én wintertijd;
 # de code slaat de uren buiten 06–23 Amsterdam-tijd over.
 [triggers]
-crons = ["0 4-22 * * *", "13 13 * * *"]
+crons = ["0 4-22 * * *"]
 
 [vars]
 SITE = "https://nieuwsinkort.pages.dev"
