@@ -14,7 +14,7 @@ export async function llmAanroep<T>(model: string, taak: () => Promise<T>, optie
       const status = Number((e as { status?: number })?.status || /\b(429|5\d\d)\b/.exec(tekst)?.[1]);
       const code = tekst === "LLM_TIMEOUT" || /timeout|timed out/i.test(tekst) ? "LLM_TIMEOUT" : status === 429 ? "LLM_RATE_LIMIT" : status >= 500 && status < 600 ? "LLM_HTTP_5XX" : "LLM_FOUT";
       console.error(code, model, `${Date.now() - start}ms`);
-      if (poging || code === "LLM_FOUT") throw e;
+      if (poging || (tekst !== "LLM_TIMEOUT" && code !== "LLM_HTTP_5XX")) throw e; // alleen eigen timeout of 5xx opnieuw; 429 en dagquota niet (dubbele meting)
       await slaap(250);
     } finally { if (timer !== undefined) clearTimeout(timer); }
   }
