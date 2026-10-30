@@ -174,11 +174,10 @@ handmatige checks op echte data en draaien niet mee met `npm test`.
 
 ## Domein
 
-nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekoppeld. Plan: DNSSEC bij STRATO uit, nameservers naar Cloudflare, daarna nieuwsinkort.nl en www.nieuwsinkort.nl als custom domain aan het Pages-project toevoegen. Tot dan draait de site op nieuwsinkort.pages.dev (controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`).
+nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project (nieuwsinkort.pages.dev blijft werken). `functions/_middleware.ts` stuurt www met een 301 door naar `https://nieuwsinkort.nl` met pad en query behouden (de Cloudflare-login mag geen Redirect Rules schrijven, vandaar code); apex en `*.pages.dev` blijven ongemoeid. `public/_routes.json` houdt `/assets/*`, `/fonts/*`, iconen en vaste bestanden buiten de Functions (Free-plan-quotum, max 100 regels); HTML-navigaties en de functieroutes (`/data.json`, `/meer`, `/samenvatting`, `/media/dumpert/*`) lopen er wel doorheen. Test: `tests/www-redirect.test.ts`. Controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`.
 
 ## Open punten
 
-- Domein koppelen (zie boven).
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
 - "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd.
 - `src/leesverder.ts` bepaalt of een bericht Lees verder heeft en haalt alinea’s, kernpunten en bronnen voor de detailpagina uit het bericht.
