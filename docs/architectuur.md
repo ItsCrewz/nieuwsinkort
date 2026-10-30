@@ -41,6 +41,8 @@ Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay;
 
 Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Dit is nog niet op een echte iPhone geverifieerd.
 
+Kopkaart (#150): `.nc-head` is alleen op Home schermvullend. Tabs krijgen de klasse `kompakt` (`kopKompact()` in `src/tabbriefing.tsx`): zonder samenvatting een datumregel van `--kop` hoogte, met samenvatting een kop met automatische hoogte en maximaal 60% van de feedhoogte. Daaronder begint het eerste bericht direct in beeld. De tabsamenvatting verschijnt na het herladen van `/data.json` (15 min, visibilitychange; geen service worker, `no-cache`).
+
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
 
 Bufferregels (#36): `src/buffer.ts` bepaalt per netwerkniveau de seconden en bytes voor de actieve en volgende hls.js-speler. De pool laadt geen spelers vanaf +2. Tests: `tests/buffer.test.ts` en `tests/videopool.test.ts`.
