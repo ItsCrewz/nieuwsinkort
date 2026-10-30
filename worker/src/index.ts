@@ -448,7 +448,7 @@ export class Runner extends DurableObject<Env> {
     const statItems: any[] = statToday ? stat.items || [] : [];
     for (const i of statItems) {
       i.cat = sportCat({ cat: i.cat, kop: i.kop || "", hrefs: (i.bronnen || []).map((b: any) => b.href || "") }) || i.cat;
-      i.cat = showCat({ cat: i.cat, items: (i.bronnen || []).map((b: any) => ({ href: b.href || "" })) }) || i.cat;
+      i.cat = showCat({ cat: i.cat, items: (i.bronnen || []).map((b: any) => ({ href: b.href || "" })), kop: `${i.kop || ""} ${i.ai || ""}` }) || i.cat;
     }
     const statLinks = new Set(statItems.flatMap((i: any) => (i.bronnen || []).map((b: any) => normLink(b.href || ""))));
     const statTok = statItems.map((i: any) => toks(`${i.kop} ${i.ai}`));
