@@ -4,7 +4,7 @@ Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone
 
 Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq voor transcriptie en punten; bij ontbrekende sleutel of uitputting volgt de bestaande Cloudflare-route binnen het budget. Groq-tellers in KV zijn een rem zonder atomaire garantie.
 
-- Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Het domein nieuwsinkort.nl is nog niet gekoppeld.
+- Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Productiedomein: https://nieuwsinkort.nl; www.nieuwsinkort.nl geeft een 301 naar de apex (`functions/_middleware.ts`).
 
 ## Stack
 
@@ -52,7 +52,8 @@ Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de 
 ```bash
 npm ci
 npm run dev      # Vite dev-server
-npm run check    # tests, build en typechecks voor Worker en Functions
+npm run lint     # ESLint (typescript-eslint, react-hooks); 0 errors, warnings zijn informatief
+npm run check    # lint, tests, build en typechecks voor Worker en Functions
 npm test         # tests
 npm run coverage # tests met Vitest en regeldekking per kritieke groep
 npm run typecheck:tests  # typecheck van tests/ (los van build; vereist @types/node)
