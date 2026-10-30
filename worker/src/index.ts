@@ -277,10 +277,20 @@ export class Runner extends DurableObject<Env> {
     const u = new URL(req.url);
     const force = u.searchParams.get("force") === "1";
     try {
+      // Reserveer vóór de run; gelijktijdige force-verzoeken mogen niet door de limiet glippen.
+      const toegestaan = await this.ctx.blockConcurrencyWhile(async () => {
+        const laatst = await this.ctx.storage.get<number>("laatsteRun");
+        const nu = Date.now();
+        if (force && laatst !== undefined && nu - laatst < 10 * 60e3) return false;
+        await this.ctx.storage.put("laatsteRun", nu);
+        return true;
+      });
+      if (!toegestaan) return Response.json({ ok: false, err: "Laatste run minder dan 10 minuten geleden" }, { status: 429 });
       const r = await this.run(force);
       return Response.json(r);
     } catch (e: any) {
-      return Response.json({ ok: false, err: String(e?.stack || e) }, { status: 500 });
+      console.error(e?.stack || e);
+      return Response.json({ ok: false, err: String(e?.message || e).slice(0, 200) }, { status: 500 });
     }
   }
 
@@ -685,6 +695,17 @@ async function hash(s: string) {
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, 16);
 }
 
+async function toegelaten(req: Request, sleutel?: string): Promise<boolean> {
+  const bearer = /^Bearer ([^\s]+)$/i.exec(req.headers.get("Authorization") || "");
+  if (!sleutel || !bearer) return false;
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([sleutel, bearer[1]].map(async (s) =>
+    new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(s)))));
+  let verschil = 0;
+  for (let i = 0; i < a.length; i++) verschil |= a[i] ^ b[i];
+  return verschil === 0;
+}
+
 // ---------------------------------------------------------------- worker
 export default {
   async scheduled(ev: ScheduledController, env: Env, ctx: ExecutionContext) {
@@ -697,12 +718,12 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const u = new URL(req.url);
     if (u.pathname === "/run") {
-      if (!env.RUN_KEY || u.searchParams.get("key") !== env.RUN_KEY) return new Response("nee", { status: 403 });
+      if (!await toegelaten(req, env.RUN_KEY)) return new Response("nee", { status: 403 });
       const stub = env.RUNNER.get(env.RUNNER.idFromName("runner"));
       return stub.fetch(`https://do/run?force=${u.searchParams.get("force") || ""}`);
     }
     if (u.pathname === "/uur") {
-      if (!env.RUN_KEY || u.searchParams.get("key") !== env.RUN_KEY) return new Response("nee", { status: 403 });
+      if (!await toegelaten(req, env.RUN_KEY)) return new Response("nee", { status: 403 });
       return new Response((await env.NIEUWS.get("uur")) || "{}", { headers: { "content-type": "application/json" } });
     }
     if (u.pathname === "/status") {

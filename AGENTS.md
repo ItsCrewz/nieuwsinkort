@@ -25,6 +25,7 @@ Behoud de controle via `worker/src/url.ts` bij og/artikel/Jina-jobs: HTTP(S), po
 - De fallback zonder AI gebruikt `src/bronlink.ts` voor een defensieve Nederlandse-broncheck; relatieve en ongeldige feedlinks mogen de uurrun niet laten crashen.
 - Alle teksten (UI, docs, commits, commentaar) zijn Nederlands.
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`).
+- Worker-endpoints `/run` en `/uur`: gebruik `Authorization: Bearer <RUN_KEY>`, nooit een URL-sleutel. `force=1` wordt binnen tien minuten na de laatste runstart geweigerd. Test dit zonder echte AI-aanroepen.
 
 ## Beveiligingsheaders
 

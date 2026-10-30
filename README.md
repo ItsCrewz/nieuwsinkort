@@ -42,7 +42,7 @@ npm run build    # bronnen.json + tsc + vite build -> dist/
 ```
 
 Pages Functions lokaal (incl. Dumpert-proxy): `npx wrangler pages dev dist --port 4173`.
-Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled --var RUN_KEY:test`, dan `/run?key=test` en `/uur?key=test`. Workers AI is altijd remote en kost dus echte neuronen.
+Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled` met lokaal ingestelde `RUN_KEY`, dan `/run` en `/uur` met de header `Authorization: Bearer <RUN_KEY>`. Sleutels in queryparameters worden niet geaccepteerd. `force=1` geeft 429 als de laatste runstart minder dan tien minuten geleden was. Workers AI is altijd remote en kost dus echte neuronen.
 
 ## Deployen
 
