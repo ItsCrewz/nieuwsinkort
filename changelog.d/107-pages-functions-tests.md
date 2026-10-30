@@ -1,0 +1,1 @@
+- Tests toegevoegd voor de Pages Functions voor nieuwsdata, extra tekst en videosamenvattingen (#107).
