@@ -141,6 +141,17 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - `scripts/pipeline/`: komt via PR #1 en staat mogelijk nog niet op `main`. Controleer de map voor je ervan uitgaat dat hij er is.
 - `tests/`: één `*.test.ts` per onderwerp, zoals `dedup.test.ts` (video-ontdubbelen), `beeld-ontdubbelen.test.ts`, `data-merge.test.ts` (merge/schoon), `stall.test.ts` (videoherstel) en andere regressietests via `npm test`, plus `live-dedup.ts` (handmatige check op echte data).
 
+## Testopzet
+
+`npm test` bundelt alle `tests/*.test.ts` met esbuild en draait ze afzonderlijk met Node.
+Basistests zijn per module of onderwerp ingedeeld; sinds 30 oktober 2026 vullen
+`*-randgevallen.test.ts` die aan met grensgevallen, beschreven in het testbestand zelf.
+Pages Functions worden lokaal getest met onder meer nep-KV en nep-ASSETS.
+Randgevaltests gebruiken vaste tijdstempels of een vaste klok en geen netwerk;
+oudere tests gebruiken soms de huidige tijd. Netwerkafhankelijke onderdelen worden
+in geautomatiseerde tests met lokale doubles getest. `tests/live-*.ts` zijn aparte,
+handmatige checks op echte data en draaien niet mee met `npm test`.
+
 ## Deploy
 
 `deploy.sh` (zie README). Volgorde bij wijzigingen aan `Budget`: eerst de Worker (`DEPLOY_WORKER=1 ./deploy.sh`, `deploy.sh` doet de Worker vóór Pages), daarna Pages, omdat de Pages-binding `BUDGET_DO` de klasse en migratie `v2` van `nieuwsinkort-uur` nodig heeft. `main` in het bestand `DEPLOY_BRANCH` (geen omgevingsvariabele; `deploy.sh` leest het bestand) zet de nieuwe build in productie; een andere waarde zet productie op de bevroren site `prod-frozen/` met verse data en de nieuwe build op een preview-branch. De Worker gaat apart (`DEPLOY_WORKER=1` of `wrangler deploy` in `worker/`). Alleen met goedkeuring van Joey.
