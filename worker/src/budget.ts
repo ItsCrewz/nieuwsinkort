@@ -2,6 +2,8 @@
 // /samenvatting (Pages Function roept deze aan via de binding BUDGET_DO). Logica: src/budget.ts.
 import { DurableObject } from "cloudflare:workers";
 import { BudgetLogica, type Reservering } from "../../src/budget";
+// meting, foutclassificatie en UTC-dagteller: pure logica in src/budget.ts (ook voor de Pages Function), hier voor de Worker
+export { utcDag, neuronFactor, isDagQuota, isTijdelijk, aiFout, meetChat, meetFout, nieuwsNeuronen, zetDagTeller, quotaSleutel, type Meting } from "../../src/budget";
 
 export interface BudgetEnv { NIEUWS: KVNamespace }
 

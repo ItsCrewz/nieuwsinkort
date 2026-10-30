@@ -11,25 +11,24 @@
 // `Budget` (binding BUDGET_DO, atomair); ontbreekt die binding (lokaal/preview), dan het oudere KV-gedrag (een rem, geen garantie).
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
-import { MAX_WHISPER_UUR } from "../src/budget";
+import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
 
-type Usage = { neurons: number; calls: number; fails: number; inTok: number; outTok: number };
+type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
 async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage): Promise<string> {
-  const r: any = await ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } });
+  const tarief = RATES[model] || [10000, 30000];
+  let r: any;
+  try { r = await ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }); }
+  catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } // een mislukte aanroep kan toch neuronen kosten
   u.calls++;
-  const pt = r?.usage?.prompt_tokens ?? Math.ceil((sys.length + user.length) / 3.5);
-  const ct = r?.usage?.completion_tokens ?? Math.ceil(String(r?.response ?? "").length / 3.5);
-  const [ri, ro] = RATES[model] || [10000, 30000];
-  u.inTok += pt; u.outTok += ct;
-  u.neurons += typeof r?.usage?.neurons === "number" ? r.usage.neurons : (pt * ri + ct * ro) / 1e6;
+  meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
   const txt = typeof r?.response === "string" ? r.response : r?.choices?.[0]?.message?.content || "";
   return String(txt).replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
 interface KV { get(key: string, type?: "json" | "text"): Promise<any>; put(key: string, v: string, o?: { expirationTtl?: number }): Promise<void>; delete(key: string): Promise<void> }
 interface DO { idFromName(n: string): unknown; get(id: unknown): { fetch(url: string, init?: RequestInit): Promise<Response> } }
-interface Env { NIEUWS: KV; AI: any; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; MODEL?: string; SMALL_MODEL?: string }
+interface Env { NIEUWS: KV; AI: any; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string }
 interface Ctx { request: Request; env: Env }
 
 const BUDGET_DEF = 9000;
@@ -269,12 +268,15 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
 
 async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre: boolean): Promise<Response> {
   // ---- budget (gedeeld met de uur-Worker)
-  const BUDGET = +(env.BUDGET || BUDGET_DEF);
+  const BUDGET = +(env.BUDGET || BUDGET_DEF) / neuronFactor(env.NEURON_FACTOR); // marge: de echte teller kan hoger staan
   const A = ams();
+  const U = utcDag(); // Cloudflare telt per UTC-dag; A (Amsterdam) alleen voor het uur en de uurrem
+  // echte dagquota-fout eerder vandaag gezien (door Worker of Function): geen AI meer tot 00:00 UTC
+  if (await env.NIEUWS.get(quotaSleutel(U)).catch(() => null)) return json({ ok: false, code: "budget", fout: MSG.budget });
   const st: any = await env.NIEUWS.get("state", "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
-  const nieuws = st && st.datum === A.iso ? +st.neurons || 0 : 0;
-  const video = await poort.stand(A.iso);
-  const verreken = (delta: number) => poort.verreken(A.iso, delta);
+  const nieuws = nieuwsNeuronen(st, U);
+  const video = await poort.stand(U);
+  const verreken = (delta: number) => poort.verreken(U, delta);
   const used = nieuws + video;
   const reserve = Math.max(0, 23 - A.h) * PER_RUN; // het uurnieuws van de rest van de dag gaat voor
   const ruimte = BUDGET - used - reserve;
@@ -309,12 +311,13 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
         const estMin = a.sec ? a.sec / 60 : Math.min(4, a.bytes.length / 1.2e6); // mp4: ruwe schatting
         // rem per uur + neuronen vooraf reserveren (atomair), zodat gelijktijdige verzoeken het budget al zien slinken
         const schat = estMin * WHISPER_PER_MIN;
-        const res = await poort.reserveer({ datum: A.iso, uur: `${A.iso}T${A.h}`, nieuws, budget: BUDGET, reserve, marge: (pre ? PRE_MARGE : 0) + 30, schatting: schat });
+        const res = await poort.reserveer({ datum: U, uur: `${A.iso}T${A.h}`, nieuws, budget: BUDGET, reserve, marge: (pre ? PRE_MARGE : 0) + 30, schatting: schat });
         if (res === "budget") return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
         if (res === "druk") return json({ ok: false, code: pre ? "budget-pre" : "druk", fout: MSG.druk });
         reserved = schat;
         const r: any = await env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false });
         const dur = +r?.transcription_info?.duration || estMin * 60;
+        if (!(+r?.transcription_info?.duration > 0)) u.geschat = (u.geschat || 0) + 1; // Whisper meldt geen neuronen, duur is de enige meting
         u.neurons += (dur / 60) * WHISPER_PER_MIN; u.calls++;
         sec = Math.round(dur);
         tekst = String(r?.text || "").replace(/\s+/g, " ").trim();
@@ -345,7 +348,12 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
     if (e instanceof PoortFout) return json({ ok: false, code: "fout", fout: MSG.fout }, 503); // niet cachen: tijdelijk
     await verreken(Math.max(0, u.neurons - reserved)); // reservering blijft staan, alleen extra bijtellen
     const m = String(e?.message || e);
-    if (/quota|neuron|exceed|429|limit/i.test(m)) return json({ ok: false, code: "budget", fout: MSG.budget });
+    const soort = aiFout(e);
+    if (soort === "dagquota") { // echt op: onthouden tot 00:00 UTC, zodat ook de uur-Worker stopt
+      await env.NIEUWS.put(quotaSleutel(U), "1", { expirationTtl: 2 * 86400 }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
+      return json({ ok: false, code: "budget", fout: MSG.budget });
+    }
+    if (soort === "tijdelijk") return json({ ok: false, code: "fout", fout: MSG.fout }, 503); // rate-limit: niet cachen, later opnieuw
     why.push(m.slice(0, 120));
     const out = { ok: false, code: "fout", fout: MSG.fout };
     await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => {});

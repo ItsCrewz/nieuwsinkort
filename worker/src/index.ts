@@ -21,7 +21,7 @@ import { uniekeBeelden, ogImage } from "../../src/beeld";
 import { isNL } from "../../src/bronlink";
 import { isBuitenland } from "../../src/regio";
 import { cluster, normLink, sim, toks, type Cand, type Cluster } from "./cluster";
-import { Budget } from "./budget";
+import { Budget, utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quotaSleutel } from "./budget";
 import { herindeelSport, sportCat } from "./sportcat";
 
 export { Budget };
@@ -48,7 +48,7 @@ export function kiesVoorAI<T>(byCat: Record<string, T[]>, tier: number, capN: nu
 
 export interface Env {
   NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>; BUDGET_DO: DurableObjectNamespace<Budget>;
-  RUN_KEY?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string;
+  RUN_KEY?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string; NEURON_FACTOR?: string;
 }
 const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";
 const TZ = "Europe/Amsterdam";
@@ -267,7 +267,7 @@ const NIET_ALS_NIEUWS = new Set(["burgernet", "gemeenteraadhaarlem"]);
 const BEKENDMAKING_HINTS = /raadsbesluit|collegebesluit|verordening|verkeersbesluit|omgevingsplan|bestemmingsplan|apv|referendum|parkeer|evenement|sluiting|aanwijzing|exploitatie/i;
 const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz", "politiek", "voetbal", "f1", "auto"];
 
-type State = { okAt?: Record<string, string>; kortAt?: number; datum: string; neurons: number; calls: number; sums: Record<string, Sum & { at: number }>; links: Record<string, string>; kortHash?: string; kort?: string; weerHash?: string; weerTxt?: string; runs: number;
+type State = { okAt?: Record<string, string>; kortAt?: number; datum: string; /** UTC-dag van de neuronenteller (Cloudflare reset 00:00 UTC) */ neuronDag?: string; neurons: number; calls: number; inTok?: number; outTok?: number; geschat?: number; foutN?: number; sums: Record<string, Sum & { at: number }>; links: Record<string, string>; kortHash?: string; kort?: string; weerHash?: string; weerTxt?: string; runs: number;
   /** artikeltekst per link (normLink); [] = niets bruikbaars/geweigerd */ art?: Record<string, string[]>;
   /** al via r.jina.ai geprobeerd */ artJ?: Record<string, 1>;
   /** uitgebreide uitleg per bericht (sleutel = normLink van de eerste bron) */ diep?: Record<string, Diep & { at: number }> };
@@ -290,13 +290,13 @@ export class Runner extends DurableObject<Env> {
   }
 
   async alarm() {
-    const env = this.env, A = ams(), BUDGET = +(env.BUDGET || 9000);
+    const env = this.env, A = ams(), U = utcDag(), BUDGET = +(env.BUDGET || 9000) / neuronFactor(env.NEURON_FACTOR);
     const k: any = (await this.ctx.storage.get("vooraf")) || { uur: A.h, n: 0 };
     if (k.uur !== A.h || k.n >= MAX_ALARMS_PER_UUR) return;
     // eerlijk deel per run van wat er tot 85% nog over is na de nieuwsreserve, x1.5 (begin van de dag inhalen)
     const st: any = await env.NIEUWS.get("state", "json").catch(() => null);
-    const vidN = +((await env.NIEUWS.get(`vid-neurons:${A.iso}`).catch(() => null)) || 0) || 0;
-    const used = (st?.datum === A.iso ? +st.neurons || 0 : 0) + vidN;
+    const vidN = +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
+    const used = nieuwsNeuronen(st, U) + vidN;
     const runsLeft = Math.max(1, 23 - A.h + 1);
     const vrij = 0.85 * BUDGET - used - Math.max(0, 23 - A.h) * 260;
     const perAlarm = Math.max(0, Math.min(1200, (vrij / runsLeft) * 1.5));
@@ -312,8 +312,9 @@ export class Runner extends DurableObject<Env> {
   }
 
   async run(force: boolean) {
-    const env = this.env, T0 = Date.now(), now = Date.now(), A = ams(now), since = midnight(now);
-    const model = env.MODEL, CAP = +(env.CAP || 40), BUDGET = +(env.BUDGET || 9000);
+    const env = this.env, T0 = Date.now(), now = Date.now(), A = ams(now), U = utcDag(now), since = midnight(now);
+    // BUDGET / NEURON_FACTOR: de echte Cloudflare-teller kan hoger staan dan onze schatting (docs/ai-budget.md)
+    const model = env.MODEL, CAP = +(env.CAP || 40), FACTOR = neuronFactor(env.NEURON_FACTOR), BUDGET = +(env.BUDGET || 9000) / FACTOR;
     const site = env.SITE.replace(/\/$/, "");
     const [bronnenR, staticR, stateRaw] = await Promise.all([
       fetch(`${site}/bronnen.json?t=${now}`, { headers: { "User-Agent": UA } }),
@@ -322,7 +323,9 @@ export class Runner extends DurableObject<Env> {
     ]);
     const bronnen: any = await bronnenR.json();
     const stat: any = staticR.ok ? await staticR.json().catch(() => null) : null;
-    let st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: 0, calls: 0, sums: {}, links: {}, runs: 0, okAt: stateRaw?.okAt || {} };
+    // cache per Amsterdamse dag, neuronenteller per UTC-dag: de teller loopt door over de Amsterdamse datumgrens
+    let st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: stateRaw?.neurons || 0, calls: stateRaw?.calls || 0, inTok: stateRaw?.inTok, outTok: stateRaw?.outTok, geschat: stateRaw?.geschat, foutN: stateRaw?.foutN, neuronDag: stateRaw?.neuronDag ?? stateRaw?.datum, sums: {}, links: {}, runs: 0, okAt: stateRaw?.okAt || {} };
+    zetDagTeller(st, U);
     st.okAt ||= {};
     st.runs++;
 
@@ -451,7 +454,7 @@ export class Runner extends DurableObject<Env> {
     // Per run hooguit 2x het eerlijke deel van wat er nog over is, zodat ook de late uren samenvattingen krijgen.
     const SMALL = env.SMALL_MODEL || "@cf/meta/llama-3.2-1b-instruct";
     // video-samenvattingen op verzoek (functions/samenvatting.ts) tellen mee in hetzelfde dagbudget
-    const vidN = +((await env.NIEUWS.get(`vid-neurons:${A.iso}`).catch(() => null)) || 0) || 0;
+    const vidN = +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
     const used = () => st.neurons + vidN + usage.neurons;
     const tier = () => (used() < 0.7 * BUDGET ? 1 : used() < 0.9 * BUDGET ? 2 : used() < BUDGET ? 3 : 4);
     const runsLeft = Math.max(1, 23 - A.h + 1);
@@ -464,7 +467,16 @@ export class Runner extends DurableObject<Env> {
     for (const k of todo.sort((a, b) => b.c.length - a.c.length || Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d)))) (byCat[k.cat] ||= []).push(k);
     const capN = tier0 === 1 ? CAP : tier0 === 2 ? Math.min(CAP, 15) : tier0 === 3 ? 8 : 0;
     const pick = kiesVoorAI(byCat, tier0, capN);
-    let quotaOut = st.neurons + vidN >= BUDGET;
+    // quotaOut = alleen echt op: eigen budget bereikt of een echte dagquota-fout (KV-vlag ai-quota:<UTC-dag>). Een tijdelijke fout (429/rate-limit) stopt alleen de rest van deze run.
+    const quotaBekend = !!(await env.NIEUWS.get(quotaSleutel(U)).catch(() => null));
+    let quotaOut = quotaBekend || st.neurons + vidN >= BUDGET, quotaReden = quotaBekend ? "dagquota" : quotaOut ? "budget" : "", tijdelijk = 0, quotaKvWrites = 0;
+    const aiFoutAf = async (e: any) => {
+      const soort = aiFout(e);
+      if (soort === "dagquota") {
+        quotaOut = true; quotaReden = "dagquota";
+        if (!quotaBekend && !quotaKvWrites) { quotaKvWrites++; await env.NIEUWS.put(quotaSleutel(U), "1", { expirationTtl: 2 * 86400 }).catch((x) => console.error("KV-schrijffout ai-quota", x)); }
+      } else if (soort === "tijdelijk") tijdelijk++;
+    };
     const modelNu = () => { const m = tier() === 1 ? model : SMALL; modelsUsed.add(m); return m; };
     const toIn = (k: Cluster, id: number): In => {
       const cs = k.c.slice(0, 4);
@@ -473,7 +485,8 @@ export class Runner extends DurableObject<Env> {
     const groups: Cluster[][] = [];
     for (let i = 0; i < pick.length; i += 5) groups.push(pick.slice(i, i + 5));
     const doGroup = async (g: Cluster[]) => {
-      if (quotaOut || used() >= BUDGET) { quotaOut = true; return; }
+      if (tijdelijk) return;
+      if (quotaOut || used() >= BUDGET) { quotaOut = true; quotaReden ||= "budget"; return; }
       if (usage.neurons >= runBudget) { runCapped = true; return; }
       try {
         const res = await summarize(env.AI, modelNu(), g.map((k, i) => toIn(k, i + 1)), usage);
@@ -486,14 +499,14 @@ export class Runner extends DurableObject<Env> {
         });
       } catch (e: any) {
         usage.fails++;
-        if (/quota|limit|429|neuron|exceed/i.test(String(e?.message || e))) quotaOut = true;
+        await aiFoutAf(e);
       }
     };
     for (let i = 0; i < groups.length; i += 3) await Promise.all(groups.slice(i, i + 3).map(doGroup));
 
     // ---- items opbouwen
     const firstSentence = (s: string) => (s.match(/^.{20,240}?[.!?](\s|$)/)?.[0] || s.slice(0, 200)).trim();
-    const noAI = quotaOut || runCapped || !env.AI;
+    const noAI = quotaOut || runCapped || tijdelijk > 0 || !env.AI;
     const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
     const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : noAI && isNL(k) && k.c[0].s));
     // ---- foto's: uit de feeds; ontbreekt die bij een bron, dan og:image van het artikel (gecachet in KV)
@@ -591,7 +604,7 @@ export class Runner extends DurableObject<Env> {
     const dGroepen: MC[][] = [];
     for (let i = 0; i < diepTodo.length; i += 2) dGroepen.push(diepTodo.slice(i, i + 2));
     const doDiep = async (g: MC[]) => {
-      if (!env.AI || quotaOut || tier() !== 1 || used() >= diepGrens) { diepStop ||= "dagbudget"; return; }
+      if (!env.AI || quotaOut || tijdelijk || tier() !== 1 || used() >= diepGrens) { diepStop ||= "dagbudget"; return; }
       if (usage.neurons - diepStart >= diepRun) { diepStop ||= "run-budget"; return; }
       try {
         const res = await verdiep(env.AI, model, g.map((m, i) => {
@@ -603,7 +616,7 @@ export class Runner extends DurableObject<Env> {
         g.forEach((m, i) => { const d = res.get(i + 1); if (d) { st.diep![m.key] = { ...d, at: now }; diepNieuw++; } });
       } catch (e: any) {
         usage.fails++;
-        if (/quota|limit|429|neuron|exceed/i.test(String(e?.message || e))) quotaOut = true;
+        await aiFoutAf(e);
       }
     };
     for (let i = 0; i < dGroepen.length; i += 3) await Promise.all(dGroepen.slice(i, i + 3).map(doDiep));
@@ -638,7 +651,7 @@ export class Runner extends DurableObject<Env> {
     // trap 1: elke keer als het nieuws verandert; trap 2: klein model, hooguit elke 3 uur; trap 3+: niet meer
     const kortMag = tier() === 1 || (tier() === 2 && now - (st.kortAt || 0) > 3 * 3600e3);
     if ((kh !== st.kortHash || force) && lines.length && !quotaOut && kortMag) {
-      try { const k = await inHetKort(env.AI, modelNu(), lines, usage); if (k.length > 40) st.kortAt = now; if (k.length > 40) { kort = k; st.kort = k; st.kortHash = kh; } } catch { usage.fails++; }
+      try { const k = await inHetKort(env.AI, modelNu(), lines, usage); if (k.length > 40) st.kortAt = now; if (k.length > 40) { kort = k; st.kort = k; st.kortHash = kh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
     }
 
     // ---- weer
@@ -646,7 +659,7 @@ export class Runner extends DurableObject<Env> {
     if (W.knmiTekst) {
       const wh = await hash("nl:" + W.knmiTekst); // "nl:" = landelijke prompt; ververst een oude Haarlem-tekst eenmalig
       if (wh !== st.weerHash && !quotaOut && tier() <= 2) {
-        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30) { st.weerTxt = t; st.weerHash = wh; } } catch { usage.fails++; }
+        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
       }
       if (st.weerHash === wh && st.weerTxt) W.weer.verwachting = st.weerTxt;
     }
@@ -676,9 +689,10 @@ export class Runner extends DurableObject<Env> {
 
     // ---- wegschrijven
     st.neurons += usage.neurons; st.calls += usage.calls;
+    st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys,
-      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + 3, kvWritesOg, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + 3, kvWritesOg, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));

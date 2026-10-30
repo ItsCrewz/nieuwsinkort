@@ -78,6 +78,8 @@ Modellen: `@cf/google/gemma-4-26b-a4b-it` (`MODEL`, hoofd), `@cf/meta/llama-3.2-
 
 Video-samenvattingen vooraf stoppen vanaf 85%; AI-uitleg voor "Lees verder" alleen onder 65%. Ondertiteling kost ±5 neuronen, Whisper ±44–133.
 
+Meting (#79, details en bevindingen in [ai-budget.md](ai-budget.md)): de dagteller loopt op de UTC-dag (Cloudflare reset 00:00 UTC; `state.neuronDag`, `vid-neurons:<UTC-dag>`), de cache en weergave blijven op de Amsterdamse dag. Per aanroep telt `r.usage` (anders een schatting met vlag `geschat`), ook bij een fout; per run en per dag staan tokens, neuronen en `geschat` in `uur.meta` en `state`. `quotaOut` volgt alleen een echte dagquota-fout (4006, KV-vlag `ai-quota:<UTC-dag>`); een tijdelijke 429 stopt alleen de rest van de run. Optionele env `NEURON_FACTOR` (standaard 1, niet in `wrangler.toml`) verkleint het effectieve budget tot `BUDGET / factor`. Logica in `src/budget.ts` (ook voor `functions/samenvatting.ts`), test in `tests/budget-meting.test.ts`.
+
 ## Externe bronnen
 
 Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, behalve waar de code een browser-UA nodig heeft (bijv. artikelpagina's, AD) of een feedlezer-UA (Reddit).
