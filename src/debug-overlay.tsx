@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { videoEvents } from "./debug";
+import { ytStatusNaam } from "./ytstart";
 
 export const balkTijden = new WeakMap<HTMLVideoElement, () => number>();
 export type FrameDebug = { gepresenteerd: number; gedecodeerd: number; op: number; mediaTijd: number; rvfc: boolean; decode: boolean; gen: number };
@@ -35,7 +36,11 @@ export function DebugOverlay() {
       // Alleen het src-attribuut telt als bron; een oud currentSrc na load() blijft soms staan.
       const metSrc = videos.filter((v) => v.getAttribute("src")).length;
       const metCur = videos.filter((v) => v.currentSrc).length;
-      zetTekst(`iOS/UA: ${ios}\nstil ${diag?.stil ?? 0} vast ${diag?.vast ?? 0} herladen ${diag?.herladen ?? 0}\npool ${pool}\nvideo's ${videos.length}, src-attribuut ${metSrc}, currentSrc ${metCur}\n${regels.join("\n")}\nEvents:\n${videoEvents.lijst().join("\n")}`);
+      const yt = document.querySelector<HTMLIFrameElement>('.fslide[aria-current="true"] iframe.f-yt');
+      const status = yt?.dataset.ytStatus ? Number(yt.dataset.ytStatus) : null;
+      const ytId = yt?.getAttribute("src")?.split("/embed/")[1]?.split("?")[0] ?? "-";
+      const ytRegel = yt ? `YouTube ${ytId} status ${status ?? "-"} ${ytStatusNaam(status)} onReady ${yt.dataset.ytReady === "true" ? "ja" : "nee"} pogingen ${yt.dataset.ytPogingen ?? "0"} vangnet ${yt.dataset.ytVangnet ?? "nee"}\n` : "";
+      zetTekst(`iOS/UA: ${ios}\nstil ${diag?.stil ?? 0} vast ${diag?.vast ?? 0} herladen ${diag?.herladen ?? 0}\npool ${pool}\n${ytRegel}video's ${videos.length}, src-attribuut ${metSrc}, currentSrc ${metCur}\n${regels.join("\n")}\nEvents:\n${videoEvents.lijst().join("\n")}`);
     };
     update();
     const timer = window.setInterval(update, 250);

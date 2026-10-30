@@ -1,3 +1,3 @@
-// Wanneer de poster weggaat. YouTube meldt op iOS geen playerState, dus de poster mag die iframe nooit afdekken (#255).
-export const posterVerborgen = (kind: string | undefined, beeld: boolean, playable: boolean, mount: boolean): boolean =>
-  playable && mount && (kind === "youtube" || beeld);
+// Bij het YouTube-vangnet moet de speler zelf de tik kunnen ontvangen.
+export const posterVerborgen = (kind: string | undefined, beeld: boolean, playable: boolean, mount: boolean, vangnet = false): boolean =>
+  playable && mount && (beeld || (kind === "youtube" && vangnet));
