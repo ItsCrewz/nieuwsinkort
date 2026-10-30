@@ -6,7 +6,7 @@
 import { alleenVandaag } from "../src/vandaag";
 import { schoon } from "../src/schoon";
 import { youtubeId } from "../src/slug";
-interface KV { get(key: string, type: "json"): Promise<any> }
+interface KV { get(key: string, opts: { type: "json"; cacheTtl?: number }): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env }
 
@@ -15,6 +15,7 @@ const dag = (iso?: string) => {
   return Number.isFinite(t) ? new Date(t).toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }) : "";
 };
 const norm = (l = "") => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
+const KV_TTL = 60;
 const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, must-revalidate, stale-while-revalidate=300", "Access-Control-Allow-Origin": "*" };
 
 /** Velden die de site niet leest (alleen diagnose); weg uit de respons. */
@@ -73,24 +74,26 @@ export function merge(S: any, H: any) {
   };
 }
 
+/** Merge, dagfilter, opschonen en vooraf gemaakte video-samenvattingen (uur-Worker); elke stap valt bij een fout terug op de vorige. */
+export function bouw(S: any, H: any, sv: any) {
+  let out: any = S;
+  try { out = merge(S, H); } catch { console.error("data.json: merge mislukt"); out = S; }
+  try { out = alleenVandaag(out, Date.now()); } catch { console.error("data.json: dagfilter mislukt"); }
+  try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
+  if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar }; // zonder: de knop haalt hem op verzoek op
+  return out;
+}
+
 export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => {
   const u = new URL(request.url);
   const stat = await env.ASSETS.fetch(new Request(new URL("/data.json", u.origin).toString()));
   if (u.searchParams.has("statisch") || !env.NIEUWS || !stat.ok) {
     return new Response(stat.body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
   }
-  const S: any = await stat.json();
-  let H: any = null;
-  try { H = await env.NIEUWS.get("uur", "json"); } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
-  let out: any = S;
-  try { out = merge(S, H); } catch { console.error("data.json: merge mislukt"); out = S; }
-  try { out = alleenVandaag(out, Date.now()); } catch { console.error("data.json: dagfilter mislukt"); }
-  try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
-  // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
-  try {
-    const sv: any = await env.NIEUWS.get("sv-klaar", "json");
-    if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
-  } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
+  // KV-reads parallel aan het parsen van de statische data; cacheTtl 60 (KV-minimum) laat warme edge-locaties lokaal lezen
+  const kv = (key: string) => env.NIEUWS!.get(key, { type: "json", cacheTtl: KV_TTL }).catch(() => { console.error(`data.json: KV ${key} lezen mislukt`); return null; });
+  const [S, H, sv] = await Promise.all([stat.json() as Promise<any>, kv("uur"), kv("sv-klaar")]);
+  const out = bouw(S, H, sv);
   const body = JSON.stringify(slim(out));
   const tag = await etag(body);
   if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
