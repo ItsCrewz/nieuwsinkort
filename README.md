@@ -8,7 +8,7 @@ Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq voor tran
 
 ## Stack
 
-Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects (`Runner`, `Fetcher`, `Budget`), KV en Workers AI.
+Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects (`Runner`, `Fetcher`, `Budget`), KV en Workers AI. Tekst-AI valt bij fouten zo nodig terug op Groq en daarna Mistral; zie [AI-aanbieders en secrets](docs/ai-aanbieders.md).
 
 ## Filters
 
@@ -39,7 +39,7 @@ Buitenland is een rubriek, geen bronnengroep: de feedgroep `nl` bevat ook buiten
 
 Bij de fallback zonder AI slaat de uurrun relatieve en ongeldige bronlinks over bij de controle op Nederlandse domeinen; andere bronnen blijven verwerkt worden.
 
-Zonder AI (dagruimte op, mislukte aanroep) maakt `worker/src/extractief.ts` voor alle rubrieken een deterministische samenvatting: opgeschoonde kop (max 120 tekens, zonder "Podcast |", "LIVE" of HTML), de eerste 2–3 zinnen van de omschrijving (±50 woorden) en bij Engelse bronnen de eerste zin met het label "(Engels)". Zulke berichten hebben `ruw: true` en tonen "nog niet samengevat"; een latere run met AI vervangt ze. Politiek houdt zijn eigen regel.
+Bij uitputting van de AI-ruimte of een tijdelijke AI-fout maakt `worker/src/extractief.ts` voor alle rubrieken een deterministische samenvatting: opgeschoonde kop (max 120 tekens, zonder "Podcast |", "LIVE" of HTML), de eerste 2–3 zinnen van de omschrijving (±50 woorden) en bij Engelse bronnen de eerste zin met het label "(Engels)". Zulke berichten hebben `ruw: true` en tonen "nog niet samengevat"; een latere run met AI vervangt ze. Politiek houdt zijn eigen regel.
 
 ## Vooraf laden
 
@@ -108,8 +108,6 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 ## Signalering van runfouten
 
 `Runner` logt mislukte runs met `console.error`. DO-storage en KV `run-status` bevatten `faalReeks`, `laatsteFout` en `laatsteOk` (ISO-tijdstippen, aanvankelijk `null`). Succes zet de reeks op 0; het laatste fouttijdstip blijft bewaard. Per gewijzigde status volgt één KV-write. Opslagfouten worden apart gelogd; de runrespons blijft behouden. De cron logt ook niet-succesvolle HTTP-responsen en transportfouten. Ingeslikte fouten in Pages Functions loggen vaste context zonder foutobjecten of verzoekgegevens. Tests gebruiken uitsluitend lokale doubles. Een Cloudflare Notification vereist apart akkoord en dashboardconfiguratie.
-
-Tekst-AI gebruikt Workers AI en, als de sleutel is ingesteld, Groq en daarna Mistral als fallback. Zie [AI-aanbieders en secrets](docs/ai-aanbieders.md).
 
 Direct starten (#51): de volgende speler staat vooraf in de slide; toetsen, swipe en beeldwissel starten hem direct. De poster blijft zichtbaar tot er beelddata is. HLS buffert op het laagste startniveau circa 4 s op wifi en 2 s bij een herkende mobiele verbinding; native HLS en mp4 gebruiken preload=auto. Save-Data en 2G laden alleen de actieve video. Bij 500 kbit/s is één ongezien volgend filmpje circa 0,25 MB op wifi en 0,125 MB mobiel; de richtgrenzen zijn 1,55 MB en 0,36 MB per bezoek. Dit is geen harde limiet: native browsers bepalen zelf hoeveel zij ophalen, HLS haalt hele segmenten op en het aantal ongeziene filmpjes varieert. De werkelijke datakosten kunnen dus hoger uitvallen; de verbinding is niet in alle browsers herkenbaar. Niet op een echte iPhone geverifieerd.
 
