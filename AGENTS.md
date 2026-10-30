@@ -18,4 +18,5 @@ Regels voor Codex en andere agents in deze repo (nieuwsinkort, Nederlandstalige 
 - Indeling: `src/` frontend, `functions/` Pages Functions (`data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/`), `worker/src/` uur-Worker, `scripts/` hulpscripts, `tests/` tests, `public/` statisch (`data.json`, `bronnen.json`), `prod-frozen/` bevroren oude build.
 - Stijl: TypeScript, ES modules, 2 spaties, dubbele quotes, puntkomma's; compacte code; commentaar in het Nederlands en kort (het waarom). Gedeelde code staat in `src/`. Functions en Worker gebruiken eigen kleine interfaces (`KV`, `Env`, `Ctx`); de Worker heeft daarnaast wel `@cloudflare/workers-types` (`worker/package.json`, `worker/tsconfig.json`).
 - Worker draait op het Free plan: max 50 subrequests per aanroep, daarom batches via `Fetcher`.
+- De fallback zonder AI gebruikt `src/bronlink.ts` voor een defensieve Nederlandse-broncheck; relatieve en ongeldige feedlinks mogen de uurrun niet laten crashen.
 - Alle teksten (UI, docs, commits, commentaar) zijn Nederlands.

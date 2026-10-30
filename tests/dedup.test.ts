@@ -4,9 +4,32 @@ import { dedupVideos, canonUrl, videoKeys, titleTokens } from "../src/dedup";
 import { uniekeBeelden, beeldKey, goedBeeld, ogImage, beterBeeld as _bb, uniekeBeelden as _ub } from "../src/beeld";
 import { merge } from "../functions/data.json";
 import { schoon } from "../src/schoon";
+import { hostVan, isNL } from "../src/bronlink";
 
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
+
+t("bronlinks: ongeldige en relatieve links zijn geen Nederlandse bron", () => {
+  for (const href of ["/relatief", "rommel", "www.site.nl/a", "javascript:x", "", "https://nos.nl.evil.com/a", "https://example.com/nos.nl/a"]) {
+    assert.equal(isNL({ c: [{ href }] }), false, href);
+  }
+  assert.equal(hostVan("/relatief"), "");
+  assert.equal(hostVan("rommel"), "");
+  assert.equal(hostVan("javascript:x"), "");
+  assert.equal(hostVan("https://nos.nl/a"), "nos.nl");
+  assert.equal(isNL({ c: [{ href: "https://nos.nl/a" }] }), true);
+});
+
+t("bronlinks: fallback zonder AI gaat door na een ongeldige bron", () => {
+  const clusters = [
+    { c: [{ href: "/relatief", s: "Feedtekst" }] },
+    { c: [{ href: "rommel", s: "Feedtekst" }, { href: "https://nos.nl/a", s: "Nieuws" }] },
+  ];
+  const noAI = true;
+  const shown = clusters.filter((k) => noAI && isNL(k) && k.c[0].s);
+  assert.deepEqual(shown, [clusters[1]]);
+  assert.equal(isNL({ c: [] }), false);
+});
 
 t("tracking-parameters weg", () => {
   assert.equal(canonUrl("https://www.youtube.com/shorts/abcdefghijk?si=XYZ&feature=share"), "youtube.com/shorts/abcdefghijk");

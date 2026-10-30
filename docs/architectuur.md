@@ -44,6 +44,8 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 - Stappen van een run: bronnen ophalen → berichten van vandaag ontdubbelen/clusteren → bestaande samenvattingen uit state hergebruiken → nieuwe clusters samenvatten (5 per prompt) → foto's (feed, anders og:image, 3 dagen gecachet) → "In het kort" en weertekst alleen bij gewijzigde invoer → "Lees verder"-tekst → `uur` schrijven → alarm: video-samenvattingen vooraf (`vooraf.ts`, roept `/samenvatting` aan met `pre:true`).
 - Onderdelen: `parse.ts` (RSS/Atom), `videos.ts` (Dumpert, YouTube-kanalen, Reddit-video's), `x.ts`, `redlib.ts`, `weer.ts`, `artikel.ts`, `ai.ts`.
 
+De fallback zonder AI controleert Nederlandse brondomeinen met `isNL` en `hostVan` uit `src/bronlink.ts`. Relatieve en ongeldige links leveren geen Nederlands domein op en onderbreken de run niet. Een cluster met daarnaast een geldige `.nl`-bron blijft geschikt voor ruwe feedtekst. Links worden hiermee niet absoluut gemaakt.
+
 ### Workers AI en budget
 
 Modellen: `@cf/google/gemma-4-26b-a4b-it` (`MODEL`, hoofd), `@cf/meta/llama-3.2-1b-instruct` (`SMALL_MODEL`), `@cf/openai/whisper-large-v3-turbo` (audio, max 3 min). Dagbudget `BUDGET`=9000 neuronen (gratis limiet 10.000), `CAP`=40 per run. Het budget wordt gedeeld door de Worker en `functions/samenvatting.ts`.

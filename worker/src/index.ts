@@ -13,6 +13,7 @@ import { vooraf, MAX_ALARMS_PER_UUR } from "./vooraf";
 import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
+import { isNL } from "../../src/bronlink";
 
 export interface Env {
   NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>;
@@ -480,7 +481,6 @@ export class Runner extends DurableObject<Env> {
 
     // ---- items opbouwen
     const firstSentence = (s: string) => (s.match(/^.{20,240}?[.!?](\s|$)/)?.[0] || s.slice(0, 200)).trim();
-    const isNL = (k: Cluster) => k.c.some((c) => /\.nl(\/|$)/.test(new URL(c.href).hostname + "/"));
     const noAI = quotaOut || runCapped || !env.AI;
     const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
     const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : noAI && isNL(k) && k.c[0].s));
