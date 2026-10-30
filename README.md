@@ -4,6 +4,9 @@ Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone
 
 - Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Het domein nieuwsinkort.nl is nog niet gekoppeld.
 
+- Laatste productiedeploy: 30-10-2026, main 9e90a19 (site + Worker)
+- Na PR #1, #2, #3 en #6 rond 06:58 (Amsterdam) live gezet. Worker `nieuwsinkort-uur`: enige cron `0 4-22 * * *` (UTC); tijdelijke cron `13 13 * * *` verwijderd.
+
 ## Stack
 
 Vite 5, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects, KV en Workers AI.
@@ -26,7 +29,7 @@ Je filters worden in localStorage onthouden.
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
 | `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
 | `prod-frozen/` | Bevroren oude productiebuild (zie deploy) |
-| `tests/` | `dedup.test.ts` (draait met `npm test`), `live-dedup.ts` |
+| `tests/` | `dedup.test.ts` en `filters.test.ts` (draaien met `npm test`), `live-dedup.ts` |
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
 | `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
 
