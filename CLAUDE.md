@@ -32,6 +32,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
 - `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`).
+- `worker/src/cluster.ts`: clusteren van feedberichten (pure module).
 
 ## Conventies
 
@@ -53,6 +54,10 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 ## Laadprestaties (#35)
 
 `index.html` start `/data.json` al tijdens het parsen (`window.__vroegData`, overgenomen door `useData` via `src/vroeg.ts`); een wijziging aan dat inline script vraagt een nieuwe CSP-hash. Inter staat self-hosted in `public/fonts/` (geen Google Fonts; `font-src 'self'`). `NewsFeed` mount de inhoud van kaarten alleen rond de huidige positie (`KAARTEN_VOORAF`/`KAARTEN_VOORUIT`); lege kaarten houden dezelfde hoogte, `data-id` en `aria-label`. Zie [architectuur](docs/architectuur.md#laadprestaties-35).
+
+## Clusteren
+
+Pure module `worker/src/cluster.ts` (`toks`, `sim`, `gelijk`, `cluster`) clustert feedberichten; getest in `tests/cluster.test.ts`. Titeltokens met lichte NL-stam, synoniemen (verbod/verbieden, basisschool/basisonderwijs), hulpwerkwoorden (wil, gaat, moet…) als stopwoord en hoofdletter-acroniemen van 2 letters (AI, EU, VN; niet in titels helemaal in kapitalen). Samen als overlap ≥2 woorden met Jaccard ≥0,45 (zonder acroniemen) of ≥4 woorden met Jaccard ≥0,3; minstens 1 (voor de ruime regels 2) gedeeld woord buiten de lijst `ALGEMEEN` (jaartallen en postcodedelen tellen niet). Een kandidaat wordt met elk clusterlid afzonderlijk vergeleken (max over leden, niet met de unie van de tokens) en voegt alle clusters samen waar hij bij past. Beschrijving alleen als extra bewijs: bij ≥2 eigen titelwoorden streng (≥8 woorden, Jaccard ≥0,5), of bij 1 eigen woord + gedeeld acroniem (AI, EU) + ≥2 gedeelde titelwoorden (≥9 woorden, Jaccard ≥0,25). Conservatief houden. Naspelen op echte data: `tests/live-cluster.ts`, feeds ophalen met `scripts/feedtitels.mts`.
 
 ## Rubriek Buitenland
 

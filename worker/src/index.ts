@@ -19,6 +19,7 @@ import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
 import { isNL } from "../../src/bronlink";
 import { isBuitenland } from "../../src/regio";
+import { cluster, normLink, sim, toks, type Cand, type Cluster } from "./cluster";
 import { Budget } from "./budget";
 
 export { Budget };
@@ -238,29 +239,6 @@ export class Fetcher extends DurableObject<Env> {
 }
 
 // ---------------------------------------------------------------- clusteren
-const STOP = new Set("de het een en van in op te voor met is zijn er dat die bij uit aan om ook als naar over na door nog niet wel maar dan was wordt worden heeft hebben meer dit deze tot kan nu zo al wat hoe waar wie ze hij zij we je jij u the a an of to in on for with and is are was be at by from as it its this that after over new says will has have can how why what who".split(" "));
-const toks = (s: string) => new Set(s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w)));
-function sim(a: Set<string>, b: Set<string>) { let n = 0; for (const x of a) if (b.has(x)) n++; return { n, j: n / (a.size + b.size - n || 1) }; }
-const normLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
-
-type Cand = { cat: string; site: string; href: string; t: string; s: string; d: number; img?: string };
-type Cluster = { key: string; cat: string; c: Cand[]; tok: Set<string> };
-
-function cluster(cands: Cand[]): Cluster[] {
-  const out: Cluster[] = [];
-  for (const c of cands.sort((a, b) => a.d - b.d)) {
-    const tk = toks(c.t);
-    let best: Cluster | null = null, bj = 0;
-    for (const k of out) {
-      const { n, j } = sim(tk, k.tok);
-      if ((j >= 0.45 && n >= 2) || (n >= 4 && j >= 0.3)) if (j > bj) { bj = j; best = k; }
-    }
-    if (best) { best.c.push(c); for (const x of tk) best.tok.add(x); }
-    else out.push({ key: normLink(c.href), cat: c.cat, c: [c], tok: tk });
-  }
-  return out;
-}
-
 // ---------------------------------------------------------------- runner-DO
 const SOCIAL_INFO = /YouTube|Instagram|Reddit|Podcast/; // X (bv. Politie Haarlem) telt wel als nieuws
 const NIET_ALS_NIEUWS = new Set(["burgernet", "gemeenteraadhaarlem"]);

@@ -9,3 +9,4 @@
 - Workers Issues (gratis open beta) aangezet via `[observability.issues]` in `worker/wrangler.toml`.
 - Audit-ronde van vandaag: K10 deploy-integriteit (#17), K11 signalering bij mislukte runs (#18) en deze budget-wijziging.
 - Deploy-volgorde: Worker vóór Pages.
+- Clusteren verbeterd (issue #38): `worker/src/cluster.ts` is een aparte, geteste module. Dubbele berichten over hetzelfde verhaal (bijv. "AI-verbod op basisscholen" bij Tweakers en Security.nl) gaan nu samen dankzij 2-letter-acroniemen (AI, EU), lichte NL-stam/synoniemen, hulpwerkwoorden als stopwoord, een lijst algemene woorden en de beschrijving als extra bewijs. Kandidaten worden met elk clusterlid afzonderlijk vergeleken (max over leden) in plaats van met de unie, zodat een verhaal met veel bronnen ook de volgende bron aantrekt (alle 6 bronnen van het AI-verbod in één cluster). Nieuw: `tests/cluster.test.ts`, `tests/live-cluster.ts`, `scripts/feedtitels.mts`.
