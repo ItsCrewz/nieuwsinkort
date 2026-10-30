@@ -15,7 +15,7 @@ Werkinstructies voor Claude Code in deze repo (nieuwsinkort). Overzicht: [README
 
 ```bash
 npm ci
-npm run dev        # Vite
+npm run dev        # Vite 8 (devDependencies: vite, wrangler 4, esbuild expliciet; Node >= 20.19)
 npm run build      # build-bronnen.mjs + tsc --noEmit + vite build
 npm test           # esbuild-bundel van tests/dedup.test.ts, draait met node
 npm run bronnen    # alleen public/bronnen.json opnieuw bouwen
