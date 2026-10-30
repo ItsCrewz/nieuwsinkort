@@ -1,0 +1,1 @@
+- Voeg een Playwright-rookproef met axe toe voor desktop- en mobiele browseremulatie (#314); de axe-baseline moet nog worden gemeten.

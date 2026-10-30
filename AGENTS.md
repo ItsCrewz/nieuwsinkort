@@ -70,3 +70,7 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
 
 Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Dit is nog niet op een echte iPhone geverifieerd.
+
+## Browserrookproef
+
+`npm run e2e` gebruikt Playwright en axe; installatie, uitgangswaarden en beperkingen staan in [docs/browser-tests.md](docs/browser-tests.md). De axe-baseline moet eerst worden gemeten voordat de proef groen kan zijn.
