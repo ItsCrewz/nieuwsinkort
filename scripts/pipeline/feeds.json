@@ -1,0 +1,1397 @@
+[
+ {
+  "cat": "nl",
+  "naam": "NU.nl Algemeen",
+  "url": "https://www.nu.nl/rss/Algemeen",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "NU.nl Buitenland",
+  "url": "https://www.nu.nl/rss/Buitenland",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "NU.nl",
+  "url": "https://www.nu.nl/rss",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "RTL Nieuws",
+  "url": "https://www.rtlnieuws.nl/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "NU.nl Economie",
+  "url": "https://www.nu.nl/rss/Economie",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "AD",
+  "url": "https://www.ad.nl/home/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "AD nieuws",
+  "url": "https://www.ad.nl/nieuws/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "NOS buitenland",
+  "url": "https://feeds.nos.nl/nosnieuwsbuitenland",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "NOS politiek",
+  "url": "https://feeds.nos.nl/nosnieuwspolitiek",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "NOS economie",
+  "url": "https://feeds.nos.nl/nosnieuwseconomie",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "NOS algemeen",
+  "url": "https://feeds.nos.nl/nosnieuwsalgemeen",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "NOS binnenland",
+  "url": "https://feeds.nos.nl/nosnieuwsbinnenland",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "Telegraaf",
+  "url": "https://www.telegraaf.nl/rss",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Tweakers mixed",
+  "url": "https://tweakers.net/feeds/mixed.xml",
+  "werkt": true,
+  "notitie": "feedburner-kopie stond stil sinds 22-04; directe feed werkt (28-10 gecontroleerd, 25 items vandaag)"
+ },
+ {
+  "cat": "nl",
+  "naam": "Parool",
+  "url": "https://www.parool.nl/home/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "Politie.nl",
+  "url": "https://www.politie.nl/nieuws/rss",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "KNMI",
+  "url": "https://cdn.knmi.nl/knmi/xml/rss/rss_KNMIberichten.xml",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "NRC",
+  "url": "https://www.nrc.nl/rss/",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Emerce",
+  "url": "https://www.emerce.nl/feed",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "Security.nl",
+  "url": "https://www.security.nl/rss/headlines.xml",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "AG Connect",
+  "url": "https://www.agconnect.nl/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "Hart van Nederland",
+  "url": "https://www.hartvannederland.nl/rss",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "de Volkskrant",
+  "url": "https://www.volkskrant.nl/voorpagina/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Techzine",
+  "url": "https://www.techzine.nl/feed",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "iCulture",
+  "url": "https://www.iculture.nl/feed/",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Frankwatching",
+  "url": "https://www.frankwatching.com/feed/",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "Tweakers nieuws",
+  "url": "https://tweakers.net/feeds/nieuws.xml",
+  "werkt": true,
+  "ua": "bot",
+  "notitie": "403 met browser-UA, 200 met bot-UA"
+ },
+ {
+  "cat": "tech",
+  "naam": "TechCrunch",
+  "url": "https://techcrunch.com/feed/",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "The Verge",
+  "url": "https://www.theverge.com/rss/index.xml",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "Trouw",
+  "url": "https://www.trouw.nl/voorpagina/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "Rijksoverheid",
+  "url": "https://www.rijksoverheid.nl/actueel/nieuws/rss",
+  "werkt": false
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Haarlems Dagblad",
+  "url": "https://www.haarlemsdagblad.nl/home/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "Ars Technica",
+  "url": "https://feeds.arstechnica.com/arstechnica/index",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Dutch IT Channel",
+  "url": "https://dutchitchannel.nl/feed",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "NOS Tech",
+  "url": "https://feeds.nos.nl/nostech",
+  "werkt": false
+ },
+ {
+  "cat": "haarlem",
+  "naam": "IJmuider Courant",
+  "url": "https://www.ijmuidercourant.nl/home/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "haarlem",
+  "naam": "NH Nieuws",
+  "url": "https://rss.nhnieuws.nl/rss/haarlem",
+  "werkt": true,
+  "notitie": "oude www.nhnieuws.nl/rss geeft HTML; rss.nhnieuws.nl/rss/haarlem = Haarlem-nieuws (28-10: 4 vandaag)"
+ },
+ {
+  "cat": "tech",
+  "naam": "Bright",
+  "url": "https://www.bright.nl/feed",
+  "werkt": false
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Heemstedenieuws",
+  "url": "https://heemstedenieuws.nl/feed/",
+  "werkt": false
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Haarlemmermeer Nieuws",
+  "url": "https://haarlemmermeernieuws.nl/feed/",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "Computable",
+  "url": "https://www.computable.nl/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Zandvoortse Courant",
+  "url": "https://www.zandvoortsecourant.nl/rss",
+  "werkt": true
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Haarlem105",
+  "url": "https://haarlem105.nl/feed/",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Androidplanet",
+  "url": "https://www.androidplanet.nl/feed/",
+  "werkt": true
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Alarmeringen Kennemerland",
+  "url": "https://alarmeringen.nl/noord-holland/kennemerland/rss",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "Hacker News",
+  "url": "https://hnrss.org/frontpage",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Computable",
+  "url": "https://www.computable.nl/rss/nieuws",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "Computable atom",
+  "url": "https://www.computable.nl/atom.xml",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "Emerce",
+  "url": "https://www.emerce.nl/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "tech",
+  "naam": "Bright",
+  "url": "https://www.bright.nl/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "NOS Tech",
+  "url": "https://feeds.nos.nl/nosnieuwstech",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Hacker News alt",
+  "url": "https://news.ycombinator.com/rss",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "Rijksoverheid",
+  "url": "https://feeds.rijksoverheid.nl/nieuws.rss",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "Politie",
+  "url": "https://www.politie.nl/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "haarlem",
+  "naam": "NH RSS2",
+  "url": "https://www.nhnieuws.nl/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "haarlem",
+  "naam": "NH feed",
+  "url": "https://nhnieuws.nl/feed",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "KNMI warnings",
+  "url": "https://www.knmi.nl/nederland-nu/weer/waarschuwingen/rss.xml",
+  "werkt": false
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/thenetherlands new",
+  "url": "https://www.reddit.com/r/thenetherlands/new/.rss",
+  "werkt": false,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/Netherlands new",
+  "url": "https://www.reddit.com/r/Netherlands/new/.rss",
+  "werkt": false,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "nl",
+  "naam": "PowNed atom",
+  "url": "https://www.powned.tv/atom.xml",
+  "werkt": false
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/Haarlem top day",
+  "url": "https://www.reddit.com/r/Haarlem/top/.rss?t=day",
+  "werkt": true,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "nl",
+  "naam": "PowNed feed",
+  "url": "https://www.powned.tv/feed",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "PowNed",
+  "url": "https://www.powned.tv/rss",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "PowNed nieuws",
+  "url": "https://www.powned.tv/nieuws/rss",
+  "werkt": false
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/thenetherlands top",
+  "url": "https://www.reddit.com/r/thenetherlands/top/.rss?t=day",
+  "werkt": true,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/Netherlands top",
+  "url": "https://www.reddit.com/r/Netherlands/top/.rss?t=day",
+  "werkt": false,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/technology top",
+  "url": "https://www.reddit.com/r/technology/top/.rss?t=day",
+  "werkt": false,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/artificial top",
+  "url": "https://www.reddit.com/r/artificial/top/.rss?t=day",
+  "werkt": false,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/OpenAI top",
+  "url": "https://www.reddit.com/r/OpenAI/top/.rss?t=day",
+  "werkt": false,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "social",
+  "naam": "Reddit r/Haarlem new",
+  "url": "https://www.reddit.com/r/Haarlem/new/.rss",
+  "werkt": false,
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "nl",
+  "naam": "PowNed sitemap",
+  "url": "https://www.powned.tv/sitemap.xml",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "PowNed (geen RSS, site)",
+  "url": "https://www.powned.tv/",
+  "werkt": false
+ },
+ {
+  "cat": "nl",
+  "naam": "Reddit r/thenetherlands",
+  "url": "https://www.reddit.com/r/thenetherlands/top/.rss?t=day",
+  "werkt": true,
+  "soort": "rss",
+  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "nl",
+  "naam": "Reddit r/Netherlands",
+  "url": "https://www.reddit.com/r/Netherlands/top/.rss?t=day",
+  "werkt": false,
+  "soort": "rss",
+  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Reddit r/Haarlem",
+  "url": "https://www.reddit.com/r/Haarlem/top/.rss?t=day",
+  "werkt": true,
+  "soort": "rss",
+  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "tech",
+  "naam": "Reddit r/technology",
+  "url": "https://www.reddit.com/r/technology/top/.rss?t=day",
+  "werkt": false,
+  "soort": "rss",
+  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "tech",
+  "naam": "Reddit r/artificial",
+  "url": "https://www.reddit.com/r/artificial/top/.rss?t=day",
+  "werkt": false,
+  "soort": "rss",
+  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "tech",
+  "naam": "Reddit r/OpenAI",
+  "url": "https://www.reddit.com/r/OpenAI/top/.rss?t=day",
+  "werkt": false,
+  "soort": "rss",
+  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
+  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
+ },
+ {
+  "cat": "nl",
+  "naam": "Instagram NOS (Kittygram)",
+  "url": "https://kg.meowing.de/nos/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
+  "ua": "bot",
+  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
+ },
+ {
+  "cat": "nl",
+  "naam": "Instagram NU.nl (Kittygram)",
+  "url": "https://kg.meowing.de/nu.nl/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
+  "ua": "bot",
+  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
+ },
+ {
+  "cat": "nl",
+  "naam": "Instagram RTL Nieuws (Kittygram)",
+  "url": "https://kg.meowing.de/rtlnieuws/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
+  "ua": "bot",
+  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Instagram NH Nieuws (Kittygram)",
+  "url": "https://kg.meowing.de/nhnieuws/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
+  "ua": "bot",
+  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Instagram Haarlem105 (Kittygram)",
+  "url": "https://kg.meowing.de/haarlem105/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
+  "ua": "bot",
+  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
+ },
+ {
+  "cat": "nl",
+  "naam": "Instagram PowNed (Kittygram)",
+  "url": "https://kg.meowing.de/powned/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
+  "ua": "bot",
+  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
+ },
+ {
+  "cat": "nl",
+  "naam": "Instagram Hart van Nederland (Kittygram)",
+  "url": "https://kg.meowing.de/hartvannederland/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
+  "ua": "bot",
+  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
+ },
+ {
+  "cat": "nl",
+  "naam": "PowNews (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCHTtspK-G7Wt68awRpTSkiw",
+  "werkt": true,
+  "notitie": "Alleen titel+beschrijving; transcripties geblokkeerd vanaf server, bevestig via nieuwssite"
+ },
+ {
+  "cat": "nl",
+  "naam": "Omroep PowNed (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCihqgpWn_ns1gJUdhNLsSMQ",
+  "werkt": true,
+  "notitie": "Alleen titel+beschrijving; transcripties geblokkeerd vanaf server, bevestig via nieuwssite"
+ },
+ {
+  "cat": "tech",
+  "naam": "NCSC advisories",
+  "url": "https://advisories.ncsc.nl/rss/advisories",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "NCSC nieuws",
+  "url": "https://feeds.ncsc.nl/nieuws.rss",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "BleepingComputer",
+  "url": "https://www.bleepingcomputer.com/feed/",
+  "werkt": true,
+  "notitie": "Chrome-UA; soms Cloudflare 403"
+ },
+ {
+  "cat": "tech",
+  "naam": "The Hacker News",
+  "url": "https://feeds.feedburner.com/TheHackersNews",
+  "werkt": true,
+  "notitie": "cybersecurity, niet YC HN"
+ },
+ {
+  "cat": "tech",
+  "naam": "CISA advisories",
+  "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "CISA nieuws",
+  "url": "https://www.cisa.gov/news.xml",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "CISA KEV",
+  "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+  "werkt": true,
+  "notitie": "JSON; filter op dateAdded"
+ },
+ {
+  "cat": "tech",
+  "naam": "MIT Technology Review",
+  "url": "https://www.technologyreview.com/feed/",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "The Decoder",
+  "url": "https://the-decoder.com/feed/",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "OpenAI News",
+  "url": "https://openai.com/news/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Anthropic News (community)",
+  "url": "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml",
+  "werkt": true,
+  "notitie": "officiële Anthropic RSS leeg; community feed recent (okt 2026)"
+ },
+ {
+  "cat": "tech",
+  "naam": "Google DeepMind",
+  "url": "https://blog.google/technology/google-deepmind/rss/",
+  "werkt": true
+ },
+ {
+  "cat": "tech",
+  "naam": "Google AI Blog",
+  "url": "https://blog.google/technology/ai/rss/",
+  "werkt": true
+ },
+ {
+  "cat": "showbizz",
+  "naam": "NU.nl Entertainment",
+  "url": "https://www.nu.nl/rss/Entertainment",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "NU.nl Media",
+  "url": "https://www.nu.nl/rss/Media",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "AD Show",
+  "url": "https://www.ad.nl/show/rss.xml",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "Volkskrant cultuur & media",
+  "url": "https://www.volkskrant.nl/cultuur-media/rss.xml",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "AD cultuur",
+  "url": "https://www.ad.nl/cultuur/rss.xml",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "RTL Boulevard (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC2Jbya_u-rQ0xBNHBYXvpTg",
+  "werkt": true,
+  "notitie": "showbizz; site-RSS/Kittygram geven 0"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "Shownieuws (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCnZkUwDLBgLFEpXSeyEx3YA",
+  "werkt": true,
+  "notitie": "showbizz; shownieuws.nl/rss 404"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "RTL Boulevard site RSS",
+  "url": "https://www.rtl.nl/rss/boulevard",
+  "werkt": false,
+  "notitie": "showbizz; 403 Access Denied"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "Shownieuws site RSS",
+  "url": "https://www.shownieuws.nl/rss",
+  "werkt": false,
+  "notitie": "showbizz; 404"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "Instagram RTL Boulevard (Kittygram)",
+  "url": "https://kg.meowing.de/rtlboulevard/atom.xml",
+  "werkt": true,
+  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum.",
+  "ua": "bot"
+ },
+ {
+  "cat": "nl",
+  "naam": "FD",
+  "url": "https://fd.nl/?rss",
+  "werkt": true,
+  "notitie": "Het Financieele Dagblad"
+ },
+ {
+  "cat": "nl",
+  "naam": "Follow the Money",
+  "url": "https://www.ftm.nl/feed",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "Nieuwsuur",
+  "url": "https://feeds.nos.nl/nieuwsuuralgemeen",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "Zembla",
+  "url": "https://www.bnnvara.nl/zembla/rss",
+  "werkt": true
+ },
+ {
+  "cat": "nl",
+  "naam": "Pointer (podcast)",
+  "url": "https://podcast.npo.nl/feed/pointer.xml",
+  "werkt": true,
+  "notitie": "pointer.kro-ncrv.nl/feed 404; NPO podcast-RSS werkt"
+ },
+ {
+  "cat": "nl",
+  "naam": "BNR (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWALr0VavEm8SgPXGafhFDQ",
+  "werkt": true,
+  "notitie": "bnr.nl RSS Cloudflare 403; YouTube-fallback"
+ },
+ {
+  "cat": "nl",
+  "naam": "BNR site RSS",
+  "url": "https://www.bnr.nl/rss",
+  "werkt": false,
+  "notitie": "Cloudflare 403"
+ },
+ {
+  "cat": "nl",
+  "naam": "EenVandaag (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCjxk-pBIdYXjBQGie4uJGoA",
+  "werkt": true,
+  "notitie": "site /rss 404; YouTube-fallback"
+ },
+ {
+  "cat": "nl",
+  "naam": "EenVandaag site RSS",
+  "url": "https://eenvandaag.avrotros.nl/rss",
+  "werkt": false,
+  "notitie": "404"
+ },
+ {
+  "cat": "nl",
+  "naam": "Radar (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCGUhzuD1eYIgJoSGe0c_rNg",
+  "werkt": true,
+  "notitie": "radar.avrotros.nl/feed 404; YouTube-fallback"
+ },
+ {
+  "cat": "nl",
+  "naam": "Radar site RSS",
+  "url": "https://radar.avrotros.nl/rss",
+  "werkt": false,
+  "notitie": "404"
+ },
+ {
+  "cat": "nl",
+  "naam": "RTL Z (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3lleI2WsaIiW8IzkJ0kIYA",
+  "werkt": true,
+  "notitie": "rtlz.nl/rss en rtlnieuws economie-RSS geblokkeerd; YouTube-fallback"
+ },
+ {
+  "cat": "nl",
+  "naam": "RTL Z site RSS",
+  "url": "https://www.rtlz.nl/rss",
+  "werkt": false,
+  "notitie": "403 Access Denied"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Rodi Haarlem",
+  "url": "https://www.rodi.nl/haarlem/rss",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "403 met browser-UA, 200 met bot-UA",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Rodi Heemstede",
+  "url": "https://www.rodi.nl/heemstede/rss",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "403 met browser-UA, 200 met bot-UA",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Rodi Bloemendaal",
+  "url": "https://www.rodi.nl/bloemendaal/rss",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "Pubble RSS; soms 403."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Rodi Zandvoort",
+  "url": "https://www.rodi.nl/zandvoort/rss",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "403 met browser-UA, 200 met bot-UA",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Rodi Velsen",
+  "url": "https://www.rodi.nl/velsen/rss",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "werkt (28-10)",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Rodi Haarlem 112-nieuws",
+  "url": "https://www.rodi.nl/haarlem/112-nieuws",
+  "werkt": false,
+  "soort": "html",
+  "notitie": "Geen aparte RSS. Pagina leesbaar via WebFetch/browser. Als Rodi Haarlem RSS werkt: filter items met /112-nieuws/ in link."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "indebuurt Haarlem",
+  "url": "https://indebuurt.nl/haarlem/feed/",
+  "werkt": false,
+  "soort": "rss",
+  "notitie": "DPG WAF 403 + sitefout; /wp-json ook geblokkeerd. Alleen via browser."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "indebuurt Haarlem site",
+  "url": "https://indebuurt.nl/haarlem/",
+  "werkt": false,
+  "soort": "html",
+  "notitie": "Alleen via browser (WAF)."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Burgernet AMBER/Vermist Kind API",
+  "url": "https://services.burgernet.nl/landactiehost/api/v1/alerts",
+  "werkt": true,
+  "soort": "json",
+  "notitie": "Open API (Accept: application/json). Meestal leeg; alleen landelijke AMBER/Vermist Kind, niet lokale Burgernet-zoekacties."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Burgernet AMBER RSS",
+  "url": "https://services.burgernet.nl/landactiehost/rss",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "Zelfde landelijke AMBER-feed als de API; meestal leeg."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Burgernet lokaal (Kennemerland)",
+  "url": "https://www.burgernet.nl/",
+  "werkt": false,
+  "soort": "app",
+  "notitie": "Lokale zoekacties/vermissingen niet publiek als RSS/API. Alleen app of browser; X @Burgernet is niet officieel."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Politie RSS Haarlem",
+  "url": "https://rss.politie.nl/rss/ab/gemeenten/noord-holland/haarlem.xml",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "403 met browser-UA, 200 met bot-UA (28-10)",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Politie RSS Heemstede",
+  "url": "https://rss.politie.nl/rss/ab/gemeenten/noord-holland/heemstede.xml",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "403 met browser-UA, 200 met bot-UA (28-10)",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Politie RSS Bloemendaal",
+  "url": "https://rss.politie.nl/rss/ab/gemeenten/noord-holland/bloemendaal.xml",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "403 met browser-UA, 200 met bot-UA (28-10)",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Politie RSS Zandvoort",
+  "url": "https://rss.politie.nl/rss/ab/gemeenten/noord-holland/zandvoort.xml",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "403 met browser-UA, 200 met bot-UA (28-10)",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Politie RSS Velsen",
+  "url": "https://rss.politie.nl/rss/ab/gemeenten/noord-holland/velsen.xml",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "403 met browser-UA, 200 met bot-UA (28-10)",
+  "ua": "bot"
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Politie X POL_Haarlem",
+  "url": "https://x.com/POL_Haarlem",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); daarnaast rss.politie.nl Haarlem-feed."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Officiële bekendmakingen Haarlem (SRU)",
+  "url": "https://repository.overheid.nl/sru?query=c.product-area==officielepublicaties%20AND%20dt.creator=%22Haarlem%22%20sortBy%20dt.modified%20/sort.descending&maximumRecords=10",
+  "werkt": true,
+  "soort": "sru",
+  "notitie": "SRU werkt vanaf box. Helper: /workspace/nieuws/officiele_bekendmakingen.py (filtert omgevingsvergunningen; houdt verkeersbesluiten/evenementen/verordeningen). Zelfde script doet Heemstede/Bloemendaal/Zandvoort/Velsen/Haarlemmermeer."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Gemeenteraad Haarlem (ORI/Notubiz)",
+  "url": "https://api.openraadsinformatie.nl/v1/elastic/ori_haarlem_20250416182404/_search",
+  "werkt": true,
+  "soort": "json",
+  "notitie": "ORI-index loopt achter: nieuwste vergadering 02-07-2026 (28-10 gecontroleerd). Notubiz zelf 403/timeout."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Notubiz Gemeente Haarlem",
+  "url": "https://gemeentebestuur-haarlem.notubiz.nl/",
+  "werkt": false,
+  "soort": "html",
+  "notitie": "403/Cloudflare vanaf box. API https://api.notubiz.nl/events?organisation_id=544&format=json&version=1.10.8 timeout. Gebruik ORI-helper i.p.v. Notubiz direct."
+ },
+ {
+  "cat": "haarlem",
+  "naam": "Rodi 112-nieuws",
+  "url": "https://www.rodi.nl/112-nieuws",
+  "werkt": false,
+  "notitie": "HTML-pagina, geen feed"
+ },
+ {
+  "cat": "politiek",
+  "naam": "VVD (Kittygram)",
+  "url": "https://kg.meowing.de/vvd/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "PRO (Progressief Nederland) (Kittygram)",
+  "url": "https://kg.meowing.de/progressiefnederland/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "CDA (Kittygram)",
+  "url": "https://kg.meowing.de/cdavandaag/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "FVD (Kittygram)",
+  "url": "https://kg.meowing.de/fvdnl/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "BBB (Kittygram)",
+  "url": "https://kg.meowing.de/boerburgerbeweging/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "ChristenUnie (Kittygram)",
+  "url": "https://kg.meowing.de/christenunie/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "SGP (Kittygram)",
+  "url": "https://kg.meowing.de/sgpnieuws/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "SP (Kittygram)",
+  "url": "https://kg.meowing.de/socialistischepartij/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Volt (Kittygram)",
+  "url": "https://kg.meowing.de/voltnederland/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Rob Jetten (Minister-president) (Kittygram)",
+  "url": "https://kg.meowing.de/minpres/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Jan Paternotte (D66) (Kittygram)",
+  "url": "https://kg.meowing.de/janpaternotte/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Jesse Klaver (PRO) (Kittygram)",
+  "url": "https://kg.meowing.de/jesseklaver/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Geert Wilders (PVV) (Kittygram)",
+  "url": "https://kg.meowing.de/geertwilders/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Henri Bontenbal (CDA) (Kittygram)",
+  "url": "https://kg.meowing.de/henribontenbal/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Stephan van Baarle (DENK) (Kittygram)",
+  "url": "https://kg.meowing.de/stephanvanbaarle/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Mona Keijzer (Kittygram)",
+  "url": "https://kg.meowing.de/monakeijzer/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Laurens Dassen (Volt) (Kittygram)",
+  "url": "https://kg.meowing.de/laurens.dassen/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Rijksoverheid (Kittygram)",
+  "url": "https://kg.meowing.de/rijksoverheid.nl/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Tweede Kamer (Kittygram)",
+  "url": "https://kg.meowing.de/tweede_kamer/atom.xml",
+  "werkt": true,
+  "soort": "atom",
+  "ua": "bot",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "D66 (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCI6DBNX5JTVECWNdiax56Rw",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "VVD (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCzlQ9dqrRn10tHxU9BvqSTQ",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "PRO (Progressief Nederland) (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBO9CiY8Yp9P9u52Nx3LOdw",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "CDA (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCa0ZzQSRbv_OVlZPDc5Xqqw",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "JA21 (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCsmqf-MUzYyVzF5DYtdL2FA",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "ChristenUnie (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCtHCBM7_6yiU1uerGoF66rg",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Partij voor de Dieren (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCxYi4LA6lLGURr5-dxem36Q",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "SGP (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCMv0VFu5A3WQvKsYTb_J9yQ",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Volt (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCyczP3mO2CDr9k9JbBEB8vA",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Rijksoverheid (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCKxsyDCRDxSEBonS9SnmvjQ",
+  "werkt": true,
+  "soort": "atom",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
+ },
+ {
+  "cat": "politiek",
+  "naam": "D66",
+  "url": "https://x.com/D66",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "VVD",
+  "url": "https://x.com/VVD",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Geert Wilders (PVV)",
+  "url": "https://x.com/geertwilderspvv",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "CDA",
+  "url": "https://x.com/cdavandaag",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "FVD",
+  "url": "https://x.com/fvdemocratie",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Groep Markuszower",
+  "url": "https://x.com/GidiMarkuszower",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "ChristenUnie",
+  "url": "https://x.com/christenunie",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "DENK",
+  "url": "https://x.com/DenkNL",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Partij voor de Dieren",
+  "url": "https://x.com/PartijvdDieren",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "SGP",
+  "url": "https://x.com/SGPnieuws",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "SP",
+  "url": "https://x.com/SPnl",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "50PLUS",
+  "url": "https://x.com/50pluspartij",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Mona Keijzer",
+  "url": "https://x.com/MonaKeijzer",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Ruben Brekelmans (VVD)",
+  "url": "https://x.com/rubenbrekelmans",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Henk Vermeer (BBB)",
+  "url": "https://x.com/henkvermeer",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Rijksoverheid",
+  "url": "https://x.com/Rijksoverheid",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Rob Jetten (Minister-president)",
+  "url": "https://x.com/MinPres",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "politiek",
+  "naam": "Tweede Kamer",
+  "url": "https://x.com/2eKamertweets",
+  "werkt": true,
+  "soort": "x",
+  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ }
+]
