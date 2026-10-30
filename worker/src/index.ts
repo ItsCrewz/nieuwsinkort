@@ -12,7 +12,7 @@ import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
 import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, selecteerFilmpjes, ytEmbedGeblokkeerd, ytEmbedStatus, ytCombineer, type YtDiag, ytVideoId, ytNieuweControles, ytGeblokkeerdeShorts, ytBlokkades, ruimYtCache, type YtCache, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
-import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
+import { summarize, inHetKort, simpelWeer, isPromptEcho, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
@@ -795,9 +795,10 @@ export class Runner extends DurableObject<Env> {
     if (W.knmiTekst) {
       const wh = await hash("nl:" + W.knmiTekst); // "nl:" = landelijke prompt; ververst een oude Haarlem-tekst eenmalig
       if (wh !== st.weerHash && !quotaOut && tier() <= 2) {
-        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
+        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30 && !isPromptEcho(t)) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
         await cfStand();
       }
+      if (st.weerTxt && isPromptEcho(st.weerTxt)) { st.weerTxt = undefined; st.weerHash = undefined; } // eerder bewaarde prompt-echo (#378) niet hergebruiken
       if (st.weerHash === wh && st.weerTxt) W.weer.verwachting = st.weerTxt;
     }
 
