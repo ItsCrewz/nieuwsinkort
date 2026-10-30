@@ -1,5 +1,28 @@
+# dependencies en build
 node_modules
+**/node_modules/
 dist
 .wrangler
+**/.wrangler/
 screens
 scripts/.cache/
+
+# geheimen en lokale config
+.env
+.env.*
+!.env.example
+.dev.vars
+**/.dev.vars
+*.pem
+*.key
+secrets/
+*.secret
+
+# Python
+__pycache__/
+*.pyc
+
+# rommel
+*.bak*
+.DS_Store
+npm-debug.log*

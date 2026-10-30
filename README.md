@@ -1,18 +1,12 @@
-# nieuwsinkort.nl
+# nieuwsinkort
 
-Statische versie van het Dagelijks Nieuws-dashboard (Vite + React + TypeScript + Tailwind).
+Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone Safari. Nieuws per rubriek (NL, Tech, Haarlem, Showbizz, Politiek) met ontdubbelde berichten uit meerdere bronnen, korte AI-samenvatting in simpel Nederlands, "In het kort", weer, fotocarrousels en een verticale videofeed (journaals, shorts, Dumpert).
 
-- Data: `public/data.json` (keys: datum, dag_samenvatting, weer, filmpjes, dumpert, items) wordt bij het laden opgehaald.
-- Data verversen uit de canvas: `node export_from_canvas.mjs <canvas-bron.txt>` (schrijft public/data.json).
-- Bouwen: `npm run build` -> `dist/`
-- Lokaal testen incl. Dumpert-proxy: `npx wrangler pages dev dist --port 4173`
-- Deployen: `CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... ./deploy.sh`
-  (optioneel `CANVAS_SRC=<bestand>` om eerst data.json te verversen)
+- Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Het domein nieuwsinkort.nl is nog niet gekoppeld.
 
-Video's: YouTube via youtube-nocookie-iframe, HLS (.m3u8) native in Safari/nieuwe Chrome, anders hls.js;
-Dumpert-HLS loopt voor hls.js via de Pages Function `functions/media/dumpert/[[path]].ts`
-(media.dumpert.nl staat alleen dumpert.nl toe via CORS). MP4 (X) via `<video>`; daarvoor staat
-`<meta name="referrer" content="no-referrer">` (video.twimg.com weigert een vreemde referrer).
+## Stack
+
+Vite 5, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects, KV en Workers AI.
 
 ## Filters
 
@@ -22,25 +16,45 @@ Bij Nieuwste eerst staat het openingsartikel met de meeste bronnen bovenaan, gev
 Bij Oudste eerst en Meeste bronnen geldt de gekozen volgorde ook voor het openingsartikel.
 Je filters worden in localStorage onthouden.
 
-## Elk uur bijwerken (zonder LLM-routine)
+## Indeling
 
-- `worker/` = Cloudflare Worker **nieuwsinkort-uur** (Free plan). Cron `0 4-22 * * *` (UTC); de code draait alleen
-  als het in Amsterdam 06:00–23:00 is, dus elk heel uur van 06:00 t/m 23:00, zomer- en wintertijd.
-- De Worker haalt `bronnen.json` (feeds[] per bron), Dumpert-toppers, YouTube-nieuwskanalen, Reddit (achter elkaar,
-  met pauzes), Buienradar/Open-Meteo/KNMI (zoals `weer.py`) op via Durable Objects (elk een eigen budget van 50
-  subrequests). Alle verzoeken gaan met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`.
-- Berichten sinds 00:00 worden ontdubbeld en geclusterd. Clusters die al in de routine-data staan worden overgeslagen. Nieuwe clusters
-  (max `CAP`=40 per run) worden door Workers AI (`@cf/google/gemma-4-26b-a4b-it`, denken uit) samengevat in simpel
-  Nederlands, 5 per prompt. Samenvattingen staan per link in KV (`state`), dus elk bericht wordt maar één keer
-  samengevat. "In het kort" en de weertekst worden alleen opnieuw gemaakt als de invoer veranderde. Er is een daglimiet van
-  `BUDGET`=9000 neuronen (gratis: 10.000/dag). Is die op, dan gebruikt de Worker de feedtekst zelf (`ruw: true`).
-- Resultaat: KV-sleutel `uur` (binding `NIEUWS`), met ook `bronstats` voor "Vandaag niets" in het Bronnen-paneel.
-- `functions/data.json.ts` voegt `uur` samen met de statische `dist/data.json`. De samenvattingen van de routine blijven;
-  nieuwe berichten komen bovenaan, en weer, filmpjes en Dumpert worden vervangen. Is `uur` niet van vandaag, of ontbreekt KV, dan
-  gaat het statische bestand eruit. `?statisch=1` geeft altijd het statische bestand. Cache: `max-age=300`.
-- Worker deployen: `cd worker && npm ci && npx wrangler deploy` (of `DEPLOY_WORKER=1 ./deploy.sh`).
-  Het account heeft éénmalig een workers.dev-subdomein nodig (fout 10063): open daarvoor één keer
-  Workers & Pages in het Cloudflare-dashboard. `workers_dev = false`, dus er komt geen publieke URL.
-- Lokaal testen: `cd worker && npx wrangler dev --test-scheduled --var RUN_KEY:test`, daarna
-  `curl 'localhost:8787/run?key=test'` (draai nu) en `curl 'localhost:8787/uur?key=test'` (resultaat).
-  KV is lokaal gesimuleerd. Workers AI is altijd remote en telt dus mee voor de neuronen.
+| Map / bestand | Inhoud |
+|---|---|
+| `src/` | Frontend (React, feed, filters, video, ontdubbelen) |
+| `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/[[path]].ts` |
+| `worker/` | Uur-Worker `nieuwsinkort-uur` (eigen `package.json` en `wrangler.toml`) |
+| `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
+| `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
+| `prod-frozen/` | Bevroren oude productiebuild (zie deploy) |
+| `tests/` | `dedup.test.ts` (draait met `npm test`), `live-dedup.ts` |
+| `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
+| `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
+
+## Lokaal draaien
+
+```bash
+npm ci
+npm run dev      # Vite dev-server
+npm test         # tests
+npm run build    # bronnen.json + tsc + vite build -> dist/
+```
+
+Pages Functions lokaal (incl. Dumpert-proxy): `npx wrangler pages dev dist --port 4173`.
+Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled --var RUN_KEY:test`, dan `/run?key=test` en `/uur?key=test`. Workers AI is altijd remote en kost dus echte neuronen.
+
+## Deployen
+
+> **Let op: deploys gebeuren alleen met uitdrukkelijke goedkeuring van Joey.** Voer zonder die goedkeuring geen `./deploy.sh`, `npm run deploy`, `wrangler deploy`, `wrangler pages deploy`, `wrangler secret` of `wrangler triggers` uit. Dit geldt ook voor agents.
+
+- `./deploy.sh` bouwt en zet de site op Pages. De doelbranch staat in `DEPLOY_BRANCH`.
+  - `main`: de nieuwe build gaat naar productie.
+  - iets anders (bijv. `design`): productie krijgt de bevroren site uit `prod-frozen/` met verse `data.json`, de nieuwe build gaat alleen naar die preview-branch.
+- De Worker deployen: `DEPLOY_WORKER=1 ./deploy.sh` of `cd worker && npx wrangler deploy`.
+- Handige schakelaars: `DRY_RUN=1` (niets uploaden), `SKIP_BUILD=1`, `CANVAS_SRC=<pad>`, `FROZEN_BRANCH`, `FEEDS_JSON`.
+- Inloggen via wrangler OAuth of `CLOUDFLARE_API_TOKEN`. Zet nooit tokens in de repo.
+
+## Meer
+
+- [docs/architectuur.md](docs/architectuur.md): architectuur, dataflow, bronnen, budget, open punten
+- [CLAUDE.md](CLAUDE.md): werkinstructies voor Claude Code
+- [AGENTS.md](AGENTS.md): regels voor Codex en andere agents
