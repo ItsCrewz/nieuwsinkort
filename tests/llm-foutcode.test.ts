@@ -32,7 +32,7 @@ try {
   assert.deepEqual(logs[0], ["AI-aanbieder mislukt", "groq", "openai/gpt-oss-120b", "HTTP 400", { code: "invalid_request_error" }]);
 
   logs.length = 0;
-  globalThis.fetch = (async () => ({ ok: false, status: 429, json: async () => { throw new Error(sleutel); } }) as Response) as typeof fetch;
+  globalThis.fetch = (async () => ({ ok: false, status: 429, json: async () => { throw new Error(sleutel); } }) as unknown as Response) as typeof fetch;
   await assert.rejects(keten([mistral(sleutel)!], {}, verzoek, () => {}), /AI-keten uitgeput/);
   assert.deepEqual(logs[0], ["AI-aanbieder mislukt", "mistral", "mistral-small-latest", "HTTP 429"]);
 } finally {

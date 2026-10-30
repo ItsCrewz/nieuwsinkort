@@ -39,7 +39,7 @@ t("zelfde clip op twee platforms via bijna-gelijke titel; beste (afspeelbaar) bl
   ]);
   assert.equal(r.list.length, 1);
   assert.equal(r.list[0].bron, "YouTube");
-  assert.deepEqual(r.list[0].ook, [{ bron: "Instagram", href: "https://www.instagram.com/reel/QQQ111/" }]);
+  assert.deepEqual((r.list[0] as any).ook, [{ bron: "Instagram", href: "https://www.instagram.com/reel/QQQ111/" }]);
 });
 
 t("verschillende filmpjes blijven", () => {
@@ -136,7 +136,7 @@ t("caption: echte dubbele shorts behouden de beste bron en ook", () => {
     const r = dedupVideos([live46[a], live46[b]]);
     assert.equal(r.list.length, 1);
     assert.equal(r.list[0].href, live46[b].href);
-    assert.deepEqual(r.list[0].ook, [{ bron: "Instagram", href: live46[a].href }]);
+    assert.deepEqual((r.list[0] as any).ook, [{ bron: "Instagram", href: live46[a].href }]);
   }
 });
 t("caption: verschillende video's over hetzelfde onderwerp blijven apart", () => {

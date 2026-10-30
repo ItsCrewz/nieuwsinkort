@@ -1,0 +1,2 @@
+- Voeg een los typecheck-script voor `tests/` toe (`npm run typecheck:tests`, `tsconfig.tests.json`) en los de gevonden typfouten in testbestanden op (#181).
+- `@types/node@^22` toegevoegd als devDependency zodat `npm run typecheck:tests` de Node-typen vindt (#181).
