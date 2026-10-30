@@ -55,6 +55,8 @@ De feednavigatie is met `inert` niet focusbaar zolang zij verborgen is; de start
 
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
 
+YouTube-fouten 100, 101, 150 en 152 verwijderen de geblokkeerde video uit de open feed, ook bij vooraf laden. De actieve video en scrollpositie blijven behouden; bij een actieve fout volgt de navigatie de laatst gekozen richting. Aan het begin blijft bij teruggaan het vangnet zichtbaar. Een lopende swipe wordt niet door een automatische sprong vervangen. Tests: `tests/ytverwijderen.test.ts`.
+
 Bufferregels (#36): `src/buffer.ts` bepaalt per netwerkniveau de seconden en bytes voor de actieve en volgende hls.js-speler. De pool laadt geen spelers vanaf +2. Tests: `tests/buffer.test.ts` en `tests/videopool.test.ts`.
 
 Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert de offset op DST-wisseldagen naar die van middernacht zelf. `filters.tsx` gebruikt `gegenereerd` als referentiedag (bij ontbrekende/ongeldige waarde: nu) en laat berichttijden tot 20 minuten vooruit op die dag staan. Vandaag begint op de huidige Amsterdamse middernacht; 1u/3u rekenen tegen `Date.now()`. Regressietests: `tests/filters.test.ts`.
