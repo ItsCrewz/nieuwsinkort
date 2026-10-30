@@ -6,7 +6,7 @@ Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq Whisper e
 Alles draait op Cloudflare (Free plan). Geen eigen server.
 
 ```
- bronnen (RSS, hnrss, X, YouTube, Instagram, Dumpert, weer)
+ bronnen (RSS, hnrss, X, YouTube, Dumpert, weer)
         │  elk uur 06–23 (Amsterdam)
         ▼
  Worker nieuwsinkort-uur ── DO Fetcher (ophalen in batches)
@@ -60,7 +60,7 @@ Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zicht
 - normaal: 6 thumbnails per tab (`new Image`, async decoding, `fetchPriority` low), `import("hls.js")` (zelfde chunk als `feed.tsx`, niet op Apple), voor de eerste 2 HLS-video's master → laagste variant → 2 segmenten via `/media/dumpert` (zelfde logica als `warmHls` in `feed.tsx`, bewust gedupliceerd), de eerste 256 KB van de eerste mp4 (Range-request), `preconnect` naar de mp4-host en youtube-nocookie.
 - zuinig: 3 thumbnails per tab, hls.js-chunk en preconnect; geen video-bytes. geen: niets.
 - Max 3 requests tegelijk, alles `priority: low`. Geen AI-aanroepen.
-- De mp4-Range: of de browser de gecachete bytes voor `<video>` hergebruikt hangt af van de cache-headers van de Instagram-CDN en de browser (Chrome kan gedeeltelijke cache-items hergebruiken); dat is niet in een echte browser geverifieerd. Zeker is het nut van de warme DNS/TLS-verbinding en de CDN-edge.
+- De mp4-Range: of de browser de gecachete bytes voor `<video>` hergebruikt hangt af van de cache-headers van de video-CDN en de browser (Chrome kan gedeeltelijke cache-items hergebruiken); dat is niet in een echte browser geverifieerd. Zeker is het nut van de warme DNS/TLS-verbinding en de CDN-edge.
 - CSP: `img-src https:`, `connect-src https:` en `media-src https:` dekken dit; `_headers` is niet gewijzigd.
 
 ## Pages Functions (`functions/`)
@@ -116,9 +116,8 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - **RSS**: lijst in `public/bronnen.json` (gebouwd uit `scripts/pipeline/feeds.json`, zie `scripts/build-bronnen.mjs`).
 - **Hacker News**: `hnrss.org/best` (news.ycombinator.com/rss geeft 419 aan Cloudflare).
 - **X**: fxtwitter-API, terugval syndication. Tekstposts en video's van politieke accounts en Politie Haarlem.
-- **YouTube**: officiële gratis kanaal-RSS voor Filmpjes van NOS, RTL Nieuws, NU.nl, Hart van Nederland, NH Nieuws, PowNews, WNL, EenVandaag, RTL Z, BNR, NOS Stories, Nieuwsuur, Omroep PowNed, Radar, NOS Sport, Ziggo Sport, ESPN NL, OnsOranje, FORMULA 1, AutoWeek en Autovisie, inclusief Shorts. Ondertiteling geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
+- **YouTube**: officiële gratis kanaal-RSS voor Filmpjes van NOS, RTL Nieuws, NU.nl, Hart van Nederland, NH Nieuws, PowNews, WNL, EenVandaag, RTL Z, BNR, NOS Stories, Nieuwsuur, Omroep PowNed, Radar, NOS Sport, Ziggo Sport, ESPN NL, OnsOranje, FORMULA 1, AutoWeek, Autovisie en Haarlem105, inclusief Shorts. Ondertiteling geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
 - **TikTok en Facebook**: geen kanaalfeed voor Filmpjes, omdat daarvoor geen gratis feed beschikbaar is die aan de voorwaarden voldoet.
-- **Instagram**: profiel-embed, reels als filmpjes.
 - **Dumpert**: toppers-pagina en HLS via de proxy (max 720p, H.264).
 - **Weer** (landelijk, plaats "Nederland"): Buienradar (alle landstations: mediaan en koudste–warmste, landelijke 5-daagse), Open-Meteo als terugval (Groningen, De Bilt, Maastricht in één verzoek), KNMI-weerbericht (bron: KNMI, CC0) en de landelijke waarschuwingsregel uit datzelfde weerbericht (code geel/oranje/rood, ergste wint). Geen provinciepagina's: `/waarschuwingen` stuurt door naar Utrecht en per provincie ophalen kost subrequests. Ontbrekende bron = veld weg. De AI-herschrijving (`simpelWeer`) blijft één aanroep met max 1500 tekens invoer. Rubriek Haarlem is los van het weer.
 - **Overig**: openraadsinformatie (gemeenteraad), og:image van artikelpagina's.
@@ -152,7 +151,7 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 
 ### KV-schrijflimiet uur-Worker
 
-Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de door Fetcher gemelde Instagram-cachepogingen en de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
+Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
 
 `uur` wordt eerst apart geschreven. KV-eindschrijffouten worden gelogd via `console.error`; ook bij fouten op `state` of `meer` wordt het video-alarm gezet. Een mislukte `vooraf-log`-schrijfactie houdt het volgende alarm evenmin tegen. Bij een fout op `uur` blijft de eerder opgeslagen versie staan.
 
@@ -173,7 +172,7 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 
 De bronnengroepen Voetbal, Formule 1 en Auto hebben eigen feeds in `scripts/pipeline/feeds.json`. Een optionele `max` begrenst per feed de nieuwste kandidaten per run. Algemene berichten uit Nederland, Buitenland en Tech kunnen vóór de AI-keuze worden heringedeeld via `worker/src/sportcat.ts`, op basis van bronpaden en conservatieve titelsignalen. Politiek, Haarlem, Showbizz en bestaande sport- en autorubrieken blijven staan. Bij meerdere signalen geldt Formule 1 boven Voetbal boven Auto; dezelfde prioriteit geldt bij clusters met verschillende bronrubrieken. Verkeersongelukken blijven buiten Auto. Ook de berichten van de ochtendroutine worden heringedeeld. Items uit autobronnen (cat `auto`) kunnen omhoog naar Formule 1 (coureurs, GP, pole position) of Voetbal; zonder zulk signaal blijven ze Auto (#93).
 
-Showbizz heeft eigen feeds (RTL Boulevard-site, Telegraaf Entertainment, NU.nl Achterklap/Muziek/Film, NOS Cultuur & media, Linda.nl met `max` 5). Omdat de eerste feed met een link wint, worden nl- en buitenlandclusters daarna via `worker/src/showcat.ts` Showbizz als minstens de helft van de kandidaten uit een showbizzfeed komt of een showbizzpad heeft (rtl.nl/boulevard, nu.nl achterklap/entertainment/media/muziek/film, telegraaf.nl/entertainment, ad.nl show/cultuur, volkskrant.nl/cultuur-media, linda.nl). Sport gaat voor, politiek blijft politiek; ook de routine-items worden heringedeeld. YouTube-, Instagram- en Kittygram-feeds tellen per feed-URL niet als nieuws (behalve bij Politiek), zodat de RTL Boulevard-site wel telt terwijl de bron ook YouTube-feeds heeft. De dagfilter (#56) blijft ongewijzigd.
+Showbizz heeft eigen feeds (RTL Boulevard-site, Telegraaf Entertainment, NU.nl Achterklap/Muziek/Film, NOS Cultuur & media, Linda.nl met `max` 5). Omdat de eerste feed met een link wint, worden nl- en buitenlandclusters daarna via `worker/src/showcat.ts` Showbizz als minstens de helft van de kandidaten uit een showbizzfeed komt of een showbizzpad heeft (rtl.nl/boulevard, nu.nl achterklap/entertainment/media/muziek/film, telegraaf.nl/entertainment, ad.nl show/cultuur, volkskrant.nl/cultuur-media, linda.nl). Sport gaat voor, politiek blijft politiek; ook de routine-items worden heringedeeld. YouTube-feeds tellen per feed-URL niet als nieuws (behalve bij Politiek), zodat de RTL Boulevard-site wel telt terwijl de bron ook YouTube-feeds heeft. De dagfilter (#56) blijft ongewijzigd.
 
 De AI-ronde kiest bij de eerste twee budgettrappen eerst hooguit één cluster per sportrubriek, in de volgorde Formule 1, Voetbal en Auto. De overige plaatsen volgen de bestaande ronde Nederland, Nederland, Tech, Haarlem en Showbizz. De bestaande CAP en het run- en dagbudget blijven gelden; vanaf trap 3 blijft de selectie beperkt tot Nederland en Haarlem. De frontend voor deze rubrieken volgt in #59.
 
