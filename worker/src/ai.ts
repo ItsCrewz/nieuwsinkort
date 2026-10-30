@@ -108,10 +108,16 @@ export async function inHetKort(ai: Ai, model: string, lines: string[], u: Usage
   return t.replace(/^["'\s]*(In het kort:?)?\s*/i, "").replace(/\s+/g, " ").trim();
 }
 
+// Prompt-echo (#378): het model herhaalt soms de instructie i.p.v. het bericht te schrijven; zo'n tekst nooit tonen of bewaren.
+export function isPromptEcho(t: string): boolean {
+  return /^\W*herschrijf\b/i.test(t) || /nieuws in het kort'|eenvoudig nederlands \(b1\)|geef alleen de tekst zelf|alleen feiten uit de aangeleverde tekst/i.test(t);
+}
+
 export async function simpelWeer(ai: Ai, model: string, knmi: string, u: Usage): Promise<string> {
   const sys = STIJL + " Geef alleen de tekst zelf.";
   const user = `Herschrijf dit weerbericht voor heel Nederland in 2 of 3 korte, simpele zinnen (max 60 woorden). Noem vanmiddag/vanavond/morgen en verschillen tussen noord, midden en zuid alleen als dat erin staat. Getallen precies overnemen.\n\n${knmi.slice(0, 1500)}`;
-  return (await chat(ai, model, sys, user, 160, u)).replace(/\s+/g, " ").trim();
+  const t = (await chat(ai, model, sys, user, 160, u)).replace(/\s+/g, " ").trim();
+  return isPromptEcho(t) ? "" : t;
 }
 
 // "Lees verder": per bericht een langere uitleg (3–5 alinea's) en per bron de kernpunten, uit de artikeltekst zelf.
