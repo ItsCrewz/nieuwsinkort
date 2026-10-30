@@ -1,0 +1,1 @@
+- Typefouten in testfixtures en testdoubles hersteld (#268).

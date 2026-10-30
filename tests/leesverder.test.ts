@@ -5,7 +5,7 @@ import type { Item } from "../src/types";
 
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
-const basis: Item = { cat: "nl", kop: "Nieuws", ai: "", tijd: "12:00", bronnen: [] };
+const basis: Item = { cat: "nl", kop: "Nieuws", ai: "", samenvatting: "", punten: [], tijd: "12:00", bronnen: [] };
 
 t("heeftLeesVerder: true bij alleen meer, ai, samenvatting of punten", () => {
   assert.equal(heeftLeesVerder({ ...basis, meer: "sleutel" }), true);
@@ -41,7 +41,7 @@ t("detailInhoud: punten en bronnen ongewijzigd in volgorde", () => {
 });
 
 t("detailInhoud: ontbrekende velden geven lege lijsten", () => {
-  const { bronnen: _b, ...zonder } = basis;
+  const { bronnen: _b, samenvatting: _s, punten: _p, ...zonder } = basis;
   assert.deepEqual(detailInhoud(zonder as Item), { paragraphs: [], punten: [], bronnen: [] });
 });
 
