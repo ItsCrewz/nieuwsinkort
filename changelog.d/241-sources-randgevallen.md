@@ -1,0 +1,1 @@
+- Randgevallen van de pure bronnenfuncties vastgelegd in tests (#241).
