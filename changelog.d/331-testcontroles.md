@@ -1,0 +1,1 @@
+- Voeg een gzip-budget voor de hoofdbundel en CSS toe aan de controles, een offline bron-URL-controle en een screenreader-checklist (#331).

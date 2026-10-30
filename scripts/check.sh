@@ -16,6 +16,7 @@ stap() {
 
 stap "Tests" npm test
 stap "Build" npm run build
+stap "Performancebudget" node scripts/performance-budget.mjs
 if [ ! -d worker/node_modules ]; then
   stap "Worker-afhankelijkheden installeren" npm --prefix worker ci
 fi
