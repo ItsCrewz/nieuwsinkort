@@ -5,6 +5,7 @@ import { Icon } from "./icons";
 import { Feed, videoSlug } from "./feed";
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
+import { touchNu, volgTouch } from "./invoer";
 
 type Player =
   | { kind: "youtube"; src: string }
@@ -62,6 +63,16 @@ export const SOORTEN: { id: Soort; label: string; leeg: string }[] = [
 /** Eerste soort met filmpjes (Shorts eerst, zoals een TikTok-feed). */
 export function startSoort(list: Video[]): Soort {
   return list.some((v) => soortVan(v) === "short") || !list.length ? "short" : "journaal";
+}
+
+/** Touch (swipe-feed) of muis/trackpad (kopjes en kaarten); volgt wijzigingen van de mediaquery. */
+export function useTouch(): boolean {
+  const [touch, setTouch] = useState(touchNu);
+  useEffect(() => {
+    setTouch(touchNu());
+    return volgTouch(typeof window !== "undefined" ? window.matchMedia?.bind(window) : null, setTouch);
+  }, []);
+  return touch;
 }
 
 function popIcon(p: string) {
@@ -141,6 +152,7 @@ export function VideoGrid({
   onOpen: (slug: string) => void;
   onCloseFeed: () => void;
 }) {
+  const touch = useTouch();
   const opgeslagen = useRef(leesFeed());
   const vast = useRef<Video[] | null>(null);
   if (!video) vast.current = null;
@@ -148,6 +160,7 @@ export function VideoGrid({
   const feedVideos = vast.current ?? list;
   const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
   useEffect(() => {
+    if (!touch) return;
     if (!video) { wisFeed(); return; }
     let vorigeSlug = "";
     let positie = 0;
@@ -182,7 +195,7 @@ export function VideoGrid({
     window.addEventListener("pagehide", verberg); window.addEventListener("pageshow", toon); window.addEventListener("message", bericht);
     const timer = window.setInterval(update, 500); update();
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zicht); window.removeEventListener("pagehide", verberg); window.removeEventListener("pageshow", toon); window.removeEventListener("message", bericht); };
-  }, [video, cat, feedVideos, start]);
+  }, [video, cat, feedVideos, start, touch]);
   const [first] = useState(enterProp); // alleen bij het eerste tonen
   const [touched, setTouched] = useState(false);
   const enter = first && !touched;
@@ -256,7 +269,7 @@ export function VideoGrid({
       {shown.length ? (
         <div className={`vgrid ${enter ? "" : "swap"}`} key={`${soort}-${bron}`}>
           {shown.map((v, i) => (
-            <VideoCard key={v.href + i} v={v} i={i} cat={cat} bionic={bionic} enter={enter} onPlay={(x) => onOpen(videoSlug(x))} />
+            <VideoCard key={v.href + i} v={v} i={i} cat={cat} bionic={bionic} enter={enter} onPlay={(x) => (touch ? onOpen(videoSlug(x)) : window.open(veiligeUrl(x.href), "_blank", "noopener,noreferrer"))} />
           ))}
         </div>
       ) : (
@@ -265,7 +278,7 @@ export function VideoGrid({
           {SOORTEN.find((s) => s.id === soort)?.leeg} Kom straks nog eens kijken.
         </div>
       )}
-      {video ? (
+      {video && touch ? (
         <Feed
           key={cat}
           list={feedList}
