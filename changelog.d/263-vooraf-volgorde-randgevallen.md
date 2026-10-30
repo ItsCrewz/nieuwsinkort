@@ -1,0 +1,1 @@
+- Leg randgevallen van de volgorde voor video-samenvattingen vooraf vast in tests (#263).
