@@ -23,7 +23,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
-import { ytStartBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd } from "./ytstart";
+import { ytStartBesluit, ytSkipBesluit, geluidMag, autoplayGeblokkeerd } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -650,12 +650,13 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
 
 // ------------------------------------------------------------- YouTube (IFrame API via postMessage)
 const YT_ORIGIN = "https://www.youtube-nocookie.com";
-function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onFail, onAutoplayBlocked, vangnet, setVangnet }: PlayerProps & { id: string; vangnet: boolean; setVangnet: (aan: boolean) => void }) {
+function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAutoplayBlocked, vangnet, setVangnet, onYtFout, onYtSpeelt }: PlayerProps & { id: string; vangnet: boolean; setVangnet: (aan: boolean) => void; onYtFout: (code: unknown) => void; onYtSpeelt: () => void }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const klaar = useRef(false);
   const start = useRef({ status: null as number | null, pogingen: 0, sinds: performance.now() });
   const gespeeld = useRef(false);
   const echteFout = useRef(false);
+  const foutCode = useRef<unknown>(null);
   const laatsteOpdracht = useRef("-");
   const blokkade = useRef("-");
   const handdruk = useRef(0);
@@ -724,8 +725,10 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onFai
       }
       if (d.event === "onError" || d.event === "onAutoplayBlocked") {
         debugEvent(`YouTube ${id} ${d.event} ${typeof d.info === "number" ? d.info : ""}`);
-        if (ytEchteFout(d.info) && d.event === "onError") { echteFout.current = true; setVangnet(false); if (state.current.active) onFail(); }
-        else if (state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
+        if (d.event === "onError") {
+          echteFout.current = true; foutCode.current = d.info; setVangnet(false);
+          if (state.current.active) onYtFout(d.info);
+        } else if (!echteFout.current && state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
           blokkade.current = d.event; diagnose();
           if (!state.current.muted) { onAutoplayBlocked(); post("mute"); post("playVideo"); }
           setVangnet(true);
@@ -739,7 +742,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onFai
         if (!state.current.active) { if (status === 1 || status === 3) post("pauseVideo"); return; }
         start.current.status = status;
         if (status === 1 || status === 3) { gespeeld.current = true; setVangnet(false); }
-        if (status === 1) setShown(true);
+        if (status === 1) { setShown(true); onYtSpeelt(); }
         diagnose();
       }
       if (info && typeof info === "object") {
@@ -782,19 +785,19 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onFai
       window.removeEventListener("message", onMsg);
       if (seek.current === api) seek.current = null;
     };
-  }, [apply, bar.set, diagnose, id, post, seek, setVangnet, onFail, onAutoplayBlocked]);
+  }, [apply, bar.set, diagnose, id, post, seek, setVangnet, onYtFout, onYtSpeelt, onAutoplayBlocked]);
 
   useEffect(() => {
     start.current = { status: null, pogingen: 0, sinds: performance.now() };
     gespeeld.current = false;
-    echteFout.current = false;
     blokkade.current = "-";
     setVangnet(false);
+    if (active && echteFout.current) onYtFout(foutCode.current);
     if (!active) setShown(false);
     else if (klaar.current && !state.current.paused) { start.current.pogingen++; apply(); }
     if (!active && klaar.current) { apply(); post("seekTo", [0, true]); }
     diagnose();
-  }, [active, apply, diagnose, post, setVangnet]);
+  }, [active, apply, diagnose, post, setVangnet, onYtFout]);
 
   useEffect(() => { apply(); }, [muted, paused, apply]);
 
@@ -948,9 +951,12 @@ type SlideProps = {
   onTap: () => void;
   onClose: () => void;
   onAutoplayBlocked: () => void;
+  onYtFout: (i: number, code: unknown) => void;
+  onYtSpeelt: () => void;
 };
-const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, preload, paused, muted, onTap, onClose, onAutoplayBlocked }: SlideProps) {
+const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, preload, paused, muted, onTap, onClose, onAutoplayBlocked, onYtFout, onYtSpeelt }: SlideProps) {
   const p = playerFor(v);
+  const ytFout = useCallback((code: unknown) => onYtFout(i, code), [i, onYtFout]);
   const [failed, setFailed] = useState(false);
   const fail = useCallback(() => setFailed(true), []);
   const barEl = useRef<HTMLSpanElement>(null);
@@ -996,7 +1002,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
       <div className={`fcol${ytVangnet ? " yt-vangnet" : ""}`}>
         {playable && mount ? (
           p!.kind === "youtube" ? (
-            <YouTubePlayer {...props} id={youtubeId(p!.src)!} vangnet={ytVangnet} setVangnet={setVangnet} />
+            <YouTubePlayer {...props} id={youtubeId(p!.src)!} vangnet={ytVangnet} setVangnet={setVangnet} onYtFout={ytFout} onYtSpeelt={onYtSpeelt} />
           ) : (
             <NativePlayer {...props} kind={p!.kind} src={p!.src} pool={pool} slot={slotVan(i)} />
           )
@@ -1268,6 +1274,16 @@ export function Feed({
     s.scrollTo({ top: n * s.clientHeight, behavior: motionOK() ? "smooth" : "auto" });
   }, [items.length, startDirect]);
 
+  const ytSkips = useRef({ laatste: -1 });
+  const ytFout = useCallback((i: number, code: unknown) => {
+    const s = ytSkips.current;
+    if (!ytSkipBesluit(code, i === activeRef.current, s.laatste === i, i + 1 < items.length)) return;
+    s.laatste = i;
+    go(i + 1);
+  }, [go, items.length]);
+  const ytSpeelt = useCallback(() => {}, []);
+  useEffect(() => { ytSkips.current = { laatste: -1 }; }, [gi]);
+
   // Start op de gekozen video, vóór de eerste paint.
   useLayoutEffect(() => {
     const s = scroller.current;
@@ -1284,6 +1300,7 @@ export function Feed({
           if (e.isIntersecting && e.intersectionRatio >= 0.6) {
             const i = Number((e.target as HTMLElement).dataset.i);
             if (i !== activeRef.current) {
+              ytSkips.current.laatste = -1;
               startDirect(i);
               setActive(i);
               setPaused(false);
@@ -1458,6 +1475,8 @@ export function Feed({
               onTap={onTap}
               onClose={close}
               onAutoplayBlocked={onBlocked}
+              onYtFout={ytFout}
+              onYtSpeelt={ytSpeelt}
             />
           ))}
         </div>

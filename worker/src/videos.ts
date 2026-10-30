@@ -1,5 +1,6 @@
 // Port van /workspace/nieuws/filmpjes.py (Dumpert-toppers, YouTube-nieuwskanalen, Reddit-video's).
 import { decode, stripHtml } from "./parse";
+import { youtubeId } from "../../src/slug";
 
 export const YT_NIEUWS: Record<string, string> = {
   NOS: "UC5xziMuoFAOpX9mwUVhe2Jw", "RTL Nieuws": "UCv4NUJ5BGSpJz_leIfayDzQ", "NU.nl": "UCCw1aOc9x3sEjrUzT-qmMGw",
@@ -35,6 +36,36 @@ export function kortGetal(n: number | undefined | null, eenheid: string) {
 const YT = /(?:youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|watch\?(?:.*&)?v=)|youtu\.be\/)([\w-]{6,})/;
 const isMp4 = (u?: string) => /\.mp4(\?|$)/i.test(u || "");
 const isHls = (u?: string) => /\.m3u8(\?|$)/i.test(u || "");
+// Alleen een herkenbare status van de embedspeler is bewijs; andere pagina's blijven onbekend.
+export function ytEmbedGeblokkeerd(html: string): boolean | null {
+  const tekst = html.replace(/\\+"/g, '"');
+  const m = /"(?:previewPlayabilityStatus|playabilityStatus)"\s*:\s*\{\s*"status"\s*:\s*"([A-Z_]+)"/.exec(tekst);
+  if (!m) return null;
+  if (m[1] === "OK") return false;
+  if (m[1] === "UNPLAYABLE" && /blocked it from display/i.test(tekst)) return true;
+  return null;
+}
+
+export function ytVideoId(v: { embed?: string; href?: string }): string | null {
+  for (const u of [v.embed, v.href]) {
+    const id = youtubeId(u || "");
+    if (id && /^[\w-]{11}$/.test(id)) return id;
+  }
+  return null;
+}
+
+export type YtCache = Record<string, { geblokkeerd: boolean; at: number }>;
+
+export function ruimYtCache(cache: YtCache | undefined, nu: number): YtCache {
+  return Object.fromEntries(Object.entries(cache || {}).filter(([id, v]) =>
+    /^[\w-]{11}$/.test(id) && v && typeof v.geblokkeerd === "boolean" && Number.isFinite(v.at) && v.at <= nu && nu - v.at < (v.geblokkeerd ? 2 : 7) * 86400e3
+  ).sort((a, b) => b[1].at - a[1].at).slice(0, 300));
+}
+
+export function ytNieuweControles(ids: string[], cache: YtCache, max = 15): string[] {
+  return [...new Set(ids)].filter((id) => !cache[id]).slice(0, max);
+}
+
 export function dumpertEmbed(it: any): string {
   for (const md of it?.media || []) {
     const t = String(md.mediatype || "").toUpperCase();
