@@ -21,4 +21,5 @@ if [ ! -d worker/node_modules ]; then
 fi
 stap "Worker-typecheck" npm --prefix worker exec -- tsc --noEmit
 stap "Functions-typecheck" npx tsc -p functions/tsconfig.json --noEmit
+stap "Tests-typecheck" npm run -s typecheck:tests
 printf "\nAlle controles geslaagd.\n"
