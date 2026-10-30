@@ -69,6 +69,7 @@ De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de a
 
 ## Laadprestaties (#35)
 
+- **Briefing en videofeed** (#277): de briefing heeft geen intro-animatie en is direct zichtbaar zodra React de data verwerkt. De grote videofeed wordt pas geladen bij openen; vooraf gemaakte videosamenvattingen blijven in een gedeelde cache beschikbaar. De vroege fetch wacht op de respons, niet op fonts; `document.fonts.ready` wordt alleen gebruikt voor latere maatberekeningen. De daadwerkelijke LCP-winst en CLS moeten nog met drie mobiele Lighthouse-runs worden gemeten.
 - **Vroege data.json**: het inline script in `index.html` start `window.__vroegData = fetch("/data.json", {cache:"no-cache"})` tijdens het parsen; `useData` neemt die promise eenmalig over via `neemVroegeData()` (`src/vroeg.ts`), daarna haalt elke verversing zelf op. Bij een fout of ongeldige JSON probeert de client eenmaal `/data.json?statisch=1` met dezelfde cache-instelling. Wijzig je dat script, werk dan de CSP-hash in `public/_headers` bij (de test bewaakt het).
 - **Fonts self-hosted**: Inter (OFL, variabel 400-600) staat in `public/fonts/` (`inter-latin`, `inter-latin-ext`, woff2 uit Google Fonts v20), `@font-face` met `font-display: swap` bovenaan `src/index.css`, preload van het latin-bestand in `index.html`. CSP: `font-src 'self'`, geen Google-origins meer; `/fonts/*` is immutable gecachet.
 - **YouTube-thumbnails**: `index.html` opent alvast een verbinding met `https://i.ytimg.com` via preconnect; de bestaande CSP staat HTTPS-afbeeldingen en verbindingen toe.
@@ -190,11 +191,10 @@ handmatige checks op echte data en draaien niet mee met `npm test`.
 
 ## Domein
 
-nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekoppeld. Plan: DNSSEC bij STRATO uit, nameservers naar Cloudflare, daarna nieuwsinkort.nl en www.nieuwsinkort.nl als custom domain aan het Pages-project toevoegen. Tot dan draait de site op nieuwsinkort.pages.dev (controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`).
+nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project (nieuwsinkort.pages.dev blijft werken). `functions/_middleware.ts` stuurt www met een 301 door naar `https://nieuwsinkort.nl` met pad en query behouden (de Cloudflare-login mag geen Redirect Rules schrijven, vandaar code); apex en `*.pages.dev` blijven ongemoeid. `public/_routes.json` houdt `/assets/*`, `/fonts/*`, iconen en vaste bestanden buiten de Functions (Free-plan-quotum, max 100 regels); HTML-navigaties en de functieroutes (`/data.json`, `/meer`, `/samenvatting`, `/media/dumpert/*`) lopen er wel doorheen. Test: `tests/www-redirect.test.ts`. Controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`.
 
 ## Open punten
 
-- Domein koppelen (zie boven).
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
 - "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd.
 - `src/leesverder.ts` bepaalt of een bericht Lees verder heeft en haalt alinea’s, kernpunten en bronnen voor de detailpagina uit het bericht.
@@ -248,6 +248,8 @@ Bij YouTube bewaakt een activatieklok het starten: een actieve iframe krijgt max
 De vaste kanaallijst `YT_SHORTS_GEBLOKKEERDE_KANALEN` in `worker/src/videos.ts` bevat `FORMULA 1`: diens Shorts zijn op de iPhone niet in te sluiten, terwijl servercontroles geen betrouwbaar onderscheid geven. De Worker laat deze Shorts weg en geeft hun ID's door in `ytGeblokkeerd`, ook bij een gecachte speelbare uitkomst; de Pages Function filtert daarmee ook statische video's. Journaals en lange video's van dit kanaal blijven toegestaan.
 
 De uur-Worker controleert maximaal 15 YouTube-embeds per run in bestaande og- of artikelbatches; zonder batch wachten controles. Per ID komt één oEmbed-subrequest erbij (maximaal 15 per run), plus hooguit één embed-herpoging bij consent (maximaal 15). De batch reserveert drie subrequests per controle naast maximaal 30 bestaande jobs en beperkt zo het aantal controles per batch. Redirects worden niet gevolgd; bij consent wordt de oorspronkelijke embed eenmaal opnieuw opgehaald met toestemmingscookies en de standaard fetch-User-Agent. Embedblokkade of oEmbed 401/403/404 betekent geblokkeerd; alleen embedstatus OK betekent speelbaar. oEmbed 200 is geen bewijs. De bestaande state bewaart onbekend één uur, geblokkeerd twee dagen en speelbaar zeven dagen, maximaal 300 ID’s. Er zijn geen extra KV-schrijfacties of Fetcher-aanroepen. `ytDiag` geeft per controle status, uitkomst, eventuele reden, paginatitel, hosts en oEmbed-status; `ytWeggelaten` en `ytControles` staan eveneens in de runmetadata. Onbekende video's blijven zichtbaar. De Pages Function filtert bekende blokkades; de client slaat bij fout 100, 101, 150 of 152 de actieve slide over.
+
+AI-teksten krijgen de vermelding „Samenvatting gemaakt met AI”: berichten tenzij `ruw`, het dagoverzicht, rubriekoverzichten met `ai: true` en geslaagde videosamenvattingen. Bij Uitgebreid volgt de vermelding de gekozen tekst: AI-uitleg of de eigen AI-samenvatting, maar geen bronalinea’s, ruwe terugval of losse kop.
 
 ### Vooraf berekende datarespons (#363)
 

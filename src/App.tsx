@@ -13,6 +13,7 @@ import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
+import { AiVermelding, isAiSamenvatting } from "./ai-vermelding";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
@@ -213,7 +214,7 @@ function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   );
 }
 
-function Briefing({ text, bionic, sources, time, note }: { text: string; bionic: boolean; sources: number; time: string; note?: string }) {
+function Briefing({ text, bionic, sources, time, note, ai = true }: { text: string; bionic: boolean; sources: number; time: string; note?: string; ai?: boolean }) {
   return (
     <section className="brief" aria-label="In het kort">
       <h2 className="kicker">In het kort</h2>
@@ -224,6 +225,7 @@ function Briefing({ text, bionic, sources, time, note }: { text: string; bionic:
       ) : (
         <p className="brief-text muted">De samenvatting van vandaag komt er zo aan.</p>
       )}
+      <AiVermelding tonen={!!text && ai} />
       {sources > 0 ? (
         <p className="brief-meta">
           Samengevat uit {bronnenTekst(sources)}
@@ -459,6 +461,7 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
           <BionicText text={item.ai} on={bionic} />
         </p>
       ) : null}
+      <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
       <div className="row-foot">
         <span className="src">{n > 0 ? `${bronLabel(item.bronnen)} · ${bronnenTekst(n)}` : "Geen bron"}</span>
       </div>
@@ -492,6 +495,7 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
             <BionicText text={item.ai} on={bionic} />
           </p>
         ) : null}
+        <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
         <div className="row-foot">
           <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
             {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
@@ -661,6 +665,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
           <BionicText text={sum} on={bionic} />
         </p>
       ) : null}
+      <AiVermelding tonen={!!sum && isAiSamenvatting(item)} />
       {punten.length ? (
         <ul className="nc-pts">
           {punten.map((t, k) => (
@@ -982,6 +987,7 @@ function Footer() {
         </span>
         Nieuws in het kort
       </div>
+      <p>Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron.</p>
       <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk uur bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
     </footer>
   );
@@ -1263,7 +1269,7 @@ export default function App() {
               <div className="wrap nc-head-in">
                 {dateline}
                 <Front>
-                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
+                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing ai={!!raw.tab_samenvatting?.[view]?.ai} text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
                   {alles && <WeatherBox W={raw.weer} bionic={bionic} />}
                 </Front>
               </div>

@@ -4,7 +4,6 @@ import { BionicText } from "./ui";
 import { Icon } from "./icons";
 import { videoSlug } from "./slug";
 import { SOORTEN, playerFor, soortVan, startSoort } from "./videosoort";
-
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";

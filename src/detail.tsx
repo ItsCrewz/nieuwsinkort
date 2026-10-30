@@ -7,6 +7,7 @@ import { Beelden } from "./beelden";
 import { veiligeUrl } from "./url";
 import { bronnenTekst, detailInhoud, fotos } from "./leesverder";
 import { uitgebreidAlineas } from "./uitgebreid";
+import { AiVermelding, isAiSamenvatting, isAiUitgebreid } from "./ai-vermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
 
@@ -64,6 +65,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
             </p>
           ))}
         </div>
+        <AiVermelding tonen={isAiUitgebreid(item, meer)} />
       </section>
       {per.length ? (
         <section className="d-sec" aria-label="Wat elke bron meldt">
@@ -127,6 +129,7 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
             <BionicText text={item.ai} on={bionic} />
           </p>
         ) : null}
+        <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
       </header>
       {paragraphs.length ? (
         <div className="d-body bn">
@@ -137,6 +140,7 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
           ))}
         </div>
       ) : null}
+      <AiVermelding tonen={paragraphs.length > 0 && isAiSamenvatting(item)} />
       {punten.length ? (
         <section className="d-sec" aria-label="Belangrijkste punten">
           <h2 className="d-h">Belangrijkste punten</h2>
