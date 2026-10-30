@@ -1,0 +1,1 @@
+- Dumpert-video’s op het eigen CDN openen via een link naar Dumpert; de videoproxy is verwijderd (#78).

@@ -14,7 +14,6 @@ import { uniekeBeelden, beeldKey, goedBeeld, ogImage, beterBeeld as _bb, uniekeB
 import { onRequestGet as dataGet } from "../functions/data.json";
 import { onRequestGet as meerGet } from "../functions/meer";
 import { onRequestGet as samGet, onRequestPost as samPost } from "../functions/samenvatting";
-import { onRequest as dumpert } from "../functions/media/dumpert/[[path]]";
 import { merge, slim } from "../functions/data.json";
 import { schoon } from "../src/schoon";
 import { hostVan, isNL } from "../src/bronlink";
@@ -296,18 +295,9 @@ const antwoorden = [
   await meerGet({ request: req("/meer?k=test"), env: { NIEUWS: { get: async () => ({ items: { test: { uitleg: ["tekst"] } } }) } } }),
   await samGet({ request: req("/samenvatting"), env: { NIEUWS: kv, ASSETS: assets, AI: {} } }),
   await samPost({ request: new Request("https://voorbeeld.test/samenvatting", { method: "POST", body: "{}" }), env: { NIEUWS: kv, ASSETS: assets, AI: {} } }),
-  await dumpert({ request: req("/media/dumpert/ongeldig"), params: { path: "ongeldig" } }),
-  await dumpert({ request: new Request("https://voorbeeld.test/media/dumpert/x", { method: "POST" }), params: {} }),
 ];
-const origineelFetch = globalThis.fetch;
-try {
-  globalThis.fetch = async () => new Response("media", { headers: { "Content-Type": "video/mp2t" } });
-  antwoorden.push(await dumpert({ request: req("/media/dumpert/x"), params: { path: "dmp/media/video/abc/123.ts" } }));
-  globalThis.fetch = async () => new Response("fout", { status: 502 });
-  antwoorden.push(await dumpert({ request: req("/media/dumpert/x"), params: { path: "dmp/media/video/abc/123.ts" } }));
-} finally { globalThis.fetch = origineelFetch; }
-t("alle vier Functions zetten nosniff bij succes, terugval en fouten zonder netwerk of AI", () => {
-  assert.deepEqual(antwoorden.map((r) => r.status), [200, 200, 200, 404, 400, 404, 200, 400, 415, 404, 405, 200, 502]);
+t("alle drie Functions zetten nosniff bij succes, terugval en fouten zonder netwerk of AI", () => {
+  assert.deepEqual(antwoorden.map((r) => r.status), [200, 200, 200, 404, 400, 404, 200, 400, 415]);
   for (const r of antwoorden) assert.equal(r.headers.get("X-Content-Type-Options"), "nosniff");
 });
 // ---- /samenvatting: slot, cache van fouten, headers, geen `why` (mock-KV en mock-AI)

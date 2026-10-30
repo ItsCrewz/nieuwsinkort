@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Zorgt dat elk Dumpert-item in data.json een afspeelbare `embed` heeft.
 // - embed ontbreekt of is niet afspeelbaar -> haal de openbare itempagina (www.dumpert.nl/item/<id>)
-//   op en kies dezelfde variant als filmpjes.py: MP4 > HLS (.m3u8, via onze proxy) > YouTube-embed.
+//   op en kies dezelfde variant als filmpjes.py: MP4 > HLS (.m3u8) > YouTube-embed.
 // - geen video te vinden (foto-item, verwijderd, pagina onbereikbaar) -> item uit de Dumpert-lijst.
 // Gebruik: node scripts/fix-dumpert.mjs [data.json]   (standaard public/data.json)
 import fs from "node:fs";

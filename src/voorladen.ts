@@ -5,12 +5,12 @@ import type { Video } from "./types";
 import type { Budget } from "./netwerk";
 
 export type Speler = { kind: "youtube" | "hls" | "mp4"; src: string } | null;
-export type Hulp = { playerFor: (v: Video) => Speler; viaProxy: (src: string) => string };
+export type Hulp = { playerFor: (v: Video) => Speler };
 export type Plan = {
   thumbs: string[];
   preconnect: string[];
   hlsChunk: boolean;
-  hls: string[]; // master-playlists (via de proxy, of rechtstreeks op Apple)
+  hls: string[]; // master-playlists
   mp4: string | null;
 };
 
@@ -32,7 +32,7 @@ const origin = (u: string) => {
 };
 const httpsUrl = (u: string) => !!origin(u);
 
-/** apple = Safari/iOS: speelt HLS zelf, rechtstreeks van Dumpert (zelfde check als warmHls in feed.tsx). */
+/** Apple-apparaten spelen HLS doorgaans zelf af. */
 export function planVoorladen(filmpjes: Video[], dumpert: Video[], budget: Budget, apple: boolean, h: Hulp): Plan {
   if (budget === "geen") return LEEG;
   const n = budget === "normaal" ? THUMBS.normaal : THUMBS.zuinig;
@@ -43,7 +43,7 @@ export function planVoorladen(filmpjes: Video[], dumpert: Video[], budget: Budge
   const mp4 = sp.find((s) => s.kind === "mp4" && httpsUrl(s.src))?.src ?? null;
   const yt = sp.some((s) => s.kind === "youtube");
   const hlsViaJs = !apple && hlsAll.length > 0;
-  const hls = hlsViaJs ? hlsAll.slice(0, HLS_MAX).map(h.viaProxy) : [];
+  const hls = hlsViaJs ? hlsAll.slice(0, HLS_MAX) : [];
   const hosts = [
     mp4 ? origin(mp4) : "",
     yt ? "https://www.youtube-nocookie.com" : "",
