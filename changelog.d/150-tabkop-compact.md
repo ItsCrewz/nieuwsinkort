@@ -1,1 +1,3 @@
 - Tabs zonder samenvatting tonen een compacte datumregel en meteen het eerste bericht, in plaats van een leeg eerste scherm (#150).
+- De datum en bijwerktijd blijven ook op mobiel volledig zichtbaar in de compacte kop (#150).
+- Ook tabs met een samenvatting tonen het eerste bericht direct in beeld (#150).

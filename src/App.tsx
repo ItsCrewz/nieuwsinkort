@@ -672,7 +672,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   );
 }
 
-function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt }: { items: Item[]; head: ReactNode; kompakt?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -771,7 +771,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   return (
     <div className="nf-box">
       <div className="nf" ref={ref} tabIndex={-1} aria-label="Berichten, één per scherm">
-        <section className={kompakt ? "nc-head kompakt" : "nc-head"}>{head}</section>
+        <section className={kompakt ? `nc-head kompakt${samenvatting ? " samenvatting" : ""}` : "nc-head"}>{head}</section>
         {total === 0 ? (
           empty ?? <div className="empty">
             <Icon name="clock" />
@@ -1424,7 +1424,8 @@ export default function App() {
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
-            kompakt={kopKompact(alles, raw.tab_samenvatting?.[view]?.tekst, basisItems.length)}
+            kompakt={kopKompact(alles)}
+            samenvatting={!!raw.tab_samenvatting?.[view]?.tekst && basisItems.length > 0}
             head={
               <div className="wrap nc-head-in">
                 {dateline}

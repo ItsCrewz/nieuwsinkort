@@ -4,5 +4,5 @@ export function TabBriefing({ text, aantal, children }: { text?: string; aantal:
   return text && aantal ? children : null;
 }
 
-// Kopkaart is alleen schermvullend op Home of met tabsamenvatting; anders compact (#150).
-export const kopKompact = (alles: boolean, text?: string, aantal = 0) => !alles && !(text && aantal);
+// Alleen de kopkaart op Home is schermvullend (#150).
+export const kopKompact = (alles: boolean) => !alles;
