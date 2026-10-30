@@ -2,6 +2,7 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
+import { schermBeeld } from "./beeld";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 // ---------------------------------------------------------------- vooruit laden
@@ -92,18 +93,22 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     io.observe(el);
     return () => io.disconnect();
   }, [near]);
+  const [terug, setTerug] = useState<ReadonlySet<string>>(new Set()); // varianten die niet laadden: origineel tonen
+  const terugRef = useRef(terug);
+  terugRef.current = terug;
+  const bron = (u: string | undefined) => (u && !terugRef.current.has(u) ? schermBeeld(u) : u);
   const listRef = useRef(urls);
   const iRef = useRef(0);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    return register({ el, wake: () => setNear(true), first: () => listRef.current[0], second: () => listRef.current[iRef.current + 1] });
+    return register({ el, wake: () => setNear(true), first: () => bron(listRef.current[0]), second: () => bron(listRef.current[iRef.current + 1]) });
   }, []);
   const raf = useRef(0);
   useEffect(() => { setList(urls); setI(0); }, [urls]);
   listRef.current = list;
   iRef.current = i;
-  useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
+  useEffect(() => { if (i > 0) preloadBeeld(bron(list[i + 1])); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
   useEffect(() => { onChange?.(); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const drop = useCallback((u: string) => setList((l) => l.filter((x) => x !== u)), []);
   const onScroll = useCallback(() => {
@@ -138,15 +143,15 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
             {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
               <img
-                src={u}
+                src={bron(u)}
                 alt=""
                 draggable={false}
                 loading={k === 0 ? "eager" : "lazy"}
                 fetchPriority={voorrang && k === 0 ? "high" : undefined}
-                className={klaar.has(u) ? "in" : undefined}
+                className={klaar.has(bron(u)!) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"
-                onError={() => drop(u)}
+                onError={() => (bron(u) !== u ? setTerug((t) => new Set(t).add(u)) : drop(u))}
                 onLoad={(e) => {
                   const im = e.currentTarget;
                   const w = im.naturalWidth, h = im.naturalHeight;

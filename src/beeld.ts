@@ -54,6 +54,34 @@ export function beterBeeld(raw: string): string {
   return u;
 }
 
+/** Kleinere variant voor het scherm (max ~800 px breed, NU.nl 640) via maatparameters die de bron zelf kent; onbekende bronnen blijven ongemoeid.
+ *  Alleen verkleinen, nooit vergroten. Faalt de variant, dan valt de weergave terug op het origineel (zie beelden.tsx). */
+export const BEELD_MAX = 800;
+export function schermBeeld(u: string): string {
+  const kleiner = (n: number) => n > BEELD_MAX;
+  let x: URL;
+  try { x = new URL(u); } catch { return u; }
+  const h = x.hostname, p = x.searchParams;
+  const w = +(p.get("width") || p.get("w") || 0), hh = +(p.get("height") || p.get("h") || 0);
+  if (/^(redactie\.rtl\.nl|webp\.br\.cdn\.pxr\.nl)$/.test(h) || /\.fd\.nl$/.test(h)) {
+    if (!kleiner(w)) return u;
+    const k = p.has("width") ? "width" : "w", l = p.has("height") ? "height" : "h";
+    p.set(k, String(BEELD_MAX));
+    if (hh && w) p.set(l, String(Math.round(hh * BEELD_MAX / w)));
+    return x.toString();
+  }
+  if (p.has("resize") && /^(techcrunch\.com|[^.]+\.wp\.com)$/.test(h)) {
+    const m = /^(\d+),(\d+)$/.exec(p.get("resize")!);
+    if (!m || !kleiner(+m[1])) return u;
+    p.set("resize", `${BEELD_MAX},${Math.round(+m[2] * BEELD_MAX / +m[1])}`);
+    return x.toString().replace("%2C", ",");
+  }
+  if (h === "images.nrc.nl") return u.replace(/\/(\d{4,})x\//, (a, n) => (kleiner(+n) ? `/${BEELD_MAX}x/` : a));
+  if (h === "blogger.googleusercontent.com") return u.replace(/\/s(\d{4})\//, (a, n) => (kleiner(+n) ? `/s${BEELD_MAX}/` : a));
+  if (h === "images.nu.nl") return u.replace(/_wd(\d{4})\.jpg/, (a, n) => (kleiner(+n) ? "_wd640.jpg" : a));
+  return u;
+}
+
 export function uniekeBeelden(urls: (string | null | undefined)[], max = 6): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
