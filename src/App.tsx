@@ -13,6 +13,7 @@ import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { detailInhoud, heeftLeesVerder } from "./leesverder";
+import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
 import { CATS, CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
 
@@ -1243,8 +1244,8 @@ export default function App() {
     }
   };
   const setView = (v: View) => {
-    // Mobiel: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht).
-    if ((v === "filmpjes" || v === "dumpert") && data && window.matchMedia?.("(max-width: 640px)").matches) {
+    // Touch: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht); desktop houdt het overzicht met kopjes.
+    if ((v === "filmpjes" || v === "dumpert") && data && touchNu()) {
       // Filmpjes: start in Shorts (of Journaals als er geen shorts zijn); wisselen kan bovenin de feed.
       const fl = vids ?? data;
       const list = v === "filmpjes" ? fl.filmpjes.filter((x) => soortVan(x) === startSoort(fl.filmpjes)) : fl.dumpert;

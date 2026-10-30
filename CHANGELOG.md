@@ -23,6 +23,7 @@
 
 ## 2026-10-30
 
+- Desktop zonder swipe-feed (#67): Filmpjes en Dumpert tonen op muis/trackpad de gewone weergave met kopjes, tabbladen en kaarten; de TikTok-achtige swipe-feed blijft op touch (`(pointer: coarse)` of `(hover: none)`, niet op schermbreedte, met reactie op wijzigingen). Op desktop opent een kaart het filmpje bij de bron. Nieuw: `src/invoer.ts`, `tests/invoer.test.ts`.
 - Vaste videopool (#50): 3 hergebruikte `<video>`-elementen in de feed i.p.v. een nieuw element per slide (Apple/native HLS: max 2 met bron, Save-Data/2G: alleen actief), tegen vastlopen op iOS. Op een echte iPhone nog niet geverifieerd.
 - Verborgen video-debug-overlay voor diagnose op de iPhone (#50).
 
