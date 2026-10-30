@@ -57,7 +57,7 @@ Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert d
 
 ### Vooraf laden (`src/voorladen.ts`, `src/usevoorladen.ts`)
 
-Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zichtbaar tabblad, plant `planVoorladen` (puur, getest in `tests/voorladen.test.ts`) wat er warm moet, met de lijsten zoals de UI ze toont (Filmpjes: startsoort met actieve filters; Dumpert). `useVoorladen` in `App.tsx` doet dit één keer per sessie en opnieuw alleen bij een nieuwe `gegenereerd`; niets als je al op een video-route zit. Dit werkt op alle verbindingen hetzelfde, ook bij mobiele data en Save-Data.
+Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zichtbaar tabblad, plant `planVoorladen` (puur, getest in `tests/voorladen.test.ts`; de hook zelf in `tests/usevoorladen.test.ts`, met een kleine React-dispatcher- en browserdouble) wat er warm moet, met de lijsten zoals de UI ze toont (Filmpjes: startsoort met actieve filters; Dumpert). `useVoorladen` in `App.tsx` doet dit één keer per sessie en opnieuw alleen bij een nieuwe `gegenereerd`; niets als je al op een video-route zit. Dit werkt op alle verbindingen hetzelfde, ook bij mobiele data en Save-Data.
 
 - 6 thumbnails per tab (`new Image`, async decoding, `fetchPriority` low), `import("hls.js")` (zelfde chunk als `feed.tsx`, niet op Apple), voor de eerste 2 HLS-video's master → laagste variant → 2 segmenten via `/media/dumpert` (zelfde logica als `warmHls` in `feed.tsx`, bewust gedupliceerd), de eerste 256 KB van de eerste mp4 (Range-request), `preconnect` naar de mp4-host en youtube-nocookie.
 - Max 3 requests tegelijk, alles `priority: low`. Geen AI-aanroepen.

@@ -1,0 +1,1 @@
+- Tests: `tests/usevoorladen.test.ts` legt de aan/uit-voorwaarden van `useVoorladen` vast (ook op mobiele data en Save-Data); geen gedragswijziging (#163).
