@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Mistral is na Groq een optionele reserve voor tekst-AI, met een eigen dag- en maandlimiet.
 - Video-samenvattingen gebruiken Groq voor transcriptie en punten met Cloudflare als terugval binnen het bestaande budget.
 - AI-keten bewaart Cloudflare-fouten, slaat Cloudflare na een echte dagquota-fout over en wacht begrensd op vrije Groq-minuutvensters.
 - Tekst-AI valt bij fouten terug op Groq, met limieten per model en tokens per aanbieder in de metadata (`meta.aiTokens`); Groq telt tokens mee maar geen neuronen.
