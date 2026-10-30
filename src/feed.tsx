@@ -19,23 +19,8 @@ import { bronIndexen, gebruiktNativeHls, isZuinig, voorbuffer, POOL_GROOTTE, slo
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay } from "./debug-overlay";
 
-// Geluid staat standaard aan en de keuze wordt onthouden (localStorage). Weigert de browser geluid zonder tik
-// (iPhone Safari), dan start het filmpje zonder geluid en gaat het geluid aan bij de eerste tik of swipe.
-const SOUND_KEY = "nieuwsinkort-geluid";
-function soundOn() {
-  try {
-    return localStorage.getItem(SOUND_KEY) !== "0";
-  } catch {
-    return true;
-  }
-}
-function saveSound(on: boolean) {
-  try {
-    localStorage.setItem(SOUND_KEY, on ? "1" : "0");
-  } catch {
-    /* privémodus */
-  }
-}
+import { soundOn, saveSound } from "./geluid";
+
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
 diag.stil ??= 0;
@@ -1169,7 +1154,7 @@ export function Feed({
     const r = root.current;
     if (!r) return;
     const cur = r.querySelector<HTMLElement>(`.fslide[data-i="${activeRef.current}"]`);
-    r.querySelectorAll<HTMLVideoElement>(".fslide video.f-media").forEach((el) => {
+    pool.els.forEach((el) => {
       el.muted = false;
       if (cur?.contains(el)) {
         if (!pausedRef.current) el.play().catch(() => {});
@@ -1183,7 +1168,7 @@ export function Feed({
     r.querySelectorAll<HTMLIFrameElement>("iframe.f-yt").forEach((f) =>
       f.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "unMute", args: [] }), "https://www.youtube-nocookie.com")
     );
-  }, []);
+  }, [pool]);
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
   const soundRef = useRef({ want, blocked });
@@ -1200,7 +1185,7 @@ export function Feed({
           unmuteNow();
           unmutedAt.current = Date.now();
           setBlocked(false);
-        } else if (e.type !== "keydown") unmuteNow(); // volgende video's blijven vrijgegeven
+        } else unmuteNow(); // volgende video's blijven vrijgegeven
       }
     };
     let startY = 0;
