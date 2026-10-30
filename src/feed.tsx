@@ -23,7 +23,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
-import { ytStartBesluit, ytSkipBesluit, geluidMag, autoplayGeblokkeerd } from "./ytstart";
+import { ytStartBesluit, ytSkipBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -668,8 +668,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
   useEffect(() => () => onBeeld(false), [onBeeld]);
   // src staat vast bij het mounten; daarna stuurt alles via postMessage (geen herladen).
   const [src] = useState(
-    () =>
-      `${YT_ORIGIN}/embed/${id}?autoplay=${active ? 1 : 0}&mute=1&playsinline=1&enablejsapi=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&loop=1&playlist=${id}&origin=${encodeURIComponent(window.location.origin)}`
+    () => ytEmbedUrl(id, active, window.location.origin)
   );
   const post = useCallback((func: string, args: unknown[] = []) => {
     laatsteOpdracht.current = func;
@@ -727,11 +726,11 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         debugEvent(`YouTube ${id} ${d.event} ${typeof d.info === "number" ? d.info : ""}`);
         if (d.event === "onError") {
           echteFout.current = true; foutCode.current = d.info; setVangnet(false);
+          if (ytEchteFout(d.info)) setShown(true);
           if (state.current.active) onYtFout(d.info);
         } else if (!echteFout.current && state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
           blokkade.current = d.event; diagnose();
           if (!state.current.muted) { onAutoplayBlocked(); post("mute"); post("playVideo"); }
-          setVangnet(true);
         }
       }
       const info = d.info;
@@ -741,8 +740,8 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       if (status !== null) {
         if (!state.current.active) { if (status === 1 || status === 3) post("pauseVideo"); return; }
         start.current.status = status;
-        if (status === 1 || status === 3) { gespeeld.current = true; setVangnet(false); }
-        if (status === 1) { setShown(true); onYtSpeelt(); }
+        if (status === 1 || status === 3) { gespeeld.current = true; setVangnet(false); setShown(true); }
+        if (status === 1) onYtSpeelt();
         diagnose();
       }
       if (info && typeof info === "object") {
@@ -822,6 +821,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
   const isShort = /\/shorts\//.test(v.href);
   return (
     <>
+    {!shown ? <img className={`f-yt-poster f-yt${isShort ? " short" : ""}`} src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" /> : null}
     <iframe
       ref={ref}
       className={`f-media f-yt ${isShort ? "short" : ""}`}
@@ -839,7 +839,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         listening();
       }}
     />
-    {active && vangnet ? <div className={`f-yt-start${isShort ? " short" : ""}`}>Tik om te starten</div> : null}
+    {active && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
     </>
   );
 }
@@ -999,7 +999,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
   }, [jump]);
   return (
     <section className={`fslide cat-${cat}`} data-i={i} aria-label={`${i + 1} van ${total}: ${v.titel}`} aria-current={active ? "true" : undefined}>
-      <div className={`fcol${ytVangnet ? " yt-vangnet" : ""}`}>
+      <div className={`fcol${p?.kind === "youtube" && playable ? " yt-slide" : ""}`}>
         {playable && mount ? (
           p!.kind === "youtube" ? (
             <YouTubePlayer {...props} id={youtubeId(p!.src)!} vangnet={ytVangnet} setVangnet={setVangnet} onYtFout={ytFout} onYtSpeelt={onYtSpeelt} />
@@ -1008,7 +1008,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
           )
         ) : null}
         {/* Poster boven de speler tot er echt beeld is. */}
-        {v.thumb && posterOk ? (
+        {v.thumb && posterOk && !(p?.kind === "youtube" && playable && mount) ? (
           <img
             className={`f-poster${posterVerborgen(p?.kind, beeld, playable, mount, ytVangnet) ? " weg" : ""}`}
             src={v.thumb}
@@ -1019,7 +1019,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
             onError={() => setPosterOk(false)}
           />
         ) : null}
-        {playable ? (
+        {playable && p?.kind !== "youtube" ? (
           <button type="button" className="ftap" aria-label={paused && active ? "Afspelen" : "Pauzeren"} onClick={tap} tabIndex={-1}>
             {active && paused && !jump ? (
               <span className="fstate">
@@ -1032,14 +1032,14 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
               </span>
             ) : null}
           </button>
-        ) : (
+        ) : !playable ? (
           <div className="f-fail">
             <p>{!p ? "Dit filmpje speelt hier niet af." : v.bron === "Instagram" ? "Afspelen lukt niet: de Instagram-link is verlopen of geblokkeerd." : "Afspelen lukt even niet: de bron gaf geen beeld."}</p>
             <a className="f-btn" href={veiligeUrl(v.href)} target="_blank" rel="noreferrer">
               Bekijk bij {v.bron} <Icon name="ext" className="sm" />
             </a>
           </div>
-        )}
+        ) : null}
         <div className="f-info">
           <div className="meta">
             {v.bron}
@@ -1059,7 +1059,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
             </button>
           </div>
         </div>
-        <Scrub bar={bar} barEl={barEl} seek={seek} enabled={playable && mount} title={v.titel} />
+        <Scrub bar={bar} barEl={barEl} seek={seek} enabled={playable && mount && p?.kind !== "youtube"} title={v.titel} />
       </div>
     </section>
   );
