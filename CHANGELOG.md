@@ -8,6 +8,8 @@
 
 - Artikelprompts (#49) vragen eenvoudig Nederlands voor volwassenen (B1), korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), uitleg van moeilijke woorden en afkortingen voluit; feiten blijven uit de invoer komen. Bestaande samenvattingen blijven gecachet.
 
+- Reddit-filmpjes (#47): directe HLS-weergave en ondersteuning voor YouTube-links, met thumbnails en ontdubbeling via de Reddit-permalink.
+
 - Videoherstel (#44): de voortgangsbalk volgt de werkelijke afspeeltijd; bij stilstand volgt een herstelpoging en zo nodig herladen.
 
 - Performance artikelen (#35), vervolg: `/data.json` start vanuit `index.html` tijdens het parsen (hergebruikt door `useData`, `src/vroeg.ts`; nieuwe CSP-hash); Inter self-hosted i.p.v. Google Fonts (CSP `font-src 'self'`, `/fonts/*` immutable); `NewsFeed` mount kaartinhoud alleen rond de huidige kaart (DOM kleiner, lagere TBT).

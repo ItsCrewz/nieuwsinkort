@@ -6,10 +6,38 @@ import { onRequestPost as svPost } from "../functions/samenvatting";
 import { videoSlug } from "../src/slug";
 import { buildWeer, KNMI_VERW, OM_URL } from "../worker/src/weer";
 import { simpelWeer, summarize, inHetKort, verdiep } from "../worker/src/ai";
+import { parseRedditVideos, soortVan } from "../worker/src/videos";
+import { videoKeys } from "../src/dedup";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 let n = 0;
 const t = async (naam: string, fn: () => Promise<void>) => { await fn(); n++; console.log("✓", naam); };
+await t("Reddit-Atom levert alleen afspeelbare video's met herkenbare sleutels", async () => {
+  const entry = (id: string, content: string, media = "") => `<entry><title>Video ${id}</title><link href="https://www.reddit.com/r/Netherlands/comments/${id}/titel/"/><published>2026-10-30T10:00:00Z</published>${media}<content type="html">${content}</content></entry>`;
+  const link = (url: string) => `&lt;a href=&quot;${url}&quot;&gt;link&lt;/a&gt;`;
+  const xml = [
+    entry("abc123", link("https://v.redd.it/vid123"), '<media:thumbnail url="https://preview.redd.it/foto.jpg?width=200&amp;format=webp"/>'),
+    entry("def456", link("https://youtu.be/NVZiFWIqU48?si=abc")),
+    entry("ghi789", link("https://www.youtube.com/shorts/NVZiFWIqU48")),
+    entry("jkl123", link("https://streamable.com/abc")),
+    entry("mno456", link("https://v.redd.it/vid456") + '&lt;img src=&quot;https://external-preview.redd.it/foto.jpg?width=100&amp;amp;format=webp&quot; /&gt;'),
+    entry("pqr789", link("https://www.youtube.com/watch?feature=share&amp;amp;v=NVZiFWIqU48")),
+  ].join("");
+  const videos = parseRedditVideos(xml, "Netherlands", 0, () => "11:00");
+  assert.equal(videos.length, 5);
+  assert.equal(videos[0].embed, "https://v.redd.it/vid123/HLSPlaylist.m3u8");
+  assert.equal(videos[0].thumb, "https://preview.redd.it/foto.jpg?width=200&format=webp");
+  assert.ok(videoKeys(videos[0]).includes("rd:abc123"));
+  assert.ok(videoKeys(videos[0]).includes("vr:vid123"));
+  assert.equal(videos[1].embed, "https://www.youtube-nocookie.com/embed/NVZiFWIqU48?autoplay=1&rel=0");
+  assert.equal(videos[1].thumb, "https://i.ytimg.com/vi/NVZiFWIqU48/hqdefault.jpg");
+  assert.ok(videoKeys(videos[1]).includes("rd:def456"));
+  assert.ok(videoKeys(videos[1]).includes("yt:NVZiFWIqU48"));
+  assert.equal(soortVan(videos[1]), "journaal");
+  assert.equal(soortVan(videos[2]), "short");
+  assert.equal(videos[3].thumb, "https://external-preview.redd.it/foto.jpg?width=100&format=webp");
+  assert.equal(videos[4].embed, videos[1].embed);
+});
 const sleutel = "uitsluitend-test-fixture";
 let starts = 0;
 const env: any = {
