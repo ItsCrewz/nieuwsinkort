@@ -10,7 +10,7 @@ let starts = 0;
 const env: any = {
   RUN_KEY: sleutel,
   RUNNER: { idFromName: () => "runner", get: () => ({ fetch: async () => { starts++; return Response.json({ ok: true }); } }) },
-  NIEUWS: { get: async () => "{}" },
+  NIEUWS: { get: async () => "{}", put: async () => {} },
 };
 await t("Worker weigert URL-sleutel, onjuiste of ontbrekende Bearer en ontbrekend secret", async () => {
   for (const pad of ["/run", "/uur"]) {

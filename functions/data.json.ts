@@ -60,14 +60,14 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
   }
   const S: any = await stat.json();
   let H: any = null;
-  try { H = await env.NIEUWS.get("uur", "json"); } catch { /* KV even niet bereikbaar: statisch */ }
+  try { H = await env.NIEUWS.get("uur", "json"); } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
   let out: any = S;
-  try { out = merge(S, H); } catch { out = S; }
-  try { out = schoon(out); } catch { /* ongeschoond is beter dan niets */ }
+  try { out = merge(S, H); } catch { console.error("data.json: merge mislukt"); out = S; }
+  try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
   // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
   try {
     const sv: any = await env.NIEUWS.get("sv-klaar", "json");
     if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
-  } catch { /* zonder: de knop haalt hem op verzoek op */ }
+  } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
   return new Response(JSON.stringify(out), { headers: HDR });
 };
