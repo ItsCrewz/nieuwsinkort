@@ -58,6 +58,13 @@ export function ytVideoId(v: { embed?: string; href?: string }): string | null {
   return null;
 }
 
+// Deze kanalen blokkeren het insluiten van Shorts, ook als een servercontrole speelbaar meldt.
+export const YT_SHORTS_GEBLOKKEERDE_KANALEN = new Set(["FORMULA 1"]);
+export function ytGeblokkeerdeShorts(videos: (Video & { _k?: string; _kanaal?: string })[]): string[] {
+  return [...new Set(videos.filter((v) => v.bron === "YouTube" && YT_SHORTS_GEBLOKKEERDE_KANALEN.has(v._k || v._kanaal || "") && soortVan(v) === "short")
+    .map(ytVideoId).filter((id): id is string => !!id))];
+}
+
 export type YtDiag = { id: string; http: number; uitkomst: "geblokkeerd" | "speelbaar" | "onbekend"; reden?: string; status: string | null; titel: string; host: string; redirectHost: string; oembed: number };
 export function ytCombineer(id: string, embed: { status: number; json?: any; err?: string } | undefined, oembed: { status: number } | undefined): YtDiag {
   const d = embed?.json || {};
@@ -68,6 +75,11 @@ export function ytCombineer(id: string, embed: { status: number; json?: any; err
 }
 
 export type YtCache = Record<string, { geblokkeerd: boolean | null; at: number }>;
+
+export function ytBlokkades(ids: string[], kanaalBlokkades: string[], cache: YtCache): string[] {
+  const kanalen = new Set(kanaalBlokkades);
+  return ids.filter((id) => kanalen.has(id) || cache[id]?.geblokkeerd === true);
+}
 
 export function ruimYtCache(cache: YtCache | undefined, nu: number): YtCache {
   return Object.fromEntries(Object.entries(cache || {}).filter(([id, v]) =>
