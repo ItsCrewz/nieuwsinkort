@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import worker, { Runner } from "../worker/src/index";
+import "./sportcat.test";
+import worker, { Runner, kiesVoorAI } from "../worker/src/index";
 import { Budget } from "../worker/src/budget";
 import { onRequestPost as svPost } from "../functions/samenvatting";
 import { videoSlug } from "../src/slug";
@@ -313,3 +314,18 @@ await t("artikelprompts vragen B1 en behouden één call per groep", async () =>
 });
 
 console.log(`\n${n} Worker-tests geslaagd`);
+
+await t("AI-ronde verdeelt sport binnen de limiet", async () => {
+  const cats = ["nl", "tech", "haarlem", "showbizz", "voetbal", "f1", "auto"];
+  const groepen = Object.fromEntries(cats.map((c) => [c, Array(20).fill(c)]));
+  const picks = kiesVoorAI(groepen, 1, 40);
+  assert.equal(picks.length, 40);
+  for (const c of ["f1", "voetbal", "auto"]) assert.equal(picks.filter((x) => x === c).length, 1);
+  const alleenNlSport = Object.fromEntries(["nl", "f1", "voetbal", "auto"].map((c) => [c, Array(40).fill(c)]));
+  const beperkt = kiesVoorAI(alleenNlSport, 1, 40);
+  assert.equal(beperkt.filter((x) => x === "nl").length, 37);
+  assert.equal(beperkt.filter((x) => x !== "nl").length, 3);
+  const tier3 = kiesVoorAI(Object.fromEntries(cats.map((c) => [c, Array(20).fill(c)])), 3, 40);
+  assert.ok(tier3.every((c) => c === "nl" || c === "haarlem"));
+  assert.deepEqual(kiesVoorAI({ f1: ["f1"], voetbal: ["voetbal"], auto: ["auto"] }, 1, 2), ["f1", "voetbal"]);
+});

@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import { sportCat, herindeelSport } from "../worker/src/sportcat";
+import { cluster } from "../worker/src/cluster";
+const check = (cat: string, kop: string, hrefs: string[] = []) => sportCat({ cat, kop, hrefs });
+assert.equal(check("nl", "Verstappen wint GP van Mexico", ["https://nos.nl/sport/formule-1/bericht"]), "f1");
+assert.equal(check("nl", "Wedstrijd", ["https://nu.nl/voetbal/123"]), "voetbal");
+assert.equal(check("nl", "Auto belandt op zijn kop in sloot"), null);
+assert.equal(check("nl", "EU-landen verkopen extra brandstof"), null);
+assert.equal(check("politiek", "Verstappen wint Formule 1"), null);
+assert.equal(check("tech", "Tesla en BMW bij Formule 1"), "f1");
+assert.equal(check("tech", "Tesla verkoopt minder auto's in Europa"), "auto");
+assert.equal(check("nl", "Oranje wint verkiezingen"), null);
+const c = cluster(["nl", "auto", "voetbal", "f1"].map((cat, d) => ({ cat, d, t: "Verstappen wint grote race in Mexico", href: `https://voorbeeld.nl/${d}`, s: "", site: "test" })));
+assert.equal(c.length, 1);
+assert.equal(c[0].cat, "f1");
+herindeelSport(c[0]);
+assert.equal(c[0].cat, "f1");
+console.log("✓ sportindeling en clusterprioriteit");

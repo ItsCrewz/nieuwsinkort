@@ -22,8 +22,29 @@ import { isNL } from "../../src/bronlink";
 import { isBuitenland } from "../../src/regio";
 import { cluster, normLink, sim, toks, type Cand, type Cluster } from "./cluster";
 import { Budget } from "./budget";
+import { herindeelSport, sportCat } from "./sportcat";
 
 export { Budget };
+
+export function kiesVoorAI<T>(byCat: Record<string, T[]>, tier: number, capN: number): T[] {
+  const ronde = tier >= 3 ? ["nl", "nl", "haarlem"] : ["nl", "nl", "tech", "haarlem", "showbizz"];
+  const pick: T[] = [];
+  if (tier < 3) {
+    for (const c of ["f1", "voetbal", "auto"]) {
+      if (pick.length >= capN) break;
+      const x = byCat[c]?.shift();
+      if (x !== undefined) pick.push(x);
+    }
+  }
+  while (pick.length < capN && ronde.some((c) => byCat[c]?.length)) {
+    for (const c of ronde) {
+      if (pick.length >= capN) break;
+      const x = byCat[c]?.shift();
+      if (x !== undefined) pick.push(x);
+    }
+  }
+  return pick;
+}
 
 export interface Env {
   NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>; BUDGET_DO: DurableObjectNamespace<Budget>;
@@ -244,7 +265,7 @@ export class Fetcher extends DurableObject<Env> {
 const SOCIAL_INFO = /YouTube|Instagram|Reddit|Podcast/; // X (bv. Politie Haarlem) telt wel als nieuws
 const NIET_ALS_NIEUWS = new Set(["burgernet", "gemeenteraadhaarlem"]);
 const BEKENDMAKING_HINTS = /raadsbesluit|collegebesluit|verordening|verkeersbesluit|omgevingsplan|bestemmingsplan|apv|referendum|parkeer|evenement|sluiting|aanwijzing|exploitatie/i;
-const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz", "politiek"];
+const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz", "politiek", "voetbal", "f1", "auto"];
 
 type State = { okAt?: Record<string, string>; kortAt?: number; datum: string; neurons: number; calls: number; sums: Record<string, Sum & { at: number }>; links: Record<string, string>; kortHash?: string; kort?: string; weerHash?: string; weerTxt?: string; runs: number;
   /** artikeltekst per link (normLink); [] = niets bruikbaars/geweigerd */ art?: Record<string, string[]>;
@@ -315,7 +336,8 @@ export class Runner extends DurableObject<Env> {
       srcFeeds.push({ key: `${g.id}|${s.id}`, g: g.id, s, urls });
       for (const url of urls) {
         const sub = /reddit\.com\/r\/([^/]+)/.exec(url)?.[1];
-        add({ url, kind: sub ? "reddit" : igUser(url) ? "insta" : xUser(url) ? "x" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(g.id === "politiek" ? { max: 2 } : {}) });
+        const max = s.feeds.find((f: any) => f.url === url)?.max ?? (g.id === "politiek" ? 2 : undefined);
+        add({ url, kind: sub ? "reddit" : igUser(url) ? "insta" : xUser(url) ? "x" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(max != null ? { max } : {}) });
       }
     }
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) add({ url: ytUrl(cid), kind: "feed", label: naam });
@@ -391,7 +413,7 @@ export class Runner extends DurableObject<Env> {
       if (!NEWS_CATS.includes(f.g) || (f.g !== "politiek" && SOCIAL_INFO.test(f.s.info || "")) || NIET_ALS_NIEUWS.has(f.s.id)) continue;
       for (const u of f.urls) {
         if (/known_exploited|\.json($|\?)/.test(u)) continue;
-        for (const e of R.get(u)?.entries || []) {
+        for (const e of [...(R.get(u)?.entries || [])].sort((a, b) => (b.d || 0) - (a.d || 0)).slice(0, f.s.feeds.find((feed: any) => feed.url === u)?.max)) {
           if (!e.t || !e.l) continue;
           if (f.s.id === "officielebekendmakingen" && !BEKENDMAKING_HINTS.test(e.t + " " + e.s)) continue;
           const k = normLink(e.l);
@@ -404,11 +426,15 @@ export class Runner extends DurableObject<Env> {
     }
     let clusters = cluster(cands);
     // Een politieke post over hetzelfde verhaal hoort bij dat nieuwsbericht (rubriek van het nieuws, partij als extra bron)
-    for (const k of clusters) k.cat = k.c.find((c) => c.cat !== "politiek")?.cat || "politiek";
+    for (const k of clusters) {
+      if (!k.c.some((c) => ["f1", "voetbal", "auto"].includes(c.cat))) k.cat = k.c.find((c) => c.cat !== "politiek")?.cat || "politiek";
+      herindeelSport(k);
+    }
 
     // ---- wat de routine (08:00) al heeft: niet opnieuw samenvatten
     const statToday = stat && typeof stat.gegenereerd === "string" && ams(Date.parse(stat.gegenereerd)).iso === A.iso;
     const statItems: any[] = statToday ? stat.items || [] : [];
+    for (const i of statItems) i.cat = sportCat({ cat: i.cat, kop: i.kop || "", hrefs: (i.bronnen || []).map((b: any) => b.href || "") }) || i.cat;
     const statLinks = new Set(statItems.flatMap((i: any) => (i.bronnen || []).map((b: any) => normLink(b.href || ""))));
     const statTok = statItems.map((i: any) => toks(`${i.kop} ${i.ai}`));
     const covered = (k: Cluster) => k.c.some((c) => statLinks.has(normLink(c.href))) || statTok.some((t) => { const { n, j } = sim(k.tok, t); return n >= 4 && j >= 0.25; });
@@ -436,11 +462,8 @@ export class Runner extends DurableObject<Env> {
     // prioriteit: meer bronnen eerst, dan nieuwste; eerlijk verdeeld over rubrieken
     const byCat: Record<string, Cluster[]> = {};
     for (const k of todo.sort((a, b) => b.c.length - a.c.length || Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d)))) (byCat[k.cat] ||= []).push(k);
-    const pick: Cluster[] = [];
-    const ROUND = tier0 >= 3 ? ["nl", "nl", "haarlem"] : ["nl", "nl", "tech", "haarlem", "showbizz"];
     const capN = tier0 === 1 ? CAP : tier0 === 2 ? Math.min(CAP, 15) : tier0 === 3 ? 8 : 0;
-    while (pick.length < capN && Object.values(byCat).some((l) => l.length))
-      for (const c of ROUND) { const x = byCat[c]?.shift(); if (x && pick.length < capN) pick.push(x); }
+    const pick = kiesVoorAI(byCat, tier0, capN);
     let quotaOut = st.neurons + vidN >= BUDGET;
     const modelNu = () => { const m = tier() === 1 ? model : SMALL; modelsUsed.add(m); return m; };
     const toIn = (k: Cluster, id: number): In => {
@@ -608,7 +631,7 @@ export class Runner extends DurableObject<Env> {
 
     // ---- In het kort (één keer per run, alleen als de berichten veranderd zijn)
     const lijst = [...items.filter((i) => !i.ruw), ...statItems].slice(0, 70);
-    const order = ["nl", "buitenland", "tech", "haarlem", "showbizz"];
+    const order = ["nl", "buitenland", "voetbal", "f1", "auto", "tech", "haarlem", "showbizz"];
     const lines = order.flatMap((c) => lijst.filter((i) => i.cat === c).slice(0, c === "nl" ? 22 : 10)).map((i) => `${i.cat}: ${i.kop} — ${i.ai}`);
     const kh = await hash(lines.join("\n"));
     let kort = st.kort || "";

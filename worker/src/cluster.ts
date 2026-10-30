@@ -81,5 +81,7 @@ export function cluster(cands: Cand[]): Cluster[] {
     if (rest.length) out = out.filter((x) => !rest.includes(x));
     k.c.push(c); k.leden.push(lid); for (const x of tk) k.tok.add(x); for (const x of ts) k.tokS.add(x);
   }
+  const prioriteit = ["f1", "voetbal", "auto"];
+  for (const k of out) k.cat = prioriteit.find((cat) => k.c.some((c) => c.cat === cat)) || k.cat;
   return out;
 }

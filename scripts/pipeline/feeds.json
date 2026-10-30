@@ -1393,5 +1393,143 @@
   "werkt": true,
   "soort": "x",
   "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
+ },
+ {
+  "cat": "f1",
+  "naam": "NOS Formule 1",
+  "url": "https://feeds.nos.nl/nossportformule1",
+  "werkt": true
+ },
+ {
+  "cat": "f1",
+  "naam": "NU.nl Formule 1",
+  "url": "https://www.nu.nl/rss/Formule-1",
+  "werkt": true
+ },
+ {
+  "cat": "f1",
+  "naam": "AD Formule 1",
+  "url": "https://www.ad.nl/formule-1/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "f1",
+  "naam": "Formule1.nl",
+  "url": "https://www.formule1.nl/feed/",
+  "werkt": true,
+  "max": 3
+ },
+ {
+  "cat": "f1",
+  "naam": "Motorsport.com F1",
+  "url": "https://nl.motorsport.com/rss/f1/news/",
+  "werkt": true,
+  "max": 3
+ },
+ {
+  "cat": "f1",
+  "naam": "RacingNews365",
+  "url": "https://racingnews365.nl/feed/news.xml",
+  "werkt": true,
+  "max": 2
+ },
+ {
+  "cat": "f1",
+  "naam": "BBC F1",
+  "url": "https://feeds.bbci.co.uk/sport/formula1/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "voetbal",
+  "naam": "NOS Voetbal",
+  "url": "https://feeds.nos.nl/nosvoetbal",
+  "werkt": true
+ },
+ {
+  "cat": "voetbal",
+  "naam": "NU.nl Voetbal",
+  "url": "https://www.nu.nl/rss/Voetbal",
+  "werkt": true
+ },
+ {
+  "cat": "voetbal",
+  "naam": "AD Voetbal",
+  "url": "https://www.ad.nl/voetbal/rss.xml",
+  "werkt": true,
+  "max": 3
+ },
+ {
+  "cat": "voetbal",
+  "naam": "Telegraaf Voetbal",
+  "url": "https://www.telegraaf.nl/sport/voetbal/rss",
+  "werkt": true,
+  "max": 3
+ },
+ {
+  "cat": "voetbal",
+  "naam": "VI",
+  "url": "https://www.vi.nl/rss",
+  "werkt": true,
+  "max": 3
+ },
+ {
+  "cat": "voetbal",
+  "naam": "ESPN NL",
+  "url": "https://www.espn.nl/rss/voetbal",
+  "werkt": true
+ },
+ {
+  "cat": "voetbal",
+  "naam": "Voetbalzone",
+  "url": "https://feeds.footballco.com/vz/feed/ce3iomiqfw9iej21",
+  "werkt": true,
+  "max": 2
+ },
+ {
+  "cat": "voetbal",
+  "naam": "Guardian Football",
+  "url": "https://www.theguardian.com/football/rss",
+  "werkt": true,
+  "max": 3
+ },
+ {
+  "cat": "auto",
+  "naam": "AutoWeek",
+  "url": "https://www.autoweek.nl/rss/",
+  "werkt": true,
+  "max": 3
+ },
+ {
+  "cat": "auto",
+  "naam": "Autoblog.nl",
+  "url": "https://www.autoblog.nl/rss",
+  "werkt": true,
+  "max": 3
+ },
+ {
+  "cat": "auto",
+  "naam": "Autovisie",
+  "url": "https://www.autovisie.nl/rss",
+  "werkt": true
+ },
+ {
+  "cat": "auto",
+  "naam": "AD Auto",
+  "url": "https://www.ad.nl/auto/rss.xml",
+  "werkt": true
+ },
+ {
+  "cat": "auto",
+  "naam": "Electrek",
+  "url": "https://electrek.co/feed/",
+  "werkt": true,
+  "max": 2
+ },
+ {
+  "cat": "auto",
+  "naam": "InsideEVs",
+  "url": "https://insideevs.com/rss/news/all/",
+  "werkt": true,
+  "max": 2
  }
 ]
