@@ -29,7 +29,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 
 - `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `sources.ts`, `types.ts`.
 - `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
-- `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts`, `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
+- `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts`, `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
 - `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`).
 
@@ -64,6 +64,10 @@ Video-samenvattingen vooraf stoppen vanaf 85%; AI-uitleg voor "Lees verder" alle
 ## Beveiligingsheaders
 
 Bij wijzigingen aan het inline thema-script in `index.html`: werk de SHA-256-hash in `public/_headers` bij (inclusief witruimte). De tests bewaken deze koppeling. Pages Functions vallen buiten `_headers` en moeten zelf `nosniff` blijven zetten. Zie [architectuur](docs/architectuur.md#beveiligingsheaders).
+
+### Budget-DO (`/samenvatting`)
+
+De Durable Object `Budget` (`worker/src/budget.ts`, logica in `src/budget.ts`, binding `BUDGET_DO`, migratie `v2`) is de enige eigenaar van het slot per video, de video-neuronen per dag en de Whisper-rem (`MAX_WHISPER_UUR` = 30). Reserveren gebeurt atomair vóór `env.AI.run`, verrekenen met het echte verbruik erna; houd dat zo bij elke wijziging aan video-AI. De DO spiegelt het dagtotaal naar KV `vid-neurons:<datum>` (de uur-Worker leest dat); zonder binding valt `functions/samenvatting.ts` terug op KV. Deploy: Worker vóór Pages (de Pages-binding heeft de klasse nodig; `deploy.sh` doet dat). Workers Issues staat aan via `[observability.issues]` in `worker/wrangler.toml`.
 
 ### KV-schrijflimiet uur-Worker
 

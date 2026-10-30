@@ -8,6 +8,7 @@ Alles draait op Cloudflare (Free plan). Geen eigen server.
         ▼
  Worker nieuwsinkort-uur ── DO Fetcher (ophalen in batches)
    DO Runner (run, budget, state) ── Workers AI (samenvatten)
+   DO Budget (slot, video-neuronen, uurrem van /samenvatting; Pages roept deze aan via BUDGET_DO)
         │ schrijft
         ▼
    KV NIEUWS: uur, meer, sv-klaar, vs:<id>, vooraf-log, state, og:<genormaliseerde-url>, vid-neurons:<datum> (gedeeld AI-budget)
@@ -30,7 +31,7 @@ Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert d
 ## Pages Functions (`functions/`)
 
 - `data.json.ts`: haalt het statische `data.json` (ASSETS) en KV `uur`, voegt ze samen (`merge`): routine-samenvattingen blijven, nieuwe berichten van het uur komen bovenaan, weer/filmpjes/Dumpert worden ververst. Uur-data van een andere dag wordt genegeerd. `?statisch=1` geeft alleen het statische bestand. Voegt ook `sv-klaar` (vooraf gemaakte video-samenvattingen) toe. Cache 300 s.
-- `samenvatting.ts`: `POST /samenvatting {id}`, samenvatting van één filmpje (alleen filmpjes die op de site staan). Tekst via YouTube-ondertiteling of Whisper, daarna samenvatten. Cache in KV (`vs:<id>`), ook fout-uitkomsten (30 min). Bewaakt het gedeelde dagbudget. Bescherming tegen misbruik: `Content-Type: application/json` verplicht (415), vreemde `Origin` geweigerd (403; `vooraf.ts` stuurt geen Origin), slot per video (geheugen van de isolate + KV `vs-bezig:<id>`) vóór de budget- en mediastappen, geschatte Whisper-neuronen worden vóór `AI.run` in `vid-neurons:<datum>` gezet en achteraf gecorrigeerd, KV-teller `vs-uur:<datum>T<uur>` (max 30 Whisper-aanroepen per uur, daarna code `druk`), en interne foutteksten (`why`) gaan alleen terug bij `pre:true`. Beperking: KV is niet atomair, dus het slot en de teller zijn een rem, geen harde garantie (zie PR #8: Durable Object en Cloudflare Rate Limiting-regel nog open).
+- `samenvatting.ts`: `POST /samenvatting {id}`, samenvatting van één filmpje (alleen filmpjes die op de site staan). Tekst via YouTube-ondertiteling of Whisper, daarna samenvatten. Cache in KV (`vs:<id>`), ook fout-uitkomsten (30 min). Bewaakt het gedeelde dagbudget. Bescherming tegen misbruik: `Content-Type: application/json` verplicht (415), vreemde `Origin` geweigerd (403; `vooraf.ts` stuurt geen Origin), slot per video (409 bij bezig) vóór de budget- en mediastappen, geschatte Whisper-neuronen worden vóór `AI.run` atomair gereserveerd en achteraf verrekend met het echte verbruik, een globale rem van max 30 Whisper-aanroepen per uur (daarna code `druk`), en interne foutteksten (`why`) gaan alleen terug bij `pre:true`. Slot, reservering en uurrem zijn van de Durable Object `Budget` (binding `BUDGET_DO`, één instantie `dag`; zie hieronder), want KV is niet atomair. Is de DO onbereikbaar, dan antwoordt de Function 503 (niet gecachet); ontbreekt de binding (lokaal/preview), dan valt ze terug op het oude KV-gedrag (`vs-bezig:<id>`, `vs-uur:<datum>T<uur>`, `vid-neurons:<datum>`), een rem zonder harde garantie. De Cloudflare Rate Limiting-regel (issue #8) blijft apart en is nog open.
 - `meer.ts`: `GET /meer?k=<sleutel>`, extra tekst voor "Lees verder" uit KV `meer` (artikeltekst, AI-uitleg, kernpunten per bron), anders 404.
 - `media/dumpert/[[path]].ts`: GET/HEAD-proxy naar media.dumpert.nl voor HLS (CORS staat daar alleen dumpert.nl toe).
 
@@ -39,8 +40,10 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 ## Worker `nieuwsinkort-uur` (`worker/`)
 
 - Cron `0 4-22 * * *` (UTC). `scheduled()` slaat uren buiten 06–23 Amsterdam over (zomer- en wintertijd). `workers_dev = false`.
+- Durable Object `Budget` (sqlite, `worker/src/budget.ts`, logica in `src/budget.ts`, binding `BUDGET_DO`, migratie `v2`): enige eigenaar van (a) het slot per video-id (verloopt na 90 s, expliciet vrijgeven met token), (b) de video-neuronen per dag (atomair reserveren van de schatting tegen nieuws + video + reserve + marge, daarna verrekenen) en (c) de Whisper-rem `MAX_WHISPER_UUR` = 30 per uur. De DO spiegelt het dagtotaal naar KV `vid-neurons:<datum>`; de uur-Worker leest dat voor het gedeelde dagbudget. De shell voert alle operaties via een interne promise-keten (mutex) strikt na elkaar uit, omdat de KV-read/-write (zaad, spiegel) de input gate opent en operaties anders zouden interleaven. Pages Functions gebruiken dezelfde klasse via `script_name = "nieuwsinkort-uur"` in de root-`wrangler.toml`, via de fetch-API van de stub (`/claim`, `/vrij`, `/stand`, `/reserveer`, `/verreken`).
 - Durable Objects (sqlite): `RUNNER` (klasse `Runner`: de uurrun, budget, state, alarm voor video-samenvattingen vooraf) en `FETCHER` (klasse `Fetcher`: ophalen in batches, eigen limiet van 50 subrequests per instantie).
-- KV `NIEUWS`. Resultaat van de run staat onder `uur` (items, filmpjes, dumpert, weer, bronstats, meta). Verder o.a. `meer`, `sv-klaar`, `vooraf-log`, `vs:<id>`, `og:<genormaliseerde-url>` (og:image, 3 dagen), `vid-neurons:<datum>` (neuronen van vandaag, gedeeld door Worker en `functions/samenvatting.ts`), `vs-bezig:<id>` (slot, 60 s) en `vs-uur:<datum>T<uur>` (Whisper-teller) en state.
+- KV `NIEUWS`. Resultaat van de run staat onder `uur` (items, filmpjes, dumpert, weer, bronstats, meta). Verder o.a. `meer`, `sv-klaar`, `vooraf-log`, `vs:<id>`, `og:<genormaliseerde-url>` (og:image, 3 dagen), `vid-neurons:<datum>` (spiegel van de video-neuronen van vandaag; bron is de DO `Budget`, de uur-Worker leest dit) en state. `vs-bezig:<id>` en `vs-uur:<datum>T<uur>` worden alleen nog gebruikt zonder DO-binding (fallback).
+- Workers Issues: `[observability.issues] enabled = true` in `worker/wrangler.toml` (gratis open beta, wrangler >= 4.134) groepeert fouten uit de Worker-logs. Alleen configuratie; geen extra kosten of code.
 - Endpoints: `/run` (run starten, optioneel `force=1`), `/uur` (KV `uur` als JSON), beide met header `Authorization: Bearer <RUN_KEY>` (SHA-256 en XOR-vergelijking; geen sleutel in de URL); `/status` (open, alleen meta + vooraf-log).
 - `Runner` bewaart elke runstart in DO-storage; `force=1` wordt binnen tien minuten geweigerd met 429, ook na een mislukte run. Fouten geven alleen een melding van maximaal 200 tekens terug; de stack wordt serverzijdig gelogd.
 - Vars: `SITE`, `MODEL`, `CAP`, `BUDGET`, optioneel `SMALL_MODEL`. Secret: `RUN_KEY`.
@@ -86,7 +89,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 
 ## Deploy
 
-`deploy.sh` (zie README). `main` in het bestand `DEPLOY_BRANCH` (geen omgevingsvariabele; `deploy.sh` leest het bestand) zet de nieuwe build in productie; een andere waarde zet productie op de bevroren site `prod-frozen/` met verse data en de nieuwe build op een preview-branch. De Worker gaat apart (`DEPLOY_WORKER=1` of `wrangler deploy` in `worker/`). Alleen met goedkeuring van Joey.
+`deploy.sh` (zie README). Volgorde bij wijzigingen aan `Budget`: eerst de Worker (`DEPLOY_WORKER=1 ./deploy.sh`, `deploy.sh` doet de Worker vóór Pages), daarna Pages, omdat de Pages-binding `BUDGET_DO` de klasse en migratie `v2` van `nieuwsinkort-uur` nodig heeft. `main` in het bestand `DEPLOY_BRANCH` (geen omgevingsvariabele; `deploy.sh` leest het bestand) zet de nieuwe build in productie; een andere waarde zet productie op de bevroren site `prod-frozen/` met verse data en de nieuwe build op een preview-branch. De Worker gaat apart (`DEPLOY_WORKER=1` of `wrangler deploy` in `worker/`). Alleen met goedkeuring van Joey.
 
 ## Domein
 

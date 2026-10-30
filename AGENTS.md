@@ -17,7 +17,7 @@ Behoud de controle via `worker/src/url.ts` bij og/artikel/Jina-jobs: HTTP(S), po
 
 ## Essentials
 
-- Stack: Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js; Cloudflare Pages Functions (`functions/`); Worker `nieuwsinkort-uur` (`worker/`, Durable Objects `Runner`/`Fetcher`, KV `NIEUWS`, Workers AI).
+- Stack: Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js; Cloudflare Pages Functions (`functions/`); Worker `nieuwsinkort-uur` (`worker/`, Durable Objects `Runner`/`Fetcher`/`Budget`, KV `NIEUWS`, Workers AI).
 - Commando's: `npm ci`, `npm run dev`, `npm run build` (bronnen + tsc + vite), `npm test`.
 - Indeling: `src/` frontend, `functions/` Pages Functions (`data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/`), `worker/src/` uur-Worker, `scripts/` hulpscripts, `tests/` tests, `public/` statisch (`data.json`, `bronnen.json`), `prod-frozen/` bevroren oude build.
 - Stijl: TypeScript, ES modules, 2 spaties, dubbele quotes, puntkomma's; compacte code; commentaar in het Nederlands en kort (het waarom). Gedeelde code staat in `src/`. Functions en Worker gebruiken eigen kleine interfaces (`KV`, `Env`, `Ctx`); de Worker heeft daarnaast wel `@cloudflare/workers-types` (`worker/package.json`, `worker/tsconfig.json`).
@@ -31,6 +31,10 @@ Behoud de controle via `worker/src/url.ts` bij og/artikel/Jina-jobs: HTTP(S), po
 ## Beveiligingsheaders
 
 Houd de CSP-hash in `public/_headers` gelijk aan de exacte inhoud van het inline thema-script in `index.html`. Pages Functions zetten zelf `X-Content-Type-Options: nosniff` (ook bij foutantwoorden); `_headers` geldt alleen voor statische bestanden. Laat `prod-frozen/_headers` ongemoeid zolang die build niet gebruikt wordt.
+
+### Budget-DO (`/samenvatting`)
+
+De Durable Object `Budget` (`worker/src/budget.ts`, logica in `src/budget.ts`, binding `BUDGET_DO`, migratie `v2`) is de enige eigenaar van het slot per video, de video-neuronen per dag en de Whisper-rem (`MAX_WHISPER_UUR` = 30). Zet die niet terug in KV. De DO spiegelt het dagtotaal naar KV `vid-neurons:<datum>` (de uur-Worker leest dat); zonder binding valt `functions/samenvatting.ts` terug op KV. Deploy: Worker vóór Pages. Workers Issues staat aan via `[observability.issues]`.
 
 ### KV-schrijflimiet uur-Worker
 

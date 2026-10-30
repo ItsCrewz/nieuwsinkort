@@ -6,10 +6,12 @@
 //    (er blijft ruimte gereserveerd voor de rest van de dag), boven 70% het kleine model, pas bij het plafond een nette melding.
 // Alleen filmpjes die nu op de site staan (geen willekeurige URL's ophalen).
 // Bescherming van het budget: JSON-Content-Type verplicht (415), vreemde Origin geweigerd (403), slot per video
-// (geheugen + KV) vóór budget/media, neuronen vooraf gereserveerd, Whisper-teller per uur, ook fouten kort gecachet,
-// en `why` (interne foutteksten) alleen bij pre:true.
+// vóór budget/media, neuronen vooraf gereserveerd, Whisper-teller per uur, ook fouten kort gecachet,
+// en `why` (interne foutteksten) alleen bij pre:true. Slot, reservering en uurteller zijn van de Durable Object
+// `Budget` (binding BUDGET_DO, atomair); ontbreekt die binding (lokaal/preview), dan het oudere KV-gedrag (een rem, geen garantie).
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
+import { MAX_WHISPER_UUR } from "../src/budget";
 
 type Usage = { neurons: number; calls: number; fails: number; inTok: number; outTok: number };
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
@@ -26,7 +28,8 @@ async function chat(ai: any, model: string, sys: string, user: string, maxTokens
 }
 
 interface KV { get(key: string, type?: "json" | "text"): Promise<any>; put(key: string, v: string, o?: { expirationTtl?: number }): Promise<void>; delete(key: string): Promise<void> }
-interface Env { NIEUWS: KV; AI: any; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; MODEL?: string; SMALL_MODEL?: string }
+interface DO { idFromName(n: string): unknown; get(id: unknown): { fetch(url: string, init?: RequestInit): Promise<Response> } }
+interface Env { NIEUWS: KV; AI: any; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; MODEL?: string; SMALL_MODEL?: string }
 interface Ctx { request: Request; env: Env }
 
 const BUDGET_DEF = 9000;
@@ -37,9 +40,8 @@ const MAX_SEC = 180; // hooguit de eerste 3 minuten geluid
 const MAX_MP4 = 12e6; // mp4 zonder knippen: alleen korte filmpjes
 const PER_RUN = 260;
 const PRE_MAX = 0.85, PRE_MARGE = 600; // vooraf maken: niet boven 85% van het budget, en 600 neuronen marge // reserve per nog komend uur-nieuws (gemiddelde run ±210–480)
-const MAX_WHISPER_UUR = 30; // globale rem: hooguit zoveel Whisper-aanroepen per uur (KV-teller vs-uur:<datum>T<uur>)
 const FOUT_TTL = 1800; // een falend filmpje kost hooguit één keer per half uur geld
-const bezigNu = new Set<string>(); // slot binnen deze isolate: KV is eventual consistent, dit sluit de gelijktijdige verzoeken op één PoP
+const bezigNu = new Set<string>(); // alleen zonder DO-binding: slot binnen deze isolate (KV is eventual consistent)
 const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (o: any, s = 200) => new Response(JSON.stringify(o), { status: s, headers: HDR });
 
@@ -170,6 +172,60 @@ async function punten(ai: any, model: string, titel: string, bron: string, tekst
   return t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5);
 }
 
+// ---------------- slot, reservering en uurrem: Durable Object `Budget`, zonder binding KV
+type Res = { datum: string; uur: string; nieuws: number; budget: number; reserve: number; marge: number; schatting: number };
+interface Poort {
+  claim(id: string): Promise<string | null>; // null = bezig
+  geefVrij(id: string, tok: string): Promise<void>;
+  stand(datum: string): Promise<number>; // video-neuronen van de dag
+  reserveer(r: Res): Promise<"ok" | "budget" | "druk">;
+  verreken(datum: string, delta: number): Promise<void>; // schrijft nooit een fout door: het resultaat is al betaald
+}
+class PoortFout extends Error {}
+function doPoort(ns: DO): Poort {
+  const stub = ns.get(ns.idFromName("dag"));
+  const call = async (actie: string, body: unknown): Promise<any> => {
+    try {
+      const r = await stub.fetch(`https://do/${actie}`, { method: "POST", body: JSON.stringify(body) });
+      if (!r.ok) throw new Error();
+      return await r.json();
+    } catch { console.error("samenvatting: budget-DO niet bereikbaar"); throw new PoortFout(); }
+  };
+  return {
+    claim: async (id) => (await call("claim", { id })).tok || null,
+    geefVrij: async (id, tok) => { await call("vrij", { id, tok }); },
+    stand: async (datum) => +(await call("stand", { datum })).video || 0,
+    reserveer: async (r) => { const j = await call("reserveer", r); return j.ok ? "ok" : j.reden === "druk" ? "druk" : "budget"; },
+    verreken: async (datum, delta) => { if (delta) await call("verreken", { datum, delta }).catch(() => {}); },
+  };
+}
+function kvPoort(env: Env): Poort {
+  return {
+    async claim(id) {
+      // eerst synchroon in het geheugen (geen await tussen check en set), dan in KV
+      if (bezigNu.has(id)) return null;
+      bezigNu.add(id);
+      const slot = `vs-bezig:${id}`;
+      if (await env.NIEUWS.get(slot).catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; })) { bezigNu.delete(id); return null; }
+      await env.NIEUWS.put(slot, "1", { expirationTtl: 60 }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
+      return "1";
+    },
+    async geefVrij(id) { bezigNu.delete(id); await env.NIEUWS.delete(`vs-bezig:${id}`).catch(() => {}); }, // klaar (of geweigerd): slot niet 60 s laten hangen
+    async stand(datum) { return +(await env.NIEUWS.get(`vid-neurons:${datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0; },
+    async reserveer(r) {
+      const video = await this.stand(r.datum);
+      if (r.nieuws + video + r.reserve + r.marge + r.schatting > r.budget) return "budget";
+      const uurKey = `vs-uur:${r.uur}`;
+      const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0;
+      if (nUur >= MAX_WHISPER_UUR) return "druk";
+      await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => {});
+      await addNeurons(env, `vid-neurons:${r.datum}`, r.schatting);
+      return "ok";
+    },
+    async verreken(datum, delta) { await addNeurons(env, `vid-neurons:${datum}`, delta).catch(() => { console.error("samenvatting: KV schrijven mislukt"); }); },
+  };
+}
+
 // ---------------- welke filmpjes staan er nu op de site
 async function vindVideo(env: Env, req: Request, id: string): Promise<any | null> {
   const lists: any[] = [];
@@ -195,30 +251,30 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   if (hit) return json({ ...hit, cached: true });
   const v = await vindVideo(env, request, id);
   if (!v) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 404);
-  // slot vóór budget en media: eerst synchroon in het geheugen (geen await tussen check en set), dan in KV
-  if (bezigNu.has(id)) return json({ ok: false, code: "bezig", fout: MSG.bezig }, 409);
-  bezigNu.add(id);
-  const slot = `vs-bezig:${id}`;
-  let eigen = false;
+  // slot vóór budget en media
+  const poort = env.BUDGET_DO ? doPoort(env.BUDGET_DO) : kvPoort(env);
+  const nietBeschikbaar = () => json({ ok: false, code: "fout", fout: MSG.fout }, 503); // niet cachen: tijdelijk
+  let tok: string | null;
+  try { tok = await poort.claim(id); } catch { return nietBeschikbaar(); }
+  if (!tok) return json({ ok: false, code: "bezig", fout: MSG.bezig }, 409);
   try {
-    if (await env.NIEUWS.get(slot).catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; })) return json({ ok: false, code: "bezig", fout: MSG.bezig }, 409);
-    eigen = true;
-    await env.NIEUWS.put(slot, "1", { expirationTtl: 60 }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
-    return await maak(env, v, id, key, pre);
+    return await maak(env, poort, v, id, key, pre);
+  } catch (e) {
+    if (e instanceof PoortFout) return nietBeschikbaar();
+    throw e;
   } finally {
-    bezigNu.delete(id);
-    if (eigen) await env.NIEUWS.delete(slot).catch(() => {}); // klaar (of geweigerd): slot niet 60 s laten hangen
+    await poort.geefVrij(id, tok).catch(() => {});
   }
 };
 
-async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Promise<Response> {
+async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre: boolean): Promise<Response> {
   // ---- budget (gedeeld met de uur-Worker)
   const BUDGET = +(env.BUDGET || BUDGET_DEF);
   const A = ams();
-  const vKey = `vid-neurons:${A.iso}`;
   const st: any = await env.NIEUWS.get("state", "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   const nieuws = st && st.datum === A.iso ? +st.neurons || 0 : 0;
-  const video = +(await env.NIEUWS.get(vKey).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
+  const video = await poort.stand(A.iso);
+  const verreken = (delta: number) => poort.verreken(A.iso, delta);
   const used = nieuws + video;
   const reserve = Math.max(0, 23 - A.h) * PER_RUN; // het uurnieuws van de rest van de dag gaat voor
   const ruimte = BUDGET - used - reserve;
@@ -229,7 +285,6 @@ async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Pr
   const model = !zuinig ? env.MODEL || MAIN : env.SMALL_MODEL || SMALL;
   const maxSec = pre ? (zuinig ? 45 : 120) : zuinig ? 120 : MAX_SEC;
   const maxMp4 = pre ? (zuinig ? 4e6 : 8e6) : MAX_MP4;
-  const ruimteNu = pre ? ruimte - PRE_MARGE : ruimte;
 
   const u: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0 };
   const why: string[] = []; // intern: alleen naar de client bij pre:true
@@ -252,14 +307,12 @@ async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Pr
       if (a && a.sec < 0) { await env.NIEUWS.put(key, JSON.stringify({ ok: false, code: "te-lang", fout: MSG.teLang }), { expirationTtl: 6 * 3600 }); return uit({ ok: false, code: "te-lang", fout: MSG.teLang }); }
       if (a && a.bytes.length) {
         const estMin = a.sec ? a.sec / 60 : Math.min(4, a.bytes.length / 1.2e6); // mp4: ruwe schatting
-        if (estMin * WHISPER_PER_MIN + 30 > ruimteNu) return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
-        // rem per uur + neuronen vooraf reserveren, zodat gelijktijdige verzoeken het budget al zien slinken
-        const uurKey = `vs-uur:${A.iso}T${A.h}`;
-        const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0;
-        if (nUur >= MAX_WHISPER_UUR) return json({ ok: false, code: pre ? "budget-pre" : "druk", fout: MSG.druk });
-        await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => {});
-        reserved = estMin * WHISPER_PER_MIN;
-        await addNeurons(env, vKey, reserved);
+        // rem per uur + neuronen vooraf reserveren (atomair), zodat gelijktijdige verzoeken het budget al zien slinken
+        const schat = estMin * WHISPER_PER_MIN;
+        const res = await poort.reserveer({ datum: A.iso, uur: `${A.iso}T${A.h}`, nieuws, budget: BUDGET, reserve, marge: (pre ? PRE_MARGE : 0) + 30, schatting: schat });
+        if (res === "budget") return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
+        if (res === "druk") return json({ ok: false, code: pre ? "budget-pre" : "druk", fout: MSG.druk });
+        reserved = schat;
         const r: any = await env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false });
         const dur = +r?.transcription_info?.duration || estMin * 60;
         u.neurons += (dur / 60) * WHISPER_PER_MIN; u.calls++;
@@ -274,11 +327,11 @@ async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Pr
       const out = blok ? { ok: false, code: "geblokkeerd", fout: MSG.yt } : { ok: false, code: "geen-tekst", fout: MSG.geenTekst };
       // geen spraak verandert niet: lang onthouden (geen dubbele Whisper-kosten); YouTube-blokkade sneller opnieuw
       await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: blok ? 3 * 3600 : bron === "spraak" ? 24 * 3600 : 6 * 3600 });
-      await addNeurons(env, vKey, u.neurons - reserved);
+      await verreken(u.neurons - reserved);
       return uit({ ...out, neuronen: Math.round(u.neurons * 10) / 10 });
     }
     const p = await punten(env.AI, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u);
-    await addNeurons(env, vKey, u.neurons - reserved);
+    await verreken(u.neurons - reserved);
     if (p.length < 2) {
       why.push("samenvatting leeg");
       const out = { ok: false, code: "fout", fout: MSG.fout };
@@ -289,7 +342,8 @@ async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Pr
     await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: 30 * 86400 });
     return json(out);
   } catch (e: any) { console.error("samenvatting: verwerking mislukt");
-    await addNeurons(env, vKey, Math.max(0, u.neurons - reserved)).catch(() => { console.error("samenvatting: KV schrijven mislukt"); }); // reservering blijft staan, alleen extra bijtellen
+    if (e instanceof PoortFout) return json({ ok: false, code: "fout", fout: MSG.fout }, 503); // niet cachen: tijdelijk
+    await verreken(Math.max(0, u.neurons - reserved)); // reservering blijft staan, alleen extra bijtellen
     const m = String(e?.message || e);
     if (/quota|neuron|exceed|429|limit/i.test(m)) return json({ ok: false, code: "budget", fout: MSG.budget });
     why.push(m.slice(0, 120));
