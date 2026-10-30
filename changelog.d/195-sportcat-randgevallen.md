@@ -1,0 +1,1 @@
+- Extra tests voor prioriteit en uitzonderingen bij sport- en auto-indeling (#195).
