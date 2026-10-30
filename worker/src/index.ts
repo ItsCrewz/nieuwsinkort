@@ -10,7 +10,7 @@ import { bewaakteRun } from "./run-status";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
-import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
+import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, selecteerFilmpjes, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
@@ -738,7 +738,7 @@ export class Runner extends DurableObject<Env> {
     dOut.splice(0, dOut.length, ...(dD.list as any[]));
     const dF = dedupVideos(fv.filter((v) => vanVandaag(v._pub, now)).map((v) => ({ ...v, _pub: publicatieTijd(v._pub, now)! })).sort((a, b) => (b._score || 0) - (a._score || 0)).map((v) => ({ ...v, soort: soortVan(v) })), dOut);
     const uniek = dF.list;
-    const fOut = [...uniek.filter((v) => v.soort === "short").slice(0, 18), ...uniek.filter((v) => v.soort === "journaal").slice(0, 14)]
+    const fOut = selecteerFilmpjes(uniek)
       .map(({ _score, _pub, ...v }: any) => { delete v._k; return { ...v, t: _pub, tijd: hhmm(_pub) }; });
 
     // ---- wegschrijven
