@@ -35,6 +35,17 @@ t("CSP staat alleen het exacte thema-script en de benodigde mediabronnen toe", (
   assert.ok(!headers.includes("/data.json"));
 });
 
+t("statische bestanden hebben passende cacheheaders", () => {
+  const headers = readFileSync("public/_headers", "utf8");
+  for (const pad of ["/fonts/*", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/icon-512.png"]) {
+    const regel = headers.split("\n").indexOf(pad);
+    assert.ok(regel >= 0, pad);
+    assert.equal(headers.split("\n")[regel + 1], "  Cache-Control: public, max-age=86400, stale-while-revalidate=604800", pad);
+  }
+  assert.match(headers, /\/assets\/\*
+  Cache-Control: public, max-age=31536000, immutable/);
+});
+
 const req = (pad: string) => new Request("https://voorbeeld.test" + pad);
 const assets = { fetch: async () => Response.json({ items: [], filmpjes: [], dumpert: [] }) };
 const kv = { get: async () => null, put: async () => {} } as any;

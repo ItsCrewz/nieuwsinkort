@@ -14,7 +14,7 @@ const dag = (iso?: string) => {
   return Number.isFinite(t) ? new Date(t).toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }) : "";
 };
 const norm = (l = "") => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
-const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, must-revalidate, stale-while-revalidate=300", "Access-Control-Allow-Origin": "*" };
+const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=240", "Access-Control-Allow-Origin": "*" };
 
 /** Velden die de site niet leest (alleen diagnose); weg uit de respons. */
 export function slim(d: any) {
