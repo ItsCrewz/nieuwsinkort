@@ -54,6 +54,7 @@ npm ci
 npm run dev      # Vite dev-server
 npm run check    # tests, build en typechecks voor Worker en Functions
 npm test         # tests
+npm run coverage # tests met Vitest en regeldekking per kritieke groep
 npm run typecheck:tests  # typecheck van tests/ (los van build; vereist @types/node)
 npm run build    # bronnen.json + tsc + vite build -> dist/
 ```
@@ -95,6 +96,8 @@ Elke PR voegt een fragment `changelog.d/<issue>-<slug>.md` toe (onderdeel van "k
 ## Beveiligingsheaders
 
 Statische bestanden krijgen via `public/_headers` een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, altijd hervalideren); `/assets/*` is immutable, `/bronnen.json` en de iconen hebben in `_headers` een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
+
+De CSP staat het Cloudflare Web Analytics-script van `static.cloudflareinsights.com` toe, zodat de door Cloudflare ingevoegde beacon kan werken. `cloudflareinsights.com` staat expliciet bij `connect-src`; HTTPS-verbindingen waren daar al toegestaan. Deze aanpassing vereist beoordeling door Joey.
 
 ### KV-schrijflimiet uur-Worker
 
