@@ -123,3 +123,5 @@ Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay;
 Nieuwsberichten krijgen een samenvatting van 2–3 korte zinnen en hooguit twee aanvullende punten. De Worker hergebruikt samenvattingen via bronlinks en via een rubriekgebonden titelwoordenset, maximaal 24 uur; dit beperkt AI-uitvoer en nieuwe aanvragen.
 
 Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Dit is nog niet op een echte iPhone geverifieerd.
+
+Bij het afdrukken van een bericht verdwijnen navigatie, bediening en media. De tekst is zwart op wit en bij bronlinks staat de URL.
