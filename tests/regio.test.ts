@@ -1,10 +1,21 @@
 // Draai: npm run test  (rubriekindeling Nederland / Buitenland, src/regio.ts)
 import assert from "node:assert/strict";
 import { bronSignaal, herindeel, isBuitenland } from "../src/regio";
+import { detailInhoud, heeftLeesVerder } from "../src/leesverder";
+import type { Item } from "../src/types";
 
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
 const b = (href: string, buitenFeed?: boolean) => ({ href, buitenFeed });
+
+t("Lees verder werkt gelijk voor Nederland en Buitenland en toont de fallback", () => {
+  const item: Item = { cat: "nl", kop: "Nieuws", ai: "Kort nieuws", samenvatting: "Volledige samenvatting", punten: ["Eén", "Twee", "Drie", "Vier"], tijd: "12:00", bronnen: [{ site: "Bron", href: "https://voorbeeld.nl/artikel" }] };
+  assert.equal(heeftLeesVerder(item), true);
+  assert.equal(heeftLeesVerder({ ...item, cat: "buitenland" }), true);
+  assert.deepEqual(detailInhoud(item), { paragraphs: ["Volledige samenvatting"], punten: item.punten, bronnen: item.bronnen });
+  assert.equal(heeftLeesVerder({ ...item, ai: "", samenvatting: "", punten: [] }), false);
+  assert.equal(heeftLeesVerder({ ...item, ai: "", samenvatting: "", punten: [], meer: "sleutel" }), true);
+});
 
 t("NOS-link zonder sectie met buitenFeed is buitenland", () => {
   assert.equal(isBuitenland({ kop: "Storm in Florida", ai: "", bronnen: [b("https://nos.nl/l/2500001", true)] }), true);

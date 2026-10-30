@@ -11,6 +11,7 @@ import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
+import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { neemVroegeData } from "./vroeg";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
@@ -580,16 +581,6 @@ function fitCard(el: HTMLElement) {
   el.classList.add("fit-scroll");
 }
 
-// "Lees verder" alleen tonen als er echt meer te lezen is dan op de kaart staat: extra tekst van de uur-Worker
-// (uitleg/artikel), of een samenvatting die flink langer is dan de korte zin op de kaart.
-const kaal = (s = "") => s.replace(/\s+/g, " ").trim().toLowerCase();
-function heeftMeer(item: Item): boolean {
-  if (item.meer) return true;
-  const a = kaal(item.ai), s = kaal(item.samenvatting);
-  const extra = !s ? 0 : !a ? s.length - 160 : s.includes(a) || a.includes(s) ? s.length - a.length : s.length;
-  return extra >= 220 || (item.punten?.length || 0) > 3;
-}
-
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
 // De <section> blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
@@ -644,7 +635,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   const first = bronnen[0];
   const sum = item.ai || item.samenvatting;
   const punten = (item.punten ?? []).slice(0, 3);
-  const meer = heeftMeer(item);
+  const meer = heeftLeesVerder(item);
   return (
     <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
       <div className="nc-body">
@@ -956,9 +947,7 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
       document.title = "Nieuws in het kort";
     };
   }, [item]);
-  const paragraphs = (item.samenvatting || "").split(/\n\s*\n/).filter((p) => p.trim());
-  const punten = item.punten ?? [];
-  const bronnen = item.bronnen ?? [];
+  const { paragraphs, punten, bronnen } = detailInhoud(item);
   return (
     <article className={`detail cat-${item.cat}`}>
       <button type="button" className="back" onClick={onBack}>
