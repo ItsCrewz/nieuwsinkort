@@ -1,0 +1,1 @@
+- Unit-tests toegevoegd voor clusterhash, runstatus, vooraf laden en artikeltekst (#108).
