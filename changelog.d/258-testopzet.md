@@ -1,0 +1,1 @@
+- Documenteer de testopzet, randgevallen en handmatige controles (#258).
