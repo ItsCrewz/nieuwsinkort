@@ -3,7 +3,12 @@ import AxeBuilder from "@axe-core/playwright";
 
 // Aantallen overtredingen, niet het aantal getroffen elementen.
 const baseline = { home: 4, tech: 3, filmpjes: 4, dumpert: 4, artikel: 1 };
-const consoleAllowlist = [];
+// De proef blokkeert zelf externe verzoeken; dev-waarschuwing fetchPriority; Firefox-CORS alleen voor video.twimg.com.
+const consoleAllowlist = [
+  /Failed to load resource: net::ERR_BLOCKED_BY_CLIENT/,
+  /React does not recognize the `(%s|fetchPriority)` prop/,
+  /Cross-Origin Request Blocked.*https:\/\/video\.twimg\.com\//,
+];
 
 for (const [naam, pad, inhoud] of [
   ["home", "#/", ".nc-title a"],
