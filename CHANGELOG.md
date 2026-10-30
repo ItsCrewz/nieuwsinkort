@@ -1,6 +1,6 @@
 # Changelog
 
-- Voeg bronnen en indeling voor Voetbal, Formule 1 en Auto toe, met een vaste plek in de AI-ronde (#58); de frontend volgt in #59.
+- Voeg bronnen en indeling voor Voetbal, Formule 1 en Auto toe, met een vaste plek in de AI-ronde: maximaal één per sportrubriek, hooguit drie per run, binnen CAP (#58); de frontend volgt in #59.
 - Video's met dezelfde lange caption worden binnen drie uur ook over verschillende platforms ontdubbeld (#46); de beste kopie behoudt de andere bron in `ook`.
 
 ## 2026-10-30

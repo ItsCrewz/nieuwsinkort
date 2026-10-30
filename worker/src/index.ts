@@ -27,8 +27,15 @@ import { herindeelSport, sportCat } from "./sportcat";
 export { Budget };
 
 export function kiesVoorAI<T>(byCat: Record<string, T[]>, tier: number, capN: number): T[] {
-  const ronde = tier >= 3 ? ["nl", "nl", "haarlem"] : ["nl", "nl", "tech", "haarlem", "showbizz", "voetbal", "f1", "auto"];
+  const ronde = tier >= 3 ? ["nl", "nl", "haarlem"] : ["nl", "nl", "tech", "haarlem", "showbizz"];
   const pick: T[] = [];
+  if (tier < 3) {
+    for (const c of ["f1", "voetbal", "auto"]) {
+      if (pick.length >= capN) break;
+      const x = byCat[c]?.shift();
+      if (x !== undefined) pick.push(x);
+    }
+  }
   while (pick.length < capN && ronde.some((c) => byCat[c]?.length)) {
     for (const c of ronde) {
       if (pick.length >= capN) break;
