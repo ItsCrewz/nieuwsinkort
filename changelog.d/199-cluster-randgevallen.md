@@ -1,0 +1,1 @@
+- Extra randgevallen voor het clusteren van feedberichten (acroniemen, jaartallen/postcodes, `ALGEMEEN`, samenvoegen, vergelijking per lid) in `tests/cluster-randgevallen.test.ts` (#199).
