@@ -80,6 +80,16 @@ t("BUITEN_WOORD: nieuwe eigennamen, hoofdlettergevoelig, ë-eindes", () => {
     assert.equal(isBuitenland({ kop, bronnen: [b("https://x.nl/nieuws/1")] }), false, kop);
   }
 });
+t("buitenlandse economie zonder landnaam en Nederlandse uitzonderingen", () => {
+  for (const kop of ["Binance krijgt boete voor cryptohandel", "Wall Street sluit met winst", "Aziatische beurzen dalen"]) {
+    assert.equal(herindeel({ cat: "nl", kop }).cat, "buitenland", kop);
+  }
+  assert.equal(isBuitenland({ kop: "Nederland onderzoekt cryptohandel bij Binance" }), false);
+  assert.equal(isBuitenland({ kop: "Binance sponsort film" }), false);
+  assert.equal(isBuitenland({ kop: "Binance krijgt boete", bronnen: [b("https://x.nl/binnenland/1")] }), false);
+  assert.equal(herindeel({ cat: "tech", kop: "Elon Musk maakt AI-film" }).cat, "tech");
+  assert.equal(herindeel({ cat: "showbizz", kop: "Elon Musk maakt AI-film" }).cat, "showbizz");
+});
 t("herindeel raakt alleen nl aan", () => {
   for (const cat of ["tech", "haarlem", "politiek", "showbizz"]) {
     const it = { cat, kop: "Trump en Poetin", ai: "", bronnen: [b("https://x.nl/buitenland/1", true)] };
