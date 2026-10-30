@@ -26,7 +26,7 @@ Worker: `cd worker && npm ci`; typecheck zie `worker/tsconfig.json`. Lokaal draa
 ## Waar staat wat
 
 - `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `sources.ts`, `types.ts`.
-- `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
+- `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts`, `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
 - `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`).
