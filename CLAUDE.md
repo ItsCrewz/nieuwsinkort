@@ -64,9 +64,9 @@ Pure module `worker/src/cluster.ts` (`toks`, `sim`, `gelijk`, `cluster`) cluster
 
 ## Vooraf laden (Filmpjes/Dumpert)
 
-Vooraf laden (issue #34): `src/voorladen.ts` (pure keuzelogica + runner), `src/netwerk.ts` (budget `geen`/`zuinig`/`normaal` uit `navigator.connection`) en `src/usevoorladen.ts` (hook in `App.tsx`). Alleen na `load` + idle, alleen als het tabblad zichtbaar is en je niet al op een video-route zit; alles `priority: low`, hooguit 3 requests tegelijk, één keer per sessie (opnieuw alleen bij nieuwe `gegenereerd`). Geen AI, geen `/samenvatting`, geen `/meer`. Wijzig `feed.tsx`-`warmHls` en dit samen als de HLS-logica verandert (de code is bewust gedupliceerd).
+Vooraf laden (issue #34): `src/voorladen.ts` (pure keuzelogica + runner), `src/usevoorladen.ts` (hook in `App.tsx`). Alleen na `load` + idle, alleen als het tabblad zichtbaar is en je niet al op een video-route zit; alles `priority: low`, hooguit 3 requests tegelijk, één keer per sessie (opnieuw alleen bij nieuwe `gegenereerd`). Geen AI, geen `/samenvatting`, geen `/meer`. Wijzig `feed.tsx`-`warmHls` en dit samen als de HLS-logica verandert (de code is bewust gedupliceerd).
 
-Niveaus: `normaal` = 6 thumbnails per tab, hls.js-chunk (niet op Safari), 2 Dumpert-streams (master, laagste variant, 2 segmenten) en de eerste ~256 KB van de eerste mp4; `zuinig` (cellular of 3g) = 3 thumbnails per tab, hls.js-chunk en preconnect; `geen` (Save-Data, 2g) = niets. Past binnen de CSP (`img-src https:`, `connect-src https:`).
+Op alle verbindingen, ook mobiele data en Save-Data: 6 thumbnails per tab, hls.js-chunk (niet op Safari), 2 HLS-streams via de proxy (master, laagste variant, 2 segmenten) en de eerste ~256 KB van de eerste mp4. Past binnen de CSP (`img-src https:`, `connect-src https:`).
 
 ## Rubriek Buitenland
 

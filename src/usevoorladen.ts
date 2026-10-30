@@ -1,7 +1,6 @@
 // Haakt voorladen.ts aan de app: één keer per sessie, opnieuw alleen als data.gegenereerd verandert.
 import { useEffect, useRef } from "react";
 import type { Video } from "./types";
-import { netwerkBudget } from "./netwerk";
 import { naIdle, planVoorladen, voerUit } from "./voorladen";
 import { playerFor, soortVan, startSoort, viaProxy } from "./video";
 
@@ -21,7 +20,7 @@ export function useVoorladen(vids: Lijsten, gegenereerd: string | undefined, opV
       // zoals de UI het toont: Filmpjes opent in de startsoort, met de actieve filters
       const s = startSoort(l.filmpjes);
       const apple = /Apple/.test(navigator.vendor || "") || /iP(hone|ad|od)/.test(navigator.userAgent);
-      voerUit(planVoorladen(l.filmpjes.filter((v) => soortVan(v) === s), l.dumpert, netwerkBudget(), apple, { playerFor, viaProxy }));
+      voerUit(planVoorladen(l.filmpjes.filter((v) => soortVan(v) === s), l.dumpert, apple, { playerFor, viaProxy }));
     });
   }, [klaar, gegenereerd]);
 }
