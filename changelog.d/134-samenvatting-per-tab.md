@@ -1,0 +1,1 @@
+- Nieuwstabs krijgen een korte samenvatting met zuinige cache en extractieve terugval; Home behoudt de bestaande briefing (#134).

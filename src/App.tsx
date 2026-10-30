@@ -16,6 +16,7 @@ import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
 import { CATS, CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
+import { TabBriefing } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
@@ -1427,8 +1428,8 @@ export default function App() {
               <div className="wrap nc-head-in">
                 {dateline}
                 <Front>
-                  <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
-                  {view === "alles" && <WeatherBox W={raw.weer} bionic={bionic} />}
+                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
+                  {alles && <WeatherBox W={raw.weer} bionic={bionic} />}
                 </Front>
               </div>
             }

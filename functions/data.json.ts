@@ -55,6 +55,7 @@ export function merge(S: any, H: any) {
     ...base,
     datum: H.datum || base.datum,
     dag_samenvatting: (hNieuwer && H.dag_samenvatting) || base.dag_samenvatting || H.dag_samenvatting || "",
+    tab_samenvatting: H.tab_samenvatting,
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
     items: [...nieuw, ...(base.items || [])].map(metMeer),
     filmpjes: sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || [],
