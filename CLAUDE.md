@@ -53,3 +53,7 @@ Worker: `cd worker && npm ci`; typecheck zie `worker/tsconfig.json`. Lokaal draa
 - ≥ 100%: geen AI, feedtekst met `ruw: true`
 
 Video-samenvattingen vooraf stoppen vanaf 85%; AI-uitleg voor "Lees verder" alleen onder 65%. Elke nieuwe AI-aanroep moet hierin passen: tel neuronen mee (zie `worker/src/ai.ts`), cache het resultaat in KV zodat iets maar één keer gemaakt wordt, en test niet in een lus tegen echte AI.
+
+## Beveiligingsheaders
+
+Bij wijzigingen aan het inline thema-script in `index.html`: werk de SHA-256-hash in `public/_headers` bij (inclusief witruimte). De tests bewaken deze koppeling. Pages Functions vallen buiten `_headers` en moeten zelf `nosniff` blijven zetten. Zie [architectuur](docs/architectuur.md#beveiligingsheaders).

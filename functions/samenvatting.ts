@@ -34,7 +34,7 @@ const MAX_SEC = 180; // hooguit de eerste 3 minuten geluid
 const MAX_MP4 = 12e6; // mp4 zonder knippen: alleen korte filmpjes
 const PER_RUN = 260;
 const PRE_MAX = 0.85, PRE_MARGE = 600; // vooraf maken: niet boven 85% van het budget, en 600 neuronen marge // reserve per nog komend uur-nieuws (gemiddelde run ±210–480)
-const HDR = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
+const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (o: any, s = 200) => new Response(JSON.stringify(o), { status: s, headers: HDR });
 
 const MSG = {

@@ -21,3 +21,7 @@ Regels voor Codex en andere agents in deze repo (nieuwsinkort, Nederlandstalige 
 - De fallback zonder AI gebruikt `src/bronlink.ts` voor een defensieve Nederlandse-broncheck; relatieve en ongeldige feedlinks mogen de uurrun niet laten crashen.
 - Alle teksten (UI, docs, commits, commentaar) zijn Nederlands.
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`).
+
+## Beveiligingsheaders
+
+Houd de CSP-hash in `public/_headers` gelijk aan de exacte inhoud van het inline thema-script in `index.html`. Pages Functions zetten zelf `X-Content-Type-Options: nosniff` (ook bij foutantwoorden); `_headers` geldt alleen voor statische bestanden. Laat `prod-frozen/_headers` ongemoeid zolang die build niet gebruikt wordt.

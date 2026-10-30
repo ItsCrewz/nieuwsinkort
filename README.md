@@ -60,3 +60,7 @@ Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled --var R
 - [docs/architectuur.md](docs/architectuur.md): architectuur, dataflow, bronnen, budget, open punten
 - [CLAUDE.md](CLAUDE.md): werkinstructies voor Claude Code
 - [AGENTS.md](AGENTS.md): regels voor Codex en andere agents
+
+## Beveiligingsheaders
+
+Statische bestanden krijgen via `public/_headers` een CSP, frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
