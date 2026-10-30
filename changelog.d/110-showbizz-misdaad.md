@@ -1,0 +1,1 @@
+- Misdaad- en justitieberichten (zoals 'Bolle Jos') vallen niet meer onder Showbizz (#110).

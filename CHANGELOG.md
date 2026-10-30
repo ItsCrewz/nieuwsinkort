@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Diagnose (#158): mislukte Groq- en Mistral-calls loggen zo mogelijk veilige foutcodes en -typen, zonder berichttekst of sleutels.
+- Geef Groq gpt-oss bij JSON-verzoeken meer uitvoerruimte en een lage redeneerinspanning (#160).
 - Documentatie bijgewerkt voor de sportrubrieken, AI-aanbieders, budgettrappen en extractieve terugval na de merges van 30 oktober.
 - Showbizz (#103): RTL Boulevard-site, Telegraaf Entertainment, NU.nl Achterklap/Muziek/Film, NOS Cultuur & media en Linda.nl (max 5) als feeds; RTL Boulevard en Shownieuws in `YT_NIEUWS`. Showbizzverhalen uit algemene feeds verhuizen via `worker/src/showcat.ts` naar Showbizz; social-feeds worden per feed-URL als niet-nieuws overgeslagen, zodat de RTL Boulevard-site wel telt.
 - F1-berichten uit autobronnen komen niet meer onder Auto (#93): `sportCat` kijkt nu ook naar items met cat `auto` en herkent meer F1-termen (coureurs, GP, pole position).

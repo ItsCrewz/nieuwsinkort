@@ -11,6 +11,27 @@ globalThis.fetch = (async (_url: any, init: any) => {
   if (model.endsWith("120b")) return new Response("", { status: 429 });
   return Response.json({ choices: [{ message: { content: "antwoord" } }], usage: { prompt_tokens: 10, completion_tokens: 5 } });
 }) as typeof fetch;
+// Controleer de aanvraag per model en verzoektype zonder externe aanroepen.
+const bodies: any[] = [];
+globalThis.fetch = (async (_url: any, init: any) => {
+  bodies.push(JSON.parse(init.body));
+  return Response.json({ choices: [{ message: { content: "{}" } }] });
+}) as typeof fetch;
+for (const model of ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]) {
+  for (const json of [true, false]) await groq("test-sleutel")!.call(model, { sys: "s", user: "u", maxTokens: 100, json });
+}
+for (const [i, body] of bodies.entries()) {
+  const aangepast = i < 4 && i % 2 === 0;
+  assert.equal(body.reasoning_effort, aangepast ? "low" : undefined);
+  assert.equal(body.max_completion_tokens, aangepast ? 200 : undefined);
+  assert.equal(body.max_tokens, aangepast ? undefined : 100);
+  assert.deepEqual(body.response_format, i % 2 === 0 ? { type: "json_object" } : undefined);
+}
+globalThis.fetch = (async (_url: any, init: any) => {
+  const model = JSON.parse(init.body).model; modellen.push(model);
+  if (model.endsWith("120b")) return new Response("", { status: 429 });
+  return Response.json({ choices: [{ message: { content: "antwoord" } }], usage: { prompt_tokens: 10, completion_tokens: 5 } });
+}) as typeof fetch;
 const QUOTA = "4006: you have used up your daily free allocation of 10,000 neurons";
 const ai = { run: async () => { throw new Error(QUOTA); } } as unknown as Ai;
 const u = usage();

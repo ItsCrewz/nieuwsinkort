@@ -1,0 +1,1 @@
+- `tests/worker.test.ts` opgesplitst per onderwerp: `videos`, `worker-run`, `budget-do`, `samenvatting-do`, `weer`, `worker-ai` en `showbizz-run` (`.test.ts`), met de gedeelde Budget-DO-hulp in `tests/budget-do.ts`; alleen verplaatst, geen tests gewijzigd (#152).

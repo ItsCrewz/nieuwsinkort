@@ -100,6 +100,19 @@ export { parseRedditVideos } from "./reddit";
 // ---------------------------------------------------------------- Shorts vs. Journaals
 /** "journaal" = uitzending/reportage (liggend, langer); "short" = kort clipje (YouTube Shorts, Reels, Reddit, X). */
 export type Soort = "short" | "journaal";
+// De invoer is al ontdubbeld en op score gesorteerd.
+export function selecteerFilmpjes<T extends { bron?: string; soort?: string }>(videos: T[]): T[] {
+  const gereserveerd = new Set<T>();
+  for (const bron of ["Reddit", "X", "Instagram"]) {
+    for (const video of videos.filter((v) => v.bron === bron).slice(0, 2)) gereserveerd.add(video);
+  }
+  return ([["short", 18], ["journaal", 14]] as const).flatMap(([soort, max]) => {
+    const kandidaten = videos.filter((v) => v.soort === soort);
+    const vast = kandidaten.filter((v) => gereserveerd.has(v));
+    const gekozen = new Set([...vast, ...kandidaten.filter((v) => !gereserveerd.has(v)).slice(0, max - vast.length)]);
+    return kandidaten.filter((v) => gekozen.has(v));
+  });
+}
 const JOURNAAL_RE = /journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur/i;
 export function soortVan(v: { titel?: string; href?: string; embed?: string; bron?: string; soort?: string }): Soort {
   if (v.soort === "short" || v.soort === "journaal") return v.soort;
