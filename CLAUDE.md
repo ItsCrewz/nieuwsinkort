@@ -30,7 +30,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 ## Waar staat wat
 
 - `src/vandaag.ts`: gedeeld dagfilter en publicatietijden voor Worker en Pages.
-- `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `buffer.ts` (pure bufferregels per netwerkniveau, nog niet in `feed.tsx` gekoppeld; getest in `tests/buffer.test.ts`), `sources.ts`, `types.ts`.
+- `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `buffer.ts` (bufferregels per netwerkniveau voor de videofeed; getest in `tests/buffer.test.ts`), `sources.ts`, `types.ts`.
 - `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
@@ -78,7 +78,7 @@ Gebruik `worker/src/url.ts` voor og/artikel-fetches en controleer feedlinks vó�
 
 ## Videofeed vooruit bufferen
 
-`src/buffer.ts` (pure logica, #36) beschrijft per afstand tot de actieve slide en netwerkniveau hoeveel er vooruit mag laden: volgende 12 s / 4 MB (3g: 6 s / 2 MB), Save-Data/2g = "minimaal" (alleen playlist), +2/+3 alleen playlist (+2 ook 2 segmenten), vanaf +4 niets. `feed.tsx` gebruikt dit nog niet: daar bepalen de pool (#50, `src/videopool.ts`) en direct starten (#51, `voorbuffer`) wat er laadt. Koppel `buffer.ts` alleen aan zonder de pool te breken (3 vaste `<video>`'s, max 2 native-HLS op iOS).
+`src/buffer.ts` bepaalt de HLS-buffergrenzen voor de actieve en volgende speler. De vaste pool bewaart drie video-elementen en maximaal twee bronnen; verder vooruit worden geen spelers gebufferd.
 
 ## Neuronbudget (AI-wijzigingen)
 
@@ -120,7 +120,7 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 
 Videopool (#50): `Feed` heeft 3 vaste `<video>`'s (slot = index % 3, `src/videopool.ts`); wissel alleen de bron, maak of verwijder nooit een `<video>` tijdens swipen. Niet op een echte iPhone geverifieerd.
 
-Direct starten (#51): de volgende speler staat vooraf in de slide; toetsen, swipe en beeldwissel starten hem direct. De poster blijft zichtbaar tot er beelddata is. HLS buffert op het laagste startniveau circa 4 s op wifi en 2 s bij een herkende mobiele verbinding; native HLS en mp4 gebruiken preload=auto. Save-Data en 2G laden alleen de actieve video. Bij 500 kbit/s is één ongezien volgend filmpje circa 0,25 MB op wifi en 0,125 MB mobiel; de richtgrenzen zijn 1,55 MB en 0,36 MB per bezoek. Dit is geen harde limiet: native browsers bepalen zelf hoeveel zij ophalen, HLS haalt hele segmenten op en het aantal ongeziene filmpjes varieert. De werkelijke datakosten kunnen dus hoger uitvallen; de verbinding is niet in alle browsers herkenbaar. Niet op een echte iPhone geverifieerd.
+Direct starten (#51): de volgende speler staat vooraf in de slide en start direct bij swipen. De poster blijft zichtbaar tot er beelddata is. De vaste pool houdt maximaal twee bronnen actief, ook bij mobiele data en Save-Data. `src/buffer.ts` begrenst de volgende hls.js-speler op 12 s / 4 MB (ruim), 6 s / 2 MB (mobiel of 3g) of 2 s / 1 MB (Save-Data of 2g); de actieve speler krijgt 30 s / 60 MB. Hele HLS-segmenten kunnen de grenzen overschrijden. Native HLS en mp4 gebruiken preload=auto en volgen deze limieten niet. Niet op een echte iPhone geverifieerd.
 
 Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
 
