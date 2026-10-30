@@ -16,6 +16,7 @@ Werkinstructies voor Claude Code in deze repo (nieuwsinkort). Overzicht: [README
 
 ```bash
 npm ci
+npm run check      # tests, build en typechecks voor Worker en Functions
 npm run dev        # Vite 8 (devDependencies: vite, wrangler 4, esbuild expliciet; Node >= 20.19)
 npm run build      # build-bronnen.mjs + tsc --noEmit + vite build
 npm test           # esbuild-bundels van regressietests, draaien met node

@@ -50,6 +50,7 @@ Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de 
 ```bash
 npm ci
 npm run dev      # Vite dev-server
+npm run check    # tests, build en typechecks voor Worker en Functions
 npm test         # tests
 npm run build    # bronnen.json + tsc + vite build -> dist/
 ```
