@@ -1,0 +1,1 @@
+- Geef Groq gpt-oss bij JSON-verzoeken meer uitvoerruimte en een lage redeneerinspanning (#160).
