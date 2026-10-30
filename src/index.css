@@ -651,3 +651,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .d-meer-laden span:nth-child(2){width:92%}.d-meer-laden span:nth-child(3){width:70%}
 @keyframes mlaad{to{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.d-meer-laden span{animation:none}}
+
+.ai-vermelding{margin:6px 0 0;font-size:12px;line-height:1.4;color:var(--ink-2)}
+.sv-sheet .ai-vermelding{color:#3d3d3d}
+:root[data-theme="dark"] .sv-sheet .ai-vermelding{color:#c2c2c2}
