@@ -64,7 +64,7 @@ Video-samenvattingen vooraf stoppen vanaf 85%; AI-uitleg voor "Lees verder" alle
 
 Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, behalve waar de code een browser-UA nodig heeft (bijv. artikelpagina's, AD) of een feedlezer-UA (Reddit).
 
-- **RSS**: lijst in `public/bronnen.json` (gebouwd uit `/workspace/nieuws/feeds.json`, zie `scripts/build-bronnen.mjs`).
+- **RSS**: lijst in `public/bronnen.json` (gebouwd uit `scripts/pipeline/feeds.json`, zie `scripts/build-bronnen.mjs`).
 - **Hacker News**: `hnrss.org/best` (news.ycombinator.com/rss geeft 419 aan Cloudflare).
 - **X**: fxtwitter-API, terugval syndication. Tekstposts en video's van politieke accounts en Politie Haarlem.
 - **YouTube**: kanaal-RSS (NOS, RTL, NU.nl e.a.) en ondertiteling. Geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
@@ -99,7 +99,7 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 - "Lees verder" (`/meer`, `worker/src/artikel.ts`): artikeltekst ophalen wordt door sommige sites geweigerd; het werk hieraan is gestopt, de status is onbepaald.
 - Redlib-instances blokkeren Cloudflare; Reddit valt daardoor soms terug op een oude kopie.
 - YouTube geeft vaak LOGIN_REQUIRED vanaf Cloudflare.
-- De bronnenlijst hangt af van `/workspace/nieuws/feeds.json` buiten de repo (staat op de gedeelde box in `/workspace/nieuws`; een kopie komt in `scripts/pipeline/` via PR #1).
+- De bronnenlijst wordt standaard uit de gereviewde invoer in `scripts/pipeline/` gebouwd.
 - `scripts/pipeline/` (PR #1) nog niet op `main`.
 
 ### KV-schrijflimiet uur-Worker
@@ -107,3 +107,12 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de door Fetcher gemelde Instagram-cachepogingen en de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
 
 `uur` wordt eerst apart geschreven. KV-eindschrijffouten worden gelogd via `console.error`; ook bij fouten op `state` of `meer` wordt het video-alarm gezet. Een mislukte `vooraf-log`-schrijfactie houdt het volgende alarm evenmin tegen. Bij een fout op `uur` blijft de eerder opgeslagen versie staan.
+
+Deploy-integriteit: `deploy.sh` weigert een vuile werkboom en een na de build van HEAD
+ afwijkende `public/bronnen.json`, tenzij bewust `ALLOW_DIRTY=1` is ingesteld.
+Dit vervangt nooit de vereiste deploygoedkeuring. Pages krijgt de commit-hash mee.
+`npm run build` schrijft `dist/version.json` met `commit`, `datum` en `bronnenSha256`;
+ook bij `SKIP_BUILD=1` vernieuwt het deployscript deze metadata.
+De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py` uit
+ dezelfde map; een externe `FEEDS_JSON` geeft een waarschuwing. Een ongewijzigde
+ lijst behoudt haar generatiedatum. Gewijzigde bronnen eerst beoordelen en committen.

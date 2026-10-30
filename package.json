@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "bronnen": "node scripts/build-bronnen.mjs",
-    "build": "node scripts/build-bronnen.mjs && tsc --noEmit && vite build",
+    "build": "node scripts/build-bronnen.mjs && tsc --noEmit && vite build && node scripts/build-version.mjs",
     "preview": "vite preview --port 4173",
     "export": "node export_from_canvas.mjs",
     "deploy": "bash deploy.sh",
