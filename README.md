@@ -6,6 +6,8 @@ Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq voor tran
 
 - Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Het domein nieuwsinkort.nl is nog niet gekoppeld.
 
+De metadata in `index.html` beschrijft de website en nieuwsorganisatie met JSON-LD; het logo verwijst naar `public/icon-512.png`.
+
 ## Stack
 
 Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects (`Runner`, `Fetcher`, `Budget`), KV en Workers AI. Tekst-AI valt bij fouten zo nodig terug op Groq en daarna Mistral; zie [AI-aanbieders en secrets](docs/ai-aanbieders.md).
