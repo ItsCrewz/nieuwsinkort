@@ -1006,7 +1006,7 @@ function useData() {
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`/data.json?t=${Math.floor(Date.now() / 60000)}`, { cache: "no-cache" });
+      const r = await fetch("/data.json", { cache: "no-cache" }); // altijd hervalideren: ETag geeft een 304 als er niets nieuws is
       if (!r.ok) throw new Error(String(r.status));
       const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];

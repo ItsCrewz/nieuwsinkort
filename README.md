@@ -69,7 +69,7 @@ Artikel- en og-fetches en de Jina-terugval accepteren alleen HTTP(S)-links op po
 
 ## Beveiligingsheaders
 
-Statische bestanden krijgen via `public/_headers` een CSP, frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
+Statische bestanden krijgen via `public/_headers` een CSP, frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, altijd hervalideren); `/assets/*` is immutable, `/bronnen.json` en de iconen hebben in `_headers` een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
 
 ### KV-schrijflimiet uur-Worker
 

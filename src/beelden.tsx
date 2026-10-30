@@ -142,6 +142,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, className = 
                 alt=""
                 draggable={false}
                 loading={k === 0 ? "eager" : "lazy"}
+                fetchPriority={eager && k === 0 ? "high" : undefined}
                 className={klaar.has(u) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"

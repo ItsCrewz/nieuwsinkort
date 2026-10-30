@@ -13,7 +13,20 @@ const dag = (iso?: string) => {
   return Number.isFinite(t) ? new Date(t).toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }) : "";
 };
 const norm = (l = "") => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
-const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300", "Access-Control-Allow-Origin": "*" };
+const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, must-revalidate, stale-while-revalidate=300", "Access-Control-Allow-Origin": "*" };
+
+/** Velden die de site niet leest (alleen diagnose); weg uit de respons. */
+export function slim(d: any) {
+  if (!d || typeof d !== "object") return d;
+  const { ontdubbeld, routine_gegenereerd, ...rest } = d;
+  return rest;
+}
+
+/** Zwakke ETag over de body: de 15-minuten-verversing krijgt dan een 304 zonder body zolang er niets nieuws is. */
+async function etag(body: string) {
+  const h = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(body));
+  return `W/"${[...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("")}"`;
+}
 
 export function merge(S: any, H: any) {
   const vandaag = dag();
@@ -69,5 +82,8 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
     const sv: any = await env.NIEUWS.get("sv-klaar", "json");
     if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
   } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
-  return new Response(JSON.stringify(out), { headers: HDR });
+  const body = JSON.stringify(slim(out));
+  const tag = await etag(body);
+  if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
+  return new Response(body, { headers: { ...HDR, ETag: tag } });
 };

@@ -46,6 +46,10 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - Nieuwe test: voeg een `t("...", () => {...})` toe in `tests/dedup.test.ts`.
 - Tijd: `src/tijd.ts` deelt de Amsterdamse middernachtberekening met de Worker (ook op DST-wisseldagen). Filters gebruiken `gegenereerd` als referentiedag met 20 minuten toekomstmarge; relatieve filters rekenen tegen nu. Regressietests staan in `tests/filters.test.ts`.
 
+## Caching
+
+`/data.json` hervalideert altijd: de client haalt hem op met `cache: "no-cache"` zonder `?t=`-cachebuster, `functions/data.json.ts` geeft een zwakke ETag en 304 bij `If-None-Match` en `Cache-Control: max-age=0, must-revalidate, stale-while-revalidate=300`. Geen lange `max-age` zetten: de uurdata moet direct vers zijn. `/assets/*` is immutable; `/bronnen.json` en iconen staan in `public/_headers`. `slim()` strip diagnosevelden uit de respons; voeg alleen velden toe als de client ze echt leest.
+
 ## Rubriek Buitenland
 
 Geen feedgroep: `src/regio.ts` (pure module, ook in de Worker) deelt cat `nl` achteraf in via `isBuitenland()`/`herindeel()`. Regels: per bron een signaal (`bronSignaal`: buitenlandfeed of heel padsegment `/buitenland/`, `/world/` = buiten (nooit substring van een slug); `/binnenland/`, `/regio/`, `/politiek/` = binnen; sport/entertainment = neutraal); een Nederlands anker (`NL_ANKER`) in kop of ai houdt het bij Nederland; meer buiten dan binnen = Buitenland; zonder signaal en zonder neutrale bron beslist `BUITEN_WOORD`. De Worker houdt in `index.ts` een set `buitenL` bij met links uit feeds waarvan de URL `buitenland` bevat, en herindeelt na het bouwen van de items (clusters en AI-selectie blijven `nl`). De frontend roept `herindeel` aan bij het laden (`App.tsx`); `src/sources.ts` telt Buitenland onder bronnengroep `nl`. Alleen cat `nl` wordt aangeraakt. Tests: `tests/regio.test.ts`.
