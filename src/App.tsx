@@ -18,7 +18,7 @@ import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
-import { parseHash, viewHash, type Route } from "./route";
+import { parseHash, viewHash, viewTitel, type Route } from "./route";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
@@ -920,9 +920,6 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
 function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
-    return () => {
-      document.title = "Nieuws in het kort";
-    };
   }, [item]);
   const { paragraphs, punten, bronnen } = detailInhoud(item);
   return (
@@ -1172,6 +1169,7 @@ export default function App() {
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
+  useLayoutEffect(() => { document.title = viewTitel(route.view); }, [route.view, route.selected]);
   const [bionic, setBionic] = useState(true);
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);

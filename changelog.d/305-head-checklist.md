@@ -1,0 +1,1 @@
+- Head opgeschoond met kortere beschrijving, manifest, titels per rubriek en compacte productie-HTML (#305).
