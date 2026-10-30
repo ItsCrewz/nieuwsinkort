@@ -1,0 +1,1 @@
+- Test: eigen `tests/vroeg.test.ts` voor `neemVroegeData()` (promise eenmalig, geen data, afgewezen promise) (#189).
