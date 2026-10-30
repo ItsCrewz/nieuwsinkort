@@ -77,6 +77,10 @@ Artikel- en og-fetches en de Jina-terugval accepteren alleen HTTP(S)-links op po
 - [CLAUDE.md](CLAUDE.md): werkinstructies voor Claude Code
 - [AGENTS.md](AGENTS.md): regels voor Codex en andere agents
 
+## Changelog
+
+Elke PR voegt een fragment `changelog.d/<issue>-<slug>.md` toe (onderdeel van "klaar"); `CHANGELOG.md` niet direct bewerken. De coördinator voegt de fragmenten vóór een release samen met `npm run changelog` (`-- --dry` toont een voorbeeld). Zie `changelog.d/README.md`.
+
 ## Laadprestaties
 
 `/data.json` wordt vanuit `index.html` al tijdens het parsen opgehaald, het lettertype Inter wordt zelf geserveerd (`public/fonts/`, OFL) en de feed mount kaartinhoud pas rond de huidige kaart. Details en meetresultaten: [architectuur](docs/architectuur.md#laadprestaties-35).

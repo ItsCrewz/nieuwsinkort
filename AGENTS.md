@@ -9,7 +9,8 @@ Regels voor Codex en andere agents in deze repo (nieuwsinkort, Nederlandstalige 
 3. **Werk op een branch + PR.** Nooit pushen naar `main`, niets mergen zonder Joey.
 4. **Draai `npm test` één keer aan het eind**, niet per stap.
 5. **Neuronbudget Workers AI respecteren**: `BUDGET`=9000/dag (gratis limiet 10.000), `CAP`=40 per run. Tiers: <70% hoofdmodel, 70–90% klein model (max 15), 90–100% alleen NL/Haarlem (max 8), daarna geen AI (`ruw: true`). Cache AI-uitkomsten in KV, geen AI-aanroepen in lussen of tests.
-6. Wijzig crons, bindings en vars (`wrangler.toml`, `worker/wrangler.toml`) en `DEPLOY_BRANCH` alleen als de taak dat vraagt.
+6. **Changelog als fragment**: schrijf `changelog.d/<issue>-<slug>.md` en bewerk `CHANGELOG.md` niet zelf; de coördinator voegt samen met `npm run changelog` (zie `changelog.d/README.md`).
+7. Wijzig crons, bindings en vars (`wrangler.toml`, `worker/wrangler.toml`) en `DEPLOY_BRANCH` alleen als de taak dat vraagt.
 
 ## Artikel-fetches
 
