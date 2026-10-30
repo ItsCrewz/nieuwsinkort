@@ -5,6 +5,7 @@ import { uniekeBeelden, beeldKey, goedBeeld, ogImage, beterBeeld as _bb, uniekeB
 import { merge } from "../functions/data.json";
 import { schoon } from "../src/schoon";
 import { hostVan, isNL } from "../src/bronlink";
+import { parseFeed } from "../worker/src/parse";
 
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
@@ -143,6 +144,19 @@ t("beelden: NU.nl-thumbnail groter, entities, youtube-link weg", () => {
   assert.equal(_bb("https://images.nu.nl/m/yevxzeda0kby_sqr256/696/0/1080/1080/jetten.jpg"), "https://images.nu.nl/m/yevxzeda0kby_wd1280.jpg");
   assert.equal(_bb("https://images.fd.nl/a.jpeg?fit&#x3D;crop&amp;w&#x3D;900"), "https://images.fd.nl/a.jpeg?fit=crop&w=900");
   assert.equal(_ub(["https://www.youtube.com/v/PX1W02kWuJo?version=3"]).length, 0);
+});
+
+t("parseFeed: javascript:-link (ook als entity) wordt leeg, relatieve link absoluut", () => {
+  const rss = (l: string) => `<rss><channel><item><title>x</title><link>${l}</link></item></channel></rss>`;
+  assert.equal(parseFeed(rss("javascript:alert(1)"), "https://x.nl/rss")[0].l, "");
+  assert.equal(parseFeed(rss("&#106;avascript:alert(1)"), "https://x.nl/rss")[0].l, "");
+  assert.equal(parseFeed(rss("/nieuws/1"), "https://x.nl/rss")[0].l, "https://x.nl/nieuws/1");
+  assert.equal(parseFeed(JSON.stringify([{ title: "a", url: "javascript:alert(1)" }]), "https://x.nl/api")[0].l, "https://x.nl/api");
+});
+
+t("schoon: bronnen met niet-http(s) href vallen weg", () => {
+  const r = schoon({ items: [{ bronnen: [{ naam: "a", href: "javascript:alert(1)" }, { naam: "b", href: "https://x.nl/b" }, { naam: "c" }] }] });
+  assert.deepEqual(r.items[0].bronnen.map((b: any) => b.naam), ["b"]);
 });
 
 console.log(`\n${n} tests geslaagd`);

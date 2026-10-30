@@ -9,6 +9,7 @@ import { videoSlug, zaaiSamenvattingen } from "./feed";
 import { schoon } from "./schoon";
 import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "./filters";
+import { veiligeUrl } from "./url";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
@@ -202,7 +203,7 @@ function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
           {W.bronnen.map((b, i) => (
             <span key={b.href}>
               {i ? ", " : ""}
-              <a href={b.href} target="_blank" rel="noreferrer">
+              <a href={veiligeUrl(b.href)} target="_blank" rel="noreferrer">
                 {b.site}
               </a>
             </span>
@@ -666,7 +667,7 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { it
             </a>
           ) : null}
           {first ? (
-            <a className={`btn${meer ? " ghost" : ""}`} href={first.href} target="_blank" rel="noopener noreferrer">
+            <a className={`btn${meer ? " ghost" : ""}`} href={veiligeUrl(first.href)} target="_blank" rel="noopener noreferrer">
               Origineel bij {first.site}
               <Icon name="ext" />
             </a>
@@ -822,7 +823,7 @@ function SourceRow({ b }: { b: Bron }) {
   const h = host(b.href);
   return (
     <li>
-      <a className="srcrow" href={b.href} target="_blank" rel="noopener noreferrer">
+      <a className="srcrow" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
         <span className="mono" aria-hidden="true">
           {imgOk && h ? (
             <img src={`https://icons.duckduckgo.com/ip3/${h}.ico`} alt="" width={16} height={16} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setImgOk(false)} />
@@ -893,7 +894,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
           <div className="perbron">
             {per.map((b, n) => (
               <div className="pb" key={b.site + n}>
-                <a className="pb-site" href={b.href || undefined} target="_blank" rel="noopener noreferrer">
+                <a className="pb-site" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
                   {b.site}
                   <Icon name="ext" className="sm" />
                 </a>
@@ -919,7 +920,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
               </p>
             ))}
           </div>
-          <a className="btn ghost d-more" href={b.href} target="_blank" rel="noopener noreferrer">
+          <a className="btn ghost d-more" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
             Lees het hele artikel bij {b.site}
             <Icon name="ext" />
           </a>

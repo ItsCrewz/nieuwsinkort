@@ -3,6 +3,7 @@ import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
 import { Feed, videoSlug } from "./feed";
+import { veiligeUrl } from "./url";
 
 type Player =
   | { kind: "youtube"; src: string }
@@ -111,7 +112,7 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
           {v.populariteit ? (
             <span className="v-pop tnum"><Icon name={popIcon(v.populariteit)} className="sm" />{v.populariteit}</span>
           ) : <span />}
-          <a href={v.href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="v-ext">
+          <a href={veiligeUrl(v.href)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="v-ext">
             Open bij bron <Icon name="ext" className="sm" />
           </a>
         </div>
