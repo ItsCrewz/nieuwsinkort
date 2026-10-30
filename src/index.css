@@ -214,7 +214,7 @@ body { margin:0; background:var(--paper); color:var(--ink); overflow-x:clip; ove
 
 /* ---------- Video ---------- */
 .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr));gap:40px 28px;margin-top:28px}
-.vcard{display:flex;flex-direction:column;gap:12px;cursor:pointer;min-width:0}
+.vcard{position:relative;display:flex;flex-direction:column;gap:12px;cursor:pointer;min-width:0}
 .vthumb{position:relative;aspect-ratio:16/9;border-radius:var(--r);overflow:hidden;background:var(--rule-2);display:flex;align-items:center;justify-content:center;transform:translateZ(0)}
 .vthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform var(--page) var(--ease)}
 .vcard:hover .vthumb img{transform:scale(1.025)}
@@ -649,3 +649,8 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .d-meer-laden span:nth-child(2){width:92%}.d-meer-laden span:nth-child(3){width:70%}
 @keyframes mlaad{to{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.d-meer-laden span{animation:none}}
+
+.vcard-open{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;cursor:pointer;z-index:1}
+.v-ext{position:relative;z-index:2}
+
+.nf-panel{display:flex;flex:1;min-height:0}

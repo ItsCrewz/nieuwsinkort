@@ -1,0 +1,1 @@
+- Verbeter de kopstructuur, tabpanelen en toegankelijkheid van videokaarten (#306).

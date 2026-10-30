@@ -338,6 +338,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               type="button"
               className={`tab cat-${o.id}`}
               role="tab"
+              aria-controls="rubriek-paneel"
               aria-selected={view === o.value}
               aria-label={o.label}
               onClick={(e) => {
@@ -468,7 +469,7 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
           {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
           {item.ruw ? <span>nog niet samengevat</span> : null}
         </div>
-        <h3 className="row-title">{item.kop}</h3>
+        <h2 className="row-title">{item.kop}</h2>
         {item.ai ? (
           <p className="row-sum bn">
             <BionicText text={item.ai} on={bionic} />
@@ -568,13 +569,13 @@ function fitCard(el: HTMLElement) {
 
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
-// De <section> blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
+// De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
 const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean }) {
   const key = itemKey(item);
   return (
-    <section className={`nc cat-${item.cat}`} data-id={key} data-i={i} aria-label={`${i + 1} van ${total}: ${item.kop}`}>
+    <div className={`nc cat-${item.cat}`} data-id={key} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
       {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} />}
-    </section>
+    </div>
   );
 });
 
@@ -771,8 +772,8 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
 
   return (
     <div className="nf-box">
-      <div className="nf" ref={ref} tabIndex={-1} aria-label="Berichten, één per scherm">
-        <section className={kompakt ? `nc-head kompakt${samenvatting ? " samenvatting" : ""}` : "nc-head"}>{head}</section>
+      <div className="nf" ref={ref} tabIndex={-1} role="region" aria-label="Berichten, één per scherm">
+        <div className={kompakt ? `nc-head kompakt${samenvatting ? " samenvatting" : ""}` : "nc-head"}>{head}</div>
         {total === 0 ? (
           empty ?? <div className="empty">
             <Icon name="clock" />
@@ -781,9 +782,9 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
         ) : (
           sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} />)
         )}
-        <section className="nc-end">
+        <div className="nc-end">
           <Footer />
-        </section>
+        </div>
       </div>
       {total > 0 ? (
         <div className="nf-ui" aria-hidden={idx < 0}>
@@ -906,12 +907,12 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
         </section>
       ) : null}
       {uit.map((b, n) => (
-        <section className="d-sec d-meer" key={b.href + n} aria-label={`Bron: ${b.site}`}>
+        <div className="d-sec d-meer" key={b.href + n} role="group" aria-label={`Bron: ${b.site}`}>
           <a className="btn ghost d-more" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
             Lees het hele artikel bij {b.site}
             <Icon name="ext" />
           </a>
-        </section>
+        </div>
       ))}
     </>
   );
@@ -1304,6 +1305,7 @@ export default function App() {
     return (
       <Frame top={top}>
         <main className="wrap" id="top">
+          <h1 className="sr-only">Nieuws</h1>
           {error ? (
             <div className="empty" style={{ marginTop: 24 }}>
               <Icon name="alert" />
@@ -1398,6 +1400,7 @@ export default function App() {
     return (
       <Frame top={top} feed>
         <main className="nf-main" id="top">
+          <h1 className="sr-only">{alles ? "Nieuws" : view}</h1>
           <div className="nf-tabs">
             <div className="wrap">
               <Tabs data={data} view={view} onChange={setView} />
@@ -1406,6 +1409,7 @@ export default function App() {
             </div>
           </div>
           {filterBlad}
+          <div id="rubriek-paneel" className="nf-panel" role="tabpanel">
           <NewsFeed
             key={view}
             items={uitkomst!.items}
@@ -1426,6 +1430,7 @@ export default function App() {
               </div>
             }
           />
+          </div>
         </main>
       </Frame>
     );
@@ -1433,6 +1438,7 @@ export default function App() {
   return (
     <Frame top={top}>
       <main className="wrap" id="top">
+        <h1 className="sr-only">{view === "filmpjes" ? "Filmpjes" : "Dumpert"}</h1>
         <Front>
           <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
         </Front>
@@ -1452,6 +1458,7 @@ export default function App() {
             </button>
           </div>
         ) : null}
+        <div id="rubriek-paneel" role="tabpanel">
         {isVideo ? (
           <VideoGrid
             key={view}
@@ -1476,6 +1483,7 @@ export default function App() {
             onOpen={open}
           />
         )}
+        </div>
         <Footer />
       </main>
     </Frame>

@@ -1441,7 +1441,7 @@ export function Feed({
           if (e.target === root.current && closing) onClose();
         }}
       >
-        <div className={`feed-scroll ${gi ? "g1" : "g0"}`} key={gi} ref={scroller} tabIndex={-1}>
+        <div className={`feed-scroll ${gi ? "g1" : "g0"}`} id="feed-paneel" role={gs ? "tabpanel" : undefined} key={gi} ref={scroller} tabIndex={-1}>
           {items.map((v, i) => (
             <Slide
               pool={pool}
@@ -1476,7 +1476,7 @@ export function Feed({
             {gs ? (
               <div className="f-tabs" role="tablist" aria-label="Soort filmpjes">
                 {gs.map((g, k) => (
-                  <button key={g.id} type="button" role="tab" className="f-tab" aria-selected={k === gi} onClick={() => pickGroup(k)}>
+                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} onClick={() => pickGroup(k)}>
                     {g.label}
                     <span className="tnum">{g.list.length}</span>
                   </button>
