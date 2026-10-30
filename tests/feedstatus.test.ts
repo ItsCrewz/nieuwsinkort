@@ -3,7 +3,7 @@ import { bewaarFeed, leesFeed, herstelFeed, wisFeed, type FeedStatus } from "../
 import { videoSlug } from "../src/slug";
 import type { Video } from "../src/types";
 const opslag = new Map<string, string>();
-Object.assign(globalThis, { sessionStorage: { getItem: (k: string) => opslag.get(k) ?? null, setItem: (k: string, v: string) => opslag.set(k, v), removeItem: (k: string) => opslag.delete(k) }, history: { state: { ander: 1 }, replaceState(s: unknown) { this.state = s; } } });
+Object.assign(globalThis, { sessionStorage: { getItem: (k: string) => opslag.get(k) ?? null, setItem: (k: string, v: string) => opslag.set(k, v), removeItem: (k: string) => opslag.delete(k) }, history: { state: { ander: 1 } as unknown, replaceState(s: unknown) { this.state = s; } } });
 const video = (titel: string) => ({ titel, href: `https://voorbeeld.nl/${titel}`, bron: "test" }) as Video;
 const lijst = [video("een"), video("twee"), video("drie")];
 const status: FeedStatus = { cat: "dumpert", slug: videoSlug(lijst[1]), soort: "short", positie: 12, speelt: true, lijst };

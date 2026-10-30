@@ -37,7 +37,7 @@ t("CSP staat alleen het exacte thema-script en de benodigde mediabronnen toe", (
 
 const req = (pad: string) => new Request("https://voorbeeld.test" + pad);
 const assets = { fetch: async () => Response.json({ items: [], filmpjes: [], dumpert: [] }) };
-const kv = { get: async () => null, put: async () => {} };
+const kv = { get: async () => null, put: async () => {} } as any;
 const antwoorden = [
   await dataGet({ request: req("/data.json"), env: { ASSETS: assets } }),
   await dataGet({ request: req("/data.json"), env: { ASSETS: assets, NIEUWS: kv } }),

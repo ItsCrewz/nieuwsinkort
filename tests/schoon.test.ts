@@ -8,8 +8,8 @@ const invoer = { dumpert: [video], filmpjes: [video], items: [{ beeld: "http://v
 const resultaat = schoon(invoer);
 assert.equal(resultaat.dumpert.length, 1);
 assert.equal(resultaat.filmpjes.length, 0);
-assert.equal(resultaat.ontdubbeld.filmpjes, 1);
+assert.equal((resultaat as any).ontdubbeld.filmpjes, 1);
 assert.deepEqual(resultaat.items[0], { beelden: ["https://voorbeeld.nl/foto.jpg"], bronnen: [{ href: "https://voorbeeld.nl" }] });
 assert.deepEqual(resultaat.items[1], {});
-assert.equal(invoer.items[0].bronnen.length, 3);
+assert.equal((invoer.items[0] as any).bronnen.length, 3);
 console.log("✓ schoon: beelden, bronnen en dubbele video's");

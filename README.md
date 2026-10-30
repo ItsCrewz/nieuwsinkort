@@ -54,6 +54,7 @@ npm ci
 npm run dev      # Vite dev-server
 npm run check    # tests, build en typechecks voor Worker en Functions
 npm test         # tests
+npm run typecheck:tests  # typecheck van tests/ (los van build; vereist @types/node)
 npm run build    # bronnen.json + tsc + vite build -> dist/
 ```
 

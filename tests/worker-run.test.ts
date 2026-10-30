@@ -15,7 +15,7 @@ const env: any = {
 await t("Worker weigert URL-sleutel, onjuiste of ontbrekende Bearer en ontbrekend secret", async () => {
   for (const pad of ["/run", "/uur"]) {
     for (const headers of [{}, { Authorization: "Bearer fout" }, { Authorization: `Basic ${sleutel}` }]) {
-      assert.equal((await worker.fetch(new Request(`https://lokaal${pad}?key=${sleutel}`, { headers }), env)).status, 403);
+      assert.equal((await worker.fetch(new Request(`https://lokaal${pad}?key=${sleutel}`, { headers: headers as Record<string, string> }), env)).status, 403);
     }
     assert.equal((await worker.fetch(new Request(`https://lokaal${pad}`, { headers: { Authorization: `Bearer ${sleutel}` } }), { ...env, RUN_KEY: undefined })).status, 403);
   }

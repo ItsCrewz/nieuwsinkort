@@ -12,6 +12,7 @@
     "export": "node export_from_canvas.mjs",
     "deploy": "bash deploy.sh",
     "test": "node scripts/run-tests.mjs",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
     "changelog": "node scripts/changelog.mjs"
   },
   "dependencies": {
