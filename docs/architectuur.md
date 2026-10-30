@@ -85,7 +85,8 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - **RSS**: lijst in `public/bronnen.json` (gebouwd uit `scripts/pipeline/feeds.json`, zie `scripts/build-bronnen.mjs`).
 - **Hacker News**: `hnrss.org/best` (news.ycombinator.com/rss geeft 419 aan Cloudflare).
 - **X**: fxtwitter-API, terugval syndication. Tekstposts en video's van politieke accounts en Politie Haarlem.
-- **YouTube**: kanaal-RSS (NOS, RTL, NU.nl e.a.) en ondertiteling. Geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
+- **YouTube**: officiële gratis kanaal-RSS voor Filmpjes van NOS, RTL Nieuws, NU.nl, Hart van Nederland, NH Nieuws, PowNews, WNL, EenVandaag, RTL Z, BNR, NOS Stories, Nieuwsuur, Omroep PowNed en Radar, inclusief Shorts. Ondertiteling geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
+- **TikTok en Facebook**: geen kanaalfeed voor Filmpjes, omdat daarvoor geen gratis feed beschikbaar is die aan de voorwaarden voldoet.
 - **Instagram**: profiel-embed, reels als filmpjes.
 - **Dumpert**: toppers-pagina en HLS via de proxy (max 720p, H.264).
 - **Reddit**: RSS (`top/.rss?t=day`) → old.reddit → Redlib-instances (roterend, HTML omgezet naar Atom) → laatste gelukte kopie van vandaag. Publieke Redlib-instances blokkeren Cloudflare nu vaak.

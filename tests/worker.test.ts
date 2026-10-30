@@ -6,7 +6,7 @@ import { onRequestPost as svPost } from "../functions/samenvatting";
 import { videoSlug } from "../src/slug";
 import { buildWeer, KNMI_VERW, OM_URL } from "../worker/src/weer";
 import { simpelWeer, summarize, inHetKort, verdiep } from "../worker/src/ai";
-import { parseRedditVideos, soortVan } from "../worker/src/videos";
+import { parseRedditVideos, parseYouTube, soortVan, YT_NIEUWS } from "../worker/src/videos";
 import { videoKeys } from "../src/dedup";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
@@ -37,6 +37,19 @@ await t("Reddit-Atom levert alleen afspeelbare video's met herkenbare sleutels",
   assert.equal(soortVan(videos[2]), "short");
   assert.equal(videos[3].thumb, "https://external-preview.redd.it/foto.jpg?width=100&format=webp");
   assert.equal(videos[4].embed, videos[1].embed);
+});
+await t("YouTube-nieuwskanalen bevatten de nieuwe kanalen", async () => {
+  assert.equal(YT_NIEUWS["NOS Stories"], "UCoakeH4bmdUYtptWdmoUrRQ");
+  assert.equal(YT_NIEUWS["Nieuwsuur"], "UCExcZNwh_3Mwm4fF4VSiu2w");
+  assert.equal(YT_NIEUWS["Omroep PowNed"], "UCihqgpWn_ns1gJUdhNLsSMQ");
+  assert.equal(YT_NIEUWS["Radar"], "UCGUhzuD1eYIgJoSGe0c_rNg");
+});
+await t("YouTube-Short krijgt een embed en de soort short", async () => {
+  const xml = `<feed><entry><yt:videoId>abcdefghijk</yt:videoId><title>Kort nieuws</title><link rel="alternate" href="https://www.youtube.com/shorts/abcdefghijk"/><published>2026-10-29T12:00:00Z</published></entry></feed>`;
+  const videos = parseYouTube(xml, "NOS Stories", Date.parse("2026-10-28T00:00:00Z"), () => "13:00");
+  assert.equal(videos.length, 1);
+  assert.equal(videos[0].embed, "https://www.youtube-nocookie.com/embed/abcdefghijk?autoplay=1&rel=0");
+  assert.equal(soortVan(videos[0]), "short");
 });
 const sleutel = "uitsluitend-test-fixture";
 let starts = 0;
