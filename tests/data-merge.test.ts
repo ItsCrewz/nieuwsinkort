@@ -1,0 +1,28 @@
+// Draai: npm run test  (bundelt met esbuild en draait met node)
+import assert from "node:assert/strict";
+import { merge } from "../functions/data.json";
+import { schoon } from "../src/schoon";
+
+let n = 0;
+const t = (name: string, fn: () => void | Promise<void>) => {
+  const klaar = () => { n++; console.log("✓", name); };
+  const resultaat = fn();
+  if (resultaat instanceof Promise) return resultaat.then(klaar);
+  klaar();
+};
+
+t("merge + schoon: uur-filmpjes en statische filmpjes ontdubbeld, foto's per bericht uniek", () => {
+  const now = new Date().toISOString();
+  const S = { gegenereerd: new Date(Date.now() - 3600e3).toISOString(), items: [{ cat: "nl", kop: "A", bronnen: [{ site: "NOS", href: "https://nos.nl/1" }], beeld: "https://cdn.nos.nl/a-1200x675.jpg", beelden: ["https://cdn.nos.nl/a-600x338.jpg"] }],
+    filmpjes: [{ titel: "Zelfde clip over de storm in Haarlem vandaag", href: "https://www.youtube.com/shorts/ccccccccccc", bron: "YouTube", tijd: "07:00" }], dumpert: [] };
+  const H = { gegenereerd: now, items: [], dumpert: [], meta: { aiStand: "zuinig" },
+    filmpjes: [{ titel: "Zelfde clip over de storm in Haarlem vandaag!", href: "https://www.instagram.com/reel/ZZZ/", bron: "Instagram", embed: "https://x/v.mp4", tijd: "23:59" },
+      { titel: "x", href: "https://youtu.be/ccccccccccc?si=2", bron: "YouTube", tijd: "23:59" }] };
+  const out = schoon(merge(S, H));
+  assert.equal(out.filmpjes.length, 1, JSON.stringify(out.filmpjes));
+  assert.equal(out.items[0].beelden.length, 1);
+  assert.equal(out.uur.ai, "zuinig");
+  assert.equal(out.ontdubbeld.filmpjes, 2);
+});
+
+console.log(`\n${n} tests geslaagd`);

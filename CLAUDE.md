@@ -34,7 +34,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
-- `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`) en `stall.test.ts` voor videoherstel.
+- `tests/`: één `*.test.ts` per onderwerp, o.a. `dedup.test.ts` (video-ontdubbelen), `beeld-ontdubbelen.test.ts`, `data-merge.test.ts` (`merge` + `schoon`), `links.test.ts`, `externe-url.test.ts`, `beveiligingsheaders.test.ts`, `laadprestaties.test.ts`, `samenvatting-slot.test.ts`, `kv-schrijven.test.ts`, `run-status.test.ts`, `deploy-integriteit.test.ts` en `stall.test.ts` voor videoherstel.
 - `worker/src/cluster.ts`: clusteren van feedberichten (pure module).
 
 ## Conventies
@@ -47,7 +47,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - Alle uitgaande verzoeken van de Worker gebruiken de UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)` (uitzonderingen staan in de code, bijv. Reddit en AD).
 - De Nederlandse-broncheck voor de fallback zonder AI staat in `src/bronlink.ts`; houd deze defensief voor relatieve en ongeldige feedlinks.
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`). Geen `javascript:`-links.
-- Nieuwe test: voeg een `t("...", () => {...})` toe in `tests/dedup.test.ts`.
+- Nieuwe test: voeg een `t("...", () => {...})` toe in het `tests/<onderwerp>.test.ts` dat erbij past, of maak een nieuw bestand; `npm test` pakt elk `*.test.ts` vanzelf op.
 - Tijd: `src/tijd.ts` deelt de Amsterdamse middernachtberekening met de Worker (ook op DST-wisseldagen). Filters gebruiken `gegenereerd` als referentiedag met 20 minuten toekomstmarge; relatieve filters rekenen tegen nu. Regressietests staan in `tests/filters.test.ts`.
 
 ## Caching
