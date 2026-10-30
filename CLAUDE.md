@@ -28,7 +28,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 ## Waar staat wat
 
 - `src/vandaag.ts`: gedeeld dagfilter en publicatietijden voor Worker en Pages.
-- `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `sources.ts`, `types.ts`.
+- `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `buffer.ts` (pure bufferregels per netwerkniveau, nog niet in `feed.tsx` gekoppeld; getest in `tests/buffer.test.ts`), `sources.ts`, `types.ts`.
 - `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
@@ -73,6 +73,10 @@ Geen feedgroep: `src/regio.ts` (pure module, ook in de Worker) deelt cat `nl` ac
 ## Externe artikel-URL's
 
 Gebruik `worker/src/url.ts` voor og/artikel-fetches en controleer feedlinks vóór Jina en jobselectie. Alleen HTTP(S), poort 80/443 en geen IP-literals of lokale/interne hostnamen. Controleer ook de redirect-eind-URL; tests gebruiken fetch-mocks.
+
+## Videofeed vooruit bufferen
+
+`src/buffer.ts` (pure logica, #36) beschrijft per afstand tot de actieve slide en netwerkniveau hoeveel er vooruit mag laden: volgende 12 s / 4 MB (3g: 6 s / 2 MB), Save-Data/2g = "minimaal" (alleen playlist), +2/+3 alleen playlist (+2 ook 2 segmenten), vanaf +4 niets. `feed.tsx` gebruikt dit nog niet: daar bepalen de pool (#50, `src/videopool.ts`) en direct starten (#51, `voorbuffer`) wat er laadt. Koppel `buffer.ts` alleen aan zonder de pool te breken (3 vaste `<video>`'s, max 2 native-HLS op iOS).
 
 ## Neuronbudget (AI-wijzigingen)
 

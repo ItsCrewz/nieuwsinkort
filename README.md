@@ -24,7 +24,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 
 | Map / bestand | Inhoud |
 |---|---|
-| `src/` | Frontend (React, feed, filters, video, ontdubbelen) |
+| `src/` | Frontend (React, feed, filters, video, ontdubbelen, `buffer.ts` = pure bufferregels voor de videofeed, nog niet gekoppeld) |
 | `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/[[path]].ts` |
 | `worker/` | Uur-Worker `nieuwsinkort-uur` (eigen `package.json` en `wrangler.toml`) |
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
