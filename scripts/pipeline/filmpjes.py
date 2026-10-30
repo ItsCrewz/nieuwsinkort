@@ -49,6 +49,8 @@ YT_NIEUWS = {  # kanaalnaam -> channel_id
     "Omroep PowNed": "UCihqgpWn_ns1gJUdhNLsSMQ",
     "Radar": "UCGUhzuD1eYIgJoSGe0c_rNg",
     "NOS Sport": "UCT4oPufBQa0f6C67Fw_HXNg",
+    "De Telegraaf": "UC1Et9K-hHf-P_LzQkE_Q3Jw",
+    "GeenStijl": "UCE51aiJ30nQY14kFY021urg",
     "Ziggo Sport": "UCueOZEvMffxjJyVO1fGiJNQ",
     "ESPN NL": "UCXnPiEv1DoUCDAqDUXT9shQ",
     "OnsOranje": "UCpnmJcBhJqKIHFkKvgdkdMQ",

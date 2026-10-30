@@ -6,7 +6,7 @@ Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq Whisper e
 Alles draait op Cloudflare (Free plan). Geen eigen server.
 
 ```
- bronnen (RSS, hnrss, X, YouTube, Dumpert, weer)
+ bronnen (RSS, hnrss, YouTube, Dumpert, weer)
         │  elk uur 06–23 (Amsterdam)
         ▼
  Worker nieuwsinkort-uur ── DO Fetcher (ophalen in batches)
@@ -27,7 +27,7 @@ Oude flow (nog aanwezig): routine → Grok-canvas → `export_from_canvas.mjs` �
 
 ## Frontend (`src/`)
 
-Vite 8, React 18, TypeScript, Tailwind 3, hls.js. Mobiele feed in TikTok-stijl met fotocarrousels, filters (tijd, rubriek, regio, video, samengevoegd, volgorde), Bronnen-paneel, en een videofeed die alleen op touch verschijnt (`src/invoer.ts`: `(pointer: coarse)` of `(hover: none)`, reageert op wijzigingen; desktop toont de kaarten met kopjes en opent een filmpje bij de bron) (max 2 spelers tegelijk, waakhond die herlaadt bij 2,5 s zonder nieuw beeld, geluid standaard aan via localStorage). Video: YouTube via nocookie-iframe, HLS native of via hls.js, MP4 via `<video>` (met `referrer=no-referrer` voor video.twimg.com). Ontdubbelen van video's en foto's: `dedup.ts`, `beeld.ts`. Het bouwen draait eerst `scripts/build-bronnen.mjs` (`public/bronnen.json`).
+Vite 8, React 18, TypeScript, Tailwind 3, hls.js. Mobiele feed in TikTok-stijl met fotocarrousels, filters (tijd, rubriek, regio, video, samengevoegd, volgorde), Bronnen-paneel, en een videofeed die alleen op touch verschijnt (`src/invoer.ts`: `(pointer: coarse)` of `(hover: none)`, reageert op wijzigingen; desktop toont de kaarten met kopjes en opent een filmpje bij de bron) (max 2 spelers tegelijk, waakhond die herlaadt bij 2,5 s zonder nieuw beeld, geluid standaard aan via localStorage). Video: YouTube via nocookie-iframe, HLS native of via hls.js, MP4 via `<video>`. Ontdubbelen van video's en foto's: `dedup.ts`, `beeld.ts`. Het bouwen draait eerst `scripts/build-bronnen.mjs` (`public/bronnen.json`).
 
 Video's worden naast platform-ID, media, URL, thumbnail en titel ook gekoppeld op een letterlijk gedeeld begin van de genormaliseerde caption of titel met beschrijving: minstens 80 tekens en acht verschillende inhoudswoorden, binnen drie uur. Bij twee publicatietijdstippen geldt hun werkelijke verschil; anders zijn twee geldige `tijd`-velden nodig. De beste kopie blijft staan en andere bronnen komen in `ook`. Gelijk onderwerp of afwijkende tekst is onvoldoende: de JA21-reel en het SGP-journaal blijven bijvoorbeeld apart. Een lange gedeelde standaardtekst kan nog steeds verschillende video's samenvoegen.
 
@@ -115,8 +115,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 
 - **RSS**: lijst in `public/bronnen.json` (gebouwd uit `scripts/pipeline/feeds.json`, zie `scripts/build-bronnen.mjs`).
 - **Hacker News**: `hnrss.org/best` (news.ycombinator.com/rss geeft 419 aan Cloudflare).
-- **X**: fxtwitter-API, terugval syndication. Tekstposts en video's van politieke accounts en Politie Haarlem.
-- **YouTube**: officiële gratis kanaal-RSS voor Filmpjes van NOS, RTL Nieuws, NU.nl, Hart van Nederland, NH Nieuws, PowNews, WNL, EenVandaag, RTL Z, BNR, NOS Stories, Nieuwsuur, Omroep PowNed, Radar, NOS Sport, Ziggo Sport, ESPN NL, OnsOranje, FORMULA 1, AutoWeek, Autovisie en Haarlem105, inclusief Shorts. Ondertiteling geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
+- **YouTube**: officiële gratis kanaal-RSS voor Filmpjes van NOS, RTL Nieuws, NU.nl, Hart van Nederland, NH Nieuws, PowNews, WNL, EenVandaag, RTL Z, BNR, NOS Stories, Nieuwsuur, Omroep PowNed, Radar, NOS Sport, De Telegraaf, GeenStijl, Ziggo Sport, ESPN NL, OnsOranje, FORMULA 1, AutoWeek, Autovisie en Haarlem105, inclusief Shorts. Ondertiteling geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
 - **TikTok en Facebook**: geen kanaalfeed voor Filmpjes, omdat daarvoor geen gratis feed beschikbaar is die aan de voorwaarden voldoet.
 - **Dumpert**: toppers-pagina en HLS via de proxy (max 720p, H.264).
 - **Weer** (landelijk, plaats "Nederland"): Buienradar (alle landstations: mediaan en koudste–warmste, landelijke 5-daagse), Open-Meteo als terugval (Groningen, De Bilt, Maastricht in één verzoek), KNMI-weerbericht (bron: KNMI, CC0) en de landelijke waarschuwingsregel uit datzelfde weerbericht (code geel/oranje/rood, ergste wint). Geen provinciepagina's: `/waarschuwingen` stuurt door naar Utrecht en per provincie ophalen kost subrequests. Ontbrekende bron = veld weg. De AI-herschrijving (`simpelWeer`) blijft één aanroep met max 1500 tekens invoer. Rubriek Haarlem is los van het weer.

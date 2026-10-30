@@ -1,0 +1,1 @@
+- X-inname verwijderd; YouTube-kanalen van De Telegraaf, GeenStijl en 50PLUS toegevoegd (#77).
