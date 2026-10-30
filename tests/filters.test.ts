@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { aantalExtra, filterNieuws, STANDAARD, type Filters } from "../src/filters";
+import { aantalExtra, filterNieuws, tijdstip, STANDAARD, type Filters } from "../src/filters";
+import { midnight } from "../src/tijd";
 import type { Item } from "../src/types";
 
 const originalNow = Date.now;
@@ -30,3 +31,41 @@ try {
 } finally {
   Date.now = originalNow;
 }
+
+const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
+const metNu = (nu: string, fn: () => void) => {
+  Date.now = () => Date.parse(nu);
+  try { fn(); } finally { Date.now = originalNow; }
+};
+const bericht = (kop: string, tijd: string): Item => ({
+  kop, tijd, cat: "nl", ai: "", samenvatting: "", punten: [], bronnen: [],
+});
+
+t("middernacht gebruikt de offset van middernacht op beide wisseldagen", () => {
+  assert.equal(midnight(Date.parse("2026-10-25T10:00:00+01:00")), Date.parse("2026-10-24T22:00:00Z"));
+  assert.equal(midnight(Date.parse("2026-03-29T10:00:00+02:00")), Date.parse("2026-03-28T23:00:00Z"));
+});
+
+t("vijf minuten vooruit blijft nieuwste en valt binnen Laatste uur en Vandaag", () => {
+  metNu("2026-10-30T10:00:00+01:00", () => {
+    const items = [bericht("ouder", "09:40"), bericht("vooruit", "10:05")];
+    for (const tijd of ["alles", "1u", "vandaag"] as const) {
+      const uit = filterNieuws(items, { ...STANDAARD, tijd }, 0, new Date(Date.now()).toISOString(), true);
+      assert.deepEqual(uit.items.map((it) => it.kop), ["vooruit", "ouder"]);
+    }
+  });
+});
+
+t("gegenereerd bepaalt gisteren; relatieve filters blijven tegen nu rekenen", () => {
+  metNu("2026-10-30T07:30:00+01:00", () => {
+    const gen = "2026-10-29T23:00:00+01:00";
+    assert.equal(tijdstip("07:00", Date.parse(gen)), Date.parse("2026-10-29T07:00:00+01:00"));
+    for (const tijd of ["vandaag", "1u", "3u"] as const) {
+      assert.deepEqual(filterNieuws([bericht("gisteren", "07:00")], { ...STANDAARD, tijd }, 0, gen, true).items, []);
+    }
+    assert.equal(filterNieuws([bericht("gisteren", "07:00")], { ...STANDAARD, tijd: "alles" }, 0, gen, true).items.length, 1);
+    for (const gen of [undefined, "ongeldig"]) {
+      assert.equal(filterNieuws([bericht("vandaag", "07:00")], { ...STANDAARD, tijd: "1u" }, 0, gen, true).items.length, 1);
+    }
+  });
+});

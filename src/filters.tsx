@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Cat, Item, Video } from "./types";
+import { midnight } from "./tijd";
 import { Icon } from "./icons";
 
 export type Tijd = "auto" | "sinds" | "vandaag" | "1u" | "3u" | "alles";
@@ -79,8 +80,8 @@ export function useFilters() {
 }
 
 // ------------------------------------------------------------- tijd
-// Berichten hebben alleen "HH:MM" (Amsterdam). Absolute tijd = vandaag + HH:MM; later dan nu = gisteren
-// (de data bevat alleen berichten van één dag, ook net na middernacht).
+// Berichten hebben alleen "HH:MM" (Amsterdam); gegenereerd bepaalt de referentiedag.
+// Tot 20 minuten vooruit blijft op die dag, zodat de toekomstmarge van de Worker past.
 const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const minVan = (d: Date) => {
   const [h, m] = fmt.format(d).split(":").map(Number);
@@ -93,7 +94,7 @@ export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   const g = new Date(gen);
   const gm = minVan(g);
   let ts = gen - g.getSeconds() * 1000 - g.getMilliseconds() - (gm - t) * 60e3;
-  if (t > gm + 1) ts -= 86400e3;
+  if (t > gm + 20) ts -= 86400e3;
   return ts;
 }
 function vanafVoor(t: Exclude<Tijd, "auto">, vorig: number): number {
@@ -101,13 +102,10 @@ function vanafVoor(t: Exclude<Tijd, "auto">, vorig: number): number {
   if (t === "1u") return now - 3600e3;
   if (t === "3u") return now - 3 * 3600e3;
   if (t === "sinds") return vorig || 0;
-  if (t === "vandaag") {
-    const d = new Date(now);
-    return now - minVan(d) * 60e3 - d.getSeconds() * 1000 - d.getMilliseconds();
-  }
+  if (t === "vandaag") return midnight(now);
   return -Infinity;
 }
-const genVan = (_gen?: string) => Date.now();
+const genVan = (gen?: string) => Date.parse(gen || "") || Date.now();
 
 // ------------------------------------------------------------- regio / video / samengevoegd
 const BUITEN_SITE = /techcrunch|the verge|ars technica|wired|mit technology|hacker news|engadget|bleeping|reuters|bbc|guardian/i;

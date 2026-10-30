@@ -44,6 +44,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - De Nederlandse-broncheck voor de fallback zonder AI staat in `src/bronlink.ts`; houd deze defensief voor relatieve en ongeldige feedlinks.
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`). Geen `javascript:`-links.
 - Nieuwe test: voeg een `t("...", () => {...})` toe in `tests/dedup.test.ts`.
+- Tijd: `src/tijd.ts` deelt de Amsterdamse middernachtberekening met de Worker (ook op DST-wisseldagen). Filters gebruiken `gegenereerd` als referentiedag met 20 minuten toekomstmarge; relatieve filters rekenen tegen nu. Regressietests staan in `tests/filters.test.ts`.
 
 ## Externe artikel-URL's
 
