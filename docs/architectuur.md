@@ -28,6 +28,12 @@ Vite 8, React 18, TypeScript, Tailwind 3, hls.js. Mobiele feed in TikTok-stijl m
 
 Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert de offset op DST-wisseldagen naar die van middernacht zelf. `filters.tsx` gebruikt `gegenereerd` als referentiedag (bij ontbrekende/ongeldige waarde: nu) en laat berichttijden tot 20 minuten vooruit op die dag staan. Vandaag begint op de huidige Amsterdamse middernacht; 1u/3u rekenen tegen `Date.now()`. Regressietests: `tests/filters.test.ts`.
 
+## Laadprestaties (#35)
+
+- **Vroege data.json**: het inline script in `index.html` start `window.__vroegData = fetch("/data.json", {cache:"no-cache"})` tijdens het parsen; `useData` neemt die promise eenmalig over via `neemVroegeData()` (`src/vroeg.ts`), daarna haalt elke verversing zelf op. Wijzig je dat script, werk dan de CSP-hash in `public/_headers` bij (de test bewaakt het).
+- **Fonts self-hosted**: Inter (OFL, variabel 400-600) staat in `public/fonts/` (`inter-latin`, `inter-latin-ext`, woff2 uit Google Fonts v20), `@font-face` met `font-display: swap` bovenaan `src/index.css`, preload van het latin-bestand in `index.html`. CSP: `font-src 'self'`, geen Google-origins meer; `/fonts/*` is immutable gecachet.
+- **Kaarten gemount op afroep**: `NewsFeed` geeft alleen de eerste `KAARTEN_VOORAF` (6) kaarten en een venster van `KAARTEN_VOORUIT` (6) voorbij de huidige kaart (en voorbij `focusKey`) inhoud (`KaartInhoud`); de rest blijft een lege `<section class="nc">` met dezelfde hoogte, `data-id` en `aria-label`, zodat scroll-snap, `scrollIntoView`/`offsetTop`-sprongen en toetsenbordnavigatie ongewijzigd werken. Het venster krimpt nooit.
+
 ## Pages Functions (`functions/`)
 
 - `data.json.ts`: haalt het statische `data.json` (ASSETS) en KV `uur`, voegt ze samen (`merge`): routine-samenvattingen blijven, nieuwe berichten van het uur komen bovenaan, weer/filmpjes/Dumpert worden ververst. Uur-data van een andere dag wordt genegeerd. `?statisch=1` geeft alleen het statische bestand. Voegt ook `sv-klaar` (vooraf gemaakte video-samenvattingen) toe. Antwoord met zwakke ETag en 304 bij `If-None-Match`; `Cache-Control: max-age=0, must-revalidate, stale-while-revalidate=300` (de client vraagt altijd met `cache: "no-cache"` zonder cachebuster, dus de uurdata is direct vers en een ongewijzigde respons kost alleen een 304). `slim()` haalt de niet-gebruikte diagnosevelden `ontdubbeld` en `routine_gegenereerd` weg.

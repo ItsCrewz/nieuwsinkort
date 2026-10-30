@@ -24,6 +24,7 @@ Behoud de controle via `worker/src/url.ts` bij og/artikel/Jina-jobs: HTTP(S), po
 - Worker draait op het Free plan: max 50 subrequests per aanroep, daarom batches via `Fetcher`.
 - De fallback zonder AI gebruikt `src/bronlink.ts` voor een defensieve Nederlandse-broncheck; relatieve en ongeldige feedlinks mogen de uurrun niet laten crashen.
 - Caching: `/data.json` altijd hervalideren (`fetch(..., {cache:"no-cache"})` zonder `?t=`), ETag/304 in `functions/data.json.ts`; niet terug naar een lange `max-age`, anders is de uurdata niet vers. Gehashte `/assets/*` immutable; `_headers` regelt `/bronnen.json` en iconen.
+- Laden: `index.html` start `/data.json` vroeg (`src/vroeg.ts`), Inter staat self-hosted in `public/fonts/` (geen Google Fonts, CSP `font-src 'self'`), en `NewsFeed` mount kaartinhoud alleen rond de huidige kaart (`leeg`-secties houden de hoogte). Zie [architectuur](docs/architectuur.md#laadprestaties-35).
 - Rubriek Buitenland: geen feedgroep maar een indeling achteraf van cat `nl` in `src/regio.ts` (`isBuitenland`/`herindeel`: buitenlandfeed of heel URL-padsegment, Nederlands anker, landwoorden). De Worker past dit toe na het bouwen van de items, de frontend bij het laden van `data.json`; bron-telling en bron aan/uit rekenen Buitenland onder groep `nl`. Tests: `tests/regio.test.ts`.
 - Alle teksten (UI, docs, commits, commentaar) zijn Nederlands.
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`).
