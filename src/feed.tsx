@@ -7,7 +7,6 @@ import { bewaarMeting, herstelSwipe, swipeDoel, type SwipeMeting } from "./swipe
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
-import { AiVermelding } from "./ai-vermelding";
 import { Icon } from "./icons";
 import { playerFor, viaProxy, youtubeId } from "./video";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
@@ -1170,7 +1169,6 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
           ) : res.ok ? (
             <>
               <ul className="sv-punten">{res.punten.map((p, k) => <li key={k}>{p}</li>)}</ul>
-              <AiVermelding tonen={res.punten.length > 0} />
               <p className="sv-bron">
                 {res.bron === "spraak" ? `Uit wat er gezegd wordt${min ? ` (eerste ${min} min)` : ""}` : "Uit de ondertiteling"} · samengevat door AI, kan foutjes bevatten
               </p>
