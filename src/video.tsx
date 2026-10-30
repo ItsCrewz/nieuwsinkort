@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
 import { Feed, videoSlug } from "./feed";
 import { veiligeUrl } from "./url";
+import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 
 type Player =
   | { kind: "youtube"; src: string }
@@ -140,6 +141,48 @@ export function VideoGrid({
   onOpen: (slug: string) => void;
   onCloseFeed: () => void;
 }) {
+  const opgeslagen = useRef(leesFeed());
+  const vast = useRef<Video[] | null>(null);
+  if (!video) vast.current = null;
+  else if (!vast.current) vast.current = herstelFeed(opgeslagen.current, cat, video, list).lijst;
+  const feedVideos = vast.current ?? list;
+  const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
+  useEffect(() => {
+    if (!video) { wisFeed(); return; }
+    let vorigeSlug = "";
+    let positie = 0;
+    let speelt = true;
+    let hervat = false;
+    let hersteld = false;
+    const saved = opgeslagen.current;
+    const actief = () => document.querySelector<HTMLElement>('.feed .fslide[aria-current="true"]');
+    const frame = () => actief()?.querySelector<HTMLIFrameElement>('iframe.f-yt');
+    const stuur = (func: string, args: unknown[] = []) => frame()?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "https://www.youtube-nocookie.com");
+    const update = () => {
+      const slug = decodeURIComponent(location.hash.split("/").slice(2).join("/")) || start || video;
+      if (slug !== vorigeSlug) { vorigeSlug = slug; positie = 0; hersteld = false; }
+      const el = actief()?.querySelector<HTMLVideoElement>("video");
+      if (!hersteld && slug === saved?.slug && saved.cat === cat) {
+        if (el && el.readyState > 0) { try { el.currentTime = saved.positie || 0; } catch { /* nog niet zoekbaar */ } hersteld = true; }
+        else if (frame()) { stuur("seekTo", [saved.positie || 0, true]); hersteld = true; }
+      }
+      if (el) { positie = el.currentTime || 0; if (document.visibilityState === "visible") speelt = !el.paused; }
+      const item = feedVideos.find((v) => videoSlug(v) === slug);
+      bewaarFeed({ cat, slug, soort: item ? soortVan(item) : "short", positie, speelt, lijst: feedVideos });
+    };
+    const bericht = (e: MessageEvent) => {
+      if (e.origin !== "https://www.youtube-nocookie.com" || e.source !== frame()?.contentWindow) return;
+      try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; if (typeof d?.info?.currentTime === "number") positie = d.info.currentTime; if (document.visibilityState === "visible" && typeof d?.info?.playerState === "number") speelt = d.info.playerState === 1; } catch { /* onbekend bericht */ }
+    };
+    let verborgen = false;
+    const verberg = () => { if (verborgen) return; verborgen = true; update(); hervat = speelt; actief()?.querySelector<HTMLVideoElement>("video")?.pause(); stuur("pauseVideo"); };
+    const toon = () => { if (!verborgen) return; verborgen = false; if (hervat) { actief()?.querySelector<HTMLVideoElement>("video")?.play().catch(() => {}); stuur("playVideo"); } hervat = false; };
+    const zicht = () => document.visibilityState === "hidden" ? verberg() : toon();
+    document.addEventListener("visibilitychange", zicht);
+    window.addEventListener("pagehide", verberg); window.addEventListener("pageshow", toon); window.addEventListener("message", bericht);
+    const timer = window.setInterval(update, 500); update();
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zicht); window.removeEventListener("pagehide", verberg); window.removeEventListener("pageshow", toon); window.removeEventListener("message", bericht); };
+  }, [video, cat, feedVideos, start]);
   const [first] = useState(enterProp); // alleen bij het eerste tonen
   const [touched, setTouched] = useState(false);
   const enter = first && !touched;
@@ -157,15 +200,16 @@ export function VideoGrid({
   const byBron = (l: Video[]) => (bron === "alle" || !bronnen.includes(bron) ? l : l.filter((v) => v.bron === bron));
   const shown = byBron(sub);
   // De feed volgt het bron-chipje als de video daarin zit, anders de hele lijst (deep link).
-  const feedList = video && shown.some((v) => videoSlug(v) === video) ? shown : sub.some((v) => videoSlug(v) === video) ? sub : list;
+  const geselecteerd = split ? feedVideos.filter((v) => soortVan(v) === soort) : feedVideos;
+  const feedList = geselecteerd.some((v) => videoSlug(v) === start) ? geselecteerd : feedVideos;
   const groups = split
     ? SOORTEN.map((s) => {
-        const l = perSoort(s.id);
+        const l = feedVideos.filter((v) => soortVan(v) === s.id);
         const f = s.id === soort ? byBron(l) : l;
         return { id: s.id, label: s.label, list: f.length ? f : l };
       }).filter((g) => g.list.length)
     : undefined;
-  if (list.length === 0) {
+  if (list.length === 0 && !video) {
     return (
       <div className="empty">
         <Icon name="film" />
@@ -226,7 +270,7 @@ export function VideoGrid({
           key={cat}
           list={feedList}
           cat={cat}
-          start={video}
+          start={start}
           onClose={onCloseFeed}
           groups={groups}
           onGroup={(g) => {
