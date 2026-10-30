@@ -21,7 +21,9 @@ npm test           # esbuild-bundel van tests/dedup.test.ts, draait met node
 npm run bronnen    # alleen public/bronnen.json opnieuw bouwen
 ```
 
-Worker: `cd worker && npm ci`; typecheck zie `worker/tsconfig.json`. Lokaal draaien: `npx wrangler dev --test-scheduled --var RUN_KEY:test` (alleen lokaal, AI blijft remote en kost neuronen).
+Worker: `cd worker && npm ci`; typecheck zie `worker/tsconfig.json`. Lokaal draaien: `npx wrangler dev --test-scheduled` met lokaal ingestelde `RUN_KEY` (alleen lokaal, AI blijft remote en kost neuronen).
+
+Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; zet de sleutel nooit in de URL. `force=1` mag pas tien minuten na de laatste runstart. Test met mocks, zonder echte AI-aanroepen.
 
 ## Waar staat wat
 
