@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Documentatie bijgewerkt voor de sportrubrieken, AI-aanbieders, budgettrappen en extractieve terugval na de merges van 30 oktober.
 - Showbizz (#103): RTL Boulevard-site, Telegraaf Entertainment, NU.nl Achterklap/Muziek/Film, NOS Cultuur & media en Linda.nl (max 5) als feeds; RTL Boulevard en Shownieuws in `YT_NIEUWS`. Showbizzverhalen uit algemene feeds verhuizen via `worker/src/showcat.ts` naar Showbizz; social-feeds worden per feed-URL als niet-nieuws overgeslagen, zodat de RTL Boulevard-site wel telt.
 - F1-berichten uit autobronnen komen niet meer onder Auto (#93): `sportCat` kijkt nu ook naar items met cat `auto` en herkent meer F1-termen (coureurs, GP, pole position).
 - Feedtitels voor lokaal naspelen bevatten ook Voetbal, Formule 1, Auto en herkende Buitenland-berichten (#92).
@@ -19,7 +20,7 @@
 
 - AI-meting (#79): de neuronenteller loopt op de UTC-dag (Cloudflare-reset 00:00 UTC) en legt per aanroep `r.usage` vast (anders een schatting met vlag `geschat`), ook bij mislukte aanroepen; tokens en neuronen per run en per dag in `uur.meta` en `state`. `quotaOut` alleen bij een echte dagquota-fout (4006, KV-vlag `ai-quota:<UTC-dag>`), een tijdelijke 429 stopt alleen de rest van de run. Optionele env `NEURON_FACTOR` (standaard 1) als veiligheidsmarge. Nieuw: `docs/ai-budget.md` met alle AI-aanroepen en wat niet wordt meegeteld.
 
-- Voeg bronnen en indeling voor Voetbal, Formule 1 en Auto toe, met een vaste plek in de AI-ronde: maximaal één per sportrubriek, hooguit drie per run, binnen CAP (#58); de frontend volgt in #59.
+- Voeg bronnen en indeling voor Voetbal, Formule 1 en Auto toe, met een vaste plek in de AI-ronde: maximaal één per sportrubriek, hooguit drie per run, binnen CAP (#58); de frontend toont deze rubrieken ook (#59).
 - Video's met dezelfde lange caption worden binnen drie uur ook over verschillende platforms ontdubbeld (#46); de beste kopie behoudt de andere bron in `ook`.
 
 ## 2026-10-30
