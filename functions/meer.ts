@@ -8,7 +8,7 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
   const k = new URL(request.url).searchParams.get("k") || "";
   if (!k || k.length > 600 || !env.NIEUWS) return new Response('{"fout":"geen sleutel"}', { status: 400, headers: HDR });
   let M: any = null;
-  try { M = await env.NIEUWS.get("meer", { type: "json", cacheTtl: 60 }); } catch { /* KV even niet bereikbaar */ }
+  try { M = await env.NIEUWS.get("meer", { type: "json", cacheTtl: 60 }); } catch { console.error("meer: fout bij fallback"); /* KV even niet bereikbaar */ }
   const m = M?.items?.[k];
   if (!m) return new Response('{"fout":"niet gevonden"}', { status: 404, headers: { ...HDR, "Cache-Control": "no-store" } });
   return new Response(JSON.stringify(m), { headers: { ...HDR, "Cache-Control": "public, max-age=600" } });

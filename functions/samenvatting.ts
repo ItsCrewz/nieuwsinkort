@@ -100,7 +100,7 @@ async function ytCaptions(id: string, why: string[]): Promise<string> {
       const txt = capText(await x.json());
       if (txt.length > 40) return txt;
       why.push(`YouTube-ondertiteling ${c.client.clientName}: leeg`);
-    } catch (e: any) { why.push(`YouTube ${c.client.clientName}: ${String(e?.message || e).slice(0, 60)}`); }
+    } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`YouTube ${c.client.clientName}: ${String(e?.message || e).slice(0, 60)}`); }
   }
   // terugval: Invidious-spiegels
   for (const h of ["inv.nadeko.net", "yewtu.be", "invidious.nerdvpn.de"]) {
@@ -113,7 +113,7 @@ async function ytCaptions(id: string, why: string[]): Promise<string> {
       const v = await fetch(`https://${h}${caps[0].url}`, { signal: AbortSignal.timeout(6000) });
       const txt = vttText(await v.text());
       if (txt.length > 40) return txt;
-    } catch (e: any) { why.push(`Invidious ${h}: ${String(e?.message || e).slice(0, 50)}`); }
+    } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`Invidious ${h}: ${String(e?.message || e).slice(0, 50)}`); }
   }
   return "";
 }
@@ -173,8 +173,8 @@ async function punten(ai: any, model: string, titel: string, bron: string, tekst
 // ---------------- welke filmpjes staan er nu op de site
 async function vindVideo(env: Env, req: Request, id: string): Promise<any | null> {
   const lists: any[] = [];
-  try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch {}
-  try { const S: any = await (await env.ASSETS.fetch(new URL("/data.json", req.url).toString())).json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch {}
+  try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch { console.error("samenvatting: fout bij fallback"); }
+  try { const S: any = await (await env.ASSETS.fetch(new URL("/data.json", req.url).toString())).json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { console.error("samenvatting: fout bij fallback"); }
   const { videoSlug } = await import("../src/slug");
   return lists.find((v) => v?.href && videoSlug(v) === id) || null;
 }
@@ -185,13 +185,13 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   const origin = request.headers.get("Origin");
   if (origin && origin !== new URL(request.url).origin) return json({ ok: false, code: "origin", fout: MSG.origin }, 403);
   let body: any = {};
-  try { body = await request.json(); } catch {}
+  try { body = await request.json(); } catch { console.error("samenvatting: fout bij fallback"); }
   const id = String(body?.id || "");
   // pre = vooraf maken door de uur-Worker: strenger budget (marge voor nieuws + verzoeken), korter luisteren
   const pre = body?.pre === true;
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 400);
   const key = `vs:${id}`;
-  const hit = await env.NIEUWS.get(key, "json").catch(() => null);
+  const hit = await env.NIEUWS.get(key, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   if (hit) return json({ ...hit, cached: true });
   const v = await vindVideo(env, request, id);
   if (!v) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 404);
@@ -201,9 +201,9 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   const slot = `vs-bezig:${id}`;
   let eigen = false;
   try {
-    if (await env.NIEUWS.get(slot).catch(() => null)) return json({ ok: false, code: "bezig", fout: MSG.bezig }, 409);
+    if (await env.NIEUWS.get(slot).catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; })) return json({ ok: false, code: "bezig", fout: MSG.bezig }, 409);
     eigen = true;
-    await env.NIEUWS.put(slot, "1", { expirationTtl: 60 }).catch(() => {});
+    await env.NIEUWS.put(slot, "1", { expirationTtl: 60 }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
     return await maak(env, v, id, key, pre);
   } finally {
     bezigNu.delete(id);
@@ -216,9 +216,9 @@ async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Pr
   const BUDGET = +(env.BUDGET || BUDGET_DEF);
   const A = ams();
   const vKey = `vid-neurons:${A.iso}`;
-  const st: any = await env.NIEUWS.get("state", "json").catch(() => null);
+  const st: any = await env.NIEUWS.get("state", "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   const nieuws = st && st.datum === A.iso ? +st.neurons || 0 : 0;
-  const video = +(await env.NIEUWS.get(vKey).catch(() => 0)) || 0;
+  const video = +(await env.NIEUWS.get(vKey).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
   const used = nieuws + video;
   const reserve = Math.max(0, 23 - A.h) * PER_RUN; // het uurnieuws van de rest van de dag gaat voor
   const ruimte = BUDGET - used - reserve;
@@ -248,7 +248,7 @@ async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Pr
         if (/\.m3u8(\?|$)/.test(media)) a = await hlsAudio(media, why, maxSec);
         else if (/\.mp4(\?|$)/.test(media) || /cdninstagram|fbcdn|twimg/.test(media)) a = await mp4Audio(media, why, maxMp4);
         else why.push("geen geluidsbron");
-      } catch (e: any) { why.push(`geluid ophalen: ${String(e?.message || e).slice(0, 60)}`); }
+      } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`geluid ophalen: ${String(e?.message || e).slice(0, 60)}`); }
       if (a && a.sec < 0) { await env.NIEUWS.put(key, JSON.stringify({ ok: false, code: "te-lang", fout: MSG.teLang }), { expirationTtl: 6 * 3600 }); return uit({ ok: false, code: "te-lang", fout: MSG.teLang }); }
       if (a && a.bytes.length) {
         const estMin = a.sec ? a.sec / 60 : Math.min(4, a.bytes.length / 1.2e6); // mp4: ruwe schatting
@@ -288,8 +288,8 @@ async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Pr
     const out = { ok: true, punten: p, bron, sec, model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString(), ...(pre ? { vooraf: true } : {}) };
     await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: 30 * 86400 });
     return json(out);
-  } catch (e: any) {
-    await addNeurons(env, vKey, Math.max(0, u.neurons - reserved)).catch(() => {}); // reservering blijft staan, alleen extra bijtellen
+  } catch (e: any) { console.error("samenvatting: verwerking mislukt");
+    await addNeurons(env, vKey, Math.max(0, u.neurons - reserved)).catch(() => { console.error("samenvatting: KV schrijven mislukt"); }); // reservering blijft staan, alleen extra bijtellen
     const m = String(e?.message || e);
     if (/quota|neuron|exceed|429|limit/i.test(m)) return json({ ok: false, code: "budget", fout: MSG.budget });
     why.push(m.slice(0, 120));
@@ -300,13 +300,13 @@ async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Pr
 }
 async function addNeurons(env: Env, k: string, n: number) {
   if (!n) return; // n mag negatief zijn: correctie van een eerdere schatting
-  const cur = +(await env.NIEUWS.get(k).catch(() => 0)) || 0;
+  const cur = +(await env.NIEUWS.get(k).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
   await env.NIEUWS.put(k, String(Math.max(0, Math.round((cur + n) * 10) / 10)), { expirationTtl: 3 * 86400 });
 }
 export const onRequestGet = async ({ request, env }: Ctx) => {
   // GET /samenvatting?id=... alleen uit de cache (handig om te tonen of er al een samenvatting is)
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false }, 400);
-  const hit = await env.NIEUWS.get(`vs:${id}`, "json").catch(() => null);
+  const hit = await env.NIEUWS.get(`vs:${id}`, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   return json(hit ? { ...hit, cached: true } : { ok: false, code: "geen" });
 };

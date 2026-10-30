@@ -4,6 +4,7 @@
 // en het ophalen wordt verdeeld over meerdere Fetcher-DO's (elk max 50 externe verzoeken).
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
+import { bewaakteRun } from "./run-status";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW, KNMI_WAARSCH } from "./weer";
@@ -271,22 +272,17 @@ export class Runner extends DurableObject<Env> {
   async fetch(req: Request): Promise<Response> {
     const u = new URL(req.url);
     const force = u.searchParams.get("force") === "1";
-    try {
-      // Reserveer vóór de run; gelijktijdige force-verzoeken mogen niet door de limiet glippen.
-      const toegestaan = await this.ctx.blockConcurrencyWhile(async () => {
-        const laatst = await this.ctx.storage.get<number>("laatsteRun");
-        const nu = Date.now();
-        if (force && laatst !== undefined && nu - laatst < 10 * 60e3) return false;
-        await this.ctx.storage.put("laatsteRun", nu);
-        return true;
-      });
-      if (!toegestaan) return Response.json({ ok: false, err: "Laatste run minder dan 10 minuten geleden" }, { status: 429 });
-      const r = await this.run(force);
-      return Response.json(r);
-    } catch (e: any) {
-      console.error(e?.stack || e);
-      return Response.json({ ok: false, err: String(e?.message || e).slice(0, 200) }, { status: 500 });
-    }
+    // Reserveer vóór de run; gelijktijdige force-verzoeken mogen niet door de limiet glippen.
+    const toegestaan = await this.ctx.blockConcurrencyWhile(async () => {
+      const laatst = await this.ctx.storage.get<number>("laatsteRun");
+      const nu = Date.now();
+      if (force && laatst !== undefined && nu - laatst < 10 * 60e3) return false;
+      await this.ctx.storage.put("laatsteRun", nu);
+      return true;
+    });
+    // geweigerd verzoek is geen mislukte run: telt niet mee in de faalreeks
+    if (!toegestaan) return Response.json({ ok: false, err: "Laatste run minder dan 10 minuten geleden" }, { status: 429 });
+    return bewaakteRun(() => this.run(force), this.ctx.storage, this.env.NIEUWS);
   }
 
   async alarm() {
@@ -710,8 +706,14 @@ export default {
     const h = ams(ev.scheduledTime).h;
     if (h < 6 || h > 23) return; // cron draait in UTC; dit houdt het op 06:00–23:00 Amsterdam (zomer- en wintertijd)
     const stub = env.RUNNER.get(env.RUNNER.idFromName("runner"));
-    const r = await stub.fetch("https://do/run");
-    console.log((await r.text()).slice(0, 2000));
+    try {
+      const r = await stub.fetch("https://do/run");
+      const body = await r.text();
+      if (!r.ok) console.error("run mislukt", r.status, body.slice(0, 500));
+      else console.log(body.slice(0, 2000));
+    } catch {
+      console.error("run starten mislukt");
+    }
   },
   async fetch(req: Request, env: Env): Promise<Response> {
     const u = new URL(req.url);
