@@ -1,0 +1,1 @@
+- YouTube-filmpjes gebruiken hun eigen bediening en tonen een thumbnail en een subtiele starthint als automatisch afspelen uitblijft (#322).

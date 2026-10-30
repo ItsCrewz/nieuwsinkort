@@ -1,7 +1,26 @@
 import assert from "node:assert/strict";
-import { ytStartBesluit, ytSkipBesluit, ytStatusNaam, ytEchteFout, geluidMag, autoplayGeblokkeerd } from "../src/ytstart";
+import { readFileSync } from "node:fs";
+import { ytStartBesluit, ytSkipBesluit, ytStatusNaam, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint } from "../src/ytstart";
+
+for (const actief of [true, false]) {
+  const url = new URL(ytEmbedUrl("abc123", actief, "https://voorbeeld.nl"));
+  assert.equal(url.origin, "https://www.youtube-nocookie.com");
+  assert.equal(url.pathname, "/embed/abc123");
+  for (const [naam, waarde] of Object.entries({ autoplay: actief ? "1" : "0", controls: "1", playsinline: "1", mute: "1", enablejsapi: "1", rel: "0", modestbranding: "1", iv_load_policy: "3", loop: "1", playlist: "abc123", origin: "https://voorbeeld.nl" })) assert.equal(url.searchParams.get(naam), waarde);
+}
 
 const basis = { actief: true, gepauzeerd: false, klaar: true, status: -1, pogingen: 0, sinds: 1000, nu: 1000 };
+assert.equal(ytToonHint({ ...basis, nu: 2499 }), false);
+assert.equal(ytToonHint({ ...basis, nu: 2500 }), true);
+for (const status of [1, 3]) assert.equal(ytToonHint({ ...basis, status, nu: 2500 }), false);
+assert.equal(ytToonHint({ ...basis, gespeeld: true, nu: 2500 }), false);
+assert.equal(ytToonHint({ ...basis, actief: false, nu: 2500 }), false);
+for (const code of [100, 101, 150, 152]) assert.equal(ytToonHint({ ...basis, fout: ytEchteFout(code), nu: 2500 }), false);
+const css = readFileSync("src/index.css", "utf8");
+const hint = css.match(/\.f-yt-start\s*\{([^}]*)\}/)?.[1] ?? "";
+assert.match(hint, /pointer-events\s*:\s*none/);
+assert.match(hint, /background\s*:\s*rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*\.5\s*\)/);
+assert.doesNotMatch(hint, /\binset\s*:\s*0(?:\s|;|$)/);
 // onReady, -1 en geen verdere events: drie pogingen binnen de activatietijd.
 for (let i = 0; i < 3; i++) assert.equal(ytStartBesluit({ ...basis, pogingen: i, nu: 1000 + i * 500 }), "probeer");
 assert.equal(ytStartBesluit({ ...basis, pogingen: 3, nu: 2500 }), "vangnet");
