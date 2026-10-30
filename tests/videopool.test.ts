@@ -14,6 +14,7 @@ assert.equal(voor.filter((s, i) => s.index !== na[i].index).length, 1);
 assert.deepEqual([...bronIndexen(2, 5)].sort(), [2, 3]);
 assert.deepEqual([...bronIndexen(2, 5)].sort(), [2, 3]);
 assert.deepEqual([...bronIndexen(4, 5)], [4]);
+assert.deepEqual([...bronIndexen(2, 5, true)], [2]);
 assert.deepEqual([slotVan(0), slotVan(1), slotVan(2), slotVan(3), slotVan(7)], [0, 1, 2, 0, 1]);
 for (let a = 0; a < 20; a++) assert.equal(new Set([a - 1, a, a + 1].map(slotVan)).size, 3);
 assert.equal(gebruiktNativeHls(true, "Apple Computer, Inc.", "", true), true);

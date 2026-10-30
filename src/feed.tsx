@@ -1044,8 +1044,9 @@ export function Feed({
   // slide (actief + volgende) buiten de pool.
   const [pool] = useState(maakPool);
   const mounted = useMemo(() => {
-    const next = bronIndexen(active, items.length);
-    for (let i = active; i <= active + 1; i++) if (i >= 0 && i < items.length && playerFor(items[i])?.kind === "youtube") next.add(i);
+    const minimaal = niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection) === "minimaal";
+    const next = bronIndexen(active, items.length, minimaal);
+    for (let i = active; i <= active + (minimaal ? 0 : 1); i++) if (i >= 0 && i < items.length && playerFor(items[i])?.kind === "youtube") next.add(i);
     return next;
   }, [active, items]);
   // Geparkeerde pool-elementen blijven in het document (overlay, iOS-gebruiksstatus); weg als de feed sluit.

@@ -1,0 +1,1 @@
+- Beperk de voorbuffer van de volgende video tot circa 4 seconden op wifi en 2 seconden mobiel; bij Save-Data en 2G wordt geen volgende video geladen (#51). Native video en hele HLS-segmenten kunnen de datarichtlijnen overschrijden.

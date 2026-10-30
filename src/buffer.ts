@@ -12,9 +12,9 @@ export function niveauVan(c: Netwerk): Niveau {
 export function planVoor(afstand: number, niveau: Niveau): { secs: number; bytes: number } {
   if (afstand === 0) return { secs: 30, bytes: 60e6 };
   if (afstand === 1) return {
-    ruim: { secs: 12, bytes: 4e6 },
-    zuinig: { secs: 6, bytes: 2e6 },
-    minimaal: { secs: 2, bytes: 1e6 },
+    ruim: { secs: 4, bytes: 1e6 },
+    zuinig: { secs: 2, bytes: 1e6 },
+    minimaal: { secs: 0, bytes: 0 },
   }[niveau];
   return { secs: 0, bytes: 0 };
 }

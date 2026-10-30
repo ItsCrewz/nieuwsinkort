@@ -120,7 +120,7 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 
 Videopool (#50): `Feed` heeft 3 vaste `<video>`'s (slot = index % 3, `src/videopool.ts`); wissel alleen de bron, maak of verwijder nooit een `<video>` tijdens swipen. Niet op een echte iPhone geverifieerd.
 
-Direct starten (#51): de volgende speler staat vooraf in de slide en start direct bij swipen. De poster blijft zichtbaar tot er beelddata is. De vaste pool houdt maximaal twee bronnen actief, ook bij mobiele data en Save-Data. `src/buffer.ts` begrenst de volgende hls.js-speler op 12 s / 4 MB (ruim), 6 s / 2 MB (mobiel of 3g) of 2 s / 1 MB (Save-Data of 2g); de actieve speler krijgt 30 s / 60 MB. Hele HLS-segmenten kunnen de grenzen overschrijden. Native HLS en mp4 gebruiken preload=auto en volgen deze limieten niet. Niet op een echte iPhone geverifieerd.
+Direct starten (#51): de volgende speler staat vooraf in de slide en start direct bij swipen. De poster blijft zichtbaar tot er beelddata is. De vaste pool houdt maximaal twee bronnen actief; bij Save-Data en 2G alleen de actieve. `src/buffer.ts` begrenst de volgende hls.js-speler op 4 s / 1 MB (ruim) of 2 s / 1 MB (mobiel of 3g); de actieve speler krijgt 30 s / 60 MB. Hele HLS-segmenten kunnen de grenzen overschrijden. Native HLS en mp4 gebruiken preload=auto en volgen deze limieten niet. Bij 500 kbit/s is dat ongeveer 0,25 MB per ongezien filmpje op wifi en 0,125 MB mobiel; 1,55 MB en 0,36 MB per bezoek zijn richtwaarden, geen harde limieten.  Niet op een echte iPhone geverifieerd.
 
 Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
 
