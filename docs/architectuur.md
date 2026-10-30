@@ -46,6 +46,10 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 
 De fallback zonder AI controleert Nederlandse brondomeinen met `isNL` en `hostVan` uit `src/bronlink.ts`. Relatieve en ongeldige links leveren geen Nederlands domein op en onderbreken de run niet. Een cluster met daarnaast een geldige `.nl`-bron blijft geschikt voor ruwe feedtekst. Links worden hiermee niet absoluut gemaakt.
 
+### Controle van artikel-URL's
+
+`worker/src/url.ts` controleert links vóór og/art/artj-jobselectie en uitvoering: alleen HTTP(S), poort 80/443, geen IP-literals, localhost (ook subdomeinen) of lokale/interne hostnamen. Og/art volgen redirects en gooien het resultaat weg bij een geweigerde eind-URL; tussenliggende hops worden niet vooraf gecontroleerd. Deze controle doet geen DNS-resolutie. Alleen toegestane invoer gaat naar `r.jina.ai`; redirects binnen die dienst vallen buiten de Worker.
+
 ### Workers AI en budget
 
 Modellen: `@cf/google/gemma-4-26b-a4b-it` (`MODEL`, hoofd), `@cf/meta/llama-3.2-1b-instruct` (`SMALL_MODEL`), `@cf/openai/whisper-large-v3-turbo` (audio, max 3 min). Dagbudget `BUDGET`=9000 neuronen (gratis limiet 10.000), `CAP`=40 per run. Het budget wordt gedeeld door de Worker en `functions/samenvatting.ts`.

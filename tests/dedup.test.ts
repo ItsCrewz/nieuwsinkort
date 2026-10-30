@@ -15,6 +15,8 @@ import { parseFeed } from "../worker/src/parse";
 import { onRequestPost as svPost } from "../functions/samenvatting";
 import { videoSlug } from "../src/slug";
 
+import { externeUrl, externeFetch } from "../worker/src/url";
+
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
 
@@ -39,6 +41,41 @@ t("bronlinks: fallback zonder AI gaat door na een ongeldige bron", () => {
   assert.deepEqual(shown, [clusters[1]]);
   assert.equal(isNL({ c: [] }), false);
 });
+
+t("externe URL: schema, poort en host controleren", () => {
+  for (const h of ["http://127.0.0.1/", "http://localhost:8787/", "https://x.nl:8443/", "javascript:x", "/relatief", "http://[::1]/", "http://2130706433/", "http://0x7f000001/", "https://host.local/", "https://host.internal/", "http://localhost./", "http://sub.localhost/"]) assert.equal(externeUrl(h), null, h);
+  for (const h of ["https://nos.nl/artikel/1", "http://nos.nl:80/", "https://nos.nl:443/"]) assert.equal(externeUrl(h), new URL(h).toString(), h);
+});
+
+// Geen netwerk: controleer dat ongeldige invoer niet wordt opgehaald en redirects worden verworpen.
+{
+  const origineel = globalThis.fetch;
+  let calls = 0, geannuleerd = false;
+  try {
+    globalThis.fetch = async (_url, init) => {
+      calls++;
+      assert.equal(init?.redirect, "follow");
+      const r = new Response(new ReadableStream({ cancel() { geannuleerd = true; } }));
+      Object.defineProperty(r, "url", { value: "http://127.0.0.1/" });
+      return r;
+    };
+    await assert.rejects(externeFetch("http://localhost/", {}), /geweigerde externe URL/);
+    t("geweigerde URL doet geen fetch", () => assert.equal(calls, 0));
+    await assert.rejects(externeFetch("https://nos.nl/artikel/1", {}), /geweigerde redirect-URL/);
+    t("geweigerde redirect levert geen resultaat op en sluit de body", () => {
+      assert.equal(calls, 1);
+      assert.equal(geannuleerd, true);
+    });
+    globalThis.fetch = async () => {
+      const r = new Response("artikel");
+      Object.defineProperty(r, "url", { value: "https://nos.nl/artikel/2" });
+      return r;
+    };
+    const r = await externeFetch("https://nos.nl/artikel/1", {});
+    const tekst = await r.text();
+    t("toegestane redirect behoudt het resultaat", () => assert.equal(tekst, "artikel"));
+  } finally { globalThis.fetch = origineel; }
+}
 
 t("tracking-parameters weg", () => {
   assert.equal(canonUrl("https://www.youtube.com/shorts/abcdefghijk?si=XYZ&feature=share"), "youtube.com/shorts/abcdefghijk");

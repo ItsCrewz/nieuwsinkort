@@ -11,6 +11,10 @@ Regels voor Codex en andere agents in deze repo (nieuwsinkort, Nederlandstalige 
 5. **Neuronbudget Workers AI respecteren**: `BUDGET`=9000/dag (gratis limiet 10.000), `CAP`=40 per run. Tiers: <70% hoofdmodel, 70–90% klein model (max 15), 90–100% alleen NL/Haarlem (max 8), daarna geen AI (`ruw: true`). Cache AI-uitkomsten in KV, geen AI-aanroepen in lussen of tests.
 6. Wijzig crons, bindings en vars (`wrangler.toml`, `worker/wrangler.toml`) en `DEPLOY_BRANCH` alleen als de taak dat vraagt.
 
+## Artikel-fetches
+
+Behoud de controle via `worker/src/url.ts` bij og/artikel/Jina-jobs: HTTP(S), poort 80/443, geen IP-literals of lokale/interne hostnamen. Geweigerde redirect-eind-URL's leveren geen resultaat op.
+
 ## Essentials
 
 - Stack: Vite 5, React 18, TypeScript 5, Tailwind 3, hls.js; Cloudflare Pages Functions (`functions/`); Worker `nieuwsinkort-uur` (`worker/`, Durable Objects `Runner`/`Fetcher`, KV `NIEUWS`, Workers AI).
