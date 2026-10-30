@@ -655,6 +655,3 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 @keyframes mlaad{to{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.d-meer-laden span{animation:none}}
 
-.ai-vermelding{margin:6px 0 0;font-size:12px;line-height:1.4;color:var(--ink-2)}
-.sv-sheet .ai-vermelding{color:#3d3d3d}
-:root[data-theme="dark"] .sv-sheet .ai-vermelding{color:#c2c2c2}
