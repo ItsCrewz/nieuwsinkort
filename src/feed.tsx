@@ -15,6 +15,7 @@ export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
+import { bronIndexen, gebruiktNativeHls, isZuinig, POOL_GROOTTE, slotVan } from "./videopool";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay } from "./debug-overlay";
 
@@ -117,9 +118,47 @@ function whenReady(fn: () => void, delay = 0) {
   };
 }
 
+// ------------------------------------------------------------- vaste videopool (#50)
+// iOS laat maar een paar decoders tegelijk toe en onthoudt per element of het mag spelen. Daarom precies
+// POOL_GROOTTE <video>-elementen, één keer gemaakt en geparkeerd in .f-park als ze niet in een slide staan.
+type Pool = { els: HTMLVideoElement[]; park: HTMLDivElement };
+function maakPool(): Pool {
+  const park = document.createElement("div");
+  park.className = "f-park";
+  park.hidden = true;
+  const els = Array.from({ length: POOL_GROOTTE }, (_, slot) => {
+    const el = document.createElement("video");
+    el.muted = true;
+    el.playsInline = true;
+    el.setAttribute("webkit-playsinline", "");
+    el.loop = true;
+    el.dataset.slot = String(slot);
+    park.appendChild(el);
+    return el;
+  });
+  return { els, park };
+}
+
 // ------------------------------------------------------------- MP4 / HLS
-function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek, onFail, onAutoplayBlocked }: PlayerProps & { kind: "hls" | "mp4"; src: string }) {
-  const ref = useRef<HTMLVideoElement>(null);
+// De <video> komt uit de vaste pool (3 elementen, slot = index % 3) en wordt hier alleen van bron gewisseld;
+// hij wordt nooit aangemaakt of verwijderd. De host-div is het enige dat React voor deze speler rendert.
+function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted, bar, seek, onFail, onAutoplayBlocked }: PlayerProps & { kind: "hls" | "mp4"; src: string; pool: Pool; slot: number }) {
+  const ref = useRef<HTMLVideoElement>(pool.els[slot]);
+  const host = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const video = ref.current;
+    host.current?.appendChild(video);
+    video.className = "f-media";
+    video.loop = true;
+    video.setAttribute("aria-label", v.titel);
+    if (DEBUG) video.dataset.debugKind = kind;
+    delete video.dataset.mse;
+    return () => {
+      video.classList.remove("on");
+      pool.park.appendChild(video);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     const api: SeekApi = {
       dur: () => ref.current?.duration ?? 0,
@@ -140,6 +179,9 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     };
   }, [seek]);
   const [shown, setShown] = useState(false);
+  useEffect(() => {
+    ref.current.classList.toggle("on", shown);
+  }, [shown]);
   const hlsRef = useRef<{ config: { maxBufferLength: number; maxMaxBufferLength: number }; startLoad: (p?: number) => void; recoverMediaError: () => void } | null>(null);
   const started = useRef(false);
   const rankRef = useRef(preload);
@@ -154,9 +196,16 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
   useEffect(() => {
     const video = ref.current;
     if (!video) return;
+    video.muted = mutedRef.current;
+    video.playsInline = true;
+    video.setAttribute("webkit-playsinline", "");
+    delete video.dataset.mse;
     if (kind === "mp4") {
+      const fout = () => onFail();
+      video.addEventListener("error", fout);
       video.src = src;
       return () => {
+        video.removeEventListener("error", fout);
         video.removeAttribute("src");
         video.load();
       };
@@ -164,9 +213,8 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     // Native HLS alleen op Apple (Safari/iOS). Chrome zegt sinds kort ook "maybe" op HLS, maar zijn eigen
     // speler blijft op Dumpert-streams vaak op 0:00 hangen; daar dus altijd hls.js (MSE) via onze proxy.
     const native = !!video.canPlayType("application/vnd.apple.mpegurl");
-    const apple = /Apple/.test(navigator.vendor || "") || /iP(hone|ad|od)/.test(navigator.userAgent);
     const mse = typeof window !== "undefined" && ("MediaSource" in window || "ManagedMediaSource" in window);
-    if (native && (apple || !mse)) {
+    if (gebruiktNativeHls(native, navigator.vendor || "", navigator.userAgent, mse)) {
       video.src = src;
       return () => {
         video.removeAttribute("src");
@@ -293,6 +341,9 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     const video = ref.current;
     if (video) video.muted = muted;
   }, [muted]);
+  useEffect(() => {
+    ref.current.preload = active || preload ? "auto" : "metadata";
+  }, [active, preload]);
 
   // Na herladen: terug naar dezelfde tijd en verder spelen.
   useEffect(() => {
@@ -368,7 +419,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
       }
       const besluit = stall.tik({ now, currentTime: video.currentTime, paused: video.paused,
         hidden: document.hidden, ended: video.ended, seeking: video.seeking, herstelSeek, balkTijd,
-        bufferVooruit, readyState: video.readyState });
+        bufferVooruit, readyState: video.readyState, networkState: video.networkState });
       if (besluit === "balk-stop") zetBar(video.currentTime, video.duration, false);
       if (besluit === "balk-sync") zetBar(video.currentTime, video.duration, true);
       if (besluit === "balk-stop" || besluit === "balk-sync" || besluit === "nudge" || besluit === "herlaad") debugEvent(besluit);
@@ -531,19 +582,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     };
   }, [zetBar]);
 
-  return (
-    <video
-      ref={ref}
-      data-debug-kind={DEBUG ? kind : undefined}
-      className={`f-media ${shown ? "on" : ""}`}
-      playsInline
-      muted={muted}
-      loop
-      preload={active || preload ? "auto" : "metadata"}
-      aria-label={v.titel}
-      onError={kind === "mp4" ? onFail : undefined}
-    />
-  );
+  return <div ref={host} className="f-slot" />;
 }
 
 // ------------------------------------------------------------- YouTube (IFrame API via postMessage)
@@ -744,6 +783,7 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
 
 // ------------------------------------------------------------- één scherm
 type SlideProps = {
+  pool: Pool;
   v: Video;
   i: number;
   total: number;
@@ -757,7 +797,7 @@ type SlideProps = {
   onClose: () => void;
   onAutoplayBlocked: () => void;
 };
-const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, paused, muted, onTap, onClose, onAutoplayBlocked }: SlideProps) {
+const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, preload, paused, muted, onTap, onClose, onAutoplayBlocked }: SlideProps) {
   const p = playerFor(v);
   const [failed, setFailed] = useState(false);
   const fail = useCallback(() => setFailed(true), []);
@@ -814,7 +854,7 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
           p!.kind === "youtube" ? (
             <YouTubePlayer {...props} id={youtubeId(p!.src)!} />
           ) : (
-            <NativePlayer {...props} kind={p!.kind} src={p!.src} />
+            <NativePlayer {...props} kind={p!.kind} src={p!.src} pool={pool} slot={slotVan(i)} />
           )
         ) : null}
         {playable ? (
@@ -1027,7 +1067,6 @@ export function Feed({
   const pickGroup = useCallback(
     (k: number) => {
       if (!gs || k === gi) return;
-      mountedRef.current = new Set();
       setGi(k);
       setItems(gs[k].list);
       setActive(0);
@@ -1047,21 +1086,33 @@ export function Feed({
   const root = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
-  // Spelers: alleen de huidige en de volgende hebben een <video>/<iframe>. De rest wordt gestopt en ontladen
-  // (bron eraf), zodat iOS niet te veel decoders tegelijk heeft (daardoor bleef het beeld soms staan met geluid).
-  const mountedRef = useRef<Set<number>>(new Set());
+  // Spelers: de pool heeft 3 vaste <video>'s voor slide i-1, i en i+1; welke daarvan een bron krijgen bepaalt
+  // videopool.ts (Apple/native HLS: actief + volgende, Save-Data/2G: alleen actief). YouTube-iframes blijven per
+  // slide (actief + volgende) buiten de pool.
+  const [pool] = useState(maakPool);
+  const [nativeHls] = useState(() => gebruiktNativeHls(!!pool.els[0].canPlayType("application/vnd.apple.mpegurl"), navigator.vendor || "", navigator.userAgent, "MediaSource" in window || "ManagedMediaSource" in window));
+  const [zuinig] = useState(() => isZuinig((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection));
   const mounted = useMemo(() => {
-    const next = new Set<number>();
-    for (let i = active; i <= active + 1; i++) if (i >= 0 && i < items.length) next.add(i);
-    mountedRef.current = next;
+    const next = bronIndexen(active, items.length, nativeHls, zuinig);
+    for (let i = active; i <= active + (zuinig ? 0 : 1); i++) if (i >= 0 && i < items.length && playerFor(items[i])?.kind === "youtube") next.add(i);
     return next;
-  }, [active, items]);
+  }, [active, items, nativeHls, zuinig]);
   // Cache opwarmen: playlist + eerste stukjes van de komende HLS-filmpjes via onze proxy (edge + browsercache).
   useEffect(() => {
     return whenReady(() => {
       for (let i = active + 1; i <= active + 3 && i < items.length; i++) warmHls(items[i]);
     }, 500);
   }, [active, items]);
+
+  // Geparkeerde pool-elementen blijven in het document (overlay, iOS-gebruiksstatus); weg als de feed sluit.
+  useLayoutEffect(() => {
+    const r = root.current;
+    r?.appendChild(pool.park);
+    return () => {
+      pool.park.remove();
+      pool.els.forEach((el) => { el.removeAttribute("src"); el.load(); });
+    };
+  }, [pool]);
 
   const close = useCallback(() => {
     if (!motionOK()) return onClose();
@@ -1147,7 +1198,7 @@ export function Feed({
     const r = root.current;
     if (!r) return;
     const cur = r.querySelector<HTMLElement>(`.fslide[data-i="${activeRef.current}"]`);
-    r.querySelectorAll<HTMLVideoElement>("video.f-media").forEach((el) => {
+    r.querySelectorAll<HTMLVideoElement>(".fslide video.f-media").forEach((el) => {
       el.muted = false;
       if (cur?.contains(el)) {
         if (!pausedRef.current) el.play().catch(() => {});
@@ -1225,6 +1276,7 @@ export function Feed({
         <div className={`feed-scroll ${gi ? "g1" : "g0"}`} key={gi} ref={scroller} tabIndex={-1}>
           {items.map((v, i) => (
             <Slide
+              pool={pool}
               key={videoSlug(v) + i}
               v={v}
               i={i}

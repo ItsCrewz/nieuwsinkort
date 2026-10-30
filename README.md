@@ -30,7 +30,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
 | `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
 | `prod-frozen/` | Bevroren oude productiebuild (zie deploy) |
-| `tests/` | `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `stall.test.ts` (draaien met `npm test`), `live-dedup.ts`, `live-cluster.ts` (naspelen op echte data) |
+| `tests/` | `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `stall.test.ts`, `videopool.test.ts` (draaien met `npm test`), `live-dedup.ts`, `live-cluster.ts` (naspelen op echte data) |
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
 | `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
 
