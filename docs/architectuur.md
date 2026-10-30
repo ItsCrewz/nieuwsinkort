@@ -42,7 +42,7 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 - Endpoints: `/run?key=` (run starten, optioneel `force`), `/uur?key=` (KV `uur` als JSON), beide met secret `RUN_KEY`; `/status` (open, alleen meta + vooraf-log).
 - Vars: `SITE`, `MODEL`, `CAP`, `BUDGET`, optioneel `SMALL_MODEL`. Secret: `RUN_KEY`.
 - Stappen van een run: bronnen ophalen → berichten van vandaag ontdubbelen/clusteren → bestaande samenvattingen uit state hergebruiken → nieuwe clusters samenvatten (5 per prompt) → foto's (feed, anders og:image, 3 dagen gecachet) → "In het kort" en weertekst alleen bij gewijzigde invoer → "Lees verder"-tekst → `uur` schrijven → alarm: video-samenvattingen vooraf (`vooraf.ts`, roept `/samenvatting` aan met `pre:true`).
-- Onderdelen: `parse.ts` (RSS/Atom), `videos.ts` (Dumpert, YouTube-kanalen, Reddit-video's), `x.ts`, `redlib.ts`, `weer.ts`, `artikel.ts`, `ai.ts`.
+- Onderdelen: `parse.ts` (RSS/Atom; `absUrl` laat alleen http(s)-links toe en maakt relatieve links absoluut), `videos.ts` (Dumpert, YouTube-kanalen, Reddit-video's), `x.ts`, `redlib.ts`, `weer.ts`, `artikel.ts`, `ai.ts`.
 
 De fallback zonder AI controleert Nederlandse brondomeinen met `isNL` en `hostVan` uit `src/bronlink.ts`. Relatieve en ongeldige links leveren geen Nederlands domein op en onderbreken de run niet. Een cluster met daarnaast een geldige `.nl`-bron blijft geschikt voor ruwe feedtekst. Links worden hiermee niet absoluut gemaakt.
 
@@ -100,3 +100,7 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 - YouTube geeft vaak LOGIN_REQUIRED vanaf Cloudflare.
 - De bronnenlijst hangt af van `/workspace/nieuws/feeds.json` buiten de repo (staat op de gedeelde box in `/workspace/nieuws`; een kopie komt in `scripts/pipeline/` via PR #1).
 - `scripts/pipeline/` (PR #1) nog niet op `main`.
+
+### Links uit feeds
+
+Feed-links zijn onbetrouwbare invoer. Drie lagen: `absUrl` in `worker/src/parse.ts` bij opname, `schoon()` filtert `bronnen[]` zonder http(s)-`href`, en in de UI gaat elke externe `href` door `veiligeUrl` (`src/url.ts`). Gebruik `veiligeUrl` ook voor nieuwe externe links.

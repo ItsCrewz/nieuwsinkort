@@ -26,6 +26,7 @@ function sourceLine(s: SourceRow): string {
 }
 import { Icon } from "./icons";
 import { Switch } from "./ui";
+import { veiligeUrl } from "./url";
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
@@ -155,7 +156,7 @@ export function SourcesSheet({
                 <ul className="sh-list">
                   {weer.map((b) => (
                     <li key={b.href}>
-                      <a className="sh-name" href={b.href} target="_blank" rel="noreferrer">
+                      <a className="sh-name" href={veiligeUrl(b.href)} target="_blank" rel="noreferrer">
                         <span>{b.site}</span>
                       </a>
                       <Icon name="ext" className="sm muted" />

@@ -13,6 +13,7 @@ const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").
 
 export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
+import { veiligeUrl } from "./url";
 
 // Geluid staat standaard aan en de keuze wordt onthouden (localStorage). Weigert de browser geluid zonder tik
 // (iPhone Safari), dan start het filmpje zonder geluid en gaat het geluid aan bij de eerste tik of swipe.
@@ -750,7 +751,7 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
         ) : (
           <div className="f-fail">
             <p>{!p ? "Dit filmpje speelt hier niet af." : v.bron === "Instagram" ? "Afspelen lukt niet: de Instagram-link is verlopen of geblokkeerd." : "Afspelen lukt even niet: de bron gaf geen beeld."}</p>
-            <a className="f-btn" href={v.href} target="_blank" rel="noreferrer">
+            <a className="f-btn" href={veiligeUrl(v.href)} target="_blank" rel="noreferrer">
               Bekijk bij {v.bron} <Icon name="ext" className="sm" />
             </a>
           </div>
@@ -765,7 +766,7 @@ const Slide = memo(function Slide({ v, i, total, cat, active, mount, preload, pa
           {v.ai ? <p className="f-ai">{v.ai}</p> : null}
           {v.ook?.length ? <p className="f-ook">Ook bij {[...new Set(v.ook.map((o) => o.bron))].slice(0, 3).join(", ")}</p> : null}
           <div className="f-actions">
-            <a className="f-btn" href={v.href} target="_blank" rel="noreferrer">
+            <a className="f-btn" href={veiligeUrl(v.href)} target="_blank" rel="noreferrer">
               Open bij bron <Icon name="ext" className="sm" />
             </a>
             <SamenvattingKnop v={v} />

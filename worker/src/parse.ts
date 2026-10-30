@@ -16,6 +16,8 @@ export const stripHtml = (s: string): string =>
   /&lt;\/?[a-z]/i.test(s) ? stripHtml(decode(cdata(s))) : decode(cdata(s).replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<br\s*\/?>|<\/p>/gi, " ").replace(/<[^>]+>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
+// Alleen http(s), relatieve links worden absoluut: een feed mag geen javascript:-href aanleveren
+export const absUrl = (l: string, base: string): string => { try { const u = new URL(l.trim(), base); return /^https?:$/.test(u.protocol) ? u.toString() : ""; } catch { return ""; } };
 function tag(block: string, names: string[]): string {
   for (const n of names) {
     const re = new RegExp(`<${n}(?:\\s[^>]*)?>([\\s\\S]*?)</${n}>`, "i");
@@ -49,7 +51,7 @@ export function parseFeed(body: string, url: string): Entry[] {
   if (/searchRetrieveResponse/.test(head + body.slice(0, 2000))) {
     for (const r of body.split(/<sru:record>/).slice(1)) {
       const t = stripHtml(tag(r, ["dcterms:title"]));
-      const l = /resourceIdentifier="([^"]+)"/.exec(r)?.[1] || "";
+      const l = absUrl(decode(/resourceIdentifier="([^"]+)"/.exec(r)?.[1] || ""), url);
       const d = date(tag(r, ["dcterms:available", "dcterms:modified", "dcterms:date"]));
       const typ = tag(r, ["dcterms:type"]);
       if (t) out.push({ t, l, d, s: `${typ}: ${stripHtml(tag(r, ["dcterms:abstract"]))}`.slice(0, 400) });
@@ -65,11 +67,12 @@ export function parseFeed(body: string, url: string): Entry[] {
     if (alt) l = decode(alt[1]);
     if (!l) l = decode(tag(b, ["link"]));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
+    l = absUrl(l, url);
     let d = date(tag(b, ["pubDate", "published", "dc:date", "updated", "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
     const raw = tag(b, ["description", "media:description", "summary", "content:encoded", "content"]);
     const img = /<media:(?:thumbnail|content)[^>]*url=["']([^"']+)["']/i.exec(b)?.[1] || /<enclosure[^>]*url=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/i.exec(b)?.[1];
-    if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(img ? { img: decode(img) } : {}) });
+    if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(img && absUrl(decode(img), url) ? { img: absUrl(decode(img), url) } : {}) });
   }
   return out;
 }
@@ -81,6 +84,6 @@ function parseJson(body: string, url: string): Entry[] {
     return j.vulnerabilities.map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
   if (Array.isArray(j?.hits?.hits)) // Open Raadsinformatie
     return j.hits.hits.map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
-  if (Array.isArray(j)) return j.map((a: any) => ({ t: a.title || a.Title || "", l: a.url || a.link || url, d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
+  if (Array.isArray(j)) return j.map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url) || url, d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
   return [];
 }

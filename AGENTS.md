@@ -20,3 +20,4 @@ Regels voor Codex en andere agents in deze repo (nieuwsinkort, Nederlandstalige 
 - Worker draait op het Free plan: max 50 subrequests per aanroep, daarom batches via `Fetcher`.
 - De fallback zonder AI gebruikt `src/bronlink.ts` voor een defensieve Nederlandse-broncheck; relatieve en ongeldige feedlinks mogen de uurrun niet laten crashen.
 - Alle teksten (UI, docs, commits, commentaar) zijn Nederlands.
+- Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`).
