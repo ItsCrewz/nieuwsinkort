@@ -528,7 +528,7 @@ function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: {
 // en pas als het dan nog niet past mag de kaart zelf scrollen. De kop wordt nooit ingekort.
 function fitCard(el: HTMLElement) {
   const sum = el.querySelector<HTMLElement>(".nc-sum");
-  el.classList.remove("fit-imgsm", "fit-noimg", "fit-nopts", "fit-scroll");
+  el.classList.remove("fit-imgsm", "fit-imgxs", "fit-noimg", "fit-nopts", "fit-scroll");
   el.querySelectorAll<HTMLElement>(".nc-pts li").forEach((li) => (li.hidden = false));
   if (sum) {
     sum.classList.remove("clamp");
@@ -536,7 +536,7 @@ function fitCard(el: HTMLElement) {
   }
   const over = () => el.scrollHeight - el.clientHeight > 1;
   if (!el.clientHeight || !over()) return;
-  // eerst de foto kleiner, dan de punten, dan pas de foto weg
+  // eerst de foto kleiner, dan de punten en samenvatting, als laatste de foto weg
   el.classList.add("fit-imgsm");
   if (!over()) return;
   // punten één voor één van achteren weghalen; pas als er geen meer past, de hele lijst weg
@@ -544,7 +544,6 @@ function fitCard(el: HTMLElement) {
   for (let k = pts.length - 1; k >= 0 && over(); k--) pts[k].hidden = true;
   if (pts.length && !over()) return;
   if (pts.length) el.classList.add("fit-nopts");
-  if (el.querySelector(".nc-img")) { el.classList.add("fit-noimg"); if (!over()) return; }
   if (sum) {
     const lh = parseFloat(getComputedStyle(sum).lineHeight) || 26;
     const lines = Math.round(sum.getBoundingClientRect().height / lh);
@@ -554,6 +553,12 @@ function fitCard(el: HTMLElement) {
       sum.style.setProperty("--sum-lines", String(keep));
       if (!over() || keep <= 2) break;
     }
+    if (!over()) return;
+  }
+  if (el.querySelector(".nc-img")) {
+    el.classList.add("fit-imgxs");
+    if (!over()) return;
+    el.classList.add("fit-noimg");
     if (!over()) return;
   }
   el.classList.add("fit-scroll");
@@ -646,6 +651,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
         </ul>
       ) : null}
       <div className="nc-act">
+        <div className="nc-act-row">
         {meer ? (
           <a className="btn" href={`#/bericht/${key}`} onClick={click} onTouchStart={() => prefetchMeer(item)} onMouseEnter={() => prefetchMeer(item)}>
             Lees verder
@@ -653,10 +659,11 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
         ) : null}
         {first ? (
           <a className={`btn${meer ? " ghost" : ""}`} href={veiligeUrl(first.href)} target="_blank" rel="noopener noreferrer">
-            Origineel bij {first.site}
+            <span>Origineel bij {first.site}</span>
             <Icon name="ext" />
           </a>
         ) : null}
+        </div>
         {bronnen.length > 1 ? <span className="nc-more">+{bronnen.length - 1} {bronnen.length === 2 ? "bron" : "bronnen"}</span> : null}
       </div>
       </div>
@@ -1000,7 +1007,7 @@ function useData() {
       d.filmpjes ??= [];
       zaaiSamenvattingen(d.samenvattingen);
       d.dumpert ??= [];
-      d.dumpert = d.dumpert.filter((v) => !!playerFor(v) || !!veiligeUrl(v.href));
+      d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
       d.filmpjes = d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) })); // Shorts of Journaals
       setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
       setError(false);

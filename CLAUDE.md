@@ -31,8 +31,8 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 
 - `src/vandaag.ts`: gedeeld dagfilter en publicatietijden voor Worker en Pages.
 - `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `buffer.ts` (pure bufferregels per netwerkniveau, nog niet in `feed.tsx` gekoppeld; getest in `tests/buffer.test.ts`), `sources.ts`, `types.ts`.
-- `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder").
-- `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
+- `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
+- `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
 - `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`) en `stall.test.ts` voor videoherstel.
 - `worker/src/cluster.ts`: clusteren van feedberichten (pure module).
@@ -44,7 +44,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - Functions en Worker hebben eigen kleine interfaces (`KV`, `Env`, `Ctx`) naast `@cloudflare/workers-types` in de Worker (`worker/package.json`, `worker/tsconfig.json`); houd ze klein en volg dat.
 - Code gedeeld tussen frontend, Functions en Worker staat in `src/` (bijv. `slug.ts`, `beeld.ts`, `schoon.ts`) en wordt geïmporteerd.
 - Worker draait op het Free plan: max 50 subrequests per aanroep. Ophalen gaat daarom in batches via Durable Object `Fetcher`. Houd daar rekening mee.
-- Alle uitgaande verzoeken van de Worker gebruiken de UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)` (uitzonderingen staan in de code, bijv. AD).
+- Alle uitgaande verzoeken van de Worker gebruiken de UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)` (uitzonderingen staan in de code, bijv. Reddit en AD).
 - De Nederlandse-broncheck voor de fallback zonder AI staat in `src/bronlink.ts`; houd deze defensief voor relatieve en ongeldige feedlinks.
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`). Geen `javascript:`-links.
 - Nieuwe test: voeg een `t("...", () => {...})` toe in `tests/dedup.test.ts`.
@@ -66,7 +66,7 @@ Pure module `worker/src/cluster.ts` (`toks`, `sim`, `gelijk`, `cluster`) cluster
 
 Vooraf laden (issue #34): `src/voorladen.ts` (pure keuzelogica + runner), `src/netwerk.ts` (budget `geen`/`zuinig`/`normaal` uit `navigator.connection`) en `src/usevoorladen.ts` (hook in `App.tsx`). Alleen na `load` + idle, alleen als het tabblad zichtbaar is en je niet al op een video-route zit; alles `priority: low`, hooguit 3 requests tegelijk, één keer per sessie (opnieuw alleen bij nieuwe `gegenereerd`). Geen AI, geen `/samenvatting`, geen `/meer`. Wijzig `feed.tsx`-`warmHls` en dit samen als de HLS-logica verandert (de code is bewust gedupliceerd).
 
-Niveaus: `normaal` = 6 thumbnails per tab, hls.js-chunk (niet op Safari), 2 geschikte HLS-streams (master, laagste variant, 2 segmenten) en de eerste ~256 KB van de eerste mp4; `zuinig` (cellular of 3g) = 3 thumbnails per tab, hls.js-chunk en preconnect; `geen` (Save-Data, 2g) = niets. Past binnen de CSP (`img-src https:`, `connect-src https:`).
+Niveaus: `normaal` = 6 thumbnails per tab, hls.js-chunk (niet op Safari), 2 Dumpert-streams (master, laagste variant, 2 segmenten) en de eerste ~256 KB van de eerste mp4; `zuinig` (cellular of 3g) = 3 thumbnails per tab, hls.js-chunk en preconnect; `geen` (Save-Data, 2g) = niets. Past binnen de CSP (`img-src https:`, `connect-src https:`).
 
 ## Rubriek Buitenland
 
@@ -101,7 +101,7 @@ De Durable Object `Budget` (`worker/src/budget.ts`, logica in `src/budget.ts`, b
 
 ### KV-schrijflimiet uur-Worker
 
-Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
+Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de door Fetcher gemelde Instagram-cachepogingen en de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
 
 `uur` wordt eerst apart geschreven. KV-eindschrijffouten worden gelogd via `console.error`; ook bij fouten op `state` of `meer` wordt het video-alarm gezet. Een mislukte `vooraf-log`-schrijfactie houdt het volgende alarm evenmin tegen. Bij een fout op `uur` blijft de eerder opgeslagen versie staan.
 
