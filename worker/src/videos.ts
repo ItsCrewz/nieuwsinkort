@@ -10,7 +10,6 @@ export const ytUrl = (cid: string) => `https://www.youtube.com/feeds/videos.xml?
 export const REDDIT_SUBS = ["thenetherlands", "Netherlands", "worldnews", "europe", "Haarlem"];
 export const redditUrl = (s: string) => `https://www.reddit.com/r/${s}/top/.rss?t=day`;
 export const DUMPERT_URL = "https://www.dumpert.nl/toppers";
-const VIDEO_RE = /v\.redd\.it|youtube\.com\/watch|youtu\.be\/|youtube\.com\/shorts|streamable\.com|(?:twitter|x)\.com\/[^/]+\/status|tiktok\.com|instagram\.com\/reel|nos\.nl\/video|rtl\.nl\/video/i;
 
 export type Video = { titel: string; ai: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number; soort?: Soort };
 
@@ -85,24 +84,7 @@ export function parseYouTube(xml: string, kanaal: string, since: number, hhmm: (
   return out;
 }
 
-export function parseRedditVideos(xml: string, sub: string, since: number, hhmm: (t: number) => string): Video[] {
-  const out: Video[] = [];
-  (xml.match(/<entry>[\s\S]*?<\/entry>/g) || []).forEach((e, rank) => {
-    const pub = Date.parse(/<published>(.*?)<\/published>/.exec(e)?.[1] || "");
-    if (!(pub >= since)) return;
-    const c = decode(/<content[^>]*>([\s\S]*?)<\/content>/.exec(e)?.[1] || "");
-    const vids = [...c.matchAll(/href="([^"]+)"/g)].map((m) => m[1]).filter((l) => VIDEO_RE.test(l));
-    if (!vids.length) return;
-    const vr = /v\.redd\.it\/([A-Za-z0-9]+)/.exec(vids[0]);
-    const th = /<media:thumbnail url="([^"]+)"/.exec(e);
-    out.push({
-      titel: decode(/<title>(.*?)<\/title>/.exec(e)?.[1] || "").trim(), ai: "", bron: "Reddit", href: /<link href="([^"]+)"/.exec(e)?.[1] || "",
-      embed: vr ? `https://v.redd.it/${vr[1]}/HLSPlaylist.m3u8` : "", thumb: th ? decode(th[1]) : "", populariteit: `#${rank + 1} top vandaag r/${sub}`,
-      tijd: hhmm(pub), _score: Math.max(0, 50 - rank), _pub: pub,
-    });
-  });
-  return out;
-}
+export { parseRedditVideos } from "./reddit";
 
 // ---------------------------------------------------------------- Shorts vs. Journaals
 /** "journaal" = uitzending/reportage (liggend, langer); "short" = kort clipje (YouTube Shorts, Reels, Reddit, X). */
