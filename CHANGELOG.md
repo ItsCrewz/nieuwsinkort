@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Nieuws-AI (#83): kortere samenvattingen en hooguit twee aanvullende punten, lagere uitvoerlimieten en hergebruik via een rubriekgebonden titelwoordencache van 24 uur.
 - Mistral is na Groq een optionele reserve voor tekst-AI, met een eigen dag- en maandlimiet.
 - Video-samenvattingen gebruiken Groq voor transcriptie en punten met Cloudflare als terugval binnen het bestaande budget.
 - AI-keten bewaart Cloudflare-fouten, slaat Cloudflare na een echte dagquota-fout over en wacht begrensd op vrije Groq-minuutvensters.

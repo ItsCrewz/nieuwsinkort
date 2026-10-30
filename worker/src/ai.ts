@@ -77,19 +77,20 @@ export async function summarize(ai: Ai, model: string, items: In[], u: Usage): P
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
   const user =
     `Vat elk bericht samen. Geef per bericht:\n- "kop": korte Nederlandse kop, max 8 woorden\n- "ai": één korte zin (liefst max 20 woorden) wat er gebeurde\n` +
-    `- "samenvatting": 2 tot 4 korte zinnen met de belangrijkste feiten\n- "punten": 2 of 3 korte kernpunten (elk max 12 woorden)\n` +
+    `- "samenvatting": 2 tot 3 korte zinnen met de belangrijkste feiten\n- "punten": hooguit 2 korte kernpunten (elk max 12 woorden), alleen feiten die nog niet in de samenvatting staan; anders een lege lijst\n` +
     `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
     JSON.stringify(items.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
   const out = new Map<number, Sum>();
   // kleine modellen: geen JSON-modus (niet overal ondersteund), wel JSON vragen en eruit vissen
   const small = /llama-3\.2-[13]b/.test(model);
-  const txt = await chat(ai, model, sys, user, (small ? 200 : 260) * items.length + 100, u, !small);
+  // Minder uitvoer per bericht, met vaste ruimte voor de JSON-structuur.
+  const txt = await chat(ai, model, sys, user, (small ? 150 : 180) * items.length + 80, u, !small);
   const j = jsonFrom(txt);
   const arr = Array.isArray(j) ? j : j?.items;
   for (const x of Array.isArray(arr) ? arr : []) {
     const id = Number(x?.id);
     if (!items.some((i) => i.id === id)) continue;
-    const s: Sum = { kop: str(x.kop, 90), ai: str(x.ai, 240), samenvatting: str(x.samenvatting, 900), punten: (Array.isArray(x.punten) ? x.punten : []).map((p: any) => str(p, 140)).filter(Boolean).slice(0, 4) };
+    const s: Sum = { kop: str(x.kop, 90), ai: str(x.ai, 240), samenvatting: str(x.samenvatting, 900), punten: (Array.isArray(x.punten) ? x.punten : []).map((p: any) => str(p, 140)).filter(Boolean).slice(0, 2) };
     if (s.kop && s.ai) out.set(id, s);
   }
   if (!out.size) u.fails++;
