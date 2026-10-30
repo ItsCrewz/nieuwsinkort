@@ -1,0 +1,1 @@
+- Tests toegevoegd voor bronnormalisatie, bronopbouw en bronsleutels (#122).
