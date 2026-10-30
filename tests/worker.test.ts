@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { webcrypto } from "node:crypto";
 import "./sportcat.test";
 import "./showcat.test";
@@ -19,6 +20,19 @@ await t("YouTube-nieuwskanalen bevatten de nieuwe kanalen", async () => {
   assert.equal(YT_NIEUWS["Nieuwsuur"], "UCExcZNwh_3Mwm4fF4VSiu2w");
   assert.equal(YT_NIEUWS["Omroep PowNed"], "UCihqgpWn_ns1gJUdhNLsSMQ");
   assert.equal(YT_NIEUWS["Radar"], "UCGUhzuD1eYIgJoSGe0c_rNg");
+});
+await t("Instagram en Kittygram zijn geen bronnen meer; Haarlem105 gebruikt YouTube", async () => {
+  const feeds = JSON.parse(readFileSync("scripts/pipeline/feeds.json", "utf8"));
+  const bronnen = JSON.parse(readFileSync("public/bronnen.json", "utf8"));
+  const urls = [...feeds.map((f: any) => f.url), ...bronnen.groepen.flatMap((g: any) => g.bronnen.flatMap((b: any) => (b.feeds || []).map((f: any) => f.url)))];
+  assert.ok(urls.every((url: string) => !/(?:^|\.)kg\.meowing\.de$|(?:^|\.)instagram\.com$/i.test(new URL(url).hostname)));
+  assert.ok(feeds.some((f: any) => f.cat === "haarlem" && f.naam === "Haarlem105 (YouTube)" && f.werkt && f.url === `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_NIEUWS.Haarlem105}`));
+  assert.equal(YT_NIEUWS.Haarlem105, "UCFDVl_p6fwkloGr8lraSZgQ");
+  const worker = readFileSync("worker/src/index.ts", "utf8");
+  assert.doesNotMatch(worker, /iPhone.*Safari|IG_UA|runInsta|igGet/);
+  const script = readFileSync("scripts/pipeline/filmpjes.py", "utf8");
+  assert.match(script, /"Haarlem105": "UCFDVl_p6fwkloGr8lraSZgQ"/);
+  assert.doesNotMatch(script, /IG_ACCOUNTS|IG_POLITIEK|def instagram\(/);
 });
 await t("YouTube-Short krijgt een embed en de soort short", async () => {
   const xml = `<feed><entry><yt:videoId>abcdefghijk</yt:videoId><title>Kort nieuws</title><link rel="alternate" href="https://www.youtube.com/shorts/abcdefghijk"/><published>2026-10-29T12:00:00Z</published></entry></feed>`;

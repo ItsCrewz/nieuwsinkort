@@ -262,6 +262,12 @@
   "werkt": true
  },
  {
+  "cat": "haarlem",
+  "naam": "Haarlem105 (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCFDVl_p6fwkloGr8lraSZgQ",
+  "werkt": true
+ },
+ {
   "cat": "tech",
   "naam": "Androidplanet",
   "url": "https://www.androidplanet.nl/feed/",
@@ -380,76 +386,6 @@
   "naam": "PowNed (geen RSS, site)",
   "url": "https://www.powned.tv/",
   "werkt": false
- },
- {
-  "cat": "nl",
-  "naam": "Instagram NOS (Kittygram)",
-  "url": "https://kg.meowing.de/nos/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
-  "ua": "bot",
-  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
- },
- {
-  "cat": "nl",
-  "naam": "Instagram NU.nl (Kittygram)",
-  "url": "https://kg.meowing.de/nu.nl/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
-  "ua": "bot",
-  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
- },
- {
-  "cat": "nl",
-  "naam": "Instagram RTL Nieuws (Kittygram)",
-  "url": "https://kg.meowing.de/rtlnieuws/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
-  "ua": "bot",
-  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
- },
- {
-  "cat": "haarlem",
-  "naam": "Instagram NH Nieuws (Kittygram)",
-  "url": "https://kg.meowing.de/nhnieuws/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
-  "ua": "bot",
-  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
- },
- {
-  "cat": "haarlem",
-  "naam": "Instagram Haarlem105 (Kittygram)",
-  "url": "https://kg.meowing.de/haarlem105/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
-  "ua": "bot",
-  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
- },
- {
-  "cat": "nl",
-  "naam": "Instagram PowNed (Kittygram)",
-  "url": "https://kg.meowing.de/powned/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
-  "ua": "bot",
-  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
- },
- {
-  "cat": "nl",
-  "naam": "Instagram Hart van Nederland (Kittygram)",
-  "url": "https://kg.meowing.de/hartvannederland/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
-  "ua": "bot",
-  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum."
  },
  {
   "cat": "nl",
@@ -652,14 +588,6 @@
   "url": "https://www.shownieuws.nl/rss",
   "werkt": false,
   "notitie": "showbizz; 404"
- },
- {
-  "cat": "showbizz",
-  "naam": "Instagram RTL Boulevard (Kittygram)",
-  "url": "https://kg.meowing.de/rtlboulevard/atom.xml",
-  "werkt": true,
-  "notitie": "Kittygram blokkeert browser-UA (500 'Blocked'); werkt met bot-UA. Geen echte postdatum (updated = ophaaltijd): ontdubbelen op link, niet op datum.",
-  "ua": "bot"
  },
  {
   "cat": "nl",
@@ -924,177 +852,6 @@
   "url": "https://www.rodi.nl/112-nieuws",
   "werkt": false,
   "notitie": "HTML-pagina, geen feed"
- },
- {
-  "cat": "politiek",
-  "naam": "VVD (Kittygram)",
-  "url": "https://kg.meowing.de/vvd/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "PRO (Progressief Nederland) (Kittygram)",
-  "url": "https://kg.meowing.de/progressiefnederland/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "CDA (Kittygram)",
-  "url": "https://kg.meowing.de/cdavandaag/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "FVD (Kittygram)",
-  "url": "https://kg.meowing.de/fvdnl/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "BBB (Kittygram)",
-  "url": "https://kg.meowing.de/boerburgerbeweging/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "ChristenUnie (Kittygram)",
-  "url": "https://kg.meowing.de/christenunie/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "SGP (Kittygram)",
-  "url": "https://kg.meowing.de/sgpnieuws/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "SP (Kittygram)",
-  "url": "https://kg.meowing.de/socialistischepartij/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Volt (Kittygram)",
-  "url": "https://kg.meowing.de/voltnederland/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Rob Jetten (Minister-president) (Kittygram)",
-  "url": "https://kg.meowing.de/minpres/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Jan Paternotte (D66) (Kittygram)",
-  "url": "https://kg.meowing.de/janpaternotte/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Jesse Klaver (PRO) (Kittygram)",
-  "url": "https://kg.meowing.de/jesseklaver/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Geert Wilders (PVV) (Kittygram)",
-  "url": "https://kg.meowing.de/geertwilders/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Henri Bontenbal (CDA) (Kittygram)",
-  "url": "https://kg.meowing.de/henribontenbal/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Stephan van Baarle (DENK) (Kittygram)",
-  "url": "https://kg.meowing.de/stephanvanbaarle/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Mona Keijzer (Kittygram)",
-  "url": "https://kg.meowing.de/monakeijzer/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Laurens Dassen (Volt) (Kittygram)",
-  "url": "https://kg.meowing.de/laurens.dassen/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Rijksoverheid (Kittygram)",
-  "url": "https://kg.meowing.de/rijksoverheid.nl/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
- },
- {
-  "cat": "politiek",
-  "naam": "Tweede Kamer (Kittygram)",
-  "url": "https://kg.meowing.de/tweede_kamer/atom.xml",
-  "werkt": true,
-  "soort": "atom",
-  "ua": "bot",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Instagram: box via Kittygram, Worker via instagram.com/<user>/embed/ (laatste 6 posts)."
  },
  {
   "cat": "politiek",

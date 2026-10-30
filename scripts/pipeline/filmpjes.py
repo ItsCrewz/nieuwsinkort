@@ -20,7 +20,6 @@ Bronnen:
   YouTube   kanaal-RSS van nieuwskanalen (met views uit media:statistics)
   X         niet in dit script: gebruik de X-tools (has:videos, nieuwsaccounts), zie status.
   YouTube trending NL via Invidious: overgeslagen (geeft alleen livestreams met 0 views).
-  Instagram profiel-embed van instagram.com (openbaar, zonder login): reels van vandaag met MP4, soort "short".
   TikTok: geen snelle open route; overgeslagen.
 Elk filmpje krijgt "soort": "short" (Shorts, Reels, X) of "journaal" (uitzending/reportage).
 """
@@ -56,32 +55,23 @@ YT_NIEUWS = {  # kanaalnaam -> channel_id
     "FORMULA 1": "UCB_qr75-ydFVKSF9Dmo6izg",
     "AutoWeek": "UCzToShYR6Sw_k1i6FsdEr6g",
     "Autovisie": "UCAkqAwuyz_qu3vfgAMQPCBw",
-}
-# Instagram: profiel-embed van Instagram zelf (openbaar, zonder login); Kittygram geeft geen media.
-IG_ACCOUNTS = {
-    "NOS": "nos", "NU.nl": "nu.nl", "RTL Nieuws": "rtlnieuws", "NH Nieuws": "nhnieuws", "Haarlem105": "haarlem105",
-    "PowNed": "powned", "Hart van Nederland": "hartvannederland", "RTL Boulevard": "rtlboulevard",
+    "Haarlem105": "UCFDVl_p6fwkloGr8lraSZgQ",
 }
 # Politiek (Tweede Kamer-partijen, lijsttrekkers, kabinet): uit feeds.json (cat "politiek"), max 2 video's per account.
 def _politiek():
-    ig, yt = {}, {}
+    yt = {}
     try:
         for f in json.load(open("/workspace/nieuws/feeds.json")):
             if f.get("cat") != "politiek" or not f.get("werkt", True):
                 continue
             n = re.sub(r"\s*\((Kittygram|YouTube|X)\)$", "", f.get("naam", ""))
-            m = re.match(r"https://kg\.meowing\.de/([^/]+)/atom\.xml", f.get("url", ""))
-            if m:
-                ig[n] = m.group(1)
             m = re.search(r"channel_id=([\w-]+)", f.get("url", ""))
             if m:
                 yt[n] = m.group(1)
     except Exception:
         pass
-    return ig, yt
-IG_POLITIEK, YT_POLITIEK = _politiek()
-IG_UA = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
-         "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
+    return yt
+YT_POLITIEK = _politiek()
 # Shorts vs. Journaals (zelfde regels als worker/src/videos.ts soortVan en de site)
 JOURNAAL_RE = re.compile(r"journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|"
                          r"nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur", re.I)
@@ -237,51 +227,6 @@ def yt_kanaal(naam, cid, since):
     return out
 
 
-# ---------------- Instagram ----------------
-def _ig_get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": IG_UA, "Accept": "text/html", "Accept-Language": "nl-NL,nl;q=0.9"})
-    with urllib.request.urlopen(req, timeout=20) as r:
-        return r.read().decode("utf-8", "replace")
-
-
-def instagram(naam, user, since, maxi=3):
-    """Reels van vandaag uit Instagram's eigen profiel-embed; MP4 uit de post-embed (ondertekend, enkele dagen geldig)."""
-    t = _ig_get(f"https://www.instagram.com/{user}/embed/")
-    m = re.search(r'"contextJSON":"((?:[^"\\]|\\.)*)"', t)
-    if not m:
-        raise RuntimeError("geen Instagram-embeddata")
-    ctx = json.loads(json.loads('"' + m.group(1) + '"')).get("context", {})
-    out = []
-    for g in ctx.get("graphql_media", []):
-        s = g.get("shortcode_media") or {}
-        pub = datetime.fromtimestamp(s.get("taken_at_timestamp", 0), timezone.utc)
-        if not s.get("is_video") or pub < since or len(out) >= maxi:
-            continue
-        try:
-            e = _ig_get(f"https://www.instagram.com/p/{s['shortcode']}/embed/captioned/")
-        except Exception:
-            continue
-        mv = re.search(r'video_url(?:\\+)?":(?:\\+)?"(https:[^"]+?\.mp4[^"]*?)(?:\\+)?"', e)
-        if not mv:
-            continue
-        mp4 = re.sub(r"\\+u0026", "&", re.sub(r"\\+/", "/", mv.group(1))).replace("\\", "")
-        tekst = ((s.get("edge_media_to_caption") or {}).get("edges") or [{}])[0].get("node", {}).get("text", "").strip()
-        tekst = re.sub(r"(\s*#[\w]+)+\s*$", "", tekst).strip()
-        zin = re.match(r"^[\s\S]{15,140}?[.!?](\s|$)", tekst)
-        titel = re.sub(r"\s+", " ", (zin.group(0) if zin else tekst.split("\n")[0])).strip() or f"Video van {naam}"
-        if len(titel) > 110:
-            titel = re.sub(r"\s+\S*$", "", titel[:107]) + "…"
-        rest = re.sub(r"\s+", " ", tekst[len(titel):] if tekst.startswith(titel) else "").strip()
-        likes = (s.get("edge_liked_by") or {}).get("count", 0)
-        res = s.get("display_resources") or []
-        out.append({
-            "titel": titel, "ai": rest[:300], "bron": "Instagram",
-            "href": f"https://www.instagram.com/reel/{s['shortcode']}/", "embed": mp4,
-            "thumb": (res[0]["src"] if res else s.get("display_url", "")),
-            "populariteit": kort_getal(likes, "likes") if likes else "", "tijd": hhmm(pub), "soort": "short",
-            "_kanaal": f"Instagram {naam}", "_score": likes * 20, "_gepubliceerd": pub.isoformat(),
-        })
-    return out
 
 
 # ---------------- ontdubbelen ----------------
@@ -376,11 +321,9 @@ def main():
     with ThreadPoolExecutor(12) as ex:
         fut_d = None if alleen_f else ex.submit(run, "Dumpert", dumpert, since_dump)
         fut_y = [] if alleen_d else [ex.submit(run, f"YouTube {n}", yt_kanaal, n, c, since) for n, c in YT_NIEUWS.items()]
-        fut_i = [] if alleen_d else [ex.submit(run, f"Instagram {n}", instagram, n, u, since) for n, u in IG_ACCOUNTS.items()]
         if not alleen_d:  # politiek: max 2 per account
-            fut_i += [ex.submit(run, f"Instagram politiek {n}", instagram, n, u, since, 2) for n, u in IG_POLITIEK.items()]
             fut_y += [ex.submit(run, f"YouTube politiek {n}", lambda n, c, s_: yt_kanaal(n, c, s_)[:2], n, c, since) for n, c in YT_POLITIEK.items()]
-        for f in fut_y + fut_i:
+        for f in fut_y:
             filmpjes += f.result()
         if fut_d:
             dump = fut_d.result()

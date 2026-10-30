@@ -1,0 +1,1 @@
+- Instagram- en Kittygram-bronnen verwijderd; Haarlem105 toegevoegd via YouTube (#76).

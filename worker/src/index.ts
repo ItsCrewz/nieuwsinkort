@@ -10,7 +10,7 @@ import { bewaakteRun } from "./run-status";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
-import { YT_NIEUWS, ytUrl, DUMPERT_URL, parseDumpert, parseYouTube, soortVan, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
+import { YT_NIEUWS, ytUrl, DUMPERT_URL, parseDumpert, parseYouTube, soortVan, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
@@ -63,40 +63,6 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 // ---------------------------------------------------------------- fetcher-DO
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj"; label?: string; sub?: string; max?: number; alleenVideo?: boolean };
 type Res = { kvWrites?: number; url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
-
-const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
-const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
-
-// Instagram: profiel-embed -> entries (bronstats) + van vandaag de video's met hun MP4 (max 3 per account).
-async function runInsta(j: Job, since: number, t0: number, kv?: KVNamespace): Promise<Res> {
-  const user = igUser(j.url);
-  if (!user) throw new Error("onbekend Instagram-account");
-  const r = await igGet(igProfileUrl(user));
-  if (!r.ok) return { url: j.url, ok: false, status: r.status, err: `Instagram HTTP ${r.status}`, ms: Date.now() - t0 };
-  const posts = parseIgProfile(await r.text());
-  const now = Date.now();
-  const entries: Entry[] = posts.map((p) => ({ t: (p.text.split("\n")[0] || `Post van @${p.user}`).slice(0, 160), l: `https://www.instagram.com/p/${p.code}/`, d: p.t || null, s: p.text.slice(0, 600), img: p.img }));
-  const videos: Video[] = [];
-  let kvWrites = 0;
-  for (const p of posts.filter((p) => p.video && vanVandaag(p.t, now)).slice(0, j.max ?? 3)) {
-    try {
-      // MP4-adres per post 20 uur in KV (ondertekend adres is enkele dagen geldig): elk uur alleen nieuwe reels opvragen
-      const key = `ig:${p.code}`;
-      let mp4 = (await kv?.get(key).catch(() => null)) || "";
-      if (!mp4) {
-        const e = await igGet(igPostEmbed(p.code));
-        mp4 = e.ok ? igVideoUrl(await e.text()) : "";
-        if (mp4 && kv) { kvWrites++; await kv.put(key, mp4, { expirationTtl: 20 * 3600 }).catch(() => {}); }
-      }
-      if (mp4) videos.push(igVideo(p, mp4, j.label || user, hhmm));
-    } catch { /* deze video overslaan */ }
-  }
-  return {
-    url: j.url, ok: true, status: 200, ms: Date.now() - t0, total: entries.length, videos, kvWrites,
-    newest: entries.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null),
-    entries: entries.flatMap((e) => { const d = publicatieTijd(e.d, now); return d != null && vanVandaag(d, now) ? [{ ...e, d }] : []; }),
-  };
-}
 
 // og:image van een artikel (alleen als de feed zelf geen foto had). Leest alleen de <head>, 3 dagen in KV.
 async function runOg(j: Job, t0: number, kv?: KVNamespace): Promise<Res> {
@@ -178,7 +144,6 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
   const t0 = Date.now();
   let status = 0;
   try {
-    if (j.kind === "insta") return await runInsta(j, since, t0, kv);
     if (j.kind === "og") return await runOg(j, t0, kv);
     if (j.kind === "art") return await runArt(j, t0);
     if (j.kind === "artj") return await runArtJ(j, t0);
@@ -317,7 +282,7 @@ export class Runner extends DurableObject<Env> {
       for (const url of urls) {
         const sub = /reddit\.com\/r\/([^/]+)/.exec(url)?.[1];
         const max = s.feeds.find((f: any) => f.url === url)?.max ?? (g.id === "politiek" ? 2 : undefined);
-        add({ url, kind: sub ? "reddit" : igUser(url) ? "insta" : xUser(url) ? "x" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(max != null ? { max } : {}) });
+        add({ url, kind: sub ? "reddit" : xUser(url) ? "x" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(max != null ? { max } : {}) });
       }
     }
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) add({ url: ytUrl(cid), kind: "feed", label: naam });
