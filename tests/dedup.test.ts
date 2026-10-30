@@ -33,10 +33,18 @@ const t = (name: string, fn: () => void | Promise<void>) => {
 t("deploy-integriteit: vuile werkboom vereist expliciete uitzondering", () => {
   const script = readFileSync("deploy.sh", "utf8");
   const controle = script.slice(script.indexOf('COMMIT="'), script.indexOf("# --- doel-branch"));
-  const vuil = spawnSync("bash", ["-ec", controle], { env: { ...process.env, ALLOW_DIRTY: "" }, encoding: "utf8" });
+  // eigen wegwerp-repo met een ongecommit bestand, zodat de uitkomst niet van de echte werkboom afhangt
+  const dir = mkdtempSync(join(tmpdir(), "nik-vuil-"));
+  const git = (...a: string[]) => spawnSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: dir });
+  git("init", "-q");
+  git("commit", "-q", "--allow-empty", "-m", "start");
+  writeFileSync(join(dir, "vuil.txt"), "x");
+  const draai = (allow: string) => spawnSync("bash", ["-ec", controle], { cwd: dir, env: { ...process.env, ALLOW_DIRTY: allow }, encoding: "utf8" });
+  const vuil = draai("");
   assert.equal(vuil.status, 1);
   assert.match(vuil.stderr, /vuile werkboom/);
-  assert.equal(spawnSync("bash", ["-ec", controle], { env: { ...process.env, ALLOW_DIRTY: "1" } }).status, 0);
+  assert.equal(draai("1").status, 0);
+  rmSync(dir, { recursive: true, force: true });
   assert.ok(script.includes("git diff --exit-code HEAD -- public/bronnen.json"));
   assert.ok(script.includes('--commit-hash "$COMMIT"'));
 });
