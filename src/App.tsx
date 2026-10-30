@@ -513,7 +513,7 @@ function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: {
     return (
       empty ?? <div className="empty">
         <Icon name="clock" />
-        Nog geen berichten van vandaag in deze rubriek. Om 08:00 en 12:00 komt er nieuws bij.
+        Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
       </div>
     );
   const lead = sorted[leadIdx];
@@ -788,7 +788,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty }: {
         {total === 0 ? (
           empty ?? <div className="empty">
             <Icon name="clock" />
-            Nog geen berichten van vandaag in deze rubriek. Om 08:00 en 12:00 komt er nieuws bij.
+            Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
           </div>
         ) : (
           sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} />)

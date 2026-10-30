@@ -3,6 +3,7 @@
 // - samenvattingen, "In het kort" en kernpunten van de routine blijven staan;
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
+import { alleenVandaag } from "../src/vandaag";
 import { schoon } from "../src/schoon";
 interface KV { get(key: string, type: "json"): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
@@ -18,7 +19,7 @@ const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/
 /** Velden die de site niet leest (alleen diagnose); weg uit de respons. */
 export function slim(d: any) {
   if (!d || typeof d !== "object") return d;
-  const { ontdubbeld, routine_gegenereerd, ...rest } = d;
+  const { ontdubbeld, routine_gegenereerd, oud, ...rest } = d;
   return rest;
 }
 
@@ -76,6 +77,7 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
   try { H = await env.NIEUWS.get("uur", "json"); } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
   let out: any = S;
   try { out = merge(S, H); } catch { console.error("data.json: merge mislukt"); out = S; }
+  try { out = alleenVandaag(out, Date.now()); } catch { console.error("data.json: dagfilter mislukt"); }
   try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
   // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
   try {
