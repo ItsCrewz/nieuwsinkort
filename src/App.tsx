@@ -15,7 +15,7 @@ import { herindeel } from "./regio";
 import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { uitgebreidAlineas } from "./uitgebreid";
 import { touchNu } from "./invoer";
-import { neemVroegeData } from "./vroeg";
+import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
@@ -1006,9 +1006,7 @@ function useData() {
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
     try {
-      const r = await (neemVroegeData()?.catch(() => null) ?? null) ?? await fetch("/data.json", { cache: "no-cache" }); // altijd hervalideren: ETag geeft een 304 als er niets nieuws is
-      if (!r.ok) throw new Error(String(r.status));
-      const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
+      const d = schoon((await laadData(neemVroegeData())) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
       d.filmpjes ??= [];
@@ -1166,6 +1164,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
     <div className={`app ${feed ? "app-feed" : ""}`}>
       <IconSprite />
       <div className="shell">
+        <a className="skip" href="#top" onClick={(e) => { e.preventDefault(); document.getElementById("top")?.focus(); }}>Naar de inhoud</a>
         {top}
         {children}
       </div>
@@ -1319,7 +1318,7 @@ export default function App() {
   if (!data || !raw) {
     return (
       <Frame top={top}>
-        <main className="wrap" id="top">
+        <main className="wrap" id="top" tabIndex={-1}>
           {error ? (
             <div className="empty" style={{ marginTop: 24 }}>
               <Icon name="alert" />
@@ -1359,7 +1358,7 @@ export default function App() {
   if (selectedItem) {
     return (
       <Frame top={top}>
-        <main className="wrap page-in" id="top" key={`d-${route.selected}`}>
+        <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
           <DetailView
             item={selectedItem}
             bionic={bionic}
@@ -1402,7 +1401,7 @@ export default function App() {
   if (!isVideo) {
     return (
       <Frame top={top} feed>
-        <main className="nf-main" id="top">
+        <main className="nf-main" id="top" tabIndex={-1}>
           <div className="nf-tabs">
             <div className="wrap">
               <Tabs data={data} view={view} onChange={setView} />
@@ -1437,7 +1436,7 @@ export default function App() {
   }
   return (
     <Frame top={top}>
-      <main className="wrap" id="top">
+      <main className="wrap" id="top" tabIndex={-1}>
         <Front>
           <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
         </Front>

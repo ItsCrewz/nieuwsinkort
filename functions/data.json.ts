@@ -41,7 +41,13 @@ export function merge(S: any, H: any) {
     return !id || !geblokkeerd.has(id);
   };
   const sLinks = new Set<string>((base.items || []).flatMap((i: any) => (i.bronnen || []).map((b: any) => norm(b.href))));
-  const nieuw = (H.items || []).filter((i: any) => !(i.bronnen || []).some((b: any) => sLinks.has(norm(b.href))));
+  // Eerst dagfilteren en op tijd ordenen, zodat oude berichten geen plek innemen.
+  const uurItems = (H.items || []).length > 150 ? alleenVandaag(H, Date.now()).items : (H.items || []);
+  const nieuw = uurItems.filter((i: any) => !(i.bronnen || []).some((b: any) => sLinks.has(norm(b.href))));
+  if (nieuw.length > 150) {
+    nieuw.sort((a: any, b: any) => (b.t ?? 0) - (a.t ?? 0) || (b.tijd || "").localeCompare(a.tijd || ""));
+    nieuw.length = 150;
+  }
   const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
   const sV = new Set<string>((base.filmpjes || []).map((v: any) => v.href));
   const sTijd = sOk ? new Date(S.gegenereerd).toLocaleTimeString("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }) : "00:00";
