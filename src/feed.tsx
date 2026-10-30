@@ -23,7 +23,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
-import { ytStartBesluit, ytSkipBesluit, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
+import { ytStartBesluit, ytSkipBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -726,6 +726,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         debugEvent(`YouTube ${id} ${d.event} ${typeof d.info === "number" ? d.info : ""}`);
         if (d.event === "onError") {
           echteFout.current = true; foutCode.current = d.info; setVangnet(false);
+          if (ytEchteFout(d.info)) setShown(true);
           if (state.current.active) onYtFout(d.info);
         } else if (!echteFout.current && state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
           blokkade.current = d.event; diagnose();
