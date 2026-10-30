@@ -1,5 +1,5 @@
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Bron, Item, Meer } from "./types";
 import { BionicText, host } from "./ui";
 import { Icon } from "./icons";
@@ -100,6 +100,14 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
 }
 
 export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
+  const kopRef = useRef<HTMLHeadingElement>(null);
+  // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
+  useEffect(() => {
+    kopRef.current?.focus({ preventScroll: true });
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onBack();
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [item, onBack]);
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
     return () => {
@@ -120,7 +128,7 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
           {item.ruw ? <span>nog niet samengevat</span> : null}
           {bronnen.length ? <span>{bronnenTekst(bronnen.length)}</span> : null}
         </div>
-        <h1 className="d-title">{item.kop}</h1>
+        <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
         {item.ai ? (
           <p className="d-lead bn">

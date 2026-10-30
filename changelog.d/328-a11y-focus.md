@@ -1,0 +1,1 @@
+- Toegankelijkheid: de scrubber heeft altijd `aria-valuenow`/`aria-valuetext`, de YouTube-iframe is niet meer uit de tabvolgorde gehaald, en bij een artikel openen gaat de focus naar de kop (Escape = terug) en na terug naar de kaart (#328).

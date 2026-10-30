@@ -1058,9 +1058,14 @@ export default function App() {
     if (was === route.selected) return;
     if (route.selected) window.scrollTo(0, 0);
     else if (was) {
-      const n = document.querySelector(`[data-id="${CSS.escape(was)}"]`);
-      if (n) n.scrollIntoView({ block: "center" });
-      else window.scrollTo(0, 0);
+      const n = document.querySelector<HTMLElement>(`[data-id="${CSS.escape(was)}"]`);
+      if (n) {
+        n.scrollIntoView({ block: "center" });
+        // Focus terug op de link/kaart waarmee het artikel opende (toetsenbord en schermlezer)
+        const f = n instanceof HTMLAnchorElement ? n : n.querySelector<HTMLElement>("a[href]") ?? n;
+        if (f === n && !n.hasAttribute("tabindex")) n.tabIndex = -1;
+        f.focus({ preventScroll: true });
+      } else window.scrollTo(0, 0);
     }
   }, [route.selected]);
 

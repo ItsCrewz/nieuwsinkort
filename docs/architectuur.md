@@ -257,4 +257,8 @@ De uur-Worker gebruikt de al opgehaalde statische data en `uur` om dezelfde merg
 
 Lokale Node-meting met de incidentkopieën `/tmp/kv-uur.json` (331.623 bytes) en `/tmp/st-bb662877.json` (117.318 bytes), 20 verzoeken na opwarming: oud 60,672 ms CPU per verzoek, nieuw 1,566 ms. Dit is een lokale indicatie, geen meting van Cloudflare-CPU; de oude meting gebruikt lokale KV-doubles.
 
+## Toegankelijkheid: slider en focus (#328)
+
+De scrubber (`role="slider"`) heeft altijd `aria-valuenow` (0–100) en `aria-valuetext` ("0:12 van 0:45"); de stand wordt bij focus, na pijltjes (±5 s) en na slepen gelezen. De YouTube-iframe heeft geen `tabIndex={-1}` (axe `frame-focusable-content`). Een artikel openen zet de focus op de `<h1>` (`tabindex=-1`), Escape of Terug sluit het artikel en de focus gaat terug naar de link/kaart waarmee het opende. Speler-logica en voorladen zijn ongewijzigd. Test: `tests/a11y-focus.test.ts`.
+
 Focus lezen (#383): `src/focuslezen.ts` — standaard uit; alleen een expliciete klik wordt bewaard in localStorage-sleutel `nieuwsinkort-focus-lezen-keuze` (waarden `aan`/`uit`). De oude sleutel `dagelijks-nieuws-focus-lezen-v2` werd volgens de git-historie alleen bij een klik geschreven, maar wordt genegeerd en opgeruimd (een oude waarde kan niet van een standaard worden onderscheiden). De beginstand wordt lazy gelezen, dus geen flits. Zonder of met falende storage: uit. Tests: `tests/focuslezen.test.ts`.
