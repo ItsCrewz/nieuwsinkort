@@ -65,6 +65,7 @@ De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de a
 
 ## Laadprestaties (#35)
 
+- **Validatie**: `src/valideer.ts` controleert de hoofdstructuur en berichten vóór de opschoning. Ongeldige berichten worden overgeslagen; `?debug=1` toont hun aantal. Een ongeldige hoofdstructuur geeft een laadfout. De Worker-run-test bewaakt het contract met de client.
 - **Vroege data.json**: het inline script in `index.html` start `window.__vroegData = fetch("/data.json", {cache:"no-cache"})` tijdens het parsen; `useData` neemt die promise eenmalig over via `neemVroegeData()` (`src/vroeg.ts`), daarna haalt elke verversing zelf op. Wijzig je dat script, werk dan de CSP-hash in `public/_headers` bij (de test bewaakt het).
 - **Fonts self-hosted**: Inter (OFL, variabel 400-600) staat in `public/fonts/` (`inter-latin`, `inter-latin-ext`, woff2 uit Google Fonts v20), `@font-face` met `font-display: swap` bovenaan `src/index.css`, preload van het latin-bestand in `index.html`. CSP: `font-src 'self'`, geen Google-origins meer; `/fonts/*` is immutable gecachet.
 - **YouTube-thumbnails**: `index.html` opent alvast een verbinding met `https://i.ytimg.com` via preconnect; de bestaande CSP staat HTTPS-afbeeldingen en verbindingen toe.

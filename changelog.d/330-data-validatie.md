@@ -1,0 +1,1 @@
+- Ongeldige berichten in data.json worden veilig overgeslagen; een contracttest bewaakt de Worker-uitvoer (#330).

@@ -8,6 +8,8 @@ import { VideoGrid, playerFor, soortVan, startSoort } from "./video";
 import { useVoorladen } from "./usevoorladen";
 import { videoSlug, zaaiSamenvattingen } from "./feed";
 import { schoon } from "./schoon";
+import { valideer } from "./valideer";
+import { debug } from "./debug";
 import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
@@ -988,6 +990,8 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
   );
 }
 
+let afgewezenBerichten = 0;
+
 // ---------------------------------------------------------------- data + thema
 function useData() {
   const [data, setData] = useState<Data | null>(null);
@@ -996,7 +1000,9 @@ function useData() {
     try {
       const r = await (neemVroegeData()?.catch(() => null) ?? null) ?? await fetch("/data.json", { cache: "no-cache" }); // altijd hervalideren: ETag geeft een 304 als er niets nieuws is
       if (!r.ok) throw new Error(String(r.status));
-      const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
+      const gevalideerd = valideer(await r.json());
+      afgewezenBerichten = gevalideerd.afgewezen;
+      const d = schoon(gevalideerd.data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
       d.filmpjes ??= [];
@@ -1153,6 +1159,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
   return (
     <div className={`app ${feed ? "app-feed" : ""}`}>
       <IconSprite />
+      {debug && <div style={{ position: "fixed", right: 4, top: 4, zIndex: 2147483647, background: "black", color: "white", padding: 4, fontSize: 10 }}>Afgewezen berichten: {afgewezenBerichten}</div>}
       <div className="shell">
         {top}
         {children}

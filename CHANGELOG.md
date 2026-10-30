@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Ongeldige berichten in data.json worden veilig overgeslagen (#330).
+
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
 
 - Diagnose (#158): mislukte Groq- en Mistral-calls loggen zo mogelijk veilige foutcodes en -typen, zonder berichttekst of sleutels.
