@@ -54,6 +54,36 @@ export function beterBeeld(raw: string): string {
   return u;
 }
 
+/** Kleinere variant voor het scherm via maatparameters die de bron zelf kent; onbekende bronnen blijven ongemoeid.
+ *  De breedte staat per bron (BEELD_BREEDTE): die geeft het kleinste bestand (doel ≤150 kB), RTL is bij 1024 px kleiner dan bij 800 px.
+ *  Alleen verkleinen, nooit vergroten. Faalt de variant, dan valt de weergave terug op het origineel (zie beelden.tsx). */
+export const BEELD_BREEDTE = { rtl: 1024, pxr: 800, fd: 800, wp: 800, nrc: 800, blogger: 800, nu: 640 };
+export function schermBeeld(u: string): string {
+  let x: URL;
+  try { x = new URL(u); } catch { return u; }
+  const h = x.hostname, p = x.searchParams;
+  const w = +(p.get("width") || p.get("w") || 0), hh = +(p.get("height") || p.get("h") || 0);
+  const rtl = h === "redactie.rtl.nl";
+  if (rtl || h === "webp.br.cdn.pxr.nl" || /\.fd\.nl$/.test(h)) {
+    const m = rtl ? BEELD_BREEDTE.rtl : /\.fd\.nl$/.test(h) ? BEELD_BREEDTE.fd : BEELD_BREEDTE.pxr;
+    if (w <= m) return u;
+    const k = p.has("width") ? "width" : "w", l = p.has("height") ? "height" : "h";
+    p.set(k, String(m));
+    if (hh && w) p.set(l, String(Math.round(hh * m / w)));
+    return x.toString();
+  }
+  if (p.has("resize") && /^(techcrunch\.com|[^.]+\.wp\.com)$/.test(h)) {
+    const m = /^(\d+),(\d+)$/.exec(p.get("resize")!), b = BEELD_BREEDTE.wp;
+    if (!m || +m[1] <= b) return u;
+    p.set("resize", `${b},${Math.round(+m[2] * b / +m[1])}`);
+    return x.toString().replace("%2C", ",");
+  }
+  if (h === "images.nrc.nl") return u.replace(/\/(\d{4,})x\//, (a, n) => (+n > BEELD_BREEDTE.nrc ? `/${BEELD_BREEDTE.nrc}x/` : a));
+  if (h === "blogger.googleusercontent.com") return u.replace(/\/s(\d{4})\//, (a, n) => (+n > BEELD_BREEDTE.blogger ? `/s${BEELD_BREEDTE.blogger}/` : a));
+  if (h === "images.nu.nl") return u.replace(/_wd(\d{4})\.jpg/, (a, n) => (+n > BEELD_BREEDTE.nu ? `_wd${BEELD_BREEDTE.nu}.jpg` : a));
+  return u;
+}
+
 export function uniekeBeelden(urls: (string | null | undefined)[], max = 6): string[] {
   const seen = new Set<string>();
   const out: string[] = [];

@@ -1,6 +1,6 @@
 // Draai: npm test  (beeld-URL's en og:image, src/beeld.ts)
 import assert from "node:assert/strict";
-import { beeldKey, beterBeeld, goedBeeld, ogImage, uniekeBeelden } from "../src/beeld";
+import { beeldKey, beterBeeld, goedBeeld, ogImage, schermBeeld, uniekeBeelden } from "../src/beeld";
 
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
@@ -45,6 +45,18 @@ t("ogImage leest een relatieve og:image ten opzichte van de basis-URL", () => {
     ogImage('<meta property="og:image" content="/beelden/foto.jpg?bron=a&amp;maat=breed">', "https://nieuws.nl/artikelen/123"),
     "https://nieuws.nl/beelden/foto.jpg?bron=a&maat=breed",
   );
+});
+
+t("schermBeeld verkleint alleen bekende CDN-parameters en vergroot nooit", () => {
+  assert.equal(schermBeeld("https://redactie.rtl.nl/a.png?itok=x&width=1600&height=900&impolicy=semi_dynamic"), "https://redactie.rtl.nl/a.png?itok=x&width=1024&height=576&impolicy=semi_dynamic");
+  assert.equal(schermBeeld("https://redactie.rtl.nl/a.png?width=1024&height=576"), "https://redactie.rtl.nl/a.png?width=1024&height=576");
+  assert.equal(schermBeeld("https://techcrunch.com/a.jpg?resize=1200,867"), "https://techcrunch.com/a.jpg?resize=800,578");
+  assert.equal(schermBeeld("https://images.nrc.nl/k=/1280x/filters:no_upscale()/s3/a.jpg"), "https://images.nrc.nl/k=/800x/filters:no_upscale()/s3/a.jpg");
+  assert.equal(schermBeeld("https://blogger.googleusercontent.com/img/b/x/s1600/a.jpg"), "https://blogger.googleusercontent.com/img/b/x/s800/a.jpg");
+  assert.equal(schermBeeld("https://images.nu.nl/m/abc_wd1280.jpg"), "https://images.nu.nl/m/abc_wd640.jpg");
+  assert.equal(schermBeeld("https://redactie.rtl.nl/a.png?width=600&height=300"), "https://redactie.rtl.nl/a.png?width=600&height=300");
+  assert.equal(schermBeeld("https://onbekend.nl/a.jpg?width=2000"), "https://onbekend.nl/a.jpg?width=2000");
+  assert.equal(schermBeeld("geen url"), "geen url");
 });
 
 console.log(`\n${n} tests geslaagd`);
