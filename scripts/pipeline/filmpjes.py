@@ -44,6 +44,10 @@ YT_NIEUWS = {  # kanaalnaam -> channel_id
     "EenVandaag": "UCjxk-pBIdYXjBQGie4uJGoA",
     "RTL Z": "UC3lleI2WsaIiW8IzkJ0kIYA",
     "BNR": "UCWALr0VavEm8SgPXGafhFDQ",
+    "NOS Stories": "UCoakeH4bmdUYtptWdmoUrRQ",
+    "Nieuwsuur": "UCExcZNwh_3Mwm4fF4VSiu2w",
+    "Omroep PowNed": "UCihqgpWn_ns1gJUdhNLsSMQ",
+    "Radar": "UCGUhzuD1eYIgJoSGe0c_rNg",
 }
 # Instagram: profiel-embed van Instagram zelf (openbaar, zonder login); Kittygram geeft geen media.
 IG_ACCOUNTS = {

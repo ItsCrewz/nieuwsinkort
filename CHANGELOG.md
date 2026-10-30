@@ -10,6 +10,8 @@
 
 - Reddit-filmpjes (#47): directe HLS-weergave en ondersteuning voor YouTube-links, met thumbnails en ontdubbeling via de Reddit-permalink.
 
+- Filmpjes (#48): de YouTube-kanaalfeeds van NOS Stories, Nieuwsuur, Omroep PowNed en Radar toegevoegd, inclusief Shorts. TikTok en Facebook hebben geen gratis accountfeed die aan de voorwaarden voldoet.
+
 - Videoherstel (#44): de voortgangsbalk volgt de werkelijke afspeeltijd; bij stilstand volgt een herstelpoging en zo nodig herladen.
 
 - Performance artikelen (#35), vervolg: `/data.json` start vanuit `index.html` tijdens het parsen (hergebruikt door `useData`, `src/vroeg.ts`; nieuwe CSP-hash); Inter self-hosted i.p.v. Google Fonts (CSP `font-src 'self'`, `/fonts/*` immutable); `NewsFeed` mount kaartinhoud alleen rond de huidige kaart (DOM kleiner, lagere TBT).
