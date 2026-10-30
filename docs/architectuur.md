@@ -79,6 +79,22 @@ Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zicht
 - De mp4-Range: of de browser de gecachete bytes voor `<video>` hergebruikt hangt af van de cache-headers van de Instagram-CDN en de browser (Chrome kan gedeeltelijke cache-items hergebruiken); dat is niet in een echte browser geverifieerd. Zeker is het nut van de warme DNS/TLS-verbinding en de CDN-edge.
 - CSP: `img-src https:`, `connect-src https:` en `media-src https:` dekken dit; `_headers` is niet gewijzigd.
 
+## Chunk-indeling (#296)
+
+Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React.lazy`/`import()` met `Suspense fallback={null}` en laadt pas bij gebruik. Houd nieuwe zware, niet-kritieke schermen op dezelfde manier buiten `index`.
+
+| Chunk | Inhoud | Wanneer geladen |
+| --- | --- | --- |
+| `index` | React, `App.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
+| `sheet` | `SourcesSheet` | bij openen van Bronnen |
+| `filters-blad` | `FilterBlad` | bij openen van het filterblad |
+| `detail` | `DetailView` (`#/bericht/...`) | bij openen van een bericht |
+| `video` | `VideoGrid` (Filmpjes/Dumpert-overzicht) | op een videoroute |
+| `feed` | `Feed`, spelers, `debug-overlay` | op touch + videoroute |
+| `hls` | hls.js | door `feed` en het voorladen |
+
+Daarom staan pure helpers die het hoofdscherm of het voorladen nodig hebben los van de lazy modules: `videosoort.ts` (`playerFor`, `soortVan`, `viaProxy`), `samenvattingcache.ts` (`zaaiSamenvattingen`), `meer.ts` (`prefetchMeer`) en `leesverder.ts` (`fotos`, `bronnenTekst`). Importeer die niet via `video.tsx`/`feed.tsx`, anders komt de lazy chunk terug in `index`. Meting (gzip, `npm run build`): hoofdchunk 89,0 kB → 69,2 kB (−22%); de ondergrens is React + react-dom (≈46 kB gzip).
+
 ## Pages Functions (`functions/`)
 
 - `data.json.ts`: haalt het statische `data.json` (ASSETS) en KV `uur`, voegt ze samen (`merge`): routine-samenvattingen blijven, nieuwe berichten van het uur komen bovenaan, weer/filmpjes/Dumpert worden ververst. Uur-data van een andere dag wordt genegeerd. `src/vandaag.ts` filtert na de merge artikelen en video's op de huidige Amsterdamse dag; bij oude data verdwijnt ook de dagsamenvatting. Legacy-items zonder publicatiedatum gebruiken de tijd van generatie met 20 minuten marge. `?statisch=1` geeft het onbewerkte statische bestand, zonder dagfilter. Voegt ook `sv-klaar` (vooraf gemaakte video-samenvattingen) toe. Antwoord met zwakke ETag en 304 bij `If-None-Match`; `Cache-Control: max-age=0, must-revalidate, stale-while-revalidate=300` (de client vraagt altijd met `cache: "no-cache"` zonder cachebuster, dus de uurdata is direct vers en een ongewijzigde respons kost alleen een 304). `slim()` haalt de niet-gebruikte diagnosevelden `ontdubbeld` en `routine_gegenereerd` weg.
