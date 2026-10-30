@@ -1,5 +1,7 @@
 # Changelog
 
+- Video's met dezelfde lange caption worden binnen drie uur ook over verschillende platforms ontdubbeld (#46); de beste kopie behoudt de andere bron in `ook`.
+
 ## 2026-10-30
 
 - Alleen nieuws en video's van de huidige Amsterdamse dag; oude data verdwijnt na middernacht (#56).
