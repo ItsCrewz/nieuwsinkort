@@ -5,7 +5,7 @@
 // Van elke groep blijft de beste kopie over (in de site afspeelbaar, beste kwaliteit, populairst);
 // de andere bronnen komen in `ook`.
 
-export type DVideo = { titel: string; href: string; embed?: string; thumb?: string; bron: string; populariteit?: string; ook?: { bron: string; href: string }[] };
+export type DVideo = { titel: string; href: string; embed?: string; thumb?: string; bron: string; ai?: string; tijd?: string; _pub?: number; populariteit?: string; ook?: { bron: string; href: string }[] };
 
 const TRACK = /^(utm_\w+|si|igsh|igshid|feature|ref|ref_src|ref_url|s|fbclid|gclid|mc_\w+|share_id|context|pp)$/i;
 export function canonUrl(u: string): string {
@@ -65,6 +65,29 @@ function sameTitle(a: string[], b: string[]): boolean {
   return n / (a.length + b.length - n) >= 0.8;
 }
 
+function caption(v: DVideo): string[] {
+  const norm = (s: string) => s.replace(/#[\p{L}\d_]+/gu, " ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const titel = norm(v.titel || ""), ai = norm(v.ai || "");
+  return [...new Set([ai, ai.startsWith(titel) ? ai : `${titel} ${ai}`.trim()].filter(Boolean))];
+}
+function sameCaption(a: DVideo, b: DVideo): boolean {
+  let verschil: number;
+  if (Number.isFinite(a._pub) && Number.isFinite(b._pub) && a._pub! > 0 && b._pub! > 0) verschil = Math.abs(a._pub! - b._pub!) / 60000;
+  else {
+    const minuten = (t?: string) => { const m = /^(\d{2}):(\d{2})$/.exec(t || ""); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : NaN; };
+    verschil = Math.abs(minuten(a.tijd) - minuten(b.tijd));
+  }
+  if (!(verschil <= 180)) return false;
+  for (const x of caption(a)) for (const y of caption(b)) {
+    const xx = x.split(" "), yy = y.split(" ");
+    let i = 0;
+    while (i < xx.length && i < yy.length && xx[i] === yy[i]) i++;
+    const begin = xx.slice(0, i).join(" ");
+    if (begin.length >= 80 && titleTokens(begin).length >= 8) return true;
+  }
+  return false;
+}
+
 export function popNum(p?: string): number {
   const m = /([\d.,]+)\s*([kKmM]?)/.exec(p || "");
   if (!m) return 0;
@@ -88,14 +111,14 @@ export function dedupVideos<T extends DVideo>(list: T[], against: DVideo[] = [])
   const keys = list.map(videoKeys);
   const toks = list.map((v) => titleTokens(v.titel));
   list.forEach((_, i) => { for (const k of keys[i]) { const j = byKey.get(k); if (j == null) byKey.set(k, i); else join(j, i); } });
-  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (find(i) !== find(j) && sameTitle(toks[i], toks[j])) join(i, j);
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (find(i) !== find(j) && (sameTitle(toks[i], toks[j]) || sameCaption(list[i], list[j]))) join(i, j);
   const groups = new Map<number, number[]>();
   list.forEach((_, i) => { const r = find(i); (groups.get(r) || groups.set(r, []).get(r)!).push(i); });
   const out: { i: number; v: T }[] = [];
   let removed = 0;
   const report: string[][] = [];
   for (const idx of groups.values()) {
-    if (idx.some((i) => keys[i].some((k) => blocked.has(k)) || blockedTitles.some((t) => sameTitle(toks[i], t)))) { removed += idx.length; report.push(idx.map((i) => `${list[i].bron}: ${list[i].titel} (al bij Dumpert)`)); continue; }
+    if (idx.some((i) => keys[i].some((k) => blocked.has(k)) || blockedTitles.some((t) => sameTitle(toks[i], t)) || against.some((v) => sameCaption(list[i], v)))) { removed += idx.length; report.push(idx.map((i) => `${list[i].bron}: ${list[i].titel} (al bij Dumpert)`)); continue; }
     const best = idx.reduce((a, b) => (quality(list[b]) > quality(list[a]) ? b : a), idx[0]);
     const ook = [...(list[best].ook || [])];
     for (const i of idx) if (i !== best) {

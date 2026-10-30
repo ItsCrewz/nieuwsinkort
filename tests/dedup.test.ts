@@ -498,3 +498,81 @@ try {
 }
 
 console.log(`\n${n} tests geslaagd`);
+
+const live46 = [
+  {
+    "titel": "Dit gebeurde donderdagmiddag.",
+    "ai": "De man is na zijn aanhouding meegenomen naar het politiebureau en heeft meerdere bekeuringen gekregen. Inmiddels is hij weer op vrije…",
+    "href": "https://www.instagram.com/reel/DfHS9x8D8uK/",
+    "tijd": "10:49",
+    "bron": "Instagram"
+  },
+  {
+    "titel": "Agent tasert bezorger na verkeerd parkeren",
+    "ai": "Dit gebeurde donderdagmiddag. De man is na zijn aanhouding meegenomen naar het politiebureau en heeft meerdere bekeuringen gekregen.…",
+    "href": "https://www.youtube.com/shorts/pUO-QxCiapA",
+    "tijd": "10:47",
+    "bron": "YouTube"
+  },
+  {
+    "titel": "De beelden van de mishandeling in Beverwijk vorig jaar verspreidden zich razendsnel via sociale media en…",
+    "ai": "De beelden van de mishandeling in Beverwijk vorig jaar verspreidden zich razendsnel via sociale media en veroorzaakten veel onrust in de…",
+    "href": "https://www.instagram.com/reel/DfG5Y2UgaiS/",
+    "tijd": "07:06",
+    "bron": "Instagram"
+  },
+  {
+    "titel": "Twee jaar cel voor mishandeling",
+    "ai": "De beelden van de mishandeling in Beverwijk vorig jaar verspreidden zich razendsnel via sociale media en veroorzaakten veel onrust in de…",
+    "href": "https://www.youtube.com/shorts/rZ4yboa9LR0",
+    "tijd": "07:06",
+    "bron": "YouTube"
+  },
+  {
+    "titel": "Het constructieve aanbod van JA21, SGP en BBB gaat niet alleen over het belastingplan, maar óók over de…",
+    "ai": "Het constructieve aanbod van JA21, SGP en BBB gaat niet alleen over het belastingplan, maar óók over de begrotingen. We bieden steun in…",
+    "href": "https://www.instagram.com/reel/DfHXUJCN3Dv/",
+    "tijd": "11:27",
+    "bron": "Instagram"
+  },
+  {
+    "titel": "JA21, SGP en BBB over hun constructieve bod aan het kabinet",
+    "ai": "Het constructieve aanbod van JA21, SGP en BBB gaat over het belastingplan én over de begrotingen. Logisch om daarom óók iets te vinden…",
+    "href": "https://www.youtube.com/watch?v=zBjezjqlL-Y",
+    "tijd": "11:03",
+    "bron": "YouTube"
+  },
+  {
+    "titel": "We moeten af van de stikstofnormen zodat vergunningen weer kunnen worden afgegeven en boeren hun werk…",
+    "ai": "We moeten af van de stikstofnormen zodat vergunningen weer kunnen worden afgegeven en boeren hun werk kunnen blijven doen. FVD is de…",
+    "href": "https://www.instagram.com/reel/DfHQru_NxMB/",
+    "tijd": "10:30",
+    "bron": "Instagram"
+  },
+  {
+    "titel": "Voorzitter agractie sluit acties tegen stikstofplan niet uit",
+    "ai": "Boeren in heel Nederland wachtten vrijdagochtend in spanning de aangepaste stikstofplannen van landbouwminister Jaimi van Essen af.…",
+    "href": "https://www.youtube.com/shorts/DinaGEQUV_c",
+    "tijd": "11:41",
+    "bron": "YouTube"
+  }
+];
+t("caption: echte dubbele shorts behouden de beste bron en ook", () => {
+  for (const [a, b] of [[0, 1], [2, 3]]) {
+    const r = dedupVideos([live46[a], live46[b]]);
+    assert.equal(r.list.length, 1);
+    assert.equal(r.list[0].href, live46[b].href);
+    assert.deepEqual(r.list[0].ook, [{ bron: "Instagram", href: live46[a].href }]);
+  }
+});
+t("caption: verschillende video's over hetzelfde onderwerp blijven apart", () => {
+  for (const [a, b] of [[4, 5], [6, 7]]) assert.equal(dedupVideos([live46[a], live46[b]]).list.length, 2);
+  const basis = { bron: "YouTube", titel: "Eerste opname van een gebeurtenis", href: "https://youtu.be/aaaaaaaaaaa", tijd: "10:00", ai: "Bekijk hier de beelden van het laatste nieuws vandaag. De politie hield een verdachte aan." };
+  const ander = { ...basis, titel: "Tweede opname van een gebeurtenis", href: "https://youtu.be/bbbbbbbbbbb", ai: "Bekijk hier de beelden van het laatste nieuws vandaag. De brandweer bluste een grote brand." };
+  assert.equal(dedupVideos([basis, ander]).list.length, 2);
+  assert.equal(dedupVideos([{ ...basis, ai: "Kijk mee 👀 #nieuws" }, { ...ander, ai: "Kijk mee #nieuws" }]).list.length, 2);
+  assert.equal(dedupVideos([live46[0], { ...live46[1], tijd: "18:00" }]).list.length, 2);
+  assert.equal(dedupVideos([live46[0], { ...live46[1], tijd: "" }]).list.length, 2);
+  assert.equal(dedupVideos([{ ...live46[0], _pub: 100000000 }, { ...live46[1], _pub: 100000000 + 181 * 60000 }]).list.length, 2);
+  assert.equal(dedupVideos([live46[0]], [live46[1]]).list.length, 0);
+});
