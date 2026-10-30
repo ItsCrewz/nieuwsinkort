@@ -76,7 +76,7 @@ export async function inHetKort(ai: Ai, model: string, lines: string[], u: Usage
 
 export async function simpelWeer(ai: Ai, model: string, knmi: string, u: Usage): Promise<string> {
   const sys = STIJL + " Geef alleen de tekst zelf.";
-  const user = `Herschrijf dit weerbericht voor Haarlem in 2 of 3 korte, simpele zinnen (max 60 woorden). Noem vanmiddag/vanavond/morgen als dat erin staat. Getallen precies overnemen.\n\n${knmi.slice(0, 1500)}`;
+  const user = `Herschrijf dit weerbericht voor heel Nederland in 2 of 3 korte, simpele zinnen (max 60 woorden). Noem vanmiddag/vanavond/morgen en verschillen tussen noord, midden en zuid alleen als dat erin staat. Getallen precies overnemen.\n\n${knmi.slice(0, 1500)}`;
   return (await chat(ai, model, sys, user, 160, u)).replace(/\s+/g, " ").trim();
 }
 

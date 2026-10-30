@@ -7,7 +7,7 @@ import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
-import { buildWeer, BR_URL, OM_URL, KNMI_VERW, KNMI_WAARSCH } from "./weer";
+import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
 import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
@@ -346,7 +346,7 @@ export class Runner extends DurableObject<Env> {
     for (const j of jobs.values()) if (j.kind === "reddit") j.sub ||= /reddit\.com\/r\/([^/]+)/.exec(j.url)?.[1];
     add({ url: DUMPERT_URL, kind: "dumpert" });
     add({ url: BR_URL, kind: "json" }); add({ url: OM_URL, kind: "json" });
-    add({ url: KNMI_VERW, kind: "text" }); add({ url: KNMI_WAARSCH, kind: "text" });
+    add({ url: KNMI_VERW, kind: "text" });
 
     const all = [...jobs.values()];
     const reddit = all.filter((j) => j.kind === "reddit"), insta = all.filter((j) => j.kind === "insta"), xj = all.filter((j) => j.kind === "x");
@@ -640,9 +640,9 @@ export class Runner extends DurableObject<Env> {
     }
 
     // ---- weer
-    const W = buildWeer(R.get(BR_URL)?.json, R.get(OM_URL)?.json, R.get(KNMI_VERW)?.text || null, R.get(KNMI_WAARSCH)?.text || null, A.iso, A.hhmm);
+    const W = buildWeer(R.get(BR_URL)?.json, R.get(OM_URL)?.json, R.get(KNMI_VERW)?.text || null, A.iso, A.hhmm);
     if (W.knmiTekst) {
-      const wh = await hash(W.knmiTekst);
+      const wh = await hash("nl:" + W.knmiTekst); // "nl:" = landelijke prompt; ververst een oude Haarlem-tekst eenmalig
       if (wh !== st.weerHash && !quotaOut && tier() <= 2) {
         try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30) { st.weerTxt = t; st.weerHash = wh; } } catch { usage.fails++; }
       }
