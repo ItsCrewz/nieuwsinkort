@@ -8,8 +8,10 @@ export default defineConfig({
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
-    { name: "iphone-15", use: { ...devices["iPhone 15"] } },
+    ...(process.env.PW_WEBKIT === "1" ? [
+      { name: "webkit", use: { ...devices["Desktop Safari"] } },
+      { name: "iphone-15", use: { ...devices["iPhone 15"] } },
+    ] : []),
     { name: "pixel", use: { ...devices["Pixel 7"] } },
   ],
 });

@@ -73,4 +73,4 @@ Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert
 
 ## Browserrookproef
 
-`npm run e2e` gebruikt Playwright en axe; installatie, uitgangswaarden en beperkingen staan in [docs/browser-tests.md](docs/browser-tests.md). De axe-baseline moet eerst worden gemeten voordat de proef groen kan zijn.
+`npm run e2e` gebruikt Playwright en axe; installatie, gemeten baseline en beperkingen staan in [docs/browser-tests.md](docs/browser-tests.md). WebKit en iPhone draaien met `PW_WEBKIT=1` wanneer de benodigde systeembibliotheken aanwezig zijn.
