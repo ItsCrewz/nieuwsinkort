@@ -1,0 +1,1 @@
+- Het testoverzicht in de README vermeldt de randgevallen-tests (#242).
