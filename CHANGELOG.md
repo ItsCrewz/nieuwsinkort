@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
+
 - Diagnose (#158): mislukte Groq- en Mistral-calls loggen zo mogelijk veilige foutcodes en -typen, zonder berichttekst of sleutels.
 - Geef Groq gpt-oss bij JSON-verzoeken meer uitvoerruimte en een lage redeneerinspanning (#160).
 - Documentatie bijgewerkt voor de sportrubrieken, AI-aanbieders, budgettrappen en extractieve terugval na de merges van 30 oktober.

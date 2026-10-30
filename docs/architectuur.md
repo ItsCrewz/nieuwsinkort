@@ -47,6 +47,8 @@ Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert
 
 Kopkaart (#150): `.nc-head` is alleen op Home schermvullend. Tabs krijgen de klasse `kompakt` (`kopKompact()` in `src/tabbriefing.tsx`): zonder samenvatting een datumregel van `--kop` hoogte, met samenvatting een kop met automatische hoogte en maximaal 60% van de feedhoogte. Daaronder begint het eerste bericht direct in beeld. De tabsamenvatting verschijnt na het herladen van `/data.json` (15 min, visibilitychange; geen service worker, `no-cache`).
 
+De feednavigatie is met `inert` niet focusbaar zolang zij verborgen is; de startknop blijft daarbuiten bereikbaar. Bij zichtbare navigatie werkt Tab weer normaal (#275).
+
 `src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug.
 
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
