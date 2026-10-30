@@ -1,0 +1,1 @@
+- Extra tests voor randgevallen van slim(), de zwakke ETag/304 en ?statisch=1 in functions/data.json.ts (#243).
