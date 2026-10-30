@@ -382,7 +382,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 @keyframes pulse{50%{opacity:.55}}
 /* intro: eerste ~12 items, 16ms na elkaar (max ~200ms), 220ms per item */
 .enter{animation:up 220ms var(--ease) backwards;animation-delay:calc(var(--i,0) * 16ms)}
-.front.enter > *{animation:up 220ms var(--ease) backwards}
+.front.enter > *:not(.brief){animation:up 220ms var(--ease) backwards}
 .front.enter{animation:none}
 .front.enter > :nth-child(2){animation-delay:40ms}
 .swap{animation:fadein var(--fast) var(--ease) both}
