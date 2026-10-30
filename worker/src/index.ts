@@ -71,7 +71,7 @@ const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKi
 const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
 
 // Instagram: profiel-embed -> entries (bronstats) + van vandaag de video's met hun MP4 (max 3 per account).
-async function runInsta(j: Job, since: number, t0: number, kv?: KVNamespace): Promise<Res> {
+async function runInsta(j: Job, _since: number, t0: number, kv?: KVNamespace): Promise<Res> {
   const user = igUser(j.url);
   if (!user) throw new Error("onbekend Instagram-account");
   const r = await igGet(igProfileUrl(user));
@@ -153,7 +153,7 @@ async function runArtJ(j: Job, t0: number): Promise<Res> {
 }
 
 // X: fxtwitter -> syndication. Tekstposts als entries (bronstats + politiek), video's van vandaag als filmpjes.
-async function runX(j: Job, since: number, t0: number): Promise<Res> {
+async function runX(j: Job, _since: number, t0: number): Promise<Res> {
   const user = xUser(j.url);
   if (!user) throw new Error("onbekend X-account");
   const { posts, via, err } = await xPosts(user);
