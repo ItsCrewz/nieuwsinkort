@@ -1,11 +1,17 @@
-export type YtStart = { actief: boolean; gepauzeerd: boolean; klaar: boolean; status: number | null; pogingen: number; sinds: number; nu: number };
+export type YtStart = { actief: boolean; gepauzeerd: boolean; klaar: boolean; status: number | null; pogingen: number; sinds: number; nu: number; gespeeld?: boolean; fout?: boolean };
 
+// De activatieklok loopt door bij pauze en statuswissels, ook zonder onReady.
 export function ytStartBesluit(s: YtStart): "wacht" | "probeer" | "vangnet" {
-  if (!s.actief || s.gepauzeerd) return "wacht";
-  if (!s.klaar) return s.nu - s.sinds >= 2500 ? "vangnet" : "wacht";
-  if (s.status !== null && s.status !== -1 && s.status !== 5) return "wacht";
-  if (s.nu - s.sinds < 1000) return "wacht";
-  return s.pogingen < 3 ? "probeer" : "vangnet";
+  if (!s.actief || s.fout || s.status === 1 || s.status === 3 || s.gespeeld) return "wacht";
+  if (s.nu - s.sinds >= 1500) return "vangnet";
+  if (s.klaar && !s.gepauzeerd && s.pogingen < 3 && s.nu - s.sinds >= s.pogingen * 500) return "probeer";
+  return "wacht";
+}
+
+export function ytEchteFout(code: unknown): boolean { return typeof code === "number" && [100, 101, 150, 152].includes(code); }
+export function geluidMag(wens: boolean, tik: boolean, geblokkeerd: boolean): boolean { return wens && tik && !geblokkeerd; }
+export function autoplayGeblokkeerd(soort: string, code?: unknown): boolean {
+  return soort === "onAutoplayBlocked" || (soort === "onError" && !ytEchteFout(code)) || soort === "NotAllowedError" || soort === "timeout";
 }
 
 export function ytStatusNaam(status: number | null): string {
