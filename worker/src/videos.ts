@@ -20,7 +20,7 @@ export const YT_NIEUWS: Record<string, string> = {
 export const ytUrl = (cid: string) => `https://www.youtube.com/feeds/videos.xml?channel_id=${cid}`;
 export const DUMPERT_URL = "https://www.dumpert.nl/toppers";
 
-export type Video = { titel: string; ai: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number; soort?: Soort };
+export type Video = { titel: string; ai: string; beschrijving?: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number; soort?: Soort };
 
 export function kortGetal(n: number | undefined | null, eenheid: string) {
   if (n == null) return "";
@@ -82,8 +82,9 @@ export function parseYouTube(xml: string, kanaal: string, since: number, hhmm: (
     if (!vid) continue;
     const views = /views="(\d+)"/.exec(e);
     const desc = /<media:description>([\s\S]*?)<\/media:description>/.exec(e);
+    const beschrijving = desc ? stripHtml(desc[1]).slice(0, 2000) : "";
     out.push({
-      titel: decode(/<title>(.*?)<\/title>/.exec(e)?.[1] || "").trim(), ai: desc ? stripHtml(desc[1]).slice(0, 300) : "", bron: "YouTube",
+      beschrijving, titel: decode(/<title>(.*?)<\/title>/.exec(e)?.[1] || "").trim(), ai: desc ? stripHtml(desc[1]).slice(0, 300) : "", bron: "YouTube",
       href: /<link rel="alternate" href="([^"]+)"/.exec(e)?.[1] || `https://www.youtube.com/watch?v=${vid}`,
       embed: `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&rel=0`, thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
       populariteit: views ? kortGetal(+views[1], "views") : "", tijd: hhmm(pub), _score: views ? +views[1] : 0, _pub: pub,

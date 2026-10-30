@@ -1,3 +1,4 @@
+import { samenvattingBasis } from "./samenvatting-basis";
 // TikTok-achtige verticale feed voor Filmpjes en Dumpert.
 // - Eén video per scherm, CSS scroll-snap (y mandatory); swipen, scrollen, pijltjes of J/K.
 // - Alleen huidige ±1 heeft een speler; de volgende wordt vooraf geladen, de rest is alleen een poster.
@@ -891,13 +892,13 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
 });
 
 // ------------------------------------------------------------- samenvatting op verzoek
-// Knop + onderblad. De server (functions/samenvatting.ts) haalt ondertiteling of luistert de eerste minuten,
+// Knop + onderblad. De server (functions/samenvatting.ts) gebruikt de beschrijving of luistert de eerste minuten,
 // vat samen in simpele punten en bewaart dat per filmpje, dus de tweede keer is het meteen klaar.
-type Sv = { ok: true; punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number; model?: string; neuronen?: number; cached?: boolean } | { ok: false; code: string; fout: string };
+type Sv = { ok: true; punten: string[]; bron: "ondertiteling" | "spraak" | "beschrijving"; basis?: "beschrijving" | "spraak"; sec?: number; model?: string; neuronen?: number; cached?: boolean } | { ok: false; code: string; fout: string };
 const svCache = new Map<string, Sv>();
 /** Vooraf gemaakte samenvattingen uit /data.json in de cache zetten (knop toont dan "klaar"). */
-export function zaaiSamenvattingen(m?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>) {
-  for (const [id, x] of Object.entries(m || {})) if (Array.isArray(x?.punten) && x.punten.length && !svCache.has(id)) svCache.set(id, { ok: true, punten: x.punten, bron: x.bron, sec: x.sec, cached: true });
+export function zaaiSamenvattingen(m?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak" | "beschrijving"; basis?: "beschrijving" | "spraak"; sec?: number }>) {
+  for (const [id, x] of Object.entries(m || {})) if ((!id.startsWith("yt-") || x.basis === "beschrijving") && Array.isArray(x?.punten) && x.punten.length && !svCache.has(id)) svCache.set(id, { ok: true, punten: x.punten, bron: x.bron, basis: x.basis, sec: x.sec, cached: true });
 }
 async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
   const hit = svCache.get(id);
@@ -913,7 +914,7 @@ async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
     const j = (await r.json().catch(() => null)) as Sv | null;
     if (j && !j.ok && j.code === "bezig") { await new Promise((ok) => setTimeout(ok, 4000)); continue; }
     if (!j) return { ok: false, code: "fout", fout: "Samenvatten lukt even niet. Probeer het later nog eens." };
-    if (j.ok || ["geen-tekst", "te-lang", "onbekend"].includes(j.code)) svCache.set(id, j);
+    if (j.ok || ["geen-tekst", "te-lang", "onbekend", "te-weinig-beschrijving"].includes(j.code)) svCache.set(id, j);
     return j;
   }
   return { ok: false, code: "fout", fout: "Het duurt te lang. Probeer het zo nog eens." };
@@ -968,13 +969,13 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
             <>
               <ul className="sv-punten">{res.punten.map((p, k) => <li key={k}>{p}</li>)}</ul>
               <p className="sv-bron">
-                {res.bron === "spraak" ? `Uit wat er gezegd wordt${min ? ` (eerste ${min} min)` : ""}` : "Uit de ondertiteling"} · samengevat door AI, kan foutjes bevatten
+                {samenvattingBasis(res.basis, res.bron, min)} · samengevat door AI, kan foutjes bevatten
               </p>
             </>
           ) : (
             <>
               <p className="sv-fout">{res.fout}</p>
-              {["fout", "net", "bezig", "geblokkeerd"].includes(res.code) ? (
+              {["fout", "net", "bezig"].includes(res.code) ? (
                 <button type="button" className="f-btn" onClick={() => { svCache.delete(id); setN((x) => x + 1); }}>Probeer opnieuw</button>
               ) : null}
             </>

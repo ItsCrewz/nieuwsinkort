@@ -66,7 +66,7 @@ globalThis.fetch = (async (url: any, init?: any) => {
   return Response.json(id === "yt-hijklmn" ? { ok: false, code: "budget-pre" } : { ok: true, punten: ["nieuws"], neuronen: 5 });
 }) as typeof fetch;
 try {
-  const nieuws = { async get(key: string) { return key === "vs:yt-abcdefg" ? { ok: true, punten: ["cache"] } : null; }, async put(key: string, value: string) { opgeslagen[key] = JSON.parse(value); } };
+  const nieuws = { async get(key: string) { return key === "vs2:yt-abcdefg" ? { ok: true, punten: ["cache"] } : null; }, async put(key: string, value: string) { opgeslagen[key] = JSON.parse(value); } };
   const resultaat = await vooraf({ NIEUWS: nieuws as any, SITE: "https://voorbeeld.invalid" }, 100);
   assert.equal(resultaat.stop, "dagbudget");
   assert.equal(resultaat.verzoeken, 1);

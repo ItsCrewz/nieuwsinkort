@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: POST /samenvatting {id} -> samenvatting van één filmpje, op verzoek.
-// 1. KV-cache per video (vs:<id>), dus elk filmpje kost hooguit één keer AI.
-// 2. Tekst: YouTube-ondertiteling (ook automatische), anders spraak-naar-tekst met Whisper op de eerste
+// 1. KV-cache per video (vs2:<id> voor YouTube, anders vs:<id>).
+// 2. Tekst: YouTube-titel en RSS-beschrijving, anders spraak-naar-tekst met Whisper op de eerste
 //    paar minuten geluid (Dumpert/Reddit-HLS: eerste stukjes; Instagram/X-mp4: alleen korte filmpjes).
 // 3. Samenvatten in simpele, informele punten. Zelfde dagbudget als de uur-Worker: het uurnieuws gaat voor
 //    (er blijft ruimte gereserveerd voor de rest van de dag), boven 70% het kleine model, pas bij het plafond een nette melding.
@@ -46,8 +46,8 @@ const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/
 const json = (o: any, s = 200) => new Response(JSON.stringify(o), { status: s, headers: HDR });
 
 const MSG = {
-  yt: "YouTube laat de ondertiteling van dit filmpje nu niet ophalen, dus samenvatten lukt hier niet. Probeer het later nog eens of kijk bij de bron.",
-  geenTekst: "Bij dit filmpje vond ik geen ondertiteling of gesproken tekst, dus samenvatten lukt niet.",
+  weinig: "De beschrijving van dit filmpje is te kort om samen te vatten. Bekijk het bij de bron.",
+  geenTekst: "Bij dit filmpje vond ik geen gesproken tekst, dus samenvatten lukt niet.",
   teLang: "Dit filmpje is te lang om hier te beluisteren. Bekijk het bij de bron.",
   budget: "Samenvatten kan vandaag niet meer: de dagruimte voor AI is op. Morgen kan het weer!",
   bezig: "Deze samenvatting wordt net gemaakt. Probeer het over een paar tellen nog eens.",
@@ -63,62 +63,6 @@ function ams(t = Date.now()) {
   return { iso: `${p.year}-${p.month}-${p.day}`, h: +p.hour };
 }
 export const ytId = (u = "") => /(?:youtube(?:-nocookie)?\.com\/(?:shorts\/|embed\/|watch\?(?:.*&)?v=|live\/)|youtu\.be\/)([\w-]{11})/.exec(u)?.[1] || null;
-
-// ---------------- tekst uit YouTube-ondertiteling
-function capText(j: any): string {
-  const out: string[] = [];
-  for (const e of j?.events || []) {
-    const t = (e.segs || []).map((s: any) => s.utf8 || "").join("").replace(/\s+/g, " ").trim();
-    if (t && t !== out[out.length - 1]) out.push(t);
-  }
-  return out.join(" ").replace(/\[[^\]]*\]/g, "").replace(/\s+/g, " ").trim();
-}
-function vttText(v: string): string {
-  const out: string[] = [];
-  for (const l of v.split("\n")) {
-    if (!l.trim() || l.includes("-->") || /^(WEBVTT|Kind:|Language:|\d+$)/.test(l)) continue;
-    const t = l.replace(/<[^>]+>/g, "").trim();
-    if (t && t !== out[out.length - 1]) out.push(t);
-  }
-  return out.join(" ");
-}
-async function ytCaptions(id: string, why: string[]): Promise<string> {
-  const pick = (tr: any[]) => [...tr].sort((a, b) => (a.languageCode !== "nl" ? 1 : 0) - (b.languageCode !== "nl" ? 1 : 0) || (a.kind === "asr" ? 1 : 0) - (b.kind === "asr" ? 1 : 0))[0];
-  for (const c of [
-    { ua: "com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip", client: { clientName: "ANDROID", clientVersion: "20.10.38", androidSdkVersion: 30 } },
-    { ua: "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)", client: { clientName: "IOS", clientVersion: "20.10.4", deviceModel: "iPhone16,2" } },
-    { ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", client: { clientName: "WEB_EMBEDDED_PLAYER", clientVersion: "1.20250310.01.00" }, embed: true },
-    { ua: "Mozilla/5.0 (PlayStation; PlayStation 4/12.00) AppleWebKit/605.1.15 (KHTML, like Gecko)", client: { clientName: "TVHTML5_SIMPLY_EMBEDDED_PLAYER", clientVersion: "2.0" }, embed: true },
-    { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Mobile/15E148 Safari/604.1", client: { clientName: "MWEB", clientVersion: "2.20250311.03.00" } },
-  ] as any[]) {
-    try {
-      const r = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", { method: "POST", headers: { "Content-Type": "application/json", "User-Agent": c.ua }, body: JSON.stringify({ context: { client: { ...c.client, hl: "nl", gl: "NL" }, ...(c.embed ? { thirdParty: { embedUrl: "https://nieuwsinkort.nl/" } } : {}) }, videoId: id }), signal: AbortSignal.timeout(8000) });
-      const j: any = await r.json();
-      const tr = j?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-      if (!tr.length) { why.push(`YouTube ${c.client.clientName}: geen ondertiteling (${j?.playabilityStatus?.status || r.status})`); continue; }
-      const t = pick(tr);
-      const x = await fetch(String(t.baseUrl).replace(/&fmt=[^&]*/, "") + "&fmt=json3", { headers: { "User-Agent": c.ua }, signal: AbortSignal.timeout(8000) });
-      if (!x.ok) { why.push(`YouTube-ondertiteling ${c.client.clientName}: HTTP ${x.status}`); continue; }
-      const txt = capText(await x.json());
-      if (txt.length > 40) return txt;
-      why.push(`YouTube-ondertiteling ${c.client.clientName}: leeg`);
-    } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`YouTube ${c.client.clientName}: ${String(e?.message || e).slice(0, 60)}`); }
-  }
-  // terugval: Invidious-spiegels
-  for (const h of ["inv.nadeko.net", "yewtu.be", "invidious.nerdvpn.de"]) {
-    try {
-      const r = await fetch(`https://${h}/api/v1/captions/${id}`, { signal: AbortSignal.timeout(6000) });
-      if (!r.ok) { why.push(`Invidious ${h}: HTTP ${r.status}`); continue; }
-      const caps = ((await r.json()) as any)?.captions || [];
-      if (!caps.length) { why.push(`Invidious ${h}: geen ondertiteling`); continue; }
-      caps.sort((a: any, b: any) => (a.languageCode !== "nl" ? 1 : 0) - (b.languageCode !== "nl" ? 1 : 0));
-      const v = await fetch(`https://${h}${caps[0].url}`, { signal: AbortSignal.timeout(6000) });
-      const txt = vttText(await v.text());
-      if (txt.length > 40) return txt;
-    } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`Invidious ${h}: ${String(e?.message || e).slice(0, 50)}`); }
-  }
-  return "";
-}
 
 // ---------------- geluid voor Whisper
 async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{ bytes: Uint8Array; sec: number } | null> {
@@ -192,8 +136,8 @@ async function groqAudio(env: Env, bytes: Uint8Array, schatting: number): Promis
 
 // ---------------- samenvatten
 const STIJL = "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf in heel simpel, informeel Nederlands: korte zinnen, gewone woorden, geen jargon. Gebruik ALLEEN wat in de tekst staat; verzin niets, geen eigen mening. Is de tekst Engels, schrijf toch in het Nederlands.";
-async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null): Promise<{ punten: string[]; model: string }> {
-  const user = `Dit is wat er gezegd wordt in een filmpje van ${bron} met de titel "${titel}".\nVat het samen in 3 tot 5 korte punten (elk max 15 woorden). Zet elk punt op een nieuwe regel en begin met "- ". Geen inleiding, geen kopje.\n\nTekst:\n${tekst}`;
+async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null, beschrijving = false): Promise<{ punten: string[]; model: string }> {
+  const user = beschrijving ? `Dit zijn de titel en beschrijving van een filmpje van ${bron}.\nTitel: ${titel}\nBeschrijving: ${tekst}\nVat alleen wat hierin staat samen in 2 tot 4 korte punten (elk max 15 woorden). Verzin niets. Zet elk punt op een nieuwe regel en begin met "- ". Geen inleiding, geen kopje.` : `Dit is wat er gezegd wordt in een filmpje van ${bron} met de titel "${titel}".\nVat het samen in 3 tot 5 korte punten (elk max 15 woorden). Zet elk punt op een nieuwe regel en begin met "- ". Geen inleiding, geen kopje.\n\nTekst:\n${tekst}`;
   let t = "", gebruikt = model;
   const aanbieder = groq(env.GROQ_API_KEY);
   if (aanbieder) {
@@ -209,7 +153,7 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
     if (fout) throw new CloudBudgetFout(fout);
     t = await chat(env.AI, model, STIJL, user, 320, u);
   }
-  return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5) };
+  return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, beschrijving ? 4 : 5) };
 }
 
 class CloudBudgetFout extends Error { constructor(public response: Response) { super(); } }
@@ -288,7 +232,7 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   // pre = vooraf maken door de uur-Worker: strenger budget (marge voor nieuws + verzoeken), korter luisteren
   const pre = body?.pre === true;
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 400);
-  const key = `vs:${id}`;
+  const key = `${id.startsWith("yt-") ? "vs2" : "vs"}:${id}`;
   const hit = await env.NIEUWS.get(key, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   if (hit) return json({ ...hit, cached: true });
   const v = await vindVideo(env, request, id);
@@ -310,6 +254,13 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
 };
 
 async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre: boolean): Promise<Response> {
+  const yt = ytId(v.embed) || ytId(v.href);
+  const beschrijving = String(v.beschrijving || v.ai || "").trim();
+  if (yt && beschrijving.length < 80) {
+    const out = { ok: false, code: "te-weinig-beschrijving", fout: MSG.weinig };
+    await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL });
+    return json(out);
+  }
   // ---- budget (gedeeld met de uur-Worker)
   const BUDGET = +(env.BUDGET || BUDGET_DEF) / neuronFactor(env.NEURON_FACTOR); // marge: de echte teller kan hoger staan
   const A = ams();
@@ -341,10 +292,9 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
   let reserved = 0; // vooraf weggeschreven schatting, wordt na afloop gecorrigeerd
   let tekst = "", bron = "", sec = 0;
   try {
-    const yt = ytId(v.embed) || ytId(v.href);
     if (yt) {
-      tekst = await ytCaptions(yt, why);
-      bron = "ondertiteling";
+      tekst = beschrijving;
+      bron = "beschrijving";
     } else {
       const media = String(v.embed || "");
       let a: { bytes: Uint8Array; sec: number } | null = null;
@@ -380,14 +330,12 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
       }
     }
     if (tekst.length < 40) {
-      const blok = why.some((w) => /LOGIN_REQUIRED|HTTP 429/.test(w));
-      const out = blok ? { ok: false, code: "geblokkeerd", fout: MSG.yt } : { ok: false, code: "geen-tekst", fout: MSG.geenTekst };
-      // geen spraak verandert niet: lang onthouden (geen dubbele Whisper-kosten); YouTube-blokkade sneller opnieuw
-      await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: blok ? 3 * 3600 : bron === "spraak" ? 24 * 3600 : 6 * 3600 });
+      const out = { ok: false, code: "geen-tekst", fout: MSG.geenTekst };
+      await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: bron === "spraak" ? 24 * 3600 : 6 * 3600 });
       await verreken(u.neurons - reserved);
       return uit({ ...out, neuronen: Math.round(u.neurons * 10) / 10 });
     }
-    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan);
+    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan, !!yt);
     const p = resultaat.punten;
     await verreken(u.neurons - reserved);
     if (p.length < 2) {
@@ -396,7 +344,7 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
       await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => {});
       return uit(out);
     }
-    const out = { ok: true, punten: p, bron, sec, model: resultaat.model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString(), ...(pre ? { vooraf: true } : {}) };
+    const out = { ok: true, punten: p, bron, basis: bron, sec, model: resultaat.model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString(), ...(pre ? { vooraf: true } : {}) };
     await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: 30 * 86400 });
     return json(out);
   } catch (e: any) { console.error("samenvatting: verwerking mislukt");
@@ -425,6 +373,6 @@ export const onRequestGet = async ({ request, env }: Ctx) => {
   // GET /samenvatting?id=... alleen uit de cache (handig om te tonen of er al een samenvatting is)
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false }, 400);
-  const hit = await env.NIEUWS.get(`vs:${id}`, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
+  const hit = await env.NIEUWS.get(`${id.startsWith("yt-") ? "vs2" : "vs"}:${id}`, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   return json(hit ? { ...hit, cached: true } : { ok: false, code: "geen" });
 };
