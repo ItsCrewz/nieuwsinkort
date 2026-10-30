@@ -13,18 +13,10 @@ import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { neemVroegeData } from "./vroeg";
+import { CATS, CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
-const CATS: { id: Cat; label: string; slug: string }[] = [
-  { id: "nl", label: "Nederland", slug: "nederland" },
-  { id: "buitenland", label: "Buitenland", slug: "buitenland" },
-  { id: "tech", label: "Tech & AI", slug: "tech" },
-  { id: "haarlem", label: "Haarlem", slug: "haarlem" },
-  { id: "showbizz", label: "Showbizz", slug: "showbizz" },
-  { id: "politiek", label: "Politiek", slug: "politiek" },
-];
-const CAT_LABEL: Record<Cat, string> = { nl: "Nederland", buitenland: "Buitenland", tech: "Tech & AI", haarlem: "Haarlem", showbizz: "Showbizz", politiek: "Politiek" };
 const ALLES_FIRST = 24; // op "Alles" eerst zoveel kaarten, daarna "Toon alle"
 const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
@@ -244,9 +236,7 @@ function Briefing({ text, bionic, sources, time, note }: { text: string; bionic:
 // ---------------------------------------------------------------- tabs
 // Gesegmenteerde rubriekkeuze. Past alles niet op één regel, dan gaan de laatste rubrieken in "Meer"
 // (er scrollt dus niets zijwaarts in de header). De actieve rubriek staat altijd zichtbaar.
-type TabOpt = { value: View; id: string; label: string; short: string };
 function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: View) => void }) {
-  void data;
   const wrapRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -255,15 +245,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
   const prev = useRef<{ x: number; w: number } | null>(null);
   const [fit, setFit] = useState<{ short: boolean; count: number }>({ short: false, count: 99 });
   const [open, setOpen] = useState(false);
-  const options: TabOpt[] = useMemo(
-    () => [
-      { value: "alles", id: "all", label: "Alles", short: "Alles" },
-      ...CATS.map((c) => ({ value: c.id as View, id: c.id, label: c.label, short: c.id === "nl" ? "NL" : c.id === "tech" ? "Tech" : c.label })),
-      { value: "filmpjes", id: "filmpjes", label: "Filmpjes", short: "Filmpjes" },
-      { value: "dumpert", id: "dumpert", label: "Dumpert", short: "Dumpert" },
-    ],
-    []
-  );
+  const options: TabOpt[] = useMemo(() => tabOpties(data.items, view), [data.items, view]);
   const activeIdx = Math.max(0, options.findIndex((o) => o.value === view));
 
   // Welke tabs passen? Meten in een onzichtbare kopie (vaste breedtes, geen layout-sprongen in beeld).

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./tabs.test";
 import { aantalExtra, filterNieuws, tijdstip, STANDAARD, type Filters } from "../src/filters";
 import { midnight } from "../src/tijd";
 import type { Item } from "../src/types";
