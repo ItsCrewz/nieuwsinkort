@@ -1,0 +1,1 @@
+- Test de randgevallen van `worker/src/showcat.ts`: elk misdaadwoord, sport en politiek gaan voor, de helftgrens en social-feed-URL's (#198).
