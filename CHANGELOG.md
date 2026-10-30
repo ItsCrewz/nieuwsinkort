@@ -15,6 +15,8 @@
 
 ## 2026-10-30
 
+- Verborgen video-debug-overlay voor diagnose op de iPhone (#50).
+
 - Filmpjes (#60): sport-, voetbal-, Formule 1- en autokanalen toegevoegd aan de YouTube-kanaalfeeds, inclusief Shorts; bouwt voort op PR #55.
 
 - Alleen nieuws en video's van de huidige Amsterdamse dag; oude data verdwijnt na middernacht (#56).

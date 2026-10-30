@@ -157,3 +157,5 @@ De AI-ronde kiest bij de eerste twee budgettrappen eerst hooguit één cluster p
 ## AI-aanbieders
 
 De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daarna Mistral als fallback en per model conservatieve UTC-dag- en minuutlimieten. Mistral heeft daarnaast een UTC-maandlimiet, instelbaar via `MISTRAL_MAAND_TOKENS`. Lees verder geeft Groq voorrang. De bestaande Workers AI-budgettrappen blijven gelden. Zie [AI-aanbieders en secrets](ai-aanbieders.md).
+
+Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
