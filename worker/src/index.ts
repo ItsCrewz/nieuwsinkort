@@ -779,7 +779,7 @@ async function toegelaten(req: Request, sleutel?: string): Promise<boolean> {
 
 // ---------------------------------------------------------------- worker
 export default {
-  async scheduled(ev: ScheduledController, env: Env, ctx: ExecutionContext) {
+  async scheduled(ev: ScheduledController, env: Env, _ctx: ExecutionContext) {
     const h = ams(ev.scheduledTime).h;
     if (h < 6 || h > 23) return; // cron draait in UTC; dit houdt het op 06:00–23:00 Amsterdam (zomer- en wintertijd)
     const stub = env.RUNNER.get(env.RUNNER.idFromName("runner"));

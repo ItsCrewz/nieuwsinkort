@@ -57,6 +57,8 @@ npm test         # tests
 npm run build    # bronnen.json + tsc + vite build -> dist/
 ```
 
+De TypeScript-controles voor frontend, Worker en Functions controleren ook ongebruikte declaraties en parameters en ontbrekende `break`-instructies in switches.
+
 Pages Functions lokaal (incl. Dumpert-proxy): `npx wrangler pages dev dist --port 4173`.
 Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled` met lokaal ingestelde `RUN_KEY`, dan `/run` en `/uur` met de header `Authorization: Bearer <RUN_KEY>`. Sleutels in queryparameters worden niet geaccepteerd. `force=1` geeft 429 als de laatste runstart minder dan tien minuten geleden was. Workers AI is altijd remote en kost dus echte neuronen.
 

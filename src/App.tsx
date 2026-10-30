@@ -1,5 +1,5 @@
 import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Meer, Bron, Cat, Data, Item, View, Weer, WeerDag } from "./types";
+import type { Meer, Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch, host } from "./ui";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { SourcesSheet } from "./sheet";
@@ -15,7 +15,7 @@ import { herindeel } from "./regio";
 import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
-import { CATS, CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
+import { CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
 import { TabBriefing } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
 

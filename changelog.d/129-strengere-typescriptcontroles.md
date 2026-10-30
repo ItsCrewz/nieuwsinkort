@@ -1,0 +1,1 @@
+- Strengere TypeScript-controles voor ongebruikte code en switchgevallen in frontend, Worker en Functions (#129).
