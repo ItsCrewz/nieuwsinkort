@@ -71,7 +71,7 @@ try {
   antwoorden.push(await dumpert({ request: req("/media/dumpert/x"), params: { path: "dmp/media/video/abc/123.ts" } }));
 } finally { globalThis.fetch = origineelFetch; }
 t("alle vier Functions zetten nosniff bij succes, terugval en fouten zonder netwerk of AI", () => {
-  assert.deepEqual(antwoorden.map((r) => r.status), [200, 200, 200, 404, 400, 404, 200, 400, 415, 404, 405, 200, 502]);
+  assert.deepEqual(antwoorden.map((r) => r.status), [200, 200, 200, 503, 400, 404, 200, 400, 415, 404, 405, 200, 502]);
   for (const r of antwoorden) assert.equal(r.headers.get("X-Content-Type-Options"), "nosniff");
 });
 
