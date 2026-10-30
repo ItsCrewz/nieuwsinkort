@@ -27,13 +27,15 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
 | `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
 | `prod-frozen/` | Bevroren oude productiebuild (zie deploy) |
-| `tests/` | `dedup.test.ts`, `regio.test.ts`, `cluster.test.ts`, `stall.test.ts` (draaien met `npm test`), `live-dedup.ts`, `live-cluster.ts` (naspelen op echte data) |
+| `tests/` | `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `stall.test.ts` (draaien met `npm test`), `live-dedup.ts`, `live-cluster.ts` (naspelen op echte data) |
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
 | `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
 
 Buitenland is een rubriek, geen bronnengroep: de feedgroep `nl` bevat ook buitenlandfeeds, en `src/regio.ts` deelt berichten uit `nl` achteraf in. De Worker doet dit bij het bouwen van `uur`; de frontend past dezelfde `herindeel()` toe bij het laden, zodat ook statische en oude data kloppen. Regels: een buitenlandfeed of een heel URL-padsegment (`/buitenland/`, `/world/`; geen substring van een slug) telt als buiten, `/binnenland/`, `/regio/`, `/politiek/` als binnen; meer buiten dan binnen = Buitenland; een Nederlands anker in kop of samenvatting (Nederland, kabinet, Den Haag, enz.) houdt het bij Nederland; zonder signaal beslist een lijst landnamen (sport- en entertainmentpaden tellen niet mee). Bronnen van Buitenland-berichten tellen en schakelen onder groep Nederland in het Bronnen-paneel.
 
 Bij de fallback zonder AI slaat de uurrun relatieve en ongeldige bronlinks over bij de controle op Nederlandse domeinen; andere bronnen blijven verwerkt worden.
+
+Zonder AI (dagruimte op, mislukte aanroep) maakt `worker/src/extractief.ts` voor alle rubrieken een deterministische samenvatting: opgeschoonde kop (max 120 tekens, zonder "Podcast |", "LIVE" of HTML), de eerste 2–3 zinnen van de omschrijving (±50 woorden) en bij Engelse bronnen de eerste zin met het label "(Engels)". Zulke berichten hebben `ruw: true` en tonen "nog niet samengevat"; een latere run met AI vervangt ze. Politiek houdt zijn eigen regel.
 
 ## Lokaal draaien
 

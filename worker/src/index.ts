@@ -19,6 +19,7 @@ import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
 import { isNL } from "../../src/bronlink";
+import { extractief } from "./extractief";
 import { isBuitenland } from "../../src/regio";
 import { cluster, normLink, sim, toks, type Cand, type Cluster } from "./cluster";
 import { Budget, utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quotaSleutel } from "./budget";
@@ -508,7 +509,7 @@ export class Runner extends DurableObject<Env> {
     const firstSentence = (s: string) => (s.match(/^.{20,240}?[.!?](\s|$)/)?.[0] || s.slice(0, 200)).trim();
     const noAI = quotaOut || runCapped || tijdelijk > 0 || !env.AI;
     const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
-    const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : noAI && isNL(k) && k.c[0].s));
+    const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : noAI && extractief(k.c[0], isNL(k))));
     // ---- foto's: uit de feeds; ontbreekt die bij een bron, dan og:image van het artikel (gecachet in KV)
     const ogLinks = begrensOg(shown.flatMap((k) => k.c.filter((c) => !c.img && !/instagram\.com|youtube\.com|youtu\.be|reddit\.com|x\.com|twitter\.com/.test(c.href)).slice(0, 3).map((c) => c.href).filter((h) => externeUrl(h) !== null)));
     let kvWritesOg = 0;
@@ -537,7 +538,7 @@ export class Runner extends DurableObject<Env> {
         const rest = desc.slice((zin || knip).length).replace(/^[\s.!?,:;…-]+/, "");
         const ai = rest ? firstSentence(rest) : "";
         if (k.cat === "politiek") items.push({ cat: k.cat, kop, ai, samenvatting: rest.slice(0, 700), punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true });
-        else items.push({ cat: k.cat, kop: k.c[0].t.slice(0, 120), ai: firstSentence(desc), samenvatting: desc.slice(0, 700), punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true });
+        else items.push({ cat: k.cat, ...extractief(k.c[0], isNL(k))!, punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true }); // extractief, alle rubrieken; Engels met "(Engels)"
       }
     }
     items.sort((a, b) => b._t - a._t);

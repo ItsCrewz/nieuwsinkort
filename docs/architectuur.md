@@ -74,7 +74,9 @@ Modellen: `@cf/google/gemma-4-26b-a4b-it` (`MODEL`, hoofd), `@cf/meta/llama-3.2-
 | < 70% | hoofdmodel, max 40 per run |
 | 70–90% | klein model, max 15 per run |
 | 90–100% | alleen NL en Haarlem, max 8 |
-| 100% | geen AI; feedtekst met `ruw: true`, site meldt dat samenvatten even niet lukt |
+| 100% | geen AI; extractieve tekst met `ruw: true` voor alle rubrieken (zie hieronder), kaart toont "nog niet samengevat" |
+
+**Extractieve fallback (#80)**: `worker/src/extractief.ts` (pure functies `schoon`, `zinnen`, `knip`, `eersteZinnen`, `extractief`). Als er geen AI-samenvatting is, komt elk cluster met een bruikbare titel als `ruw: true`-item op de site, ook tech, Haarlem en Engelstalige bronnen (geen `.nl`-host). Kop: opgeschoond (HTML, entiteiten, prefixes als "Podcast |", "LIVE", "VIDEO"), max 120 tekens. Samenvatting: de eerste 2–3 hele zinnen van de omschrijving, samen ±50 woorden; zinsgrenzen negeren afkortingen ("o.a.", "dhr.") en voorletters. Engels: eerste zin met het voorvoegsel "(Engels)". De volgende run met AI vervangt het item (ruw → samenvatting). Politiek houdt zijn eigen regel. Kost geen neuronen.
 
 Video-samenvattingen vooraf stoppen vanaf 85%; AI-uitleg voor "Lees verder" alleen onder 65%. Ondertiteling kost ±5 neuronen, Whisper ±44–133.
 

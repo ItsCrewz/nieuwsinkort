@@ -437,6 +437,7 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
       <div className="meta">
         {CAT_LABEL[item.cat] ?? item.cat}
         {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
+        {item.ruw ? <span>nog niet samengevat</span> : null}
       </div>
       <h2 className="lead-title">{item.kop}</h2>
       {item.ai ? (
@@ -469,6 +470,7 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
         <div className="meta">
           {CAT_LABEL[item.cat] ?? item.cat}
           {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
+          {item.ruw ? <span>nog niet samengevat</span> : null}
         </div>
         <h3 className="row-title">{item.kop}</h3>
         {item.ai ? (
@@ -625,6 +627,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
       <div className="nc-meta">
         <span className="nc-cat">{CAT_LABEL[item.cat] ?? item.cat}</span>
         {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
+        {item.ruw ? <span>nog niet samengevat</span> : null}
         <span className="nc-src" title={bronnen.map((b) => b.site).join(", ")}>
           {bronnen.length ? bronLabel(bronnen) : "Geen bron"}
         </span>
@@ -940,6 +943,7 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
         <div className="meta">
           {CAT_LABEL[item.cat] ?? item.cat}
           {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
+          {item.ruw ? <span>nog niet samengevat</span> : null}
           {bronnen.length ? <span>{bronnenTekst(bronnen.length)}</span> : null}
         </div>
         <h1 className="d-title">{item.kop}</h1>
