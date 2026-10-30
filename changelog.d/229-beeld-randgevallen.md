@@ -1,0 +1,1 @@
+- Extra tests voor randgevallen van beeld-URL's, ontdubbelen, maximumaantallen en og:image (#229).
