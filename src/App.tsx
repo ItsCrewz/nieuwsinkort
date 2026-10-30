@@ -16,10 +16,11 @@ import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
 import { CATS, CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
+import { parseHash, viewHash, type Route } from "./route";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
-const ALLES_FIRST = 24; // op "Alles" eerst zoveel kaarten, daarna "Toon alle"
+const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
 const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
@@ -58,21 +59,12 @@ function amsterdamTime(iso?: string) {
 }
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-// ---- routing via hash: #/nederland, #/filmpjes, #/bericht/<slug>
-type Route = { view: View; selected: string | null; video: string | null };
-function parseHash(): Route {
-  const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
-  if (h.startsWith("bericht/")) return { view: "alles", selected: h.slice(8), video: null };
-  const c = CATS.find((c) => c.slug === h);
-  if (c) return { view: c.id, selected: null, video: null };
-  const m = /^(filmpjes|dumpert)(?:\/(.+))?$/.exec(h);
-  if (m) return { view: m[1] as View, selected: null, video: m[2] || null };
-  return { view: "alles", selected: null, video: null };
-}
-function viewHash(v: View) {
-  if (v === "alles") return "#/";
-  const c = CATS.find((c) => c.id === v);
-  return `#/${c ? c.slug : v}`;
+// De oude Alles-route vervangen zonder een extra geschiedenisitem.
+function huidigeRoute(): Route {
+  if (window.location.hash === "#/alles") {
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#/`);
+  }
+  return parseHash(window.location.hash);
 }
 
 // ---------------------------------------------------------------- weer
@@ -1181,7 +1173,7 @@ export default function App() {
   const { groups, index } = useMemo(() => buildSources(catalog, raw), [catalog, raw]);
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
-  const [route, setRoute] = useState<Route>(() => parseHash());
+  const [route, setRoute] = useState<Route>(() => huidigeRoute());
   const [bionic, setBionic] = useState(true);
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
@@ -1204,7 +1196,7 @@ export default function App() {
       /* standaard aan */
     }
     const onHash = () => {
-      const next = parseHash();
+      const next = huidigeRoute();
       const prev = routeRef.current;
       const back = prev.selected && !next.selected ? prev.selected : null;
       // concurrent renderen: de browser blijft frames tekenen terwijl React de nieuwe weergave bouwt
@@ -1429,7 +1421,7 @@ export default function App() {
                 {dateline}
                 <Front>
                   <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
-                  <WeatherBox W={raw.weer} bionic={bionic} />
+                  {view === "alles" && <WeatherBox W={raw.weer} bionic={bionic} />}
                 </Front>
               </div>
             }
@@ -1443,7 +1435,6 @@ export default function App() {
       <main className="wrap" id="top">
         <Front>
           <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
-          <WeatherBox W={raw.weer} bionic={bionic} />
         </Front>
         <Tabs data={data} view={view} onChange={setView} />
         {filterBalk}

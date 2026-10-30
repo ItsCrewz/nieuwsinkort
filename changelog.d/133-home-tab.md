@@ -1,0 +1,1 @@
+- De tab Alles heet nu Home en toont als enige het weerbericht; oude links blijven werken (#133).
