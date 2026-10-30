@@ -1,0 +1,1 @@
+- YouTube-samenvattingen gebruiken de titel en RSS-beschrijving, met een zichtbaar label; ondertiteling wordt niet meer opgehaald (#124).

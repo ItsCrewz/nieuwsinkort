@@ -36,6 +36,7 @@ export type Weer = {
 export type Video = {
   titel: string;
   ai: string;
+  beschrijving?: string;
   bron: string;
   href: string;
   embed?: string;
@@ -54,7 +55,7 @@ export type Data = {
   dag_samenvatting: string;
   weer: Weer;
   filmpjes: Video[];
-  samenvattingen?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>;
+  samenvattingen?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak" | "beschrijving"; basis?: "beschrijving" | "spraak"; sec?: number }>;
   dumpert: Video[];
   items: Item[];
   gegenereerd?: string;

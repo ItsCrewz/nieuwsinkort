@@ -2,7 +2,7 @@
 
 Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone Safari. Nieuws per rubriek (Nederland, Buitenland, Politiek, Voetbal, Formule 1, Auto, Tech, Haarlem, Showbizz; lege rubrieken worden verborgen) met ontdubbelde berichten uit meerdere bronnen, korte AI-samenvatting in eenvoudig Nederlands voor volwassenen (ongeveer B1; zinnen liefst hooguit 15 woorden, nooit meer dan 20), "In het kort", landelijk weer (heel Nederland, bron KNMI), fotocarrousels en Filmpjes/Dumpert (journaals, shorts): op touchschermen een verticale swipe-feed, op desktop (muis/trackpad) de gewone weergave met kopjes, tabbladen en kaarten; een kaart opent daar het filmpje bij de bron.
 
-Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq voor transcriptie en punten; bij ontbrekende sleutel of uitputting volgt de bestaande Cloudflare-route binnen het budget. Groq-tellers in KV zijn een rem zonder atomaire garantie.
+YouTube-samenvattingen gebruiken de titel en RSS-beschrijving en vermelden die basis; bij minder dan 80 tekens beschrijving volgt geen samenvatting. Andere video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq voor transcriptie en punten; bij ontbrekende sleutel of uitputting volgt de bestaande Cloudflare-route binnen het budget. Groq-tellers in KV zijn een rem zonder atomaire garantie.
 
 - Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Het domein nieuwsinkort.nl is nog niet gekoppeld.
 
