@@ -43,6 +43,9 @@ await keten([groq("test-sleutel")!], state, { sys: "s", user: "u", maxTokens: 10
 assert.equal(modellen[0], "qwen/qwen3.8-27b");
 const logs: unknown[] = [];
 const log = console.error; console.error = (...args) => { logs.push(args); };
+globalThis.fetch = (async () => new Response("", { status: 429 })) as typeof fetch;
+await assert.rejects(keten([groq("test-sleutel")!], {}, { sys: "s", user: "u", maxTokens: 10, json: false }, () => {}));
+assert.deepEqual(logs[0], ["AI-aanbieder mislukt", "groq", "openai/gpt-oss-120b", "HTTP 429"]);
 globalThis.fetch = (async () => { throw new Error("test-sleutel"); }) as typeof fetch;
 await assert.rejects(chat(ai, "cf", "s", "u", 10, usage()));
 console.error = log; globalThis.fetch = origineel;
