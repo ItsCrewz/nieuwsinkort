@@ -5,7 +5,7 @@ import { Budget } from "../worker/src/budget";
 import { onRequestPost as svPost } from "../functions/samenvatting";
 import { videoSlug } from "../src/slug";
 import { buildWeer, KNMI_VERW, OM_URL } from "../worker/src/weer";
-import { simpelWeer } from "../worker/src/ai";
+import { simpelWeer, summarize, inHetKort, verdiep } from "../worker/src/ai";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 let n = 0;
@@ -249,6 +249,26 @@ await t("weer: simpelWeer-prompt is landelijk, invoer max 1500 tekens, één aan
   const prompt = JSON.stringify(gezien[0]);
   assert.ok(!/Haarlem/i.test(prompt) && /heel Nederland/.test(prompt));
   assert.ok(JSON.stringify(gezien[0].messages.at(-1).content).length < 1900);
+});
+
+await t("artikelprompts vragen B1 en behouden één call per groep", async () => {
+  const calls: any[] = [];
+  const ai: any = { run: async (_model: string, args: any) => { calls.push(args); return { response: '{"items":[{"id":1,"kop":"Kop","ai":"Een zin."}]}' }; } };
+  const usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0 };
+  await summarize(ai, "model", [{ id: 1, cat: "nl", bronnen: ["Bron"], titels: ["Kop"], tekst: "Tekst" }, { id: 2, cat: "nl", bronnen: [], titels: [], tekst: "Tekst" }], usage);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].max_tokens, 620);
+  await inHetKort(ai, "model", ["Bericht"], usage);
+  await verdiep(ai, "model", [{ id: 1, kop: "Kop", kort: "Kort", bronnen: [] }], usage);
+  assert.equal(calls.length, 3);
+  for (const call of calls) {
+    const stijl = call.messages[0].content;
+    assert.match(stijl, /volwassenen.*B1/);
+    assert.match(stijl, /korte zinnen \(liefst hooguit 15 woorden, nooit meer dan 20\)/);
+    assert.match(stijl, /jargon en moeilijke woorden kort uit/);
+    assert.match(stijl, /afkortingen bij eerste gebruik voluit/i);
+    assert.match(stijl, /ALLEEN feiten.*verzin niets/);
+  }
 });
 
 console.log(`\n${n} Worker-tests geslaagd`);
