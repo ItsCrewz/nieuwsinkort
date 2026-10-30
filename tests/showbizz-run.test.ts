@@ -20,7 +20,7 @@ await t("showbizz: RTL Boulevard-site telt als nieuws, YouTube niet; algemene fe
   const feeds: Record<string, any> = {
     "https://www.nu.nl/rss": feed("https://www.nu.nl/rss", [...nl, e("https://www.nu.nl/achterklap/6414919/halle-berry-verliest-voogdij-over-zoon.html", "Halle Berry verliest voogdij over zoon voorlopig aan ex-man", 10)]),
     "https://www.rtl.nl/boulevard/rss.xml": feed("https://www.rtl.nl/boulevard/rss.xml", [e("https://www.rtl.nl/boulevard/artikel/5661954/wilfred-genee-teleurgesteld", "Wilfred Genee teleurgesteld na interview met Jaimie Vaes", 5)]),
-    "https://www.youtube.com/feeds/videos.xml?channel_id=UC2Jbya_u-rQ0xBNHBYXvpTg": feed("x", [e("https://www.youtube.com/shorts/abcdefghijk", "YouTube-short van RTL Boulevard", 5)]),
+    "https://www.youtube.com/feeds/videos.xml?channel_id=UC2Jbya_u-rQ0xBNHBYXvpTg": feed("https://www.youtube.com/feeds/videos.xml?channel_id=UC2Jbya_u-rQ0xBNHBYXvpTg", [e("https://www.youtube.com/shorts/abcdefghijk", "YouTube-short van RTL Boulevard", 5)]),
   };
   const bronnen = { groepen: [
     { id: "nl", bronnen: [{ id: "nu", naam: "NU.nl", feeds: [{ url: "https://www.nu.nl/rss" }] }] },
