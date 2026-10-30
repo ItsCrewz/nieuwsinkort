@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
-import { Feed, videoSlug } from "./feed";
+import { videoSlug } from "./slug";
+
+const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
@@ -280,7 +282,7 @@ export function VideoGrid({
         </div>
       )}
       {video && touch ? (
-        <Feed
+        <Suspense fallback={null}><Feed
           key={cat}
           list={feedList}
           cat={cat}
@@ -291,7 +293,7 @@ export function VideoGrid({
             setBron("alle");
             setSoort(g as Soort);
           }}
-        />
+        /></Suspense>
       ) : null}
     </>
   );
