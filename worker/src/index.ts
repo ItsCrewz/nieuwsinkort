@@ -3,6 +3,7 @@
 // Free plan: de cron zelf doet bijna niets (10 ms CPU); het werk gebeurt in Durable Objects (30 s CPU per verzoek)
 // en het ophalen wordt verdeeld over meerdere Fetcher-DO's (elk max 50 externe verzoeken).
 import { ams, midnight } from "../../src/tijd";
+import { begrensOg, schrijfRun } from "../../src/kv";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW, KNMI_WAARSCH } from "./weer";
@@ -30,7 +31,7 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 
 // ---------------------------------------------------------------- fetcher-DO
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj"; label?: string; sub?: string; max?: number; alleenVideo?: boolean };
-type Res = { url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
+type Res = { kvWrites?: number; url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
@@ -45,6 +46,7 @@ async function runInsta(j: Job, since: number, t0: number, kv?: KVNamespace): Pr
   const now = Date.now() + 15 * 60e3;
   const entries: Entry[] = posts.map((p) => ({ t: (p.text.split("\n")[0] || `Post van @${p.user}`).slice(0, 160), l: `https://www.instagram.com/p/${p.code}/`, d: p.t || null, s: p.text.slice(0, 600), img: p.img }));
   const videos: Video[] = [];
+  let kvWrites = 0;
   for (const p of posts.filter((p) => p.video && p.t >= since).slice(0, j.max ?? 3)) {
     try {
       // MP4-adres per post 20 uur in KV (ondertekend adres is enkele dagen geldig): elk uur alleen nieuwe reels opvragen
@@ -53,13 +55,13 @@ async function runInsta(j: Job, since: number, t0: number, kv?: KVNamespace): Pr
       if (!mp4) {
         const e = await igGet(igPostEmbed(p.code));
         mp4 = e.ok ? igVideoUrl(await e.text()) : "";
-        if (mp4) await kv?.put(key, mp4, { expirationTtl: 20 * 3600 }).catch(() => {});
+        if (mp4 && kv) { kvWrites++; await kv.put(key, mp4, { expirationTtl: 20 * 3600 }).catch(() => {}); }
       }
       if (mp4) videos.push(igVideo(p, mp4, j.label || user, hhmm));
     } catch { /* deze video overslaan */ }
   }
   return {
-    url: j.url, ok: true, status: 200, ms: Date.now() - t0, total: entries.length, videos,
+    url: j.url, ok: true, status: 200, ms: Date.now() - t0, total: entries.length, videos, kvWrites,
     newest: entries.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null),
     entries: entries.filter((e) => e.d != null && e.d >= since && e.d <= now),
   };
@@ -84,8 +86,9 @@ async function runOg(j: Job, t0: number, kv?: KVNamespace): Promise<Res> {
     rd.cancel().catch(() => {});
   } else r.body?.cancel().catch(() => {});
   const img = ogImage(html, r.url || j.url);
-  if (r.ok || r.status === 404 || r.status === 403) await kv?.put(key, img, { expirationTtl: 3 * 86400 }).catch(() => {});
-  return { url: j.url, ok: r.ok, status: r.status, ms: Date.now() - t0, text: img, ...(r.ok ? {} : { err: `HTTP ${r.status}` }) };
+  const kvWrites = kv && (r.ok || r.status === 404 || r.status === 403) ? 1 : 0;
+  if (kvWrites) await kv!.put(key, img, { expirationTtl: 3 * 86400 }).catch(() => {});
+  return { url: j.url, ok: r.ok, status: r.status, ms: Date.now() - t0, text: img, kvWrites, ...(r.ok ? {} : { err: `HTTP ${r.status}` }) };
 }
 
 // "Lees verder": de artikeltekst zelf (alinea's, zonder AI). Browser-UA (DPG e.d. weigeren bots), max 900 kB lezen.
@@ -303,7 +306,7 @@ export class Runner extends DurableObject<Env> {
     }
     k.n++; k.laatst = { ...r, perAlarm: Math.round(perAlarm), used: Math.round(used), at: new Date().toISOString() };
     await this.ctx.storage.put("vooraf", k);
-    await this.env.NIEUWS.put("vooraf-log", JSON.stringify(k.laatst), { expirationTtl: 2 * 86400 });
+    await this.env.NIEUWS.put("vooraf-log", JSON.stringify(k.laatst), { expirationTtl: 2 * 86400 }).catch((e) => console.error("KV-schrijffout vooraf-log", e));
     console.log("vooraf", JSON.stringify(k.laatst));
     if (r.nogTeDoen > 0 && r.stop !== "dagbudget" && r.stop !== "run-budget" && k.n < MAX_ALARMS_PER_UUR) await this.ctx.storage.setAlarm(Date.now() + 5 * 60e3);
   }
@@ -490,12 +493,14 @@ export class Runner extends DurableObject<Env> {
     const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
     const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : noAI && isNL(k) && k.c[0].s));
     // ---- foto's: uit de feeds; ontbreekt die bij een bron, dan og:image van het artikel (gecachet in KV)
-    const ogLinks = [...new Set(shown.flatMap((k) => k.c.filter((c) => !c.img && !/instagram\.com|youtube\.com|youtu\.be|reddit\.com|x\.com|twitter\.com/.test(c.href)).slice(0, 3).map((c) => c.href).filter((h) => externeUrl(h) !== null)))].slice(0, 120);
+    const ogLinks = begrensOg(shown.flatMap((k) => k.c.filter((c) => !c.img && !/instagram\.com|youtube\.com|youtu\.be|reddit\.com|x\.com|twitter\.com/.test(c.href)).slice(0, 3).map((c) => c.href).filter((h) => externeUrl(h) !== null)));
+    let kvWritesOg = 0;
     const og = new Map<string, string>();
     const ogB: Job[][] = [];
     for (let i = 0; i < ogLinks.length; i += 30) ogB.push(ogLinks.slice(i, i + 30).map((url) => ({ url, kind: "og" as const })));
     try {
       const rs = (await Promise.all(ogB.map(async (b, i) => (await env.FETCHER.get(env.FETCHER.idFromName(`og${i}`)).fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) })).json() as Promise<Res[]>))).flat();
+      kvWritesOg += rs.reduce((n, r) => n + (r.kvWrites || 0), 0);
       for (const r of rs) if (r?.text) og.set(r.url, r.text);
     } catch { /* zonder og-foto's verder */ }
     const items: any[] = [];
@@ -669,16 +674,17 @@ export class Runner extends DurableObject<Env> {
     st.neurons += usage.neurons; st.calls += usage.calls;
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys,
-      meta: { model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + 3, kvWritesOg, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));
     for (const id of Object.keys(st.sums)) if (!live.has(id) && now - st.sums[id].at > 6 * 3600e3) { delete st.sums[id]; }
     for (const [l, id] of Object.entries(st.links)) if (!st.sums[id]) delete st.links[l];
-    await Promise.all([env.NIEUWS.put("uur", JSON.stringify(out)), env.NIEUWS.put("state", JSON.stringify(st)), env.NIEUWS.put("meer", JSON.stringify({ datum: A.iso, gegenereerd: out.gegenereerd, items: meer }))]);
-    // video-samenvattingen vooraf: los alarm over 1 minuut (eigen CPU/subrequest-budget), na het nieuws
-    await this.ctx.storage.put("vooraf", { uur: A.h, n: 0 });
-    await this.ctx.storage.setAlarm(Date.now() + 60e3);
+    await schrijfRun(env.NIEUWS, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
+      // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.
+      await this.ctx.storage.put("vooraf", { uur: A.h, n: 0 });
+      await this.ctx.storage.setAlarm(Date.now() + 60e3);
+    });
     return { ok: true, ...out.meta, gegenereerd: out.gegenereerd };
   }
 }
