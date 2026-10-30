@@ -1,3 +1,4 @@
+import { Foutgrens } from "./foutgrens";
 import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Meer, Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch, host } from "./ui";
@@ -967,7 +968,7 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
           </ol>
         </section>
       ) : null}
-      <MeerTekst item={item} bionic={bionic} />
+      <Foutgrens code="CLIENT_UITGEBREID"><MeerTekst item={item} bionic={bionic} /></Foutgrens>
       <section className="d-sec" aria-label="Bronnen">
         <h2 className="d-h">Bronnen</h2>
         {bronnen.length ? (
@@ -1295,7 +1296,7 @@ export default function App() {
       <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} />
       {isFeedView ? null : dateline}
       {sheet ? (
-        <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
+        <Foutgrens code="CLIENT_SHEET"><SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} /></Foutgrens>
       ) : null}
     </>
   );
@@ -1392,7 +1393,7 @@ export default function App() {
   );
   const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
   const filterBlad = fsheet ? (
-    <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={() => setFsheet(false)} />
+    <Foutgrens code="CLIENT_FILTER_SHEET"><FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={() => setFsheet(false)} /></Foutgrens>
   ) : null;
   if (!isVideo) {
     return (
@@ -1406,7 +1407,7 @@ export default function App() {
             </div>
           </div>
           {filterBlad}
-          <NewsFeed
+          <Foutgrens key={view} code="CLIENT_FEED"><NewsFeed
             key={view}
             items={uitkomst!.items}
             keepOrder={flt.f.sort !== "nieuw"}
@@ -1425,7 +1426,7 @@ export default function App() {
                 </Front>
               </div>
             }
-          />
+          /></Foutgrens>
         </main>
       </Frame>
     );
@@ -1453,7 +1454,7 @@ export default function App() {
           </div>
         ) : null}
         {isVideo ? (
-          <VideoGrid
+          <Foutgrens key={view} code="CLIENT_VIDEO"><VideoGrid
             key={view}
             cat={view}
             list={view === "filmpjes" ? vids!.filmpjes : vids!.dumpert}
@@ -1463,7 +1464,7 @@ export default function App() {
             video={route.video}
             onOpen={(slug) => openFeed(view, slug)}
             onCloseFeed={() => closeFeed(view)}
-          />
+          /></Foutgrens>
         ) : (
           <NewsList
             key={view}

@@ -1,3 +1,4 @@
+import { Foutgrens } from "./foutgrens";
 import { useEffect, useRef, useState } from "react";
 import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
@@ -280,7 +281,7 @@ export function VideoGrid({
         </div>
       )}
       {video && touch ? (
-        <Feed
+        <Foutgrens code="CLIENT_FILMPJES"><Feed
           key={cat}
           list={feedList}
           cat={cat}
@@ -291,7 +292,7 @@ export function VideoGrid({
             setBron("alle");
             setSoort(g as Soort);
           }}
-        />
+        /></Foutgrens>
       ) : null}
     </>
   );
