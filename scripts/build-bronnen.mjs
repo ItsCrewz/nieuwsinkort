@@ -71,7 +71,7 @@ const OVERRIDES = [
   [/^NH (RSS2|feed)$/i, "NH Nieuws"],
   [/^NOS Tech$/i, "NOS"],
 ];
-const SUFFIX = /\s+(algemeen|buitenland|binnenland|economie|politiek|mixed|alt|advisories|entertainment|media|show|cultuur( & media)?|top( day)?|new|kev|site( rss)?|rss2?|api)$/i;
+const SUFFIX = /\s+(algemeen|buitenland|binnenland|economie|politiek|mixed|alt|advisories|entertainment|achterklap|muziek|film|media|show|cultuur( & media)?|top( day)?|new|kev|site( rss)?|rss2?|api)$/i;
 
 function brand(f) {
   let n = String(f.naam || "").trim();

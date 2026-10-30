@@ -716,9 +716,52 @@
  {
   "cat": "showbizz",
   "naam": "RTL Boulevard site RSS",
-  "url": "https://www.rtl.nl/rss/boulevard",
-  "werkt": false,
-  "notitie": "showbizz; 403 Access Denied"
+  "url": "https://www.rtl.nl/boulevard/rss.xml",
+  "werkt": true,
+  "notitie": "showbizz; bijna alles op rtl.nl/boulevard"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "Telegraaf Entertainment",
+  "url": "https://www.telegraaf.nl/entertainment/sterren/rss",
+  "werkt": true,
+  "notitie": "showbizz; sterrennieuws"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "NU.nl Achterklap",
+  "url": "https://www.nu.nl/rss/Achterklap",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "NU.nl Muziek",
+  "url": "https://www.nu.nl/rss/Muziek",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "NU.nl Film",
+  "url": "https://www.nu.nl/rss/Film",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "NOS Cultuur & media",
+  "url": "https://feeds.nos.nl/nosnieuwscultuurenmedia",
+  "werkt": true,
+  "notitie": "showbizz"
+ },
+ {
+  "cat": "showbizz",
+  "naam": "Linda.nl",
+  "url": "https://www.linda.nl/rss",
+  "werkt": true,
+  "notitie": "showbizz; gemengd met lifestyle, dus begrensd",
+  "max": 5
  },
  {
   "cat": "showbizz",

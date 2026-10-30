@@ -38,6 +38,8 @@ YT_NIEUWS = {  # kanaalnaam -> channel_id
     "RTL Nieuws": "UCv4NUJ5BGSpJz_leIfayDzQ",
     "NU.nl": "UCCw1aOc9x3sEjrUzT-qmMGw",
     "Hart van Nederland": "UCgOkhebo_ZU8rawIXsbyPXQ",
+    "RTL Boulevard": "UC2Jbya_u-rQ0xBNHBYXvpTg",
+    "Shownieuws": "UCnZkUwDLBgLFEpXSeyEx3YA",
     "NH Nieuws": "UCSpctzQgGRJV84At2dV73qg",
     "PowNews": "UCHTtspK-G7Wt68awRpTSkiw",
     "WNL": "UCUSrVHoJrz68z3Q5qHZZC4w",
