@@ -57,6 +57,8 @@ Bufferregels (#36): `src/buffer.ts` bepaalt per netwerkniveau de seconden en byt
 
 Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert de offset op DST-wisseldagen naar die van middernacht zelf. `filters.tsx` gebruikt `gegenereerd` als referentiedag (bij ontbrekende/ongeldige waarde: nu) en laat berichttijden tot 20 minuten vooruit op die dag staan. Vandaag begint op de huidige Amsterdamse middernacht; 1u/3u rekenen tegen `Date.now()`. Regressietests: `tests/filters.test.ts`.
 
+Een lege nieuwsrubriek toont dat er nog geen berichten zijn; als nieuwsfilters alle beschikbare berichten uitsluiten, toont de leegmelding knoppen om de filters aan te passen of te herstellen. Zie `src/leegmelding.tsx` en `tests/leegmelding.test.ts`.
+
 De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de achtergronden van rubriektabs en filterpillen.
 
 ## Laadprestaties (#35)

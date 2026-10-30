@@ -20,6 +20,7 @@ import { CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
+import { LeegMelding } from "./leegmelding";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
@@ -1381,18 +1382,7 @@ export default function App() {
   const alles = view === "alles";
   const basisItems = alles ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === view);
   const uitkomst = isVideo ? null : filterNieuws(basisItems, flt.f, flt.vorig, raw.gegenereerd, alles);
-  const filterLeeg = (
-    <div className="empty">
-      <Icon name="clock" />
-      Geen berichten met deze filters.
-      <button type="button" className="linkbtn" onClick={() => setFsheet(true)}>
-        Filters aanpassen
-      </button>
-      <button type="button" className="linkbtn" onClick={flt.reset}>
-        Standaard
-      </button>
-    </div>
-  );
+  const filterLeeg = <LeegMelding aantal={basisItems.length} onAanpassen={() => setFsheet(true)} onReset={flt.reset} />;
   const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
   const filterBlad = fsheet ? (
     <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={() => setFsheet(false)} />
