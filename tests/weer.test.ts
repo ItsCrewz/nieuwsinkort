@@ -57,4 +57,54 @@ await t("weer: simpelWeer-prompt is landelijk, invoer max 1500 tekens, één aan
   assert.ok(JSON.stringify(gezien[0].messages.at(-1).content).length < 1900);
 });
 
+// ---- foutpaden (#172): buildWeer krijgt van de Worker null bij onbereikbare bron, HTTP-fout of ongeldige JSON; hier alleen huidig gedrag vastleggen
+const leeg = (r: any) => { assert.equal(r.weer.plaats, "Nederland"); assert.equal(r.weer.nu, undefined); assert.equal(r.weer.vandaag, undefined); assert.deepEqual(r.weer.dagen, []); assert.equal(r.weer.verwachting, ""); assert.equal(r.weer.waarschuwing, ""); assert.deepEqual(r.weer.bronnen, []); assert.equal(r.knmiTekst, ""); };
+await t("weer: Buienradar onbereikbaar, Open-Meteo valt terug", async () => {
+  const { weer } = buildWeer(null, omFix, kvFix("Er zijn geen waarschuwingen."), "2026-10-30", "10:00");
+  assert.equal(weer.nu.temp, 11);
+  assert.deepEqual(weer.bronnen.map((b: any) => b.site), ["Open-Meteo", "KNMI"]);
+});
+await t("weer: Open-Meteo onbereikbaar, Buienradar blijft", async () => {
+  const { weer } = buildWeer(brFix, null, null, "2026-10-30", "10:00");
+  assert.equal(weer.nu.temp, 11);
+  assert.deepEqual(weer.bronnen.map((b: any) => b.site), ["Buienradar"]);
+  assert.equal(weer.dagen.length, 1);
+});
+await t("weer: KNMI onbereikbaar of lege pagina: verwachting valt terug op Buienradar-weerbericht", async () => {
+  const br = { ...brFix, forecast: { ...brFix.forecast, weatherreport: { summary: "<p>Droog en zonnig. Later bewolkt. Morgen regen. Overmorgen koud.</p>" } } };
+  for (const kv of [null, "", "<html>Onderhoud</html>"]) {
+    const r = buildWeer(br, null, kv, "2026-10-30", "10:00");
+    assert.equal(r.weer.verwachting, "Droog en zonnig. Later bewolkt. Morgen regen.");
+    assert.ok(r.knmiTekst.includes("Overmorgen"));
+    assert.ok(!r.weer.bronnen.some((b: any) => b.site.startsWith("KNMI")));
+    assert.equal(r.weer.waarschuwing, "");
+  }
+});
+await t("weer: alle bronnen weg, ongeldige of niet-objectwaarden geven een leeg weerbericht", async () => {
+  leeg(buildWeer(null, null, null, "2026-10-30", "10:00"));
+  leeg(buildWeer(null, [], null, "2026-10-30", "10:00"));
+  leeg(buildWeer({}, {}, "", "2026-10-30", "10:00"));
+  leeg(buildWeer(undefined, [null, 5, "x"], null, "2026-10-30", "10:00"));
+});
+await t("weer: HTTP-foutbody (JSON zonder verwachte velden) levert geen getallen", async () => {
+  leeg(buildWeer({ error: "rate limited" }, { error: true, reason: "Too many requests" }, null, "2026-10-30", "10:00"));
+  leeg(buildWeer({ actual: {}, forecast: {} }, { current: {}, daily: {} }, null, "2026-10-30", "10:00"));
+  leeg(buildWeer({ actual: { stationmeasurements: [] }, forecast: { fivedayforecast: [] } }, null, null, "2026-10-30", "10:00"));
+});
+await t("weer: ontbrekende of niet-numerieke velden worden overgeslagen", async () => {
+  const br = { actual: { stationmeasurements: [st("A", "Utrecht", "x" as any), st("B", "Utrecht", 9, "Mist", null as any), { stationname: "C", regio: "Utrecht" }] } };
+  const { weer } = buildWeer(br, null, null, "2026-10-30", "10:00");
+  assert.deepEqual(weer.nu, { temp: 9, omschrijving: "Mist" }, "geen gevoel, geen bereik bij één geldig station");
+  const om = [{ current: { temperature_2m: "NaN", apparent_temperature: null, weather_code: 999 }, daily: { time: ["2026-10-30"], temperature_2m_min: [null], temperature_2m_max: ["x"] } }];
+  const r = buildWeer(null, om, null, "2026-10-30", "10:00");
+  assert.equal(r.weer.nu, undefined, "onbekende weercode en ongeldige temperatuur");
+  assert.equal(r.weer.vandaag, undefined);
+  assert.deepEqual(r.weer.dagen, []);
+});
+await t("weer: dagen zonder min en max worden niet getoond", async () => {
+  const br = { forecast: { fivedayforecast: [{ day: "2026-10-31T00:00:00", weatherdescription: "Regen" }, { day: "2026-11-01T00:00:00", mintemperature: "3", maxtemperature: "8", weatherdescription: "Regen" }] } };
+  const { weer } = buildWeer(br, null, null, "2026-10-30", "10:00");
+  assert.deepEqual(weer.dagen, [{ dag: "zo", min: 3, max: 8, omschrijving: "Regen" }]);
+});
+
 console.log(`\n${n} weer-tests geslaagd`);
