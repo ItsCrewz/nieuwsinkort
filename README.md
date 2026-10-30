@@ -34,6 +34,8 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
 | `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
 
+Met `scripts/feedtitels.mts` zijn nieuwsfeeds voor het lokaal naspelen van clustering op te halen, inclusief Voetbal, Formule 1 en Auto. Buitenland wordt per bericht herkend uit Nederlandse feeds; YouTube, Instagram, Reddit en podcasts blijven uitgesloten. Het script schrijft alleen een lokaal JSON-bestand.
+
 Buitenland is een rubriek, geen bronnengroep: de feedgroep `nl` bevat ook buitenlandfeeds, en `src/regio.ts` deelt berichten uit `nl` achteraf in. De Worker doet dit bij het bouwen van `uur`; de frontend past dezelfde `herindeel()` toe bij het laden, zodat ook statische en oude data kloppen. Regels: een buitenlandfeed of een heel URL-padsegment (`/buitenland/`, `/world/`; geen substring van een slug) telt als buiten, `/binnenland/`, `/regio/`, `/politiek/` als binnen; meer buiten dan binnen = Buitenland; een Nederlands anker in kop of samenvatting (Nederland, kabinet, Den Haag, enz.) houdt het bij Nederland; zonder signaal beslist een lijst landnamen (sport- en entertainmentpaden tellen niet mee). Bronnen van Buitenland-berichten tellen en schakelen onder groep Nederland in het Bronnen-paneel.
 
 Bij de fallback zonder AI slaat de uurrun relatieve en ongeldige bronlinks over bij de controle op Nederlandse domeinen; andere bronnen blijven verwerkt worden.
