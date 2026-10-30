@@ -1164,6 +1164,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
     <div className={`app ${feed ? "app-feed" : ""}`}>
       <IconSprite />
       <div className="shell">
+        <a className="skip" href="#top" onClick={(e) => { e.preventDefault(); document.getElementById("top")?.focus(); }}>Naar de inhoud</a>
         {top}
         {children}
       </div>
@@ -1317,7 +1318,7 @@ export default function App() {
   if (!data || !raw) {
     return (
       <Frame top={top}>
-        <main className="wrap" id="top">
+        <main className="wrap" id="top" tabIndex={-1}>
           {error ? (
             <div className="empty" style={{ marginTop: 24 }}>
               <Icon name="alert" />
@@ -1357,7 +1358,7 @@ export default function App() {
   if (selectedItem) {
     return (
       <Frame top={top}>
-        <main className="wrap page-in" id="top" key={`d-${route.selected}`}>
+        <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
           <DetailView
             item={selectedItem}
             bionic={bionic}
@@ -1400,7 +1401,7 @@ export default function App() {
   if (!isVideo) {
     return (
       <Frame top={top} feed>
-        <main className="nf-main" id="top">
+        <main className="nf-main" id="top" tabIndex={-1}>
           <div className="nf-tabs">
             <div className="wrap">
               <Tabs data={data} view={view} onChange={setView} />
@@ -1435,7 +1436,7 @@ export default function App() {
   }
   return (
     <Frame top={top}>
-      <main className="wrap" id="top">
+      <main className="wrap" id="top" tabIndex={-1}>
         <Front>
           <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
         </Front>
