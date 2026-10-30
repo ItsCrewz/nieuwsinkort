@@ -2,7 +2,7 @@
 // { uitleg?: string[], perBron?: {site,href,punten[]}[], uittreksel?: {site,href,alineas[]}[] } of 404.
 interface KV { get(key: string, opts: { type: "json"; cacheTtl?: number }): Promise<any> }
 interface Ctx { request: Request; env: { NIEUWS?: KV } }
-const HDR = { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" };
+const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" };
 
 export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => {
   const k = new URL(request.url).searchParams.get("k") || "";

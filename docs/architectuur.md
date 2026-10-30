@@ -104,3 +104,13 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 ### Links uit feeds
 
 Feed-links zijn onbetrouwbare invoer. Drie lagen: `absUrl` in `worker/src/parse.ts` bij opname, `schoon()` filtert `bronnen[]` zonder http(s)-`href`, en in de UI gaat elke externe `href` door `veiligeUrl` (`src/url.ts`). Gebruik `veiligeUrl` ook voor nieuwe externe links.
+
+## Beveiligingsheaders
+
+`public/_headers` gaat mee naar `dist/_headers`: CSP met een SHA-256-hash voor het inline thema-script, `frame-ancestors 'none'`, `X-Frame-Options: DENY` en een Permissions-Policy die camera, microfoon, locatie, betaling en USB uitschakelt. Foto's, media en verbindingen mogen HTTPS-hosts gebruiken; YouTube-frames alleen `www.youtube-nocookie.com`. HLS via hls.js gebruikt `worker-src 'self' blob:` en `media-src 'self' https: blob:`. Inline stijlen en Google Fonts blijven toegestaan. De strengere referrer-meta voor X-video blijft staan.
+
+Pages Functions vallen buiten deze statische regels. `/data.json`, `/meer`, `/samenvatting` en de Dumpert-proxy zetten daarom zelf `nosniff`. De Function bepaalt de cacheheaders van `/data.json`. De bevroren build blijft ongemoeid.
+
+Controleer lokaal na bouwen met Pages-emulatie dat de headers aanwezig zijn (Vite preview verwerkt `_headers` niet). Open nieuws, YouTube, Dumpert-HLS en X-mp4 en controleer de browserconsole op CSP-overtredingen. Bij wijzigingen aan het thema-script moet de hash inclusief witruimte opnieuw worden berekend; de tests controleren dit.
+
+Na koppeling van `nieuwsinkort.nl` moet met akkoord `Strict-Transport-Security: max-age=31536000; includeSubDomains` worden toegevoegd. Dit staat nu nog niet aan; `pages.dev` valt al onder de HSTS-preload van de .dev-TLD.
