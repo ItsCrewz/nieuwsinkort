@@ -1,0 +1,1 @@
+- Nieuwsfoto's op Home laden alleen eager voor de bovenste kaarten en lead (rest lazy), met width/height tegen layoutverschuiving (#295).
