@@ -22,6 +22,7 @@ import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound } from "./geluid";
+import { posterVerborgen } from "./poster";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -909,10 +910,10 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
             <NativePlayer {...props} kind={p!.kind} src={p!.src} pool={pool} slot={slotVan(i)} />
           )
         ) : null}
-        {/* Poster boven de speler (die zelf zichtbaar en renderbaar blijft) tot er een echt beeld is. */}
+        {/* Poster boven de speler (die zelf zichtbaar en renderbaar blijft) tot er een echt beeld is (YouTube: direct weg). */}
         {v.thumb && posterOk ? (
           <img
-            className={`f-poster${beeld && playable && mount ? " weg" : ""}`}
+            className={`f-poster${posterVerborgen(p?.kind, beeld, playable, mount) ? " weg" : ""}`}
             src={v.thumb}
             alt=""
             loading={Math.abs(i) < 2 || mount ? "eager" : "lazy"}
