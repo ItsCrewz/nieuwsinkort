@@ -6,6 +6,13 @@ export const YT_NIEUWS: Record<string, string> = {
   "Hart van Nederland": "UCgOkhebo_ZU8rawIXsbyPXQ", "NH Nieuws": "UCSpctzQgGRJV84At2dV73qg", PowNews: "UCHTtspK-G7Wt68awRpTSkiw",
   WNL: "UCUSrVHoJrz68z3Q5qHZZC4w", EenVandaag: "UCjxk-pBIdYXjBQGie4uJGoA", "RTL Z": "UC3lleI2WsaIiW8IzkJ0kIYA", BNR: "UCWALr0VavEm8SgPXGafhFDQ",
   "NOS Stories": "UCoakeH4bmdUYtptWdmoUrRQ", Nieuwsuur: "UCExcZNwh_3Mwm4fF4VSiu2w", "Omroep PowNed": "UCihqgpWn_ns1gJUdhNLsSMQ", Radar: "UCGUhzuD1eYIgJoSGe0c_rNg",
+  "NOS Sport": "UCT4oPufBQa0f6C67Fw_HXNg",
+  "Ziggo Sport": "UCueOZEvMffxjJyVO1fGiJNQ",
+  "ESPN NL": "UCXnPiEv1DoUCDAqDUXT9shQ",
+  "OnsOranje": "UCpnmJcBhJqKIHFkKvgdkdMQ",
+  "FORMULA 1": "UCB_qr75-ydFVKSF9Dmo6izg",
+  "AutoWeek": "UCzToShYR6Sw_k1i6FsdEr6g",
+  "Autovisie": "UCAkqAwuyz_qu3vfgAMQPCBw",
 };
 export const ytUrl = (cid: string) => `https://www.youtube.com/feeds/videos.xml?channel_id=${cid}`;
 export const REDDIT_SUBS = ["thenetherlands", "Netherlands", "worldnews", "europe", "Haarlem"];

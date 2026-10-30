@@ -52,6 +52,20 @@ await t("YouTube-Short krijgt een embed en de soort short", async () => {
   assert.equal(videos[0].embed, "https://www.youtube-nocookie.com/embed/abcdefghijk?autoplay=1&rel=0");
   assert.equal(soortVan(videos[0]), "short");
 });
+await t("Sport- en autokanalen en NOS Sport-Short", async () => {
+  assert.equal(YT_NIEUWS["NOS Sport"], "UCT4oPufBQa0f6C67Fw_HXNg");
+  assert.equal(YT_NIEUWS["Ziggo Sport"], "UCueOZEvMffxjJyVO1fGiJNQ");
+  assert.equal(YT_NIEUWS["ESPN NL"], "UCXnPiEv1DoUCDAqDUXT9shQ");
+  assert.equal(YT_NIEUWS["OnsOranje"], "UCpnmJcBhJqKIHFkKvgdkdMQ");
+  assert.equal(YT_NIEUWS["FORMULA 1"], "UCB_qr75-ydFVKSF9Dmo6izg");
+  assert.equal(YT_NIEUWS["AutoWeek"], "UCzToShYR6Sw_k1i6FsdEr6g");
+  assert.equal(YT_NIEUWS["Autovisie"], "UCAkqAwuyz_qu3vfgAMQPCBw");
+  const xml = `<feed><entry><yt:videoId>abcdefghijk</yt:videoId><title>Sport</title><link rel="alternate" href="https://www.youtube.com/shorts/abcdefghijk"/><published>2026-10-29T12:00:00Z</published></entry></feed>`;
+  const videos = parseYouTube(xml, "NOS Sport", Date.parse("2026-10-28T00:00:00Z"), () => "13:00");
+  assert.equal(videos.length, 1);
+  assert.equal(videos[0].embed, "https://www.youtube-nocookie.com/embed/abcdefghijk?autoplay=1&rel=0");
+  assert.equal(soortVan(videos[0]), "short");
+});
 const sleutel = "uitsluitend-test-fixture";
 let starts = 0;
 const env: any = {
