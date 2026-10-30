@@ -5,7 +5,7 @@ import { xUser, X_VIDEO } from "../worker/src/x";
 import { onRequest } from "../functions/media/dumpert/[[path]]";
 
 globalThis.window = { location: { href: "https://site.nl/" }, localStorage: { getItem: () => null } } as unknown as Window & typeof globalThis;
-const { playerFor, viaProxy } = await import("../src/video");
+const { playerFor, viaProxy } = await import("../src/videosoort");
 
 assert.equal(igUser("https://kg.meowing.de/haarlem105/atom.xml"), "haarlem105");
 assert.equal(xUser("https://x.com/RTLnieuws"), "RTLnieuws");
