@@ -67,9 +67,13 @@ Artikel- en og-fetches en de Jina-terugval accepteren alleen HTTP(S)-links op po
 - [CLAUDE.md](CLAUDE.md): werkinstructies voor Claude Code
 - [AGENTS.md](AGENTS.md): regels voor Codex en andere agents
 
+## Laadprestaties
+
+`/data.json` wordt vanuit `index.html` al tijdens het parsen opgehaald, het lettertype Inter wordt zelf geserveerd (`public/fonts/`, OFL) en de feed mount kaartinhoud pas rond de huidige kaart. Details en meetresultaten: [architectuur](docs/architectuur.md#laadprestaties-35).
+
 ## Beveiligingsheaders
 
-Statische bestanden krijgen via `public/_headers` een CSP, frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
+Statische bestanden krijgen via `public/_headers` een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, altijd hervalideren); `/assets/*` is immutable, `/bronnen.json` en de iconen hebben in `_headers` een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
 
 ### KV-schrijflimiet uur-Worker
 

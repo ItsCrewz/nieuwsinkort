@@ -11,6 +11,7 @@ import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
+import { neemVroegeData } from "./vroeg";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
@@ -588,7 +589,19 @@ function heeftMeer(item: Item): boolean {
   return extra >= 220 || (item.punten?.length || 0) > 3;
 }
 
-const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn }) {
+const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
+
+// De <section> blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
+const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean }) {
+  const key = itemKey(item);
+  return (
+    <section className={`nc cat-${item.cat}`} data-id={key} data-i={i} aria-label={`${i + 1} van ${total}: ${item.kop}`}>
+      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} />}
+    </section>
+  );
+});
+
+function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn }) {
   const key = itemKey(item);
   const cardRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -632,55 +645,53 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen }: { it
   const punten = (item.punten ?? []).slice(0, 3);
   const meer = heeftMeer(item);
   return (
-    <section className={`nc cat-${item.cat}`} data-id={key} data-i={i} aria-label={`${i + 1} van ${total}: ${item.kop}`}>
-      <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
-        <div className="nc-body">
-        {beelden.length ? <Beelden urls={beelden} eager={i < 2} className="nc-img" onChange={refit} /> : <span className="nc-rule" aria-hidden="true" />}
-        <div className="nc-meta">
-          <span className="nc-cat">{CAT_LABEL[item.cat] ?? item.cat}</span>
-          {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
-          <span className="nc-src" title={bronnen.map((b) => b.site).join(", ")}>
-            {bronnen.length ? bronLabel(bronnen) : "Geen bron"}
-          </span>
-        </div>
-        <h2 className="nc-title">
-          <a href={`#/bericht/${key}`} onClick={click}>
-            {item.kop}
+    <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
+      <div className="nc-body">
+      {beelden.length ? <Beelden urls={beelden} eager={i < 2} voorrang={false} /* eerste kaart ligt onder de kop, niet boven de vouw: geen hoge prioriteit */ className="nc-img" onChange={refit} /> : <span className="nc-rule" aria-hidden="true" />}
+      <div className="nc-meta">
+        <span className="nc-cat">{CAT_LABEL[item.cat] ?? item.cat}</span>
+        {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
+        <span className="nc-src" title={bronnen.map((b) => b.site).join(", ")}>
+          {bronnen.length ? bronLabel(bronnen) : "Geen bron"}
+        </span>
+      </div>
+      <h2 className="nc-title">
+        <a href={`#/bericht/${key}`} onClick={click}>
+          {item.kop}
+        </a>
+      </h2>
+      {sum ? (
+        <p className="nc-sum bn">
+          <BionicText text={sum} on={bionic} />
+        </p>
+      ) : null}
+      {punten.length ? (
+        <ul className="nc-pts">
+          {punten.map((t, k) => (
+            <li key={k} className="bn">
+              <BionicText text={t} on={bionic} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="nc-act">
+        {meer ? (
+          <a className="btn" href={`#/bericht/${key}`} onClick={click} onTouchStart={() => prefetchMeer(item)} onMouseEnter={() => prefetchMeer(item)}>
+            Lees verder
           </a>
-        </h2>
-        {sum ? (
-          <p className="nc-sum bn">
-            <BionicText text={sum} on={bionic} />
-          </p>
         ) : null}
-        {punten.length ? (
-          <ul className="nc-pts">
-            {punten.map((t, k) => (
-              <li key={k} className="bn">
-                <BionicText text={t} on={bionic} />
-              </li>
-            ))}
-          </ul>
+        {first ? (
+          <a className={`btn${meer ? " ghost" : ""}`} href={veiligeUrl(first.href)} target="_blank" rel="noopener noreferrer">
+            Origineel bij {first.site}
+            <Icon name="ext" />
+          </a>
         ) : null}
-        <div className="nc-act">
-          {meer ? (
-            <a className="btn" href={`#/bericht/${key}`} onClick={click} onTouchStart={() => prefetchMeer(item)} onMouseEnter={() => prefetchMeer(item)}>
-              Lees verder
-            </a>
-          ) : null}
-          {first ? (
-            <a className={`btn${meer ? " ghost" : ""}`} href={veiligeUrl(first.href)} target="_blank" rel="noopener noreferrer">
-              Origineel bij {first.site}
-              <Icon name="ext" />
-            </a>
-          ) : null}
-          {bronnen.length > 1 ? <span className="nc-more">+{bronnen.length - 1} {bronnen.length === 2 ? "bron" : "bronnen"}</span> : null}
-        </div>
-        </div>
-      </article>
-    </section>
+        {bronnen.length > 1 ? <span className="nc-more">+{bronnen.length - 1} {bronnen.length === 2 ? "bron" : "bronnen"}</span> : null}
+      </div>
+      </div>
+    </article>
   );
-});
+}
 
 function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty }: { items: Item[]; head: ReactNode; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
@@ -696,6 +707,11 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty }: {
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const total = sorted.length;
+  // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
+  const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
+  const mountRef = useRef(0);
+  mountRef.current = Math.max(mountRef.current, Math.min(total, Math.max(KAARTEN_VOORAF, idx + 1 + KAARTEN_VOORUIT, focusIdx + 1 + KAARTEN_VOORUIT)));
+  const mount = mountRef.current;
 
   // Positie bijhouden: één rAF per scrollframe, state alleen bij een nieuwe kaart; de balk via transform.
   useEffect(() => {
@@ -783,7 +799,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty }: {
             Nog geen berichten van vandaag in deze rubriek. Om 08:00 en 12:00 komt er nieuws bij.
           </div>
         ) : (
-          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} />)
+          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} />)
         )}
         <section className="nc-end">
           <Footer />
@@ -1006,7 +1022,7 @@ function useData() {
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`/data.json?t=${Math.floor(Date.now() / 60000)}`, { cache: "no-cache" });
+      const r = await (neemVroegeData()?.catch(() => null) ?? null) ?? await fetch("/data.json", { cache: "no-cache" }); // altijd hervalideren: ETag geeft een 304 als er niets nieuws is
       if (!r.ok) throw new Error(String(r.status));
       const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];

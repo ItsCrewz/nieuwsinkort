@@ -77,7 +77,7 @@ function register(r: Reg) {
   return () => { regs.delete(r); zichtbaar.delete(r); ordered = null; visIO?.unobserve(r.el); };
 }
 
-export const Beelden = memo(function Beelden({ urls, eager = false, className = "", onChange }: { urls: string[]; eager?: boolean; className?: string; onChange?: () => void }) {
+export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = eager, className = "", onChange }: { urls: string[]; eager?: boolean; voorrang?: boolean; className?: string; onChange?: () => void }) {
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
   const track = useRef<HTMLDivElement>(null);
@@ -142,6 +142,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, className = 
                 alt=""
                 draggable={false}
                 loading={k === 0 ? "eager" : "lazy"}
+                fetchPriority={voorrang && k === 0 ? "high" : undefined}
                 className={klaar.has(u) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"

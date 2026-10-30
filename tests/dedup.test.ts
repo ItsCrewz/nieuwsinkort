@@ -15,12 +15,13 @@ import { onRequestGet as dataGet } from "../functions/data.json";
 import { onRequestGet as meerGet } from "../functions/meer";
 import { onRequestGet as samGet, onRequestPost as samPost } from "../functions/samenvatting";
 import { onRequest as dumpert } from "../functions/media/dumpert/[[path]]";
-import { merge } from "../functions/data.json";
+import { merge, slim } from "../functions/data.json";
 import { schoon } from "../src/schoon";
 import { hostVan, isNL } from "../src/bronlink";
 import { parseFeed } from "../worker/src/parse";
 import { onRequestPost as svPost } from "../functions/samenvatting";
 import { videoSlug } from "../src/slug";
+import { neemVroegeData } from "../src/vroeg";
 
 import { externeUrl, externeFetch } from "../worker/src/url";
 
@@ -271,8 +272,8 @@ t("CSP staat alleen het exacte thema-script en de benodigde mediabronnen toe", (
   const regels = new Map(csp.split("; ").map((r) => { const [k, ...v] = r.split(" "); return [k, v.join(" ")]; }));
   assert.equal(regels.get("script-src"), "'self' 'sha256-" + hash + "'");
   for (const [k, v] of Object.entries({
-    "default-src": "'self'", "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src": "https://fonts.gstatic.com", "img-src": "'self' https: data:",
+    "default-src": "'self'", "style-src": "'self' 'unsafe-inline'",
+    "font-src": "'self'", "img-src": "'self' https: data:",
     "media-src": "'self' https: blob:", "connect-src": "'self' https:",
     "frame-src": "https://www.youtube-nocookie.com", "worker-src": "'self' blob:",
     "object-src": "'none'", "base-uri": "'self'", "form-action": "'none'", "frame-ancestors": "'none'",
@@ -449,6 +450,51 @@ try {
   });
 } finally {
   console.error = origineelError;
+}
+
+// #35: data.json zonder diagnosevelden, met ETag/304 en revalidatie
+{
+  const assets = { async fetch() { return Response.json({ items: [], filmpjes: [], dumpert: [], gegenereerd: "2020-01-01T00:00:00Z" }); } };
+  const kv = { async get() { return null; } };
+  const r1 = await dataGet({ request: new Request("https://test/data.json"), env: { ASSETS: assets, NIEUWS: kv } });
+  const tag = r1.headers.get("ETag") || "";
+  const r2 = await dataGet({ request: new Request("https://test/data.json", { headers: { "If-None-Match": tag } }), env: { ASSETS: assets, NIEUWS: kv } });
+  const r3 = await dataGet({ request: new Request("https://test/data.json", { headers: { "If-None-Match": 'W/"anders"' } }), env: { ASSETS: assets, NIEUWS: kv } });
+  const j = await r1.json();
+  t("data.json: slim haalt diagnosevelden weg, ETag + 304, altijd hervalideren", () => {
+    assert.deepEqual(slim({ a: 1, ontdubbeld: {}, routine_gegenereerd: "x" }), { a: 1 });
+    assert.ok(!("ontdubbeld" in j) && !("routine_gegenereerd" in j));
+    assert.match(tag, /^W\/"[0-9a-f]{40}"$/);
+    assert.equal(r2.status, 304);
+    assert.equal(r2.headers.get("ETag"), tag);
+    assert.equal(r3.status, 200);
+    assert.match(r1.headers.get("Cache-Control") || "", /max-age=0, must-revalidate/);
+  });
+  const hdr = readFileSync("public/_headers", "utf8");
+  t("_headers: assets immutable, iconen en bronnen.json gecachet, CSP blijft", () => {
+    assert.match(hdr, /\/assets\/\*\n\s+Cache-Control: public, max-age=31536000, immutable/);
+    assert.match(hdr, /\/bronnen\.json\n\s+Cache-Control: .*stale-while-revalidate/);
+    assert.match(hdr, /\/favicon\.svg\n\s+Cache-Control: .*max-age=86400/);
+    assert.match(hdr, /Content-Security-Policy:/);
+    assert.match(hdr, /\/fonts\/\*\n\s+Cache-Control: public, max-age=31536000, immutable/);
+  });
+  t("fonts: Inter self-hosted, geen Google Fonts, preload van het latin-gewicht, early fetch van data.json", () => {
+    const html = readFileSync("index.html", "utf8"), css = readFileSync("src/index.css", "utf8");
+    assert.ok(!/googleapis|gstatic/.test(html + css + hdr));
+    assert.match(html, /rel="preload" href="\/fonts\/inter-latin\.woff2" as="font"[^>]*crossorigin/);
+    for (const f of ["inter-latin", "inter-latin-ext"]) {
+      assert.ok(readFileSync(`public/fonts/${f}.woff2`).subarray(0, 4).toString() === "wOF2", f);
+      assert.match(css, new RegExp(`url\\(/fonts/${f}\\.woff2\\)`));
+    }
+    assert.match(css, /font-display:swap/);
+    assert.match(html, /window\.__vroegData = fetch\("\/data\.json", \{ cache: "no-cache" \}\)/);
+  });
+  t("vroeg: neemVroegeData geeft de promise één keer terug", () => {
+    const p = Promise.resolve(new Response("{}"));
+    const w: any = { __vroegData: p };
+    assert.equal(neemVroegeData(w), p);
+    assert.equal(neemVroegeData(w), null);
+  });
 }
 
 console.log(`\n${n} tests geslaagd`);
