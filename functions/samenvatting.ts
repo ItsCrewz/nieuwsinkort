@@ -12,6 +12,7 @@
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
+import { groq, keten, type LlmState } from "../worker/src/llm";
 
 type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
@@ -28,7 +29,7 @@ async function chat(ai: any, model: string, sys: string, user: string, maxTokens
 
 interface KV { get(key: string, type?: "json" | "text"): Promise<any>; put(key: string, v: string, o?: { expirationTtl?: number }): Promise<void>; delete(key: string): Promise<void> }
 interface DO { idFromName(n: string): unknown; get(id: unknown): { fetch(url: string, init?: RequestInit): Promise<Response> } }
-interface Env { NIEUWS: KV; AI: any; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string }
+interface Env { NIEUWS: KV; AI: any; GROQ_API_KEY?: string; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string }
 interface Ctx { request: Request; env: Env }
 
 const BUDGET_DEF = 9000;
@@ -163,13 +164,55 @@ async function mp4Audio(url: string, why: string[], maxBytes = MAX_MP4): Promise
   return { bytes: new Uint8Array(0), sec: -1 };
 }
 
+// KV is een conservatieve rem, maar biedt geen atomaire tellers tussen locaties.
+async function groqAudio(env: Env, bytes: Uint8Array, schatting: number): Promise<{ tekst: string; sec: number } | null> {
+  if (!env.GROQ_API_KEY || bytes.length > 25_000_000) return null;
+  const nu = Date.now(), key = `groq-audio:${new Date(nu).toISOString().slice(0, 10)}`;
+  try {
+    const oud: { tijd: number; sec: number }[] = await env.NIEUWS.get(key, "json") || [];
+    const gisteren = `groq-audio:${new Date(nu - 3600000).toISOString().slice(0, 10)}`;
+    const vorig: { tijd: number; sec: number }[] = gisteren === key ? [] : await env.NIEUWS.get(gisteren, "json") || [];
+    const uur = [...vorig, ...oud].filter((x) => x.tijd > nu - 3600000);
+    if (oud.length >= 2000 || uur.filter((x) => x.tijd > nu - 60000).length >= 20 || uur.reduce((n, x) => n + x.sec, 0) + schatting > 7200 || oud.reduce((n, x) => n + x.sec, 0) + schatting > 28800) return null;
+    const item = { tijd: nu, sec: schatting };
+    oud.push(item);
+    await env.NIEUWS.put(key, JSON.stringify(oud), { expirationTtl: 3 * 86400 });
+    const form = new FormData();
+    form.append("file", new Blob([new Uint8Array(bytes)], { type: "application/octet-stream" }), "audio.mp4");
+    form.append("model", "whisper-large-v3-turbo"); form.append("response_format", "verbose_json");
+    const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", { method: "POST", headers: { Authorization: `Bearer ${env.GROQ_API_KEY}` }, body: form, signal: AbortSignal.timeout(30000) });
+    if (!r.ok) return null;
+    const data: any = await r.json();
+    if (typeof data.text !== "string") return null;
+    const duur = Number(data.duration);
+    if (Number.isFinite(duur) && duur > 0) { item.sec = Math.max(schatting, duur); await env.NIEUWS.put(key, JSON.stringify(oud), { expirationTtl: 3 * 86400 }); }
+    return { tekst: data.text.replace(/\s+/g, " ").trim(), sec: Number.isFinite(duur) && duur > 0 ? duur : schatting };
+  } catch { console.error("samenvatting: Groq-audio niet beschikbaar"); return null; }
+}
+
 // ---------------- samenvatten
 const STIJL = "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf in heel simpel, informeel Nederlands: korte zinnen, gewone woorden, geen jargon. Gebruik ALLEEN wat in de tekst staat; verzin niets, geen eigen mening. Is de tekst Engels, schrijf toch in het Nederlands.";
-async function punten(ai: any, model: string, titel: string, bron: string, tekst: string, u: Usage): Promise<string[]> {
+async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null): Promise<{ punten: string[]; model: string }> {
   const user = `Dit is wat er gezegd wordt in een filmpje van ${bron} met de titel "${titel}".\nVat het samen in 3 tot 5 korte punten (elk max 15 woorden). Zet elk punt op een nieuwe regel en begin met "- ". Geen inleiding, geen kopje.\n\nTekst:\n${tekst}`;
-  const t = await chat(ai, model, STIJL, user, 320, u);
-  return t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5);
+  let t = "", gebruikt = model;
+  const aanbieder = groq(env.GROQ_API_KEY);
+  if (aanbieder) {
+    const key = `groq-chat:${new Date().toISOString().slice(0, 10)}`;
+    try {
+      const state: LlmState = await env.NIEUWS.get(key, "json") || {};
+      try { t = await keten([aanbieder], state, { sys: STIJL, user, maxTokens: 320, json: false }, (_naam, m) => { gebruikt = m; }); }
+      finally { await env.NIEUWS.put(key, JSON.stringify(state), { expirationTtl: 3 * 86400 }); }
+    } catch { console.error("samenvatting: Groq-chat niet beschikbaar"); }
+  }
+  if (!t) {
+    const fout = cloudToegestaan();
+    if (fout) throw new CloudBudgetFout(fout);
+    t = await chat(env.AI, model, STIJL, user, 320, u);
+  }
+  return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5) };
 }
+
+class CloudBudgetFout extends Error { constructor(public response: Response) { super(); } }
 
 // ---------------- slot, reservering en uurrem: Durable Object `Budget`, zonder binding KV
 type Res = { datum: string; uur: string; nieuws: number; budget: number; reserve: number; marge: number; schatting: number };
@@ -280,10 +323,14 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
   const used = nieuws + video;
   const reserve = Math.max(0, 23 - A.h) * PER_RUN; // het uurnieuws van de rest van de dag gaat voor
   const ruimte = BUDGET - used - reserve;
-  if (ruimte < 60) return json({ ok: false, code: "budget", fout: MSG.budget });
+  const cloudToegestaan = () => {
+    if (ruimte < 60) return json({ ok: false, code: "budget", fout: MSG.budget });
+    if (pre && (used >= PRE_MAX * BUDGET || ruimte < PRE_MARGE + 60)) return json({ ok: false, code: "budget-pre", used: Math.round(used), ruimte: Math.round(ruimte) });
+    return null;
+  };
+  if (!env.GROQ_API_KEY && cloudToegestaan()) return cloudToegestaan()!;
   const zuinig = used >= 0.7 * BUDGET;
   // vooraf maken stopt ruim vóór het plafond: max 85% van het budget én nog PRE_MARGE vrij voor nieuws/verzoeken
-  if (pre && (used >= PRE_MAX * BUDGET || ruimte < PRE_MARGE + 60)) return json({ ok: false, code: "budget-pre", used: Math.round(used), ruimte: Math.round(ruimte) });
   const model = !zuinig ? env.MODEL || MAIN : env.SMALL_MODEL || SMALL;
   const maxSec = pre ? (zuinig ? 45 : 120) : zuinig ? 120 : MAX_SEC;
   const maxMp4 = pre ? (zuinig ? 4e6 : 8e6) : MAX_MP4;
@@ -309,6 +356,12 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
       if (a && a.sec < 0) { await env.NIEUWS.put(key, JSON.stringify({ ok: false, code: "te-lang", fout: MSG.teLang }), { expirationTtl: 6 * 3600 }); return uit({ ok: false, code: "te-lang", fout: MSG.teLang }); }
       if (a && a.bytes.length) {
         const estMin = a.sec ? a.sec / 60 : Math.min(4, a.bytes.length / 1.2e6); // mp4: ruwe schatting
+        const gr = await groqAudio(env, a.bytes, a.sec || estMin * 60);
+        if (gr) {
+          sec = Math.round(gr.sec); tekst = gr.tekst; bron = "spraak";
+        } else {
+        const budgetFout = cloudToegestaan();
+        if (budgetFout) return budgetFout;
         // rem per uur + neuronen vooraf reserveren (atomair), zodat gelijktijdige verzoeken het budget al zien slinken
         const schat = estMin * WHISPER_PER_MIN;
         const res = await poort.reserveer({ datum: U, uur: `${A.iso}T${A.h}`, nieuws, budget: BUDGET, reserve, marge: (pre ? PRE_MARGE : 0) + 30, schatting: schat });
@@ -322,6 +375,7 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
         sec = Math.round(dur);
         tekst = String(r?.text || "").replace(/\s+/g, " ").trim();
         bron = "spraak";
+        }
         if (tekst.length < 40) why.push("Whisper: (bijna) geen spraak");
       }
     }
@@ -333,7 +387,8 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
       await verreken(u.neurons - reserved);
       return uit({ ...out, neuronen: Math.round(u.neurons * 10) / 10 });
     }
-    const p = await punten(env.AI, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u);
+    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan);
+    const p = resultaat.punten;
     await verreken(u.neurons - reserved);
     if (p.length < 2) {
       why.push("samenvatting leeg");
@@ -341,10 +396,11 @@ async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre
       await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => {});
       return uit(out);
     }
-    const out = { ok: true, punten: p, bron, sec, model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString(), ...(pre ? { vooraf: true } : {}) };
+    const out = { ok: true, punten: p, bron, sec, model: resultaat.model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString(), ...(pre ? { vooraf: true } : {}) };
     await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: 30 * 86400 });
     return json(out);
   } catch (e: any) { console.error("samenvatting: verwerking mislukt");
+    if (e instanceof CloudBudgetFout) { await verreken(u.neurons - reserved); return e.response; }
     if (e instanceof PoortFout) return json({ ok: false, code: "fout", fout: MSG.fout }, 503); // niet cachen: tijdelijk
     await verreken(Math.max(0, u.neurons - reserved)); // reservering blijft staan, alleen extra bijtellen
     const m = String(e?.message || e);
