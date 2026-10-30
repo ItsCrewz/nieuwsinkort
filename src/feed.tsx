@@ -9,7 +9,7 @@ import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { AiVermelding } from "./ai-vermelding";
 import { Icon } from "./icons";
-import { playerFor, viaProxy, youtubeId } from "./video";
+import { playerFor, viaProxy, youtubeId } from "./videosoort";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -26,6 +26,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
+import { svCache, type Sv } from "./samenvattingcache";
 import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
@@ -1101,7 +1102,6 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
 // ------------------------------------------------------------- samenvatting op verzoek
 // Knop + onderblad. De server (functions/samenvatting.ts) haalt ondertiteling of luistert de eerste minuten,
 // vat samen in simpele punten en bewaart dat per filmpje, dus de tweede keer is het meteen klaar.
-import { svCache, type Sv } from "./samenvattingcache";
 async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
   const hit = svCache.get(id);
   if (hit) return hit;

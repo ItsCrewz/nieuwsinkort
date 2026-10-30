@@ -1,22 +1,20 @@
-import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Meer, Bron, Data, Item, View, Weer, WeerDag } from "./types";
-import { BionicText, FocusSwitch, host } from "./ui";
+import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
+import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
-import { SourcesSheet } from "./sheet";
 import { Icon, IconSprite, type IconName } from "./icons";
-import { VideoGrid, playerFor, soortVan, startSoort } from "./video";
+import { playerFor, soortVan, startSoort } from "./videosoort";
 import { useVoorladen } from "./usevoorladen";
 import { videoSlug } from "./slug";
 import { zaaiSamenvattingen } from "./samenvattingcache";
 import { schoon } from "./schoon";
 import { Beelden, Thumb } from "./beelden";
-import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "./filters";
+import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
-import { detailInhoud, heeftLeesVerder } from "./leesverder";
-import { uitgebreidAlineas } from "./uitgebreid";
-import { AiVermelding, isAiSamenvatting, isAiUitgebreid } from "./ai-vermelding";
+import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
+import { AiVermelding, isAiSamenvatting } from "./ai-vermelding";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
@@ -24,8 +22,14 @@ import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
+import { prefetchMeer } from "./meer";
 
-const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
+// Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
+const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
+const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
+const DetailView = lazy(() => import("./detail").then((m) => ({ default: m.DetailView })));
+const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
+
 
 const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
 const THEME_KEY = "nieuwsinkort-thema";
@@ -54,7 +58,6 @@ function bronLabel(bronnen: Bron[]) {
   if (names.length === 1) return names[0];
   return `${names[0]} + ${names.length - 1}`;
 }
-const bronnenTekst = (n: number) => `${n} ${n === 1 ? "bron" : "bronnen"}`;
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 function amsterdamTime(iso?: string) {
@@ -835,180 +838,6 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   );
 }
 
-function monoOf(site: string) {
-  return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
-}
-function SourceRow({ b }: { b: Bron }) {
-  const [imgOk, setImgOk] = useState(true);
-  const h = host(b.href);
-  return (
-    <li>
-      <a className="srcrow" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
-        <span className="mono" aria-hidden="true">
-          {imgOk && h ? (
-            <img src={`https://icons.duckduckgo.com/ip3/${h}.ico`} alt="" width={16} height={16} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setImgOk(false)} />
-          ) : (
-            monoOf(b.site)
-          )}
-        </span>
-        <span className="s-title">{b.site}</span>
-        <span className="s-out">{h}</span>
-        <Icon name="ext" className="sm" label="Opent in nieuw tabblad" />
-      </a>
-    </li>
-  );
-}
-
-// Extra tekst per bericht (/meer), één keer per sessie opgehaald; al vooraf bij aanraken van "Lees verder".
-const meerCache = new Map<string, Promise<Meer | null>>();
-function prefetchMeer(item: Item): Promise<Meer | null> {
-  const k = item.meer;
-  if (!k) return Promise.resolve(null);
-  let p = meerCache.get(k);
-  if (!p) {
-    p = fetch(`/meer?k=${encodeURIComponent(k)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<Meer>) : null))
-      .catch(() => null);
-    p.then((m) => { if (!m) meerCache.delete(k); });
-    meerCache.set(k, p);
-  }
-  return p;
-}
-function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
-  const [st, setSt] = useState<{ k?: string; meer: Meer | null; laden: boolean }>({ meer: null, laden: !!item.meer });
-  useEffect(() => {
-    let weg = false;
-    if (!item.meer) { setSt({ meer: null, laden: false }); return; }
-    setSt({ k: item.meer, meer: null, laden: true });
-    prefetchMeer(item).then((m) => { if (!weg) setSt({ k: item.meer, meer: m, laden: false }); });
-    return () => { weg = true; };
-  }, [item]);
-  return st;
-}
-
-function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
-  const { meer, laden } = useMeer(item);
-  if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
-  const uitleg = uitgebreidAlineas(item, meer);
-  const per = (meer?.perBron ?? []).filter((b) => b.punten?.length);
-  // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg is; de alineas staan dan al onder Uitgebreid
-  const uit = meer?.uitleg?.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
-  return (
-    <>
-      <section className="d-sec d-meer" aria-label="Uitgebreid">
-        <h2 className="d-h">Uitgebreid</h2>
-        <div className="d-body bn">
-          {uitleg.map((p, n) => (
-            <p key={n}>
-              <BionicText text={p} on={bionic} />
-            </p>
-          ))}
-        </div>
-        <AiVermelding tonen={isAiUitgebreid(item, meer)} />
-      </section>
-      {per.length ? (
-        <section className="d-sec" aria-label="Wat elke bron meldt">
-          <h2 className="d-h">Wat elke bron meldt</h2>
-          <div className="perbron">
-            {per.map((b, n) => (
-              <div className="pb" key={b.site + n}>
-                <a className="pb-site" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
-                  {b.site}
-                  <Icon name="ext" className="sm" />
-                </a>
-                <ul className="bn">
-                  {b.punten.map((p, k) => (
-                    <li key={k}>
-                      <BionicText text={p} on={bionic} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-      {uit.map((b, n) => (
-        <section className="d-sec d-meer" key={b.href + n} aria-label={`Bron: ${b.site}`}>
-          <a className="btn ghost d-more" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
-            Lees het hele artikel bij {b.site}
-            <Icon name="ext" />
-          </a>
-        </section>
-      ))}
-    </>
-  );
-}
-
-function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
-  useEffect(() => {
-    document.title = `${item.kop} · Nieuws in het kort`;
-    return () => {
-      document.title = "Nieuws in het kort";
-    };
-  }, [item]);
-  const { paragraphs, punten, bronnen } = detailInhoud(item);
-  return (
-    <article className={`detail cat-${item.cat}`}>
-      <button type="button" className="back" onClick={onBack}>
-        <Icon name="back" className="sm" />
-        Terug naar het nieuws
-      </button>
-      <header className="d-head">
-        <div className="meta">
-          {CAT_LABEL[item.cat] ?? item.cat}
-          {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
-          {item.ruw ? <span>nog niet samengevat</span> : null}
-          {bronnen.length ? <span>{bronnenTekst(bronnen.length)}</span> : null}
-        </div>
-        <h1 className="d-title">{item.kop}</h1>
-        {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
-        {item.ai ? (
-          <p className="d-lead bn">
-            <BionicText text={item.ai} on={bionic} />
-          </p>
-        ) : null}
-        <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
-      </header>
-      {paragraphs.length ? (
-        <div className="d-body bn">
-          {paragraphs.map((p, n) => (
-            <p key={n}>
-              <BionicText text={p} on={bionic} />
-            </p>
-          ))}
-        </div>
-      ) : null}
-      <AiVermelding tonen={paragraphs.length > 0 && isAiSamenvatting(item)} />
-      {punten.length ? (
-        <section className="d-sec" aria-label="Belangrijkste punten">
-          <h2 className="d-h">Belangrijkste punten</h2>
-          <ol className="points bn">
-            {punten.map((p, i) => (
-              <li key={i}>
-                <BionicText text={p} on={bionic} />
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-      <MeerTekst item={item} bionic={bionic} />
-      <section className="d-sec" aria-label="Bronnen">
-        <h2 className="d-h">Bronnen</h2>
-        {bronnen.length ? (
-          <ul className="srclist">
-            {bronnen.map((b, i) => (
-              <SourceRow key={b.href + i} b={b} />
-            ))}
-          </ul>
-        ) : (
-          <p className="muted">Geen bronnen bij dit bericht.</p>
-        )}
-      </section>
-    </article>
-  );
-}
-
 // ---------------------------------------------------------------- data + thema
 function useData() {
   const [data, setData] = useState<Data | null>(null);
@@ -1310,7 +1139,9 @@ export default function App() {
       <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} />
       {isFeedView ? null : dateline}
       {sheet ? (
-        <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
+        <Suspense fallback={null}>
+          <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
+        </Suspense>
       ) : null}
     </>
   );
@@ -1359,14 +1190,16 @@ export default function App() {
     return (
       <Frame top={top}>
         <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
-          <DetailView
-            item={selectedItem}
-            bionic={bionic}
-            onBack={() => {
-              if (openedInside) window.history.back();
-              else window.location.hash = "#/";
-            }}
-          />
+          <Suspense fallback={null}>
+            <DetailView
+              item={selectedItem}
+              bionic={bionic}
+              onBack={() => {
+                if (openedInside) window.history.back();
+                else window.location.hash = "#/";
+              }}
+            />
+          </Suspense>
           <Footer />
         </main>
       </Frame>
@@ -1396,7 +1229,9 @@ export default function App() {
   const filterLeeg = <LeegMelding aantal={basisItems.length} onAanpassen={() => setFsheet(true)} onReset={flt.reset} />;
   const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
   const filterBlad = fsheet ? (
-    <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={() => setFsheet(false)} />
+    <Suspense fallback={null}>
+      <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={() => setFsheet(false)} />
+    </Suspense>
   ) : null;
   if (!isVideo) {
     return (
@@ -1457,17 +1292,19 @@ export default function App() {
           </div>
         ) : null}
         {isVideo ? (
-          <VideoGrid
-            key={view}
-            cat={view}
-            list={view === "filmpjes" ? vids!.filmpjes : vids!.dumpert}
-            bionic={bionic}
-            bronFilter={view === "filmpjes"}
-            enter={!introDone && motionOK()}
-            video={route.video}
-            onOpen={(slug) => openFeed(view, slug)}
-            onCloseFeed={() => closeFeed(view)}
-          />
+          <Suspense fallback={null}>
+            <VideoGrid
+              key={view}
+              cat={view}
+              list={view === "filmpjes" ? vids!.filmpjes : vids!.dumpert}
+              bionic={bionic}
+              bronFilter={view === "filmpjes"}
+              enter={!introDone && motionOK()}
+              video={route.video}
+              onOpen={(slug) => openFeed(view, slug)}
+              onCloseFeed={() => closeFeed(view)}
+            />
+          </Suspense>
         ) : (
           <NewsList
             key={view}

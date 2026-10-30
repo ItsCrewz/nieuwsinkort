@@ -12,7 +12,7 @@ assert.equal(isAiSamenvatting({ ...item, ai: "", samenvatting: "" }), false);
 assert.match(renderToStaticMarkup(createElement(AiVermelding, { tonen: true })), /Samenvatting gemaakt met AI/);
 assert.equal(renderToStaticMarkup(createElement(AiVermelding, { tonen: false })), "");
 const app = readFileSync("src/App.tsx", "utf8");
-assert.match(app, /aria-label="Uitgebreid"[\s\S]*?<AiVermelding tonen=\{isAiUitgebreid\(item, meer\)\}/);
+assert.match(readFileSync("src/detail.tsx", "utf8"), /aria-label="Uitgebreid"[\s\S]*?<AiVermelding tonen=\{isAiUitgebreid\(item, meer\)\}/);
 assert.equal(isAiUitgebreid(item, { uittreksel: [{ alineas: ["Brontekst"] }] } as Meer), false);
 assert.equal(isAiUitgebreid({ ...item, ruw: true }, { uitleg: ["AI-uitleg"] } as Meer), true);
 assert.ok(app.includes("Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron."));
