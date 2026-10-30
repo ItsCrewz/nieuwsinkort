@@ -29,6 +29,7 @@ import { maakTabSam, tabTekst, tabAiRoute } from "./tabsam";
 import { herindeel } from "../../src/regio";
 import { herindeelSport, sportCat } from "./sportcat";
 import { herindeelShow, showCat, nietAlsNieuws } from "./showcat";
+import { zonderUitleg } from "../../src/uitgebreid";
 
 export { Budget };
 
@@ -624,7 +625,7 @@ export class Runner extends DurableObject<Env> {
     const diepRun = Math.max(120, Math.min(700, ((diepGrens - used()) / runsLeft) * 2));
     const diepStart = usage.neurons;
     let diepNieuw = 0, diepStop = "";
-    const diepTodo = mOrde.filter((m) => !st.diep![m.key] && artVan(m).length);
+    const diepTodo = zonderUitleg(mOrde, st.diep!).filter((m) => artVan(m).length);
     const dGroepen: MC[][] = [];
     for (let i = 0; i < diepTodo.length; i += 2) dGroepen.push(diepTodo.slice(i, i + 2));
     const doDiep = async (g: MC[]) => {

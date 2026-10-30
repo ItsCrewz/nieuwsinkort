@@ -150,6 +150,7 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 - Domein koppelen (zie boven).
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
 - "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd.
+- Het kopje **Uitgebreid** staat altijd in de detailpagina, ook zonder `meer`-sleutel of bij een mislukte `/meer`-aanroep (#184, `src/uitgebreid.ts`). Keten: AI-uitleg (Workers AI, Groq, Mistral; gecachet in `st.diep` in KV-state, per artikel één keer, `zonderUitleg` slaat gecachete artikelen over) → alineas uit de bron → samenvatting/kernpunten van het bericht → de kop. Geen extra AI-aanroepen of neuronen; geldt voor Nederland en Buitenland.
 - Redlib-instances blokkeren Cloudflare; Reddit valt daardoor soms terug op een oude kopie.
 - YouTube geeft vaak LOGIN_REQUIRED vanaf Cloudflare.
 - De bronnenlijst wordt standaard uit de gereviewde invoer in `scripts/pipeline/` gebouwd.
