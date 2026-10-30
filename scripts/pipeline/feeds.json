@@ -816,14 +816,6 @@
  },
  {
   "cat": "haarlem",
-  "naam": "Politie X POL_Haarlem",
-  "url": "https://x.com/POL_Haarlem",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); daarnaast rss.politie.nl Haarlem-feed."
- },
- {
-  "cat": "haarlem",
   "naam": "Officiële bekendmakingen Haarlem (SRU)",
   "url": "https://repository.overheid.nl/sru?query=c.product-area==officielepublicaties%20AND%20dt.creator=%22Haarlem%22%20sortBy%20dt.modified%20/sort.descending&maximumRecords=10",
   "werkt": true,
@@ -927,155 +919,17 @@
  },
  {
   "cat": "politiek",
+  "naam": "50PLUS (YouTube)",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCxngTZl7im1n_fQYxVh5hXA",
+  "werkt": true
+ },
+ {
+  "cat": "politiek",
   "naam": "Rijksoverheid (YouTube)",
   "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCKxsyDCRDxSEBonS9SnmvjQ",
   "werkt": true,
   "soort": "atom",
   "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
- },
- {
-  "cat": "politiek",
-  "naam": "D66",
-  "url": "https://x.com/D66",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "VVD",
-  "url": "https://x.com/VVD",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Geert Wilders (PVV)",
-  "url": "https://x.com/geertwilderspvv",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "CDA",
-  "url": "https://x.com/cdavandaag",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "FVD",
-  "url": "https://x.com/fvdemocratie",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Groep Markuszower",
-  "url": "https://x.com/GidiMarkuszower",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "ChristenUnie",
-  "url": "https://x.com/christenunie",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "DENK",
-  "url": "https://x.com/DenkNL",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Partij voor de Dieren",
-  "url": "https://x.com/PartijvdDieren",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "SGP",
-  "url": "https://x.com/SGPnieuws",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "SP",
-  "url": "https://x.com/SPnl",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "50PLUS",
-  "url": "https://x.com/50pluspartij",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Mona Keijzer",
-  "url": "https://x.com/MonaKeijzer",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Ruben Brekelmans (VVD)",
-  "url": "https://x.com/rubenbrekelmans",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Henk Vermeer (BBB)",
-  "url": "https://x.com/henkvermeer",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Rijksoverheid",
-  "url": "https://x.com/Rijksoverheid",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Rob Jetten (Minister-president)",
-  "url": "https://x.com/MinPres",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
- },
- {
-  "cat": "politiek",
-  "naam": "Tweede Kamer",
-  "url": "https://x.com/2eKamertweets",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws). Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); geen login/API nodig."
  },
  {
   "cat": "f1",

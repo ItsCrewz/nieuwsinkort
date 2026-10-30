@@ -7,6 +7,8 @@ export const YT_NIEUWS: Record<string, string> = {
   WNL: "UCUSrVHoJrz68z3Q5qHZZC4w", EenVandaag: "UCjxk-pBIdYXjBQGie4uJGoA", "RTL Z": "UC3lleI2WsaIiW8IzkJ0kIYA", BNR: "UCWALr0VavEm8SgPXGafhFDQ",
   "NOS Stories": "UCoakeH4bmdUYtptWdmoUrRQ", Nieuwsuur: "UCExcZNwh_3Mwm4fF4VSiu2w", "Omroep PowNed": "UCihqgpWn_ns1gJUdhNLsSMQ", Radar: "UCGUhzuD1eYIgJoSGe0c_rNg",
   "NOS Sport": "UCT4oPufBQa0f6C67Fw_HXNg",
+  "De Telegraaf": "UC1Et9K-hHf-P_LzQkE_Q3Jw",
+  "GeenStijl": "UCE51aiJ30nQY14kFY021urg",
   "Ziggo Sport": "UCueOZEvMffxjJyVO1fGiJNQ",
   "ESPN NL": "UCXnPiEv1DoUCDAqDUXT9shQ",
   "OnsOranje": "UCpnmJcBhJqKIHFkKvgdkdMQ",

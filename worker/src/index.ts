@@ -15,7 +15,7 @@ import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Su
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
 import { vooraf, MAX_ALARMS_PER_UUR } from "./vooraf";
-import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
+import { xUser } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
 import { isNL } from "../../src/bronlink";
@@ -115,21 +115,6 @@ async function runArtJ(j: Job, t0: number): Promise<Res> {
   return { url: j.url, ok: true, status: r.status, ms: Date.now() - t0, via: "jina", json: jinaTekst(md) };
 }
 
-// X: fxtwitter -> syndication. Tekstposts als entries (bronstats + politiek), video's van vandaag als filmpjes.
-async function runX(j: Job, since: number, t0: number): Promise<Res> {
-  const user = xUser(j.url);
-  if (!user) throw new Error("onbekend X-account");
-  const { posts, via, err } = await xPosts(user);
-  const now = Date.now();
-  const entries = posts.filter((p) => !p.mp4).map(xEntry); // tekst/foto-posts naar het nieuws, video's naar Filmpjes
-  const videos = posts.filter((p) => p.mp4 && vanVandaag(p.t, now)).slice(0, j.max ?? 3).map((p) => xVideo(p, j.label || user, hhmm));
-  return {
-    url: j.url, ok: true, status: 200, ms: Date.now() - t0, via, ...(err ? { err } : {}), total: entries.length, videos,
-    newest: entries.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null),
-    entries: j.alleenVideo ? [] : entries.flatMap((e) => { const d = publicatieTijd(e.d, now); return d != null && vanVandaag(d, now) ? [{ ...e, d }] : []; }),
-  };
-}
-
 const HN_RSS = /^https?:\/\/news\.ycombinator\.com\/rss\/?$/;
 const BR_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 async function get(url: string, timeout = 15000, ua = UA): Promise<Response> {
@@ -147,7 +132,6 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
     if (j.kind === "og") return await runOg(j, t0, kv);
     if (j.kind === "art") return await runArt(j, t0);
     if (j.kind === "artj") return await runArtJ(j, t0);
-    if (j.kind === "x") return await runX(j, since, t0);
     // news.ycombinator.com/rss geeft 419 aan Cloudflare-IP's: dezelfde HN-lijst via hnrss.org (werkt wel)
     const u = HN_RSS.test(j.url) ? "https://hnrss.org/best" : j.url;
     let r = await get(u, 15000, UA).catch(async () => { await sleep(1500); return get(u, 20000, UA); }); // 1x opnieuw bij time-out/netwerkfout
@@ -286,7 +270,6 @@ export class Runner extends DurableObject<Env> {
       }
     }
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) add({ url: ytUrl(cid), kind: "feed", label: naam });
-    for (const [u, naam] of Object.entries(X_VIDEO)) add({ url: `https://x.com/${u}`, kind: "x", label: naam, alleenVideo: true });
     // reddit-URL uit bronnen.json kan ?t=day zonder sub-label zijn: label alsnog zetten
     for (const j of jobs.values()) if (j.kind === "reddit") j.sub ||= /reddit\.com\/r\/([^/]+)/.exec(j.url)?.[1];
     add({ url: DUMPERT_URL, kind: "dumpert" });

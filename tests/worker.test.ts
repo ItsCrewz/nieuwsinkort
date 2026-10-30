@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { webcrypto } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
 import "./sportcat.test";
 import "./showcat.test";
 import worker, { Runner, kiesVoorAI } from "../worker/src/index";
@@ -33,6 +33,18 @@ await t("Instagram en Kittygram zijn geen bronnen meer; Haarlem105 gebruikt YouT
   const script = readFileSync("scripts/pipeline/filmpjes.py", "utf8");
   assert.match(script, /"Haarlem105": "UCFDVl_p6fwkloGr8lraSZgQ"/);
   assert.doesNotMatch(script, /IG_ACCOUNTS|IG_POLITIEK|def instagram\(/);
+});
+await t("X-inname blijft verwijderd en vervangende kanalen zijn aanwezig", async () => {
+  const feeds = JSON.parse(readFileSync("scripts/pipeline/feeds.json", "utf8"));
+  assert.ok(feeds.every((feed: { url: string }) => !/(^|\.)(x|twitter)\.com$/i.test(new URL(feed.url).hostname)));
+  assert.ok(feeds.some((feed: { naam: string; url: string }) => feed.naam === "50PLUS (YouTube)" && feed.url.endsWith("UCxngTZl7im1n_fQYxVh5hXA")));
+  for (const [naam, id] of [["De Telegraaf", "UC1Et9K-hHf-P_LzQkE_Q3Jw"], ["GeenStijl", "UCE51aiJ30nQY14kFY021urg"]]) {
+    assert.equal(YT_NIEUWS[naam], id);
+    assert.ok(readFileSync("scripts/pipeline/filmpjes.py", "utf8").includes(`"${naam}": "${id}"`));
+  }
+  for (const bestand of readdirSync("worker/src").filter((naam) => naam.endsWith(".ts"))) {
+    assert.doesNotMatch(readFileSync(`worker/src/${bestand}`, "utf8"), /api\.fxtwitter\.com|syndication\.twitter\.com/i);
+  }
 });
 await t("YouTube-Short krijgt een embed en de soort short", async () => {
   const xml = `<feed><entry><yt:videoId>abcdefghijk</yt:videoId><title>Kort nieuws</title><link rel="alternate" href="https://www.youtube.com/shorts/abcdefghijk"/><published>2026-10-29T12:00:00Z</published></entry></feed>`;
