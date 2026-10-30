@@ -16,7 +16,7 @@ import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
-import { TabBriefing } from "./tabbriefing";
+import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
@@ -672,7 +672,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   );
 }
 
-function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty }: { items: Item[]; head: ReactNode; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt }: { items: Item[]; head: ReactNode; kompakt?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -771,7 +771,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty }: {
   return (
     <div className="nf-box">
       <div className="nf" ref={ref} tabIndex={-1} aria-label="Berichten, één per scherm">
-        <section className="nc-head">{head}</section>
+        <section className={kompakt ? "nc-head kompakt" : "nc-head"}>{head}</section>
         {total === 0 ? (
           empty ?? <div className="empty">
             <Icon name="clock" />
@@ -1424,6 +1424,7 @@ export default function App() {
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
+            kompakt={kopKompact(alles, raw.tab_samenvatting?.[view]?.tekst, basisItems.length)}
             head={
               <div className="wrap nc-head-in">
                 {dateline}

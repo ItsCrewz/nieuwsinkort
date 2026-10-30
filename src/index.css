@@ -447,6 +447,11 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nc-head{min-height:100%;scroll-snap-align:start;padding-bottom:72px}
 .nc-head .dateline{padding-left:0;padding-right:0;padding-top:28px}
 .nc-head .front{padding-bottom:0}
+/* Tab zonder samenvatting: compacte datumregel, eerste bericht meteen in beeld (#150) */
+.nc-head.kompakt{min-height:0;height:var(--kop);padding-bottom:0;overflow:hidden}
+.nc-head.kompakt .dateline{padding-top:12px;padding-bottom:0}
+.nc-head.kompakt+.nc{height:calc(100% - var(--kop))}
+.nf{--kop:56px}
 .nc-end{scroll-snap-align:end}
 .nc-end .foot{margin-top:0;max-width:1120px;margin-left:auto;margin-right:auto;padding-left:32px;padding-right:32px}
 

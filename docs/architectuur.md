@@ -41,6 +41,8 @@ Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay;
 
 Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Dit is nog niet op een echte iPhone geverifieerd.
 
+Kopkaart (#150): `.nc-head` is schermvullend op Home en op tabs met `tab_samenvatting[view].tekst`; zonder samenvatting krijgt hij de klasse `kompakt` (`kopKompact()` in `src/tabbriefing.tsx`): alleen een datumregel van `--kop` hoogte, het eerste bericht vult de rest van het eerste scherm. De tabsamenvatting verschijnt na het herladen van `/data.json` (15 min, visibilitychange; geen service worker, `no-cache`).
+
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
 
 Bufferregels (#36): `src/buffer.ts` is een pure module (`planVoor`, `mountSet`, `warmPlan`, `niveauVan`) met grenzen per afstand tot de actieve slide en netwerkniveau (volgende 12 s / 4 MB, 3g halveert, Save-Data/2g alleen playlist, vanaf +4 niets). Tests: `tests/buffer.test.ts`. `feed.tsx` gebruikt de pool (#50) en direct starten (#51); `buffer.ts` is daar nog niet op aangesloten.

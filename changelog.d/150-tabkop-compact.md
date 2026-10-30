@@ -1,0 +1,1 @@
+- Tabs zonder samenvatting tonen een compacte datumregel en meteen het eerste bericht, in plaats van een leeg eerste scherm (#150).
