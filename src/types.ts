@@ -24,7 +24,7 @@ export type WeerDag = { dag: string; min: number; max: number; omschrijving?: st
 export type Weer = {
   plaats: string;
   bijgewerkt: string;
-  nu?: { temp?: number; gevoel?: number; omschrijving?: string };
+  nu?: { temp?: number; gevoel?: number; omschrijving?: string; van?: number; tot?: number };
   vandaag?: { min?: number; max?: number; neerslagkans?: number; wind?: string };
   verwachting: string;
   waarschuwing: string;

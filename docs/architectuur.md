@@ -81,7 +81,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - **Instagram**: profiel-embed, reels als filmpjes.
 - **Dumpert**: toppers-pagina en HLS via de proxy (max 720p, H.264).
 - **Reddit**: RSS (`top/.rss?t=day`) → old.reddit → Redlib-instances (roterend, HTML omgezet naar Atom) → laatste gelukte kopie van vandaag. Publieke Redlib-instances blokkeren Cloudflare nu vaak.
-- **Weer**: Buienradar, Open-Meteo als terugval, KNMI-weerbericht en -waarschuwingen (Noord-Holland).
+- **Weer** (landelijk, plaats "Nederland"): Buienradar (alle landstations: mediaan en koudste–warmste, landelijke 5-daagse), Open-Meteo als terugval (Groningen, De Bilt, Maastricht in één verzoek), KNMI-weerbericht (bron: KNMI, CC0) en de landelijke waarschuwingsregel uit datzelfde weerbericht (code geel/oranje/rood, ergste wint). Geen provinciepagina's: `/waarschuwingen` stuurt door naar Utrecht en per provincie ophalen kost subrequests. Ontbrekende bron = veld weg. De AI-herschrijving (`simpelWeer`) blijft één aanroep met max 1500 tekens invoer. Rubriek Haarlem is los van het weer.
 - **Overig**: openraadsinformatie (gemeenteraad), og:image van artikelpagina's.
 - Lukt niet: BleepingComputer (403).
 

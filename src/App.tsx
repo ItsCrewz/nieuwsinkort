@@ -129,16 +129,17 @@ function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   const dagen = (W?.dagen ?? []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
   const heeftNu = typeof nu.temp === "number";
   const stats: { k: string; v: string }[] = [];
+  if (typeof nu.van === "number" && typeof nu.tot === "number" && nu.van !== nu.tot) stats.push({ k: "Nu in het land", v: `${nu.van}° tot ${nu.tot}°` });
   if (typeof vd.min === "number" || typeof vd.max === "number")
     stats.push({ k: "Vandaag", v: `${typeof vd.min === "number" ? `${vd.min}°` : "–"} / ${typeof vd.max === "number" ? `${vd.max}°` : "–"}` });
   if (typeof vd.neerslagkans === "number") stats.push({ k: "Neerslag", v: `${vd.neerslagkans}%` });
   if (vd.wind) stats.push({ k: "Wind", v: vd.wind });
   const leeg = !W || (!heeftNu && stats.length === 0 && !W.verwachting && dagen.length === 0 && !W.waarschuwing);
-  const plaats = W?.plaats || "Haarlem";
+  const plaats = W?.plaats || "Nederland";
   const kind = weatherKind(nu.omschrijving);
   const dates = dayDates(dagen.slice(0, 4));
   return (
-    <section className="wx" aria-label={`Weer in ${plaats}`}>
+    <section className="wx" aria-label={`Weer in ${plaats === "Nederland" ? "heel Nederland" : plaats}`}>
       <div className="wx-head">
         <h2 className="kicker">Weer · {plaats}</h2>
         {W?.bijgewerkt ? <span className="wx-upd tnum">{W.bijgewerkt}</span> : null}
