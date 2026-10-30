@@ -43,6 +43,8 @@ Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert
 
 Kopkaart (#150): `.nc-head` is alleen op Home schermvullend. Tabs krijgen de klasse `kompakt` (`kopKompact()` in `src/tabbriefing.tsx`): zonder samenvatting een datumregel van `--kop` hoogte, met samenvatting een kop met automatische hoogte en maximaal 60% van de feedhoogte. Daaronder begint het eerste bericht direct in beeld. De tabsamenvatting verschijnt na het herladen van `/data.json` (15 min, visibilitychange; geen service worker, `no-cache`).
 
+`src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug.
+
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
 
 Bufferregels (#36): `src/buffer.ts` bepaalt per netwerkniveau de seconden en bytes voor de actieve en volgende hls.js-speler. De pool laadt geen spelers vanaf +2. Tests: `tests/buffer.test.ts` en `tests/videopool.test.ts`.
@@ -150,6 +152,7 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 - Domein koppelen (zie boven).
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
 - "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd.
+- `src/leesverder.ts` bepaalt of een bericht Lees verder heeft en haalt alinea’s, kernpunten en bronnen voor de detailpagina uit het bericht.
 - Het kopje **Uitgebreid** staat altijd in de detailpagina, ook zonder `meer`-sleutel of bij een mislukte `/meer`-aanroep (#184, `src/uitgebreid.ts`). Keten: AI-uitleg (Workers AI, Groq, Mistral; gecachet in `st.diep` in KV-state, per artikel één keer, `zonderUitleg` slaat gecachete artikelen over) → alineas uit de bron → samenvatting/kernpunten van het bericht → de kop. Geen extra AI-aanroepen of neuronen; geldt voor Nederland en Buitenland.
 - Redlib-instances blokkeren Cloudflare; Reddit valt daardoor soms terug op een oude kopie.
 - YouTube geeft vaak LOGIN_REQUIRED vanaf Cloudflare.
@@ -157,6 +160,8 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 - `scripts/pipeline/` (PR #1) nog niet op `main`.
 
 ### KV-schrijflimiet uur-Worker
+
+`begrensOg()` in `src/kv.ts` verwijdert dubbele links en beperkt de lijst tot de eerste 30.
 
 Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de door Fetcher gemelde Instagram-cachepogingen en de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
 
