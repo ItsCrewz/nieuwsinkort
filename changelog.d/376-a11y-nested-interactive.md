@@ -1,0 +1,1 @@
+- Toegankelijkheid (vervolg #307): videokaart is geen `role="button"` meer met een link erin; de titel is de knop (nested-interactive weg). Contrast van de aantallen in tabs en chips verhoogd, en "Tik voor geluid" staat nu ook in de toegankelijke naam van de geluidsknop (#376).

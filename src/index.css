@@ -179,7 +179,7 @@ body { margin:0; background:var(--paper); color:var(--ink); overflow-x:clip; ove
 .chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--rule);transition:transform var(--fast) var(--ease);font-size:13px;font-weight:400;color:var(--ink-2)}
 .chip:hover{border-color:var(--muted)}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
-.chip span{font-size:12px;opacity:.6}
+.chip span{font-size:12px;opacity:.75}
 
 /* ---------- Nieuws ---------- */
 .lead{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;padding:40px var(--gut) 38px;margin:0 calc(var(--gut) * -1)}
@@ -227,6 +227,7 @@ body { margin:0; background:var(--paper); color:var(--ink); overflow-x:clip; ove
 .vthumb{transition:transform var(--fast) var(--ease)}
 .vbody{display:flex;flex-direction:column;gap:6px}
 .v-title{font-size:16px;line-height:1.4;font-weight:600;letter-spacing:-.005em;text-wrap:pretty}
+.v-play{font:inherit;letter-spacing:inherit;color:inherit;text-align:left;text-wrap:inherit;padding:0;background:none;border:0;cursor:pointer}
 .vcard:hover .v-title{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.16em;text-decoration-color:var(--rule)}
 .v-ai{font-size:14px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .v-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted)}
@@ -541,7 +542,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 /* ---------- Filmpjes: Shorts / Journaals ---------- */
 .vseg{display:inline-flex;gap:2px;padding:3px;border-radius:12px;background:var(--seg);margin-top:20px;max-width:100%}
 .vseg button{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 16px;border:0;border-radius:9px;background:none;color:var(--ink-2);font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background-color var(--fast) var(--ease),color var(--fast) var(--ease),transform var(--fast) var(--ease)}
-.vseg button span{font-size:12px;opacity:.55}
+.vseg button span{font-size:12px;opacity:.75}
 .vseg button[aria-selected="true"]{background:var(--seg-on);box-shadow:var(--seg-shadow);color:var(--ink)}
 .vseg button:active{transform:scale(.97)}
 .vseg + .chips{margin-top:12px}
