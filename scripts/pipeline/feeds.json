@@ -346,31 +346,10 @@
   "werkt": false
  },
  {
-  "cat": "social",
-  "naam": "Reddit r/thenetherlands new",
-  "url": "https://www.reddit.com/r/thenetherlands/new/.rss",
-  "werkt": false,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "social",
-  "naam": "Reddit r/Netherlands new",
-  "url": "https://www.reddit.com/r/Netherlands/new/.rss",
-  "werkt": false,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
   "cat": "nl",
   "naam": "PowNed atom",
   "url": "https://www.powned.tv/atom.xml",
   "werkt": false
- },
- {
-  "cat": "social",
-  "naam": "Reddit r/Haarlem top day",
-  "url": "https://www.reddit.com/r/Haarlem/top/.rss?t=day",
-  "werkt": true,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
  },
  {
   "cat": "nl",
@@ -391,48 +370,6 @@
   "werkt": false
  },
  {
-  "cat": "social",
-  "naam": "Reddit r/thenetherlands top",
-  "url": "https://www.reddit.com/r/thenetherlands/top/.rss?t=day",
-  "werkt": true,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "social",
-  "naam": "Reddit r/Netherlands top",
-  "url": "https://www.reddit.com/r/Netherlands/top/.rss?t=day",
-  "werkt": false,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "social",
-  "naam": "Reddit r/technology top",
-  "url": "https://www.reddit.com/r/technology/top/.rss?t=day",
-  "werkt": false,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "social",
-  "naam": "Reddit r/artificial top",
-  "url": "https://www.reddit.com/r/artificial/top/.rss?t=day",
-  "werkt": false,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "social",
-  "naam": "Reddit r/OpenAI top",
-  "url": "https://www.reddit.com/r/OpenAI/top/.rss?t=day",
-  "werkt": false,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "social",
-  "naam": "Reddit r/Haarlem new",
-  "url": "https://www.reddit.com/r/Haarlem/new/.rss",
-  "werkt": false,
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
   "cat": "nl",
   "naam": "PowNed sitemap",
   "url": "https://www.powned.tv/sitemap.xml",
@@ -443,60 +380,6 @@
   "naam": "PowNed (geen RSS, site)",
   "url": "https://www.powned.tv/",
   "werkt": false
- },
- {
-  "cat": "nl",
-  "naam": "Reddit r/thenetherlands",
-  "url": "https://www.reddit.com/r/thenetherlands/top/.rss?t=day",
-  "werkt": true,
-  "soort": "rss",
-  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "nl",
-  "naam": "Reddit r/Netherlands",
-  "url": "https://www.reddit.com/r/Netherlands/top/.rss?t=day",
-  "werkt": false,
-  "soort": "rss",
-  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "haarlem",
-  "naam": "Reddit r/Haarlem",
-  "url": "https://www.reddit.com/r/Haarlem/top/.rss?t=day",
-  "werkt": true,
-  "soort": "rss",
-  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "tech",
-  "naam": "Reddit r/technology",
-  "url": "https://www.reddit.com/r/technology/top/.rss?t=day",
-  "werkt": false,
-  "soort": "rss",
-  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "tech",
-  "naam": "Reddit r/artificial",
-  "url": "https://www.reddit.com/r/artificial/top/.rss?t=day",
-  "werkt": false,
-  "soort": "rss",
-  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "tech",
-  "naam": "Reddit r/OpenAI",
-  "url": "https://www.reddit.com/r/OpenAI/top/.rss?t=day",
-  "werkt": false,
-  "soort": "rss",
-  "note": "trends/leads; bevestig met nieuwsbron; soms 429",
-  "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
  },
  {
   "cat": "nl",

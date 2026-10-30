@@ -9,7 +9,7 @@ Gebruik:
                                       (standaard: vanaf 00:00 vandaag, Europe/Amsterdam)
 
 Velden per filmpje: titel, ai, bron, href, embed, thumb, populariteit, tijd (HH:MM Europe/Amsterdam),
-embed = afspeel-URL: Dumpert HLS-stream (.m3u8), Reddit v.redd.it HLS, X MP4 (via x_embed() op de
+embed = afspeel-URL: Dumpert HLS-stream (.m3u8), X MP4 (via x_embed() op de
 media van de X-tools), YouTube youtube-nocookie-embed (een Canvas staat geen <iframe> toe, dus YouTube
 speelt daar niet af en de Page valt terug op de link; de Page speelt alleen .m3u8/.mp4 af in <video>).
 plus hulpvelden _kanaal, _score, _gepubliceerd (weghalen voor de Page). 'ai' is ruwe brontekst
@@ -18,12 +18,11 @@ plus hulpvelden _kanaal, _score, _gepubliceerd (weghalen voor de Page). 'ai' is 
 Bronnen:
   Dumpert   www.dumpert.nl/toppers (embedded JSON; de mobile_api zit achter Cloudflare 403)
   YouTube   kanaal-RSS van nieuwskanalen (met views uit media:statistics)
-  Reddit    top/.rss?t=day per sub (JSON geeft 403), rustig na elkaar; alleen posts met video
   X         niet in dit script: gebruik de X-tools (has:videos, nieuwsaccounts), zie status.
   YouTube trending NL via Invidious: overgeslagen (geeft alleen livestreams met 0 views).
   Instagram profiel-embed van instagram.com (openbaar, zonder login): reels van vandaag met MP4, soort "short".
   TikTok: geen snelle open route; overgeslagen.
-Elk filmpje krijgt "soort": "short" (Shorts, Reels, Reddit, X) of "journaal" (uitzending/reportage).
+Elk filmpje krijgt "soort": "short" (Shorts, Reels, X) of "journaal" (uitzending/reportage).
 """
 import html, json, re, sys, time, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -89,7 +88,7 @@ JOURNAAL_RE = re.compile(r"journaal|nieuwsuitzending|\buitzending\b|bulletin|nie
 
 
 def soort_van(f):
-    """'journaal' = uitzending/reportage (liggend, langer); 'short' = kort clipje (YouTube Shorts, Reels, Reddit, X)."""
+    """'journaal' = uitzending/reportage (liggend, langer); 'short' = kort clipje (YouTube Shorts, Reels, X)."""
     if f.get("soort") in ("short", "journaal"):
         return f["soort"]
     if JOURNAAL_RE.search(f.get("titel") or ""):
@@ -102,7 +101,6 @@ def soort_van(f):
     return "short"
 
 # AD heeft geen herkenbaar officieel YouTube-kanaal (zoekresultaten zijn andere 'AD'-kanalen).
-REDDIT_SUBS = ["thenetherlands", "Netherlands", "worldnews", "europe", "Haarlem"]
 VIDEO_RE = re.compile(r"v\.redd\.it|youtube\.com/watch|youtu\.be/|youtube\.com/shorts|streamable\.com|"
                       r"(?:twitter|x)\.com/[^/]+/status|tiktok\.com|instagram\.com/reel|nos\.nl/video|rtl\.nl/video", re.I)
 
@@ -286,60 +284,6 @@ def instagram(naam, user, since, maxi=3):
     return out
 
 
-# ---------------- Reddit ----------------
-def reddit_stream(video_url):
-    """v.redd.it-link -> HLS-playlist voor <video>; andere videolinks: leeg (link blijft de terugval)."""
-    m = re.search(r"v\.redd\.it/([A-Za-z0-9]+)", video_url or "")
-    return f"https://v.redd.it/{m.group(1)}/HLSPlaylist.m3u8" if m else ""
-
-
-def x_embed(media):
-    """X: kies de MP4-variant (liefst 1280x720) uit de media van de X-tools (media.fields=variants)."""
-    mp4 = [v for v in (media or {}).get("variants", []) if v.get("content_type") == "video/mp4"]
-    mp4.sort(key=lambda v: (abs((v.get("bit_rate") or 0) - 2176000), -(v.get("bit_rate") or 0)))
-    return mp4[0]["url"] if mp4 else ""
-
-
-def reddit(sub, since):
-    url = f"https://www.reddit.com/r/{sub}/top/.rss?t=day&limit=50"
-    for poging in range(2):
-        try:
-            t = get(url)
-            break
-        except urllib.error.HTTPError as ex:
-            if ex.code != 429 or poging == 1:
-                raise
-            time.sleep(10)
-    out = []
-    entries = re.findall(r"<entry>.*?</entry>", t, re.S)
-    for rank, e in enumerate(entries):
-        pub = iso2dt(re.search(r"<published>(.*?)</published>", e).group(1))
-        if pub < since:
-            continue
-        c = html.unescape((re.search(r"<content[^>]*>(.*?)</content>", e, re.S) or [None, ""])[1] if re.search(r"<content", e) else "")
-        links = re.findall(r'href="([^"]+)"', c)
-        vids = [l for l in links if VIDEO_RE.search(l)]
-        if not vids:
-            continue
-        th = re.search(r'<media:thumbnail url="([^"]+)"', e)
-        post = re.search(r'<link href="([^"]+)"', e).group(1)
-        out.append({
-            "titel": html.unescape(re.search(r"<title>(.*?)</title>", e).group(1)).strip(),
-            "ai": "",
-            "bron": "Reddit",
-            "href": post,
-            "embed": reddit_stream(vids[0]),
-            "thumb": html.unescape(th.group(1)) if th else "",
-            "populariteit": f"#{rank+1} top vandaag r/{sub}",
-            "tijd": hhmm(pub),
-            "_kanaal": f"r/{sub}",
-            "_video": vids[0],
-            "_score": max(0, 50 - rank),
-            "_gepubliceerd": pub.isoformat(),
-        })
-    return out
-
-
 # ---------------- ontdubbelen ----------------
 _TRACK = re.compile(r"^(utm_\w+|si|igsh|igshid|feature|ref|ref_src|s|fbclid|gclid|mc_\w+|pp|ab_channel)$")
 
@@ -432,20 +376,10 @@ def main():
     with ThreadPoolExecutor(12) as ex:
         fut_d = None if alleen_f else ex.submit(run, "Dumpert", dumpert, since_dump)
         fut_y = [] if alleen_d else [ex.submit(run, f"YouTube {n}", yt_kanaal, n, c, since) for n, c in YT_NIEUWS.items()]
-        def reddit_alle():  # Reddit rustig na elkaar (429-gevoelig), parallel aan de rest
-            r = []
-            for i, s in enumerate(REDDIT_SUBS):
-                if i:
-                    time.sleep(4)
-                r += run(f"Reddit r/{s}", reddit, s, since)
-            return r
-        fut_r = None if alleen_d else ex.submit(reddit_alle)
         fut_i = [] if alleen_d else [ex.submit(run, f"Instagram {n}", instagram, n, u, since) for n, u in IG_ACCOUNTS.items()]
         if not alleen_d:  # politiek: max 2 per account
             fut_i += [ex.submit(run, f"Instagram politiek {n}", instagram, n, u, since, 2) for n, u in IG_POLITIEK.items()]
             fut_y += [ex.submit(run, f"YouTube politiek {n}", lambda n, c, s_: yt_kanaal(n, c, s_)[:2], n, c, since) for n, c in YT_POLITIEK.items()]
-        if fut_r:
-            filmpjes += fut_r.result()
         for f in fut_y + fut_i:
             filmpjes += f.result()
         if fut_d:
