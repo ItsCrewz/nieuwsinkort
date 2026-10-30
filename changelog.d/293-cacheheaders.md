@@ -1,0 +1,1 @@
+- Verkort de gedeelde cache voor nieuwsdata met behoud van ETag en geef fonts zonder hash een cacheduur van één dag (#293).
