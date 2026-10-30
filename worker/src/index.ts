@@ -24,7 +24,7 @@ import { isBuitenland } from "../../src/regio";
 import { cluster, normLink, sim, toks, type Cand, type Cluster } from "./cluster";
 import { Budget, utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quotaSleutel } from "./budget";
 import { clusterHash, vindClusterSum } from "./clusterhash";
-import { maakTabSam, tabTekst } from "./tabsam";
+import { maakTabSam, tabTekst, tabAiRoute } from "./tabsam";
 import { herindeel } from "../../src/regio";
 import { herindeelSport, sportCat } from "./sportcat";
 import { herindeelShow, showCat, nietAlsNieuws } from "./showcat";
@@ -605,11 +605,13 @@ export class Runner extends DurableObject<Env> {
     const tabItems = [...items, ...statItems.map(herindeel)];
     const tabSam: Record<string, any> = {};
     let tabWrites = 0;
-    const tabs = ["alles", ...new Set(tabItems.map((i) => i.cat as string))];
+    const tabs = [...new Set(tabItems.map((i) => i.cat as string))];
     for (const tab of tabs) {
-      const berichten = tabItems.filter((i) => tab === "alles" ? i.cat !== "politiek" : i.cat === tab);
+      const berichten = tabItems.filter((i) => i.cat === tab);
       if (!berichten.length) continue;
-      const maak = tier() <= 2 && !quotaOut && !tijdelijk && !runCapped && usage.neurons < runBudget ? async () => {
+      const route = tabAiRoute(tier(), quotaOut || runCapped || usage.neurons >= runBudget, !!tijdelijk, !!env.AI, !!(env.GROQ_API_KEY || env.MISTRAL_API_KEY));
+      if (route === "extern") usage.llm!.cloudflare = false;
+      const maak = route !== "geen" ? async () => {
         const voor = Object.fromEntries(Object.entries(usage.aanbieders || {}).map(([k, v]) => [k, v.inTok + v.outTok]));
         try {
           const tekst = await tabTekst(env.AI, modelNu(), berichten, usage);

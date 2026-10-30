@@ -1,1 +1,1 @@
-- Elke nieuwstab krijgt een korte samenvatting, met cache en extractieve terugval bij een beperkt AI-budget (#134).
+- Nieuwstabs krijgen een korte samenvatting met zuinige cache en extractieve terugval; Home behoudt de bestaande briefing (#134).
