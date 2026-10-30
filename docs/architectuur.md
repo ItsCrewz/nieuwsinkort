@@ -257,6 +257,7 @@ De AI-vermelding staat alleen in de footer onderaan de pagina („Samenvattingen
 ### Vooraf berekende datarespons (#363)
 
 De uur-Worker gebruikt de al opgehaalde statische data en `uur` om dezelfde merge, dagfilter, opschoning en compacte respons vooraf te berekenen. KV `data-vooraf` bevat de Amsterdamse dag, de zwakke ETag en de JSON-body als tekst. Pages leest deze tekst en geeft bij een passende dag direct de body of een 304 terug. Bij een ontbrekende of verouderde sleutel blijft het bestaande pad beschikbaar. `sv-klaar` wordt meegenomen; na een video-alarm wordt de respons opnieuw berekend, met één extra KV-schrijfpoging buiten de runteller. De run telt maximaal één extra schrijfpoging in `meta.kvWrites`. Bij een mislukte berekening blijft de vorige respons staan.
+Voor 06:00 Amsterdamse tijd gebruikt Pages ook `data-vooraf` van gisteren, zodat de site 's nachts gevuld blijft.
 
 Lokale Node-meting met de incidentkopieën `/tmp/kv-uur.json` (331.623 bytes) en `/tmp/st-bb662877.json` (117.318 bytes), 20 verzoeken na opwarming: oud 60,672 ms CPU per verzoek, nieuw 1,566 ms. Dit is een lokale indicatie, geen meting van Cloudflare-CPU; de oude meting gebruikt lokale KV-doubles.
 
