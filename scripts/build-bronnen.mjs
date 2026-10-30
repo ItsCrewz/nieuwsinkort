@@ -1,17 +1,23 @@
 // Bouwt public/bronnen.json: de lijst met alle bronnen die de site gebruikt, per rubriek.
-// Bron van waarheid: /workspace/nieuws/feeds.json (+ filmpjes.py voor Filmpjes/Dumpert).
+// Bron van waarheid: scripts/pipeline/feeds.json (+ scripts/pipeline/filmpjes.py).
 // Draait automatisch vóór `npm run build`. Ontbreekt feeds.json (bijv. op een andere machine),
 // dan blijft de bestaande public/bronnen.json staan.
 //   FEEDS_JSON=<pad>     ander feeds-bestand
 //   FILMPJES_PY=<pad>    ander filmpjes-script
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(root, "public", "bronnen.json");
-const FEEDS = process.env.FEEDS_JSON || "/workspace/nieuws/feeds.json";
-const FILMPJES = process.env.FILMPJES_PY || "/workspace/nieuws/filmpjes.py";
+const FEEDS = process.env.FEEDS_JSON || join(root, "scripts/pipeline/feeds.json");
+const FILMPJES = process.env.FILMPJES_PY || join(root, "scripts/pipeline/filmpjes.py");
+
+const feedPath = existsSync(FEEDS) ? realpathSync(FEEDS) : resolve(FEEDS);
+const rel = relative(realpathSync(root), feedPath);
+if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) {
+  console.warn("[bronnen] waarschuwing: FEEDS_JSON wijst buiten de repo; deze invoer staat mogelijk niet in review");
+}
 
 if (!existsSync(FEEDS)) {
   console.log(`[bronnen] ${FEEDS} niet gevonden; ${existsSync(OUT) ? "bestaande bronnen.json blijft staan" : "geen bronnen.json"}`);
@@ -156,5 +162,10 @@ const out = {
       .sort((a, b) => a.naam.localeCompare(b.naam, "nl", { sensitivity: "base" })),
   })),
 };
+// Een ongewijzigde lijst houdt haar datum, zodat builds reproduceerbaar blijven.
+if (existsSync(OUT)) {
+  const vorige = JSON.parse(readFileSync(OUT, "utf8"));
+  if (JSON.stringify(vorige.groepen) === JSON.stringify(out.groepen)) out.gegenereerd = vorige.gegenereerd;
+}
 writeFileSync(OUT, JSON.stringify(out) + "\n");
 console.log(`[bronnen] ${out.groepen.map((g) => `${g.id}:${g.bronnen.length}`).join(" ")} -> public/bronnen.json`);

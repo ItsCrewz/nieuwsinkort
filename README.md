@@ -73,3 +73,12 @@ Statische bestanden krijgen via `public/_headers` een CSP, frameblokkering en Pe
 Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de door Fetcher gemelde Instagram-cachepogingen en de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
 
 `uur` wordt eerst apart geschreven. KV-eindschrijffouten worden gelogd via `console.error`; ook bij fouten op `state` of `meer` wordt het video-alarm gezet. Een mislukte `vooraf-log`-schrijfactie houdt het volgende alarm evenmin tegen. Bij een fout op `uur` blijft de eerder opgeslagen versie staan.
+
+Deploy-integriteit: `deploy.sh` weigert een vuile werkboom en een na de build van HEAD
+ afwijkende `public/bronnen.json`, tenzij bewust `ALLOW_DIRTY=1` is ingesteld.
+Dit vervangt nooit de vereiste deploygoedkeuring. Pages krijgt de commit-hash mee.
+`npm run build` schrijft `dist/version.json` met `commit`, `datum` en `bronnenSha256`;
+ook bij `SKIP_BUILD=1` vernieuwt het deployscript deze metadata.
+De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py` uit
+ dezelfde map; een externe `FEEDS_JSON` geeft een waarschuwing. Een ongewijzigde
+ lijst behoudt haar generatiedatum. Gewijzigde bronnen eerst beoordelen en committen.
