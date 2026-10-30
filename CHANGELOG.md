@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Video-samenvattingen gebruiken Groq voor transcriptie en punten met Cloudflare als terugval binnen het bestaande budget.
 - AI-keten bewaart Cloudflare-fouten, slaat Cloudflare na een echte dagquota-fout over en wacht begrensd op vrije Groq-minuutvensters.
 - Tekst-AI valt bij fouten terug op Groq, met limieten per model en tokens per aanbieder in de metadata (`meta.aiTokens`); Groq telt tokens mee maar geen neuronen.
 - Extractieve fallback (#80): zonder AI krijgen alle rubrieken (ook tech, Haarlem en Engelstalige bronnen) een deterministische samenvatting uit de feed (`worker/src/extractief.ts`): opgeschoonde kop, eerste 2–3 zinnen (±50 woorden), Engels met "(Engels)". Items houden `ruw: true`; de kaarten tonen "nog niet samengevat" en een run met AI vervangt ze.
