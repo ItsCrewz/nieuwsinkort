@@ -29,9 +29,22 @@ class_name = "Runner"
 name = "FETCHER"
 class_name = "Fetcher"
 
+# Budget: enige eigenaar van slot, video-neuronen en uurrem van /samenvatting (Pages-binding BUDGET_DO wijst hiernaartoe)
+[[durable_objects.bindings]]
+name = "BUDGET_DO"
+class_name = "Budget"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Runner", "Fetcher"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Budget"]
+
 [observability]
+enabled = true
+
+# Workers Issues (gratis open beta): groepeert fouten uit de logs
+[observability.issues]
 enabled = true

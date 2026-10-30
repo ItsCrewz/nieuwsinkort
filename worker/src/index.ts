@@ -18,9 +18,12 @@ import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
 import { isNL } from "../../src/bronlink";
+import { Budget } from "./budget";
+
+export { Budget };
 
 export interface Env {
-  NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>;
+  NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>; BUDGET_DO: DurableObjectNamespace<Budget>;
   RUN_KEY?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string;
 }
 const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";

@@ -6,7 +6,7 @@ Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone
 
 ## Stack
 
-Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects, KV en Workers AI.
+Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects (`Runner`, `Fetcher`, `Budget`), KV en Workers AI.
 
 ## Filters
 
@@ -52,7 +52,8 @@ Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled` met lo
 - `./deploy.sh` bouwt en zet de site op Pages. De doelbranch staat in `DEPLOY_BRANCH`.
   - `main`: de nieuwe build gaat naar productie.
   - iets anders (bijv. `design`): productie krijgt de bevroren site uit `prod-frozen/` met verse `data.json`, de nieuwe build gaat alleen naar die preview-branch.
-- De Worker deployen: `DEPLOY_WORKER=1 ./deploy.sh` of `cd worker && npx wrangler deploy`.
+- De Worker deployen: `DEPLOY_WORKER=1 ./deploy.sh` of `cd worker && npx wrangler deploy`. De Worker moet vóór Pages: de Pages-binding `BUDGET_DO` (Durable Object `Budget`, migratie `v2`) verwijst naar de klasse in `nieuwsinkort-uur`; `deploy.sh` doet die volgorde al.
+- `Budget` is de enige eigenaar van slot, video-neuronen en uurrem (30/uur) van `/samenvatting`; de DO spiegelt het dagtotaal naar KV `vid-neurons:<datum>` voor de uur-Worker. Zonder binding (lokaal/preview) valt de Function terug op KV. Foutmonitoring: Workers Issues staat aan in `worker/wrangler.toml` (`[observability.issues]`).
 - Handige schakelaars: `DRY_RUN=1` (niets uploaden), `SKIP_BUILD=1`, `CANVAS_SRC=<pad>`, `FROZEN_BRANCH`, `FEEDS_JSON`.
 - Inloggen via wrangler OAuth of `CLOUDFLARE_API_TOKEN`. Zet nooit tokens in de repo.
 
