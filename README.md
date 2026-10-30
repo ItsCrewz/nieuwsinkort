@@ -25,7 +25,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 
 | Map / bestand | Inhoud |
 |---|---|
-| `src/` | Frontend (React, feed, filters, video, ontdubbelen, `buffer.ts` = pure bufferregels voor de videofeed, nog niet gekoppeld) |
+| `src/` | Frontend (React, feed, filters, video, ontdubbelen, `buffer.ts` = bufferregels voor de videofeed) |
 | `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/[[path]].ts` |
 | `worker/` | Uur-Worker `nieuwsinkort-uur` (eigen `package.json` en `wrangler.toml`) |
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
@@ -114,7 +114,7 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 
 `Runner` logt mislukte runs met `console.error`. DO-storage en KV `run-status` bevatten `faalReeks`, `laatsteFout` en `laatsteOk` (ISO-tijdstippen, aanvankelijk `null`). Succes zet de reeks op 0; het laatste fouttijdstip blijft bewaard. Per gewijzigde status volgt één KV-write. Opslagfouten worden apart gelogd; de runrespons blijft behouden. De cron logt ook niet-succesvolle HTTP-responsen en transportfouten. Ingeslikte fouten in Pages Functions loggen vaste context zonder foutobjecten of verzoekgegevens. Tests gebruiken uitsluitend lokale doubles. Een Cloudflare Notification vereist apart akkoord en dashboardconfiguratie.
 
-Direct starten (#51): de volgende speler staat vooraf in de slide; toetsen, swipe en beeldwissel starten hem direct. De poster blijft zichtbaar tot er beelddata is. HLS buffert op het laagste startniveau circa 4 s op wifi en 2 s bij een herkende mobiele verbinding; native HLS en mp4 gebruiken preload=auto. Save-Data en 2G laden alleen de actieve video. Bij 500 kbit/s is één ongezien volgend filmpje circa 0,25 MB op wifi en 0,125 MB mobiel; de richtgrenzen zijn 1,55 MB en 0,36 MB per bezoek. Dit is geen harde limiet: native browsers bepalen zelf hoeveel zij ophalen, HLS haalt hele segmenten op en het aantal ongeziene filmpjes varieert. De werkelijke datakosten kunnen dus hoger uitvallen; de verbinding is niet in alle browsers herkenbaar. Niet op een echte iPhone geverifieerd.
+Direct starten (#51): de volgende speler staat vooraf in de slide en start direct bij swipen. De poster blijft zichtbaar tot er beelddata is. De vaste pool houdt maximaal twee bronnen actief, ook bij mobiele data en Save-Data. `src/buffer.ts` begrenst de volgende hls.js-speler op 12 s / 4 MB (ruim), 6 s / 2 MB (mobiel of 3g) of 2 s / 1 MB (Save-Data of 2g); de actieve speler krijgt 30 s / 60 MB. Hele HLS-segmenten kunnen de grenzen overschrijden. Native HLS en mp4 gebruiken preload=auto en volgen deze limieten niet. Niet op een echte iPhone geverifieerd.
 
 Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
 

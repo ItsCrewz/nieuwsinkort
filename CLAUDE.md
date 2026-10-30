@@ -30,11 +30,11 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 ## Waar staat wat
 
 - `src/vandaag.ts`: gedeeld dagfilter en publicatietijden voor Worker en Pages.
-- `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `buffer.ts` (pure bufferregels per netwerkniveau, nog niet in `feed.tsx` gekoppeld; getest in `tests/buffer.test.ts`), `sources.ts`, `types.ts`.
+- `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `buffer.ts` (bufferregels per netwerkniveau voor de videofeed; getest in `tests/buffer.test.ts`), `sources.ts`, `types.ts`.
 - `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
-- `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`) en `stall.test.ts` voor videoherstel.
+- `tests/`: één `*.test.ts` per onderwerp, o.a. `dedup.test.ts` (video-ontdubbelen), `beeld-ontdubbelen.test.ts`, `data-merge.test.ts` (`merge` + `schoon`), `links.test.ts`, `externe-url.test.ts`, `beveiligingsheaders.test.ts`, `laadprestaties.test.ts`, `samenvatting-slot.test.ts`, `kv-schrijven.test.ts`, `run-status.test.ts`, `deploy-integriteit.test.ts` en `stall.test.ts` voor videoherstel.
 - `worker/src/cluster.ts`: clusteren van feedberichten (pure module).
 
 ## Conventies
@@ -47,7 +47,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - Alle uitgaande verzoeken van de Worker gebruiken de UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)` (uitzonderingen staan in de code, bijv. Reddit en AD).
 - De Nederlandse-broncheck voor de fallback zonder AI staat in `src/bronlink.ts`; houd deze defensief voor relatieve en ongeldige feedlinks.
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`). Geen `javascript:`-links.
-- Nieuwe test: voeg een `t("...", () => {...})` toe in `tests/dedup.test.ts`.
+- Nieuwe test: voeg een `t("...", () => {...})` toe in het `tests/<onderwerp>.test.ts` dat erbij past, of maak een nieuw bestand; `npm test` pakt elk `*.test.ts` vanzelf op.
 - Tijd: `src/tijd.ts` deelt de Amsterdamse middernachtberekening met de Worker (ook op DST-wisseldagen). Filters gebruiken `gegenereerd` als referentiedag met 20 minuten toekomstmarge; relatieve filters rekenen tegen nu. Regressietests staan in `tests/filters.test.ts`.
 
 ## Caching
@@ -78,7 +78,7 @@ Gebruik `worker/src/url.ts` voor og/artikel-fetches en controleer feedlinks vó�
 
 ## Videofeed vooruit bufferen
 
-`src/buffer.ts` (pure logica, #36) beschrijft per afstand tot de actieve slide en netwerkniveau hoeveel er vooruit mag laden: volgende 12 s / 4 MB (3g: 6 s / 2 MB), Save-Data/2g = "minimaal" (alleen playlist), +2/+3 alleen playlist (+2 ook 2 segmenten), vanaf +4 niets. `feed.tsx` gebruikt dit nog niet: daar bepalen de pool (#50, `src/videopool.ts`) en direct starten (#51, `voorbuffer`) wat er laadt. Koppel `buffer.ts` alleen aan zonder de pool te breken (3 vaste `<video>`'s, max 2 native-HLS op iOS).
+`src/buffer.ts` bepaalt de HLS-buffergrenzen voor de actieve en volgende speler. De vaste pool bewaart drie video-elementen en maximaal twee bronnen; verder vooruit worden geen spelers gebufferd.
 
 ## Neuronbudget (AI-wijzigingen)
 
@@ -120,7 +120,7 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 
 Videopool (#50): `Feed` heeft 3 vaste `<video>`'s (slot = index % 3, `src/videopool.ts`); wissel alleen de bron, maak of verwijder nooit een `<video>` tijdens swipen. Niet op een echte iPhone geverifieerd.
 
-Direct starten (#51): de volgende speler staat vooraf in de slide; toetsen, swipe en beeldwissel starten hem direct. De poster blijft zichtbaar tot er beelddata is. HLS buffert op het laagste startniveau circa 4 s op wifi en 2 s bij een herkende mobiele verbinding; native HLS en mp4 gebruiken preload=auto. Save-Data en 2G laden alleen de actieve video. Bij 500 kbit/s is één ongezien volgend filmpje circa 0,25 MB op wifi en 0,125 MB mobiel; de richtgrenzen zijn 1,55 MB en 0,36 MB per bezoek. Dit is geen harde limiet: native browsers bepalen zelf hoeveel zij ophalen, HLS haalt hele segmenten op en het aantal ongeziene filmpjes varieert. De werkelijke datakosten kunnen dus hoger uitvallen; de verbinding is niet in alle browsers herkenbaar. Niet op een echte iPhone geverifieerd.
+Direct starten (#51): de volgende speler staat vooraf in de slide en start direct bij swipen. De poster blijft zichtbaar tot er beelddata is. De vaste pool houdt maximaal twee bronnen actief, ook bij mobiele data en Save-Data. `src/buffer.ts` begrenst de volgende hls.js-speler op 12 s / 4 MB (ruim), 6 s / 2 MB (mobiel of 3g) of 2 s / 1 MB (Save-Data of 2g); de actieve speler krijgt 30 s / 60 MB. Hele HLS-segmenten kunnen de grenzen overschrijden. Native HLS en mp4 gebruiken preload=auto en volgen deze limieten niet. Niet op een echte iPhone geverifieerd.
 
 Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
 
