@@ -457,8 +457,8 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nc:not(.seen) .nc-in{opacity:0;transform:translateY(18px) scale(.985)}
 .nc-body{display:flex;flex-direction:column;gap:18px;min-height:0}
 /* Nooit tekst half afsnijden: niets in de kaart mag krimpen (flex-shrink maakte de kop halve regels).
-   Past het niet, dan haalt fitCard() eerst het grote nummer en de punten weg, kort daarna de samenvatting
-   in op hele regels (met …) en laat in het uiterste geval de kaart zelf scrollen. De kop wordt nooit ingekort. */
+   Past het niet, dan verkleint fitCard() de foto, haalt punten weg en kort de samenvatting
+   in op hele regels (met …). Daarna kan de foto weg en de kaart zelf scrollen. De kop wordt nooit ingekort. */
 .nc-in > *, .nc-body > *{flex:none}
 .nc-in.fit-nonum .nc-num{display:none}
 .nc-in.fit-nopts .nc-pts{display:none}
@@ -482,6 +482,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--rule)}
 .btn.ghost:hover{opacity:1;background:var(--hover)}
 .btn .ic{width:15px;height:15px}
+.nc-act .btn{padding-left:12px;padding-right:12px;white-space:nowrap}
 .nc-more{font-size:13px;color:var(--muted)}
 
 /* voortgang: dunne rail rechts + teller "3/24" */

@@ -544,7 +544,7 @@ function fitCard(el: HTMLElement) {
   }
   const over = () => el.scrollHeight - el.clientHeight > 1;
   if (!el.clientHeight || !over()) return;
-  // eerst de foto kleiner, dan de punten, dan pas de foto weg
+  // eerst de foto kleiner, dan de punten en samenvatting, als laatste de foto weg
   el.classList.add("fit-imgsm");
   if (!over()) return;
   // punten één voor één van achteren weghalen; pas als er geen meer past, de hele lijst weg
@@ -552,7 +552,6 @@ function fitCard(el: HTMLElement) {
   for (let k = pts.length - 1; k >= 0 && over(); k--) pts[k].hidden = true;
   if (pts.length && !over()) return;
   if (pts.length) el.classList.add("fit-nopts");
-  if (el.querySelector(".nc-img")) { el.classList.add("fit-noimg"); if (!over()) return; }
   if (sum) {
     const lh = parseFloat(getComputedStyle(sum).lineHeight) || 26;
     const lines = Math.round(sum.getBoundingClientRect().height / lh);
@@ -564,6 +563,7 @@ function fitCard(el: HTMLElement) {
     }
     if (!over()) return;
   }
+  if (el.querySelector(".nc-img")) { el.classList.add("fit-noimg"); if (!over()) return; }
   el.classList.add("fit-scroll");
 }
 
@@ -1008,7 +1008,7 @@ function useData() {
       d.filmpjes ??= [];
       zaaiSamenvattingen(d.samenvattingen);
       d.dumpert ??= [];
-      d.dumpert = d.dumpert.filter((v) => !!playerFor(v) || !!veiligeUrl(v.href));
+      d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
       d.filmpjes = d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) })); // Shorts of Journaals
       setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
       setError(false);
