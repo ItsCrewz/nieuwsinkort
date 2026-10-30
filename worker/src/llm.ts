@@ -5,11 +5,13 @@ export type Verzoek = { sys: string; user: string; maxTokens: number; json: bool
 export type Antwoord = { tekst: string; inTok: number; outTok: number };
 export type Aanbieder = { naam: string; modellen: string[]; limieten: { rpm: number; rpd: number; tpm: number; tpd: number; maandTokens?: number }; call: (model: string, verzoek: Verzoek) => Promise<Antwoord> };
 
+function groqJson(model: string, v: Verzoek): boolean { return v.json && (model === "openai/gpt-oss-120b" || model === "openai/gpt-oss-20b"); }
+
 export function groq(sleutel?: string): Aanbieder | undefined {
   if (!sleutel) return undefined;
   return { naam: "groq", modellen: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"], limieten: { rpm: 30, rpd: 1000, tpm: 8000, tpd: 200000 },
     async call(model, v) {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sleutel}`, "User-Agent": "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)" }, body: JSON.stringify({ model, messages: [{ role: "system", content: v.sys }, { role: "user", content: v.user }], max_tokens: v.maxTokens, temperature: 0.3, ...(v.json ? { response_format: { type: "json_object" } } : {}) }), signal: AbortSignal.timeout(15000) });
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sleutel}`, "User-Agent": "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)" }, body: JSON.stringify({ model, messages: [{ role: "system", content: v.sys }, { role: "user", content: v.user }], ...(groqJson(model, v) ? { max_completion_tokens: v.maxTokens * 2, reasoning_effort: "low" } : { max_tokens: v.maxTokens }), temperature: 0.3, ...(v.json ? { response_format: { type: "json_object" } } : {}) }), signal: AbortSignal.timeout(15000) });
       if (!r.ok) throw new Error(`AI-aanbieder HTTP ${r.status}`);
       const data: any = await r.json();
       const tekst = data?.choices?.[0]?.message?.content;
@@ -35,11 +37,11 @@ export function mistral(sleutel?: string, maandTokens?: string): Aanbieder | und
 export type Wacht = { totaal: number; nu?: () => number; slaap?: (ms: number) => Promise<void> };
 
 export async function keten(aanbieders: Aanbieder[], state: LlmState, v: Verzoek, gebruik: (naam: string, model: string, antwoord: Antwoord) => void, wacht: Wacht = { totaal: 0 }): Promise<string> {
-  const schatting = Math.ceil((v.sys.length + v.user.length) / 3.5) + v.maxTokens;
   for (let poging = 0; poging < 2; poging++) {
   let alleenVenster = true, modellen = 0, eerste = Infinity;
   for (const a of aanbieders) for (const model of a.modellen) {
     modellen++;
+    const schatting = Math.ceil((v.sys.length + v.user.length) / 3.5) + (a.naam === "groq" && groqJson(model, v) ? v.maxTokens * 2 : v.maxTokens);
     const nu = (wacht.nu || Date.now)(), dag = new Date(nu).toISOString().slice(0, 10), sleutel = `${a.naam}:${model}`;
     let t = state[sleutel];
     const maand = dag.slice(0, 7);
