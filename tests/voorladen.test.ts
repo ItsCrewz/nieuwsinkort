@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { budgetVan } from "../src/netwerk";
 import { planVoorladen, laagsteVariant, segmenten, type Hulp, type Speler } from "../src/voorladen";
 import type { Video } from "../src/types";
 
@@ -17,37 +16,16 @@ const h: Hulp = {
 const dmp = (n: number) => Array.from({ length: n }, (_, i) => vid(`d${i}`, `https://media.dumpert.nl/v/${i}/index.m3u8`));
 const flm = (n: number) => Array.from({ length: n }, (_, i) => vid(`f${i}`, `https://scontent-lis1-1.cdninstagram.com/o1/${i}.mp4?x=1`));
 
-t("netwerkniveau", () => {
-  assert.equal(budgetVan(undefined), "normaal");
-  assert.equal(budgetVan({ effectiveType: "4g", type: "wifi" }), "normaal");
-  assert.equal(budgetVan({ saveData: true, effectiveType: "4g" }), "geen");
-  assert.equal(budgetVan({ effectiveType: "2g" }), "geen");
-  assert.equal(budgetVan({ effectiveType: "slow-2g" }), "geen");
-  assert.equal(budgetVan({ effectiveType: "3g" }), "zuinig");
-  assert.equal(budgetVan({ effectiveType: "4g", type: "cellular" }), "zuinig");
-});
-t("geen: niets vooraf", () => {
-  const p = planVoorladen(flm(5), dmp(5), "geen", false, h);
-  assert.deepEqual(p, { thumbs: [], preconnect: [], hlsChunk: false, hls: [], mp4: null });
-});
-t("normaal: 6 thumbs per tab, chunk, 2 hls via proxy, eerste mp4, preconnect", () => {
-  const p = planVoorladen(flm(8), dmp(8), "normaal", false, h);
+t("alle verbindingen: 6 thumbs per tab, chunk, 2 hls via proxy, eerste mp4, preconnect", () => {
+  const p = planVoorladen(flm(8), dmp(8), false, h);
   assert.equal(p.thumbs.length, 12);
   assert.equal(p.hlsChunk, true);
   assert.deepEqual(p.hls, ["/media/dumpert/v/0/index.m3u8", "/media/dumpert/v/1/index.m3u8"]);
   assert.equal(p.mp4, flm(1)[0].embed);
   assert.deepEqual(p.preconnect, ["https://scontent-lis1-1.cdninstagram.com"]);
 });
-t("zuinig: 3 thumbs per tab + chunk + preconnect, geen video-bytes", () => {
-  const p = planVoorladen(flm(8), dmp(8), "zuinig", false, h);
-  assert.equal(p.thumbs.length, 6);
-  assert.equal(p.hlsChunk, true);
-  assert.deepEqual(p.hls, []);
-  assert.equal(p.mp4, null);
-  assert.equal(p.preconnect.length, 1);
-});
-t("Safari: geen hls.js-chunk, geen proxy; preconnect rechtstreeks naar Dumpert", () => {
-  const p = planVoorladen([], dmp(4), "normaal", true, h);
+t("Safari: geen hls.js-chunk, preconnect rechtstreeks naar de videobron", () => {
+  const p = planVoorladen([], dmp(4), true, h);
   assert.equal(p.hlsChunk, false);
   assert.deepEqual(p.hls, []);
   assert.deepEqual(p.preconnect, ["https://media.dumpert.nl"]);
@@ -58,18 +36,18 @@ t("ontdubbelen en ongeldige thumbs", () => {
   const b = vid("b", "https://media.dumpert.nl/v/a/index.m3u8", "https://img.example/zelfde.jpg");
   const c = vid("c", "https://media.dumpert.nl/v/c/index.m3u8", "javascript:alert(1)");
   const d = vid("d", "https://media.dumpert.nl/v/d/index.m3u8", "");
-  const p = planVoorladen([], [a, b, c, d], "normaal", false, h);
+  const p = planVoorladen([], [a, b, c, d], false, h);
   assert.deepEqual(p.thumbs, ["https://img.example/zelfde.jpg"]);
   assert.deepEqual(p.hls, ["/media/dumpert/v/a/index.m3u8", "/media/dumpert/v/c/index.m3u8"]);
 });
 t("youtube: alleen preconnect; mp4 buiten de eerste drie telt niet", () => {
   const yt = vid("y", "https://www.youtube-nocookie.com/embed/abcdefghijk");
-  const p = planVoorladen([yt, ...flm(1).map((v) => ({ ...v, embed: "x" })), vid("z", "x"), ...flm(2)], [], "normaal", false, h);
+  const p = planVoorladen([yt, ...flm(1).map((v) => ({ ...v, embed: "x" })), vid("z", "x"), ...flm(2)], [], false, h);
   assert.deepEqual(p.preconnect, ["https://www.youtube-nocookie.com"]);
   assert.equal(p.mp4, null);
 });
 t("lege lijsten", () => {
-  assert.deepEqual(planVoorladen([], [], "normaal", false, h), { thumbs: [], preconnect: [], hlsChunk: false, hls: [], mp4: null });
+  assert.deepEqual(planVoorladen([], [], false, h), { thumbs: [], preconnect: [], hlsChunk: false, hls: [], mp4: null });
 });
 t("playlist: laagste variant en eerste segmenten", () => {
   const m = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\nhi/index.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=1x1\nlo/index.m3u8\n";
