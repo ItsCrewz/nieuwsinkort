@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Cat, Item, Video } from "./types";
 import { midnight } from "./tijd";
+import { BUITEN_WOORD } from "./regio";
 import { Icon } from "./icons";
 
 export type Tijd = "auto" | "sinds" | "vandaag" | "1u" | "3u" | "alles";
@@ -19,6 +20,7 @@ const TIJD_LABEL: Record<Exclude<Tijd, "auto">, string> = { sinds: "Sinds je laa
 const REGIO_LABEL: Record<Regio, string> = { haarlem: "Haarlem", nl: "Nederland", wereld: "Wereld" };
 const CAT_OPT: { id: Cat; label: string }[] = [
   { id: "nl", label: "Nederland" },
+  { id: "buitenland", label: "Buitenland" },
   { id: "tech", label: "Tech & AI" },
   { id: "haarlem", label: "Haarlem" },
   { id: "showbizz", label: "Showbizz" },
@@ -110,11 +112,11 @@ const genVan = (gen?: string) => Date.parse(gen || "") || Date.now();
 // ------------------------------------------------------------- regio / video / samengevoegd
 const BUITEN_SITE = /techcrunch|the verge|ars technica|wired|mit technology|hacker news|engadget|bleeping|reuters|bbc|guardian/i;
 const BUITEN_URL = /\/(buitenland|world|wereld|internationaal|international)\//i;
-const BUITEN_WOORD = /\b(VS|V\.S\.|Amerika\w*|Trump|Biden|China|Chin\w+|Rusland|Russ\w+|Poetin|Oekraïn\w*|Zelensky|Israël\w*|Gaza|Iran\w*|Spanje|Spaans\w*|Brazili\w+|Bolsonaro|Lula|Duitsland|Duits\w*|Frankrijk|Frans\w*|Engeland|Brit\w+|Londen|Italië|Itali\w+|Meloni|België|Belgisch\w*|Japan\w*|India\w*|Canad\w+|Mexico|Turk\w+|Syri\w+|Libanon|Alaska|Cuba|Venezuela|Soedan|Finland|Zweden|Zweeds\w*|Polen|Pools\w*|Bahama's|Washington|New York|Congres|Senaat)\b/;
 const HAARLEM = /haarlem|bloemendaal|heemstede|zandvoort|velsen|ijmuiden|kennemerland|spaarndam|schalkwijk/i;
 export function regioVan(it: Item): Regio {
   const tekst = `${it.kop} ${it.ai || ""} ${it.samenvatting || ""}`;
   if (it.cat === "haarlem" || HAARLEM.test(tekst)) return "haarlem";
+  if (it.cat === "buitenland") return "wereld";
   const b = it.bronnen || [];
   if (b.some((x) => BUITEN_SITE.test(x.site) || BUITEN_URL.test(x.href)) || BUITEN_WOORD.test(`${it.kop} ${it.ai || ""}`)) return "wereld";
   return "nl";

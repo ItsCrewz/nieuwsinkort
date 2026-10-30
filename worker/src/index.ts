@@ -18,6 +18,7 @@ import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
 import { isNL } from "../../src/bronlink";
+import { isBuitenland } from "../../src/regio";
 import { Budget } from "./budget";
 
 export { Budget };
@@ -405,6 +406,7 @@ export class Runner extends DurableObject<Env> {
     // ---- nieuws-kandidaten
     const cands: Cand[] = [];
     const seenL = new Set<string>();
+    const buitenL = new Set<string>(); // links uit buitenlandfeeds, ook als een algemene feed ze eerder bracht
     for (const f of srcFeeds) {
       // Politiek: ook Instagram/YouTube-posts van partijen zijn 'nieuws' (eigen rubriek); andere social-bronnen niet.
       if (!NEWS_CATS.includes(f.g) || (f.g !== "politiek" && SOCIAL_INFO.test(f.s.info || "")) || NIET_ALS_NIEUWS.has(f.s.id)) continue;
@@ -414,6 +416,7 @@ export class Runner extends DurableObject<Env> {
           if (!e.t || !e.l) continue;
           if (f.s.id === "officielebekendmakingen" && !BEKENDMAKING_HINTS.test(e.t + " " + e.s)) continue;
           const k = normLink(e.l);
+          if (/buitenland/i.test(u)) buitenL.add(k);
           if (seenL.has(k)) continue;
           seenL.add(k);
           cands.push({ cat: f.g, site: f.s.naam, href: e.l, t: e.t, s: e.s, d: e.d!, img: e.img });
@@ -524,6 +527,7 @@ export class Runner extends DurableObject<Env> {
     }
     items.sort((a, b) => b._t - a._t);
     for (const i of items) delete i._t;
+    for (const i of items) if (i.cat === "nl" && isBuitenland({ kop: i.kop, ai: i.ai, bronnen: i.bronnen.map((b: any) => ({ ...b, buitenFeed: buitenL.has(normLink(b.href)) })) })) i.cat = "buitenland";
 
     // ---- "Lees verder": artikeltekst ophalen (zonder AI) en, zolang het dagbudget het toelaat, een langere uitleg
     // + kernpunten per bron (Workers AI). Ook voor de berichten van de routine (08:00). Resultaat in KV "meer"
@@ -625,7 +629,7 @@ export class Runner extends DurableObject<Env> {
 
     // ---- In het kort (één keer per run, alleen als de berichten veranderd zijn)
     const lijst = [...items.filter((i) => !i.ruw), ...statItems].slice(0, 70);
-    const order = ["nl", "tech", "haarlem", "showbizz"];
+    const order = ["nl", "buitenland", "tech", "haarlem", "showbizz"];
     const lines = order.flatMap((c) => lijst.filter((i) => i.cat === c).slice(0, c === "nl" ? 22 : 10)).map((i) => `${i.cat}: ${i.kop} — ${i.ai}`);
     const kh = await hash(lines.join("\n"));
     let kort = st.kort || "";
