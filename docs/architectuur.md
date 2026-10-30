@@ -26,6 +26,8 @@ Oude flow (nog aanwezig): routine → Grok-canvas → `export_from_canvas.mjs` �
 
 Vite 8, React 18, TypeScript, Tailwind 3, hls.js. Mobiele feed in TikTok-stijl met fotocarrousels, filters (tijd, rubriek, regio, video, samengevoegd, volgorde), Bronnen-paneel, en een videofeed (max 2 spelers tegelijk, waakhond die herlaadt bij 2,5 s zonder nieuw beeld, geluid standaard aan via localStorage). Video: YouTube via nocookie-iframe, HLS native of via hls.js, MP4 via `<video>` (met `referrer=no-referrer` voor video.twimg.com). Ontdubbelen van video's en foto's: `dedup.ts`, `beeld.ts`. Het bouwen draait eerst `scripts/build-bronnen.mjs` (`public/bronnen.json`).
 
+Video (#44): `src/stall.ts` bewaakt elke 300 ms de afspeeltijd. Na 600 ms stilstand bevriest de balk; bij beweging of meer dan 0,3 s afwijking wordt hij gelijkgezet. Bij minstens 1 s buffer vooruit of readyState 3 volgt na 3 s een herstelpoging; zonder data pas na 10 s. Na nog 3 s volgt zo nodig herladen, met dezelfde limiet van twee per minuut als de bestaande frame-waakhond. Pauze, verborgen tabblad en seeks tellen niet als stilstand. Tests: `tests/stall.test.ts`.
+
 Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert de offset op DST-wisseldagen naar die van middernacht zelf. `filters.tsx` gebruikt `gegenereerd` als referentiedag (bij ontbrekende/ongeldige waarde: nu) en laat berichttijden tot 20 minuten vooruit op die dag staan. Vandaag begint op de huidige Amsterdamse middernacht; 1u/3u rekenen tegen `Date.now()`. Regressietests: `tests/filters.test.ts`.
 
 ## Laadprestaties (#35)
@@ -93,7 +95,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - `scripts/fix-dumpert.mjs`: zorgt voor afspeelbare Dumpert-embeds, laat items zonder video weg.
 - `scripts/add-beelden.mts` + `dhash.py`: foto's per bericht (og:image, dubbele foto's weg via URL en perceptuele hash); cache in `scripts/.cache/` (genegeerd door git).
 - `scripts/pipeline/`: komt via PR #1 en staat mogelijk nog niet op `main`. Controleer de map voor je ervan uitgaat dat hij er is.
-- `tests/`: `dedup.test.ts` (`npm test`, ook beeld/schoon/merge) en `live-dedup.ts` (handmatige check op echte data).
+- `tests/`: `dedup.test.ts` (ook beeld/schoon/merge), `stall.test.ts` (videoherstel) en andere regressietests via `npm test`, plus `live-dedup.ts` (handmatige check op echte data).
 
 ## Deploy
 
