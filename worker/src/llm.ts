@@ -58,7 +58,11 @@ export async function keten(aanbieders: Aanbieder[], state: LlmState, v: Verzoek
     alleenVenster = false;
     // Ook mislukte verzoeken kunnen bij de aanbieder meetellen.
     t.calls++; t.tokens += schatting; if (a.limieten.maandTokens !== undefined) t.maandTokens = (t.maandTokens || 0) + schatting; t.venster.push({ tijd: nu, tokens: schatting });
-    try { const antwoord = await a.call(model, v); gebruik(a.naam, model, antwoord); return antwoord.tekst; } catch { /* volgend model */ }
+    try { const antwoord = await a.call(model, v); gebruik(a.naam, model, antwoord); return antwoord.tekst; } catch (e) {
+      const melding = e instanceof Error ? e.message : "";
+      const http = /^AI-aanbieder HTTP (\d{3})$/.exec(melding);
+      console.error("AI-aanbieder mislukt", a.naam, model, http ? `HTTP ${http[1]}` : melding === "Leeg AI-antwoord" ? melding : "overige fout");
+    }
   }
   if (poging || !modellen || !alleenVenster || eerste > 20000 || wacht.totaal + eerste > 180000 || !Number.isFinite(eerste)) break;
   wacht.totaal += eerste;
