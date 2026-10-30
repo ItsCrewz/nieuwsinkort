@@ -16,7 +16,7 @@ import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { uitgebreidAlineas } from "./uitgebreid";
 import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
+import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
@@ -332,8 +332,9 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
   return (
     <nav className="tabs" aria-label="Rubrieken">
       <div className="tabs-in" ref={wrapRef}>
-        <div className="seg" role="tablist" ref={listRef}>
+        <div className="seg" ref={listRef}>
           <span className="seg-ind" ref={indRef} aria-hidden="true" />
+          <div className="seg-tabs" role="tablist" aria-label="Rubrieken">
           {shown.map((o) => (
             <button
               key={o.value}
@@ -341,7 +342,17 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               className={`tab cat-${o.id}`}
               role="tab"
               aria-selected={view === o.value}
-              aria-label={o.label}
+              tabIndex={view === o.value ? 0 : -1}
+              onKeyDown={(e) => {
+                const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+                const i = tabs.indexOf(e.currentTarget);
+                const volgende = volgendeTab(i, tabs.length, e.key);
+                if (volgende === null) return;
+                e.preventDefault();
+                const next = tabs[volgende];
+                next.focus();
+                next.click();
+              }}
               onClick={(e) => {
                 place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
                 onChange(o.value);
@@ -350,6 +361,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               {label(o)}
             </button>
           ))}
+          </div>
           {rest.length ? (
             <div className="more-wrap" ref={moreRef}>
               <button type="button" className={`tab more-btn ${open ? "open" : ""}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
