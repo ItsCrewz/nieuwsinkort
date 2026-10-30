@@ -922,6 +922,14 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
 }
 
 function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
+  const kopRef = useRef<HTMLHeadingElement>(null);
+  // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
+  useEffect(() => {
+    kopRef.current?.focus({ preventScroll: true });
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onBack();
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [item, onBack]);
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
     return () => {
@@ -942,7 +950,7 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
           {item.ruw ? <span>nog niet samengevat</span> : null}
           {bronnen.length ? <span>{bronnenTekst(bronnen.length)}</span> : null}
         </div>
-        <h1 className="d-title">{item.kop}</h1>
+        <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
         {item.ai ? (
           <p className="d-lead bn">
@@ -1219,9 +1227,14 @@ export default function App() {
     if (was === route.selected) return;
     if (route.selected) window.scrollTo(0, 0);
     else if (was) {
-      const n = document.querySelector(`[data-id="${CSS.escape(was)}"]`);
-      if (n) n.scrollIntoView({ block: "center" });
-      else window.scrollTo(0, 0);
+      const n = document.querySelector<HTMLElement>(`[data-id="${CSS.escape(was)}"]`);
+      if (n) {
+        n.scrollIntoView({ block: "center" });
+        // Focus terug op de link/kaart waarmee het artikel opende (toetsenbord en schermlezer)
+        const f = n instanceof HTMLAnchorElement ? n : n.querySelector<HTMLElement>("a[href]") ?? n;
+        if (f === n && !n.hasAttribute("tabindex")) n.tabIndex = -1;
+        f.focus({ preventScroll: true });
+      } else window.scrollTo(0, 0);
     }
   }, [route.selected]);
 

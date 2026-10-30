@@ -860,7 +860,6 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       src={src}
       title={v.titel}
       data-yt-vangnet={vangnet ? "ja" : "nee"}
-      tabIndex={-1}
       allow="autoplay; encrypted-media; picture-in-picture"
       referrerPolicy="strict-origin-when-cross-origin"
       onLoad={() => {
@@ -889,6 +888,13 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
   const hit = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ p: number; d: number } | null>(null);
   const st = useRef<{ id: number; p: number } | null>(null);
+  // aria-valuenow/-text: de balk zelf beweegt buiten React om, dus lees de stand bij focus en na toetsen/slepen
+  const [pos, setPos] = useState({ t: 0, d: 0 });
+  const lees = (t?: number) => {
+    const api = seek.current;
+    const d = api?.dur() ?? 0;
+    setPos(d > 0 && isFinite(d) ? { t: Math.min(d, Math.max(0, t ?? api!.cur())), d } : { t: 0, d: 0 });
+  };
   const ratio = (x: number) => {
     const r = hit.current!.getBoundingClientRect();
     return Math.min(1, Math.max(0, (x - r.left) / (r.width || 1)));
@@ -929,6 +935,7 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
     const d = api?.dur() ?? 0;
     if (e.type !== "pointercancel" && api && d > 0) api.seek(s.p * d);
     setDrag(null);
+    lees(e.type !== "pointercancel" ? s.p * d : undefined);
   };
   const key = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const api = seek.current;
@@ -936,7 +943,9 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       e.stopPropagation();
-      api.seek(api.cur() + (e.key === "ArrowRight" ? 5 : -5));
+      const t = api.cur() + (e.key === "ArrowRight" ? 5 : -5);
+      api.seek(t);
+      lees(t);
     }
   };
   return (
@@ -947,7 +956,9 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
       aria-label={`Doorspoelen: ${title}`}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={drag ? Math.round(drag.p * 100) : undefined}
+      aria-valuenow={drag ? Math.round(drag.p * 100) : pos.d > 0 ? Math.round((pos.t / pos.d) * 100) : 0}
+      aria-valuetext={drag ? `${fmt(drag.p * drag.d)} van ${fmt(drag.d)}` : `${fmt(pos.t)} van ${fmt(pos.d)}`}
+      onFocus={() => lees()}
       tabIndex={enabled ? 0 : -1}
       onPointerDown={enabled ? down : undefined}
       onPointerMove={enabled ? move : undefined}
