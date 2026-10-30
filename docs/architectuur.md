@@ -70,7 +70,7 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 
 ### Workers AI en budget
 
-Artikelteksten, het dagoverzicht en “Lees verder” vragen om eenvoudig Nederlands voor volwassenen (ongeveer B1): korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), moeilijke woorden uitleggen, afkortingen bij eerste gebruik voluit en alleen feiten uit de invoer. Bestaande samenvattingen blijven per bronlink in `st.sums` gecachet; een promptwijziging maakt ze niet opnieuw.
+Artikelteksten, het dagoverzicht en “Lees verder” vragen om eenvoudig Nederlands voor volwassenen (ongeveer B1): korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), moeilijke woorden uitleggen, afkortingen bij eerste gebruik voluit en alleen feiten uit de invoer. De nieuwsprompt vraagt 2–3 korte zinnen en hooguit twee aanvullende punten, of een lege lijst. Het uitvoerbudget is 180 tokens per bericht plus 80 voor de JSON-structuur (klein model 150 plus 80). Samenvattingen blijven per bronlink in `st.sums` gecachet; daarnaast verwijst een deterministische, gesorteerde set titelwoorden van minstens vier letters zonder stopwoorden, gebonden aan de rubriek, maximaal 24 uur naar een bestaande samenvatting. De cache overleeft middernacht; verlopen verwijzingen worden opgeruimd. Een promptwijziging maakt bestaande samenvattingen niet opnieuw.
 
 Modellen: `@cf/google/gemma-4-26b-a4b-it` (`MODEL`, hoofd), `@cf/meta/llama-3.2-1b-instruct` (`SMALL_MODEL`), `@cf/openai/whisper-large-v3-turbo` (audio, max 3 min). Dagbudget `BUDGET`=9000 neuronen (gratis limiet 10.000), `CAP`=40 per run. Het budget wordt gedeeld door de Worker en `functions/samenvatting.ts`.
 

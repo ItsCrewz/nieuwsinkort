@@ -313,7 +313,7 @@ await t("artikelprompts vragen B1 en behouden één call per groep", async () =>
   const usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0 };
   await summarize(ai, "model", [{ id: 1, cat: "nl", bronnen: ["Bron"], titels: ["Kop"], tekst: "Tekst" }, { id: 2, cat: "nl", bronnen: [], titels: [], tekst: "Tekst" }], usage);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].max_tokens, 620);
+  assert.equal(calls[0].max_tokens, 440);
   await inHetKort(ai, "model", ["Bericht"], usage);
   await verdiep(ai, "model", [{ id: 1, kop: "Kop", kort: "Kort", bronnen: [] }], usage);
   assert.equal(calls.length, 3);

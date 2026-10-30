@@ -103,3 +103,5 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 Tekst-AI gebruikt Workers AI en, als de sleutel is ingesteld, Groq en daarna Mistral als fallback. Zie [AI-aanbieders en secrets](docs/ai-aanbieders.md).
 
 Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
+
+Nieuwsberichten krijgen een samenvatting van 2–3 korte zinnen en hooguit twee aanvullende punten. De Worker hergebruikt samenvattingen via bronlinks en via een rubriekgebonden titelwoordenset, maximaal 24 uur; dit beperkt AI-uitvoer en nieuwe aanvragen.
