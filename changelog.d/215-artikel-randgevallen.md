@@ -1,0 +1,1 @@
+- Randgevallen van artikel- en markdownextractie vastgelegd in tests (#215).
