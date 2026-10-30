@@ -1,4 +1,4 @@
-// Port van /workspace/nieuws/filmpjes.py (Dumpert-toppers, YouTube-nieuwskanalen, Reddit-video's).
+// Port van /workspace/nieuws/filmpjes.py (Dumpert-toppers, YouTube-nieuwskanalen).
 import { decode, stripHtml } from "./parse";
 
 export const YT_NIEUWS: Record<string, string> = {
@@ -15,8 +15,6 @@ export const YT_NIEUWS: Record<string, string> = {
   "Autovisie": "UCAkqAwuyz_qu3vfgAMQPCBw",
 };
 export const ytUrl = (cid: string) => `https://www.youtube.com/feeds/videos.xml?channel_id=${cid}`;
-export const REDDIT_SUBS = ["thenetherlands", "Netherlands", "worldnews", "europe", "Haarlem"];
-export const redditUrl = (s: string) => `https://www.reddit.com/r/${s}/top/.rss?t=day`;
 export const DUMPERT_URL = "https://www.dumpert.nl/toppers";
 
 export type Video = { titel: string; ai: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number; soort?: Soort };
@@ -92,10 +90,9 @@ export function parseYouTube(xml: string, kanaal: string, since: number, hhmm: (
   return out;
 }
 
-export { parseRedditVideos } from "./reddit";
 
 // ---------------------------------------------------------------- Shorts vs. Journaals
-/** "journaal" = uitzending/reportage (liggend, langer); "short" = kort clipje (YouTube Shorts, Reels, Reddit, X). */
+/** "journaal" = uitzending/reportage (liggend, langer); "short" = kort clipje (YouTube Shorts, Reels, X). */
 export type Soort = "short" | "journaal";
 const JOURNAAL_RE = /journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur/i;
 export function soortVan(v: { titel?: string; href?: string; embed?: string; bron?: string; soort?: string }): Soort {

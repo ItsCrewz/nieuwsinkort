@@ -6,7 +6,7 @@ Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq Whisper e
 Alles draait op Cloudflare (Free plan). Geen eigen server.
 
 ```
- bronnen (RSS, hnrss, X, YouTube, Instagram, Dumpert, Reddit/Redlib, weer)
+ bronnen (RSS, hnrss, X, YouTube, Instagram, Dumpert, weer)
         │  elk uur 06–23 (Amsterdam)
         ▼
  Worker nieuwsinkort-uur ── DO Fetcher (ophalen in batches)
@@ -86,7 +86,7 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 - Stappen van een run: bronnen ophalen → berichten van vandaag ontdubbelen/clusteren → bestaande samenvattingen uit state hergebruiken → nieuwe clusters samenvatten (5 per prompt) → foto's (feed, anders og:image, 3 dagen gecachet) → "In het kort" en weertekst alleen bij gewijzigde invoer → "Lees verder"-tekst → `uur` schrijven → alarm: video-samenvattingen vooraf (`vooraf.ts`, roept `/samenvatting` aan met `pre:true`).
 - Clusteren (`worker/src/cluster.ts`, pure module): kandidaten op tijd gesorteerd, per kandidaat vergelijking met elk clusterlid afzonderlijk (max over leden, niet met de unie); past hij bij meer clusters, dan worden die samengevoegd. Tokens: kleine letters zonder accenten, lichte NL-stam (meervoud -en/-s, synoniemen zoals verbod/verbieden en basisschool/basisonderwijs), stopwoorden incl. hulpwerkwoorden (wil, gaat, moet), plus hoofdletter-acroniemen van 2 letters (AI, EU). Samen als overlap ≥2 woorden met Jaccard ≥0,45 (zonder acroniemen) of ≥4 woorden met Jaccard ≥0,3; minstens 1 (voor de ruime regels 2) gedeeld woord buiten de lijst `ALGEMEEN` (jaartallen en postcodedelen tellen niet). Een kandidaat wordt met elk clusterlid afzonderlijk vergeleken (max over leden, niet met de unie van de tokens) en voegt alle clusters samen waar hij bij past. Beschrijving alleen als extra bewijs: bij ≥2 eigen titelwoorden streng (≥8 woorden, Jaccard ≥0,5), of bij 1 eigen woord + gedeeld acroniem (AI, EU) + ≥2 gedeelde titelwoorden (≥9 woorden, Jaccard ≥0,25). De `covered()`-check tegen de routine gebruikt dezelfde `toks`/`sim`. Naspelen: `tests/live-cluster.ts` (oud vs. nieuw op een `data.json` of op feedtitels van `scripts/feedtitels.mts`).
 - Rubrieken: de feedgroep (`f.g`) is de rubriek van een kandidaat; de AI classificeert niet. Buitenland ontstaat achteraf: na het bouwen van de items zet de Worker cat `nl` om naar `buitenland` met `isBuitenland()` uit `src/regio.ts` (bron-signalen uit buitenlandfeeds en hele URL-padsegmenten, Nederlands anker in kop/samenvatting, landnamen en enkele buitenlandse economische namen in economische context als terugval). De Worker weegt alle oorspronkelijke clusterkoppen en bronnen mee, zodat bronnen van één herkend verhaal samen de regio bepalen. Voetbal, Formule 1 en Auto hebben eigen feedgroepen en rubrieken; de selectie reserveert maximaal één nieuw cluster per sportrubriek, samen maximaal drie binnen de runlimiet. Andere rubrieken behouden hun bestaande indeling; Aziatische beurzen vallen vanuit `nl` onder Buitenland. Clusters en AI-selectie (`ROUND`) blijven `nl`; "In het kort" krijgt Buitenland als eigen rubriek (max 10). De frontend past dezelfde `herindeel()` toe bij het laden, zodat routine-items en oude KV-data ook kloppen; `src/sources.ts` telt Buitenland onder bronnengroep `nl`.
-- Onderdelen: `parse.ts` (RSS/Atom), `videos.ts` (Dumpert, YouTube-kanalen), `reddit.ts` (Reddit-video's), `x.ts`, `redlib.ts`, `weer.ts`, `artikel.ts`, `ai.ts`.
+- Onderdelen: `parse.ts` (RSS/Atom), `videos.ts` (Dumpert, YouTube-kanalen), `x.ts`, `weer.ts`, `artikel.ts`, `ai.ts`.
 
 ### Tekst-AI en budget
 
@@ -111,7 +111,7 @@ Meting (#79, details en bevindingen in [ai-budget.md](ai-budget.md)): de dagtell
 
 ## Externe bronnen
 
-Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, behalve waar de code een browser-UA nodig heeft (bijv. artikelpagina's, AD) of een feedlezer-UA (Reddit).
+Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, behalve waar de code een browser-UA nodig heeft (bijv. artikelpagina's, AD).
 
 - **RSS**: lijst in `public/bronnen.json` (gebouwd uit `scripts/pipeline/feeds.json`, zie `scripts/build-bronnen.mjs`).
 - **Hacker News**: `hnrss.org/best` (news.ycombinator.com/rss geeft 419 aan Cloudflare).
@@ -120,8 +120,6 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - **TikTok en Facebook**: geen kanaalfeed voor Filmpjes, omdat daarvoor geen gratis feed beschikbaar is die aan de voorwaarden voldoet.
 - **Instagram**: profiel-embed, reels als filmpjes.
 - **Dumpert**: toppers-pagina en HLS via de proxy (max 720p, H.264).
-- **Reddit**: RSS (`top/.rss?t=day`) → old.reddit → Redlib-instances (roterend, HTML omgezet naar Atom) → laatste gelukte kopie van vandaag. Publieke Redlib-instances blokkeren Cloudflare nu vaak.
-- Reddit-filmpjes spelen `v.redd.it` rechtstreeks af via HLS, zonder proxy. YouTube-links in posts gebruiken de YouTube-embed; andere videolinks worden overgeslagen. De verwijzing naar de Reddit-post blijft bewaard voor ontdubbeling.
 - **Weer** (landelijk, plaats "Nederland"): Buienradar (alle landstations: mediaan en koudste–warmste, landelijke 5-daagse), Open-Meteo als terugval (Groningen, De Bilt, Maastricht in één verzoek), KNMI-weerbericht (bron: KNMI, CC0) en de landelijke waarschuwingsregel uit datzelfde weerbericht (code geel/oranje/rood, ergste wint). Geen provinciepagina's: `/waarschuwingen` stuurt door naar Utrecht en per provincie ophalen kost subrequests. Ontbrekende bron = veld weg. De AI-herschrijving (`simpelWeer`) blijft één aanroep met max 1500 tekens invoer. Rubriek Haarlem is los van het weer.
 - **Overig**: openraadsinformatie (gemeenteraad), og:image van artikelpagina's.
 - Lukt niet: BleepingComputer (403).
@@ -148,7 +146,6 @@ nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekopp
 - Domein koppelen (zie boven).
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
 - "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd.
-- Redlib-instances blokkeren Cloudflare; Reddit valt daardoor soms terug op een oude kopie.
 - YouTube geeft vaak LOGIN_REQUIRED vanaf Cloudflare.
 - De bronnenlijst wordt standaard uit de gereviewde invoer in `scripts/pipeline/` gebouwd.
 - `scripts/pipeline/` (PR #1) nog niet op `main`.
@@ -176,7 +173,7 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 
 De bronnengroepen Voetbal, Formule 1 en Auto hebben eigen feeds in `scripts/pipeline/feeds.json`. Een optionele `max` begrenst per feed de nieuwste kandidaten per run. Algemene berichten uit Nederland, Buitenland en Tech kunnen vóór de AI-keuze worden heringedeeld via `worker/src/sportcat.ts`, op basis van bronpaden en conservatieve titelsignalen. Politiek, Haarlem, Showbizz en bestaande sport- en autorubrieken blijven staan. Bij meerdere signalen geldt Formule 1 boven Voetbal boven Auto; dezelfde prioriteit geldt bij clusters met verschillende bronrubrieken. Verkeersongelukken blijven buiten Auto. Ook de berichten van de ochtendroutine worden heringedeeld. Items uit autobronnen (cat `auto`) kunnen omhoog naar Formule 1 (coureurs, GP, pole position) of Voetbal; zonder zulk signaal blijven ze Auto (#93).
 
-Showbizz heeft eigen feeds (RTL Boulevard-site, Telegraaf Entertainment, NU.nl Achterklap/Muziek/Film, NOS Cultuur & media, Linda.nl met `max` 5). Omdat de eerste feed met een link wint, worden nl- en buitenlandclusters daarna via `worker/src/showcat.ts` Showbizz als minstens de helft van de kandidaten uit een showbizzfeed komt of een showbizzpad heeft (rtl.nl/boulevard, nu.nl achterklap/entertainment/media/muziek/film, telegraaf.nl/entertainment, ad.nl show/cultuur, volkskrant.nl/cultuur-media, linda.nl). Sport gaat voor, politiek blijft politiek; ook de routine-items worden heringedeeld. YouTube-, Instagram-, Reddit- en Kittygram-feeds tellen per feed-URL niet als nieuws (behalve bij Politiek), zodat de RTL Boulevard-site wel telt terwijl de bron ook YouTube-feeds heeft. De dagfilter (#56) blijft ongewijzigd.
+Showbizz heeft eigen feeds (RTL Boulevard-site, Telegraaf Entertainment, NU.nl Achterklap/Muziek/Film, NOS Cultuur & media, Linda.nl met `max` 5). Omdat de eerste feed met een link wint, worden nl- en buitenlandclusters daarna via `worker/src/showcat.ts` Showbizz als minstens de helft van de kandidaten uit een showbizzfeed komt of een showbizzpad heeft (rtl.nl/boulevard, nu.nl achterklap/entertainment/media/muziek/film, telegraaf.nl/entertainment, ad.nl show/cultuur, volkskrant.nl/cultuur-media, linda.nl). Sport gaat voor, politiek blijft politiek; ook de routine-items worden heringedeeld. YouTube-, Instagram- en Kittygram-feeds tellen per feed-URL niet als nieuws (behalve bij Politiek), zodat de RTL Boulevard-site wel telt terwijl de bron ook YouTube-feeds heeft. De dagfilter (#56) blijft ongewijzigd.
 
 De AI-ronde kiest bij de eerste twee budgettrappen eerst hooguit één cluster per sportrubriek, in de volgorde Formule 1, Voetbal en Auto. De overige plaatsen volgen de bestaande ronde Nederland, Nederland, Tech, Haarlem en Showbizz. De bestaande CAP en het run- en dagbudget blijven gelden; vanaf trap 3 blijft de selectie beperkt tot Nederland en Haarlem. De frontend voor deze rubrieken volgt in #59.
 
