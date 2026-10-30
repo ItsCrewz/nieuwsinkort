@@ -36,7 +36,7 @@ const groepen: SourceGroup[] = [{
   id: "nl", label: "Nederland", total: 5, published: 7,
   sources: [
     { id: "a", key: "a", naam: "A", count: 2, fromData: false },
-    { id: "b", key: "b", naam: "B", count: 0, fromData: false, stat: { vandaag: 0, laatste: "2026-10-30T10:30:00Z", ok: "2026-10-30T11:00:00Z", fout: true } },
+    { id: "b", key: "b", naam: "B", count: 0, fromData: false, stat: { vandaag: 0, laatste: "2026-10-30T10:30:00Z", ok: "2026-10-30T11:00:00Z", fout: "fout" } },
     { id: "c", key: "c", naam: "C", count: 1, fromData: false, stat: { vandaag: null, ok: "2026-10-29T10:00:00Z" } },
     { id: "d", key: "d", naam: "D", count: 0, fromData: false, stat: { vandaag: 3 } },
   ],
@@ -75,7 +75,7 @@ assert.equal(calls[2], "reset");
 const opruimen = effect!();
 assert.equal(body.style.overflow, "hidden");
 assert.deepEqual(focus, ["sluiten"]);
-venster.dispatchEvent(new KeyboardEventStub("keydown", { key: "Escape" }));
+venster.dispatchEvent(KeyboardEventStub("keydown", { key: "Escape" }));
 function KeyboardEventStub(this: any, type: string, init: { key: string }) { const e = new Event(type); Object.defineProperty(e, "key", { value: init.key }); return e; }
 assert.equal(closing, true);
 assert.equal(timer?.ms, 360);

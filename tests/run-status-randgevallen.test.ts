@@ -9,7 +9,7 @@ const t = async (name: string, fn: () => void | Promise<void>) => { await fn(); 
 const EchteDate = Date;
 let nu = "2026-01-01T10:00:00.000Z";
 class VasteDate extends EchteDate {
-  constructor(...args: any[]) { super(...(args.length ? (args as [any]) : [nu])); }
+  constructor(...args: any[]) { super(...(args.length ? args : [nu]) as [any]); }
 }
 (globalThis as any).Date = VasteDate;
 const origineelError = console.error;
