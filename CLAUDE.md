@@ -17,7 +17,7 @@ Werkinstructies voor Claude Code in deze repo (nieuwsinkort). Overzicht: [README
 npm ci
 npm run dev        # Vite
 npm run build      # build-bronnen.mjs + tsc --noEmit + vite build
-npm test           # esbuild-bundel van tests/dedup.test.ts, draait met node
+npm test           # esbuild-bundels van tests/dedup.test.ts en tests/filters.test.ts, draaien met node
 npm run bronnen    # alleen public/bronnen.json opnieuw bouwen
 ```
 
@@ -29,7 +29,7 @@ Worker: `cd worker && npm ci`; typecheck zie `worker/tsconfig.json`. Lokaal draa
 - `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts`, `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
-- `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`).
+- `tests/`: `dedup.test.ts` (ook `beeld.ts`, `schoon.ts` en `merge`) en `filters.test.ts`; beide draaien met `npm test`.
 
 ## Conventies
 
