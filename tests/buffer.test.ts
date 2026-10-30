@@ -10,10 +10,10 @@ for (const netwerk of [{ saveData: true }, { effectiveType: "2g" }, { effectiveT
 }
 for (const niveau of ["ruim", "zuinig", "minimaal"] as const) {
   assert.deepEqual(planVoor(0, niveau), { secs: 30, bytes: 60e6 });
-  assert.ok(planVoor(1, niveau).secs > 0 && planVoor(1, niveau).bytes > 0);
+  assert.equal(planVoor(1, niveau).secs > 0, niveau !== "minimaal");
   for (const afstand of [-1, 2, 3, 4, 10]) assert.deepEqual(planVoor(afstand, niveau), { secs: 0, bytes: 0 });
 }
-assert.deepEqual(planVoor(1, "ruim"), { secs: 12, bytes: 4e6 });
-assert.deepEqual(planVoor(1, "zuinig"), { secs: 6, bytes: 2e6 });
-assert.deepEqual(planVoor(1, "minimaal"), { secs: 2, bytes: 1e6 });
+assert.deepEqual(planVoor(1, "ruim"), { secs: 4, bytes: 1e6 });
+assert.deepEqual(planVoor(1, "zuinig"), { secs: 2, bytes: 1e6 });
+assert.deepEqual(planVoor(1, "minimaal"), { secs: 0, bytes: 0 });
 console.log("buffer: tests geslaagd");
