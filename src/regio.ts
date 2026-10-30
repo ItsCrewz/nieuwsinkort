@@ -11,6 +11,10 @@ export const BUITEN_WOORD =/\b(VS|V\.S\.|Amerika\w*|Trump|Biden|China|Chin\w+|Ru
 // Hoofdlettergevoelig: eigennamen; "NS" alleen als los woord.
 export const NL_ANKER = /\b(Nederland\w*|Nederlander\w*|Nederlandse?|kabinet|Tweede Kamer|Eerste Kamer|Den Haag|Haagse|Amsterdam\w*|Rotterdam\w*|Utrecht\w*|Eindhoven|Groningen|Haarlem|Jetten|KNMI|ProRail|Rijkswaterstaat|Wekdienst|Schiphol|NS)\b/;
 
+// Buitenlandse bedrijven en markten zijn alleen bij economisch nieuws een regio-aanwijzing.
+const BUITEN_ECONOMIE = /\b(Binance|Wall Street|Nasdaq|Dow Jones|S&P 500)\b/;
+const ECONOMIE = /\b(beurs\w*|aandelen\w*|koers\w*|markt\w*|crypto\w*|bitcoin\w*|handelsplatform\w*|winst\w*|verlies\w*|boete\w*|failliet\w*|handel\w*|investeer\w*|belegger\w*)\b/i;
+
 type BronIn = { href: string; buitenFeed?: boolean };
 export type Signaal = "buiten" | "binnen" | "neutraal" | null;
 
@@ -36,7 +40,7 @@ export function isBuitenland(it: { kop?: string; ai?: string; bronnen?: BronIn[]
   const s = (it.bronnen || []).map(bronSignaal);
   const b = s.filter((x) => x === "buiten").length, n = s.filter((x) => x === "binnen").length;
   if (b > n) return true;
-  if (b + n === 0 && !s.includes("neutraal")) return BUITEN_WOORD.test(tekst);
+  if (b + n === 0 && !s.includes("neutraal")) return BUITEN_WOORD.test(tekst) || (BUITEN_ECONOMIE.test(tekst) && ECONOMIE.test(tekst));
   return false;
 }
 
