@@ -1,0 +1,1 @@
+- Voeg `npm run check` toe voor de lokale tests, build en typechecks (#109).

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "check": "bash scripts/check.sh",
     "bronnen": "node scripts/build-bronnen.mjs",
     "build": "node scripts/build-bronnen.mjs && tsc --noEmit && vite build && node scripts/build-version.mjs",
     "preview": "vite preview --port 4173",
