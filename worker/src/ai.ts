@@ -1,5 +1,6 @@
-// Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens).
-import { meetChat, meetFout, type Meting } from "../../src/budget";
+import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
+import { groq, keten, type LlmState, type Wacht } from "./llm";
+// Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq-terugval telt tokens, geen neuronen.
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
   "@cf/google/gemma-4-26b-a4b-it": [9091, 27273],
   "@cf/meta/llama-3.2-1b-instruct": [2457, 18252],
@@ -9,7 +10,13 @@ export const RATES: Record<string, [number, number]> = { // neuronen per 1M toke
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [26668, 204805],
   "@cf/mistralai/mistral-small-3.1-24b-instruct": [31876, 50488],
 };
-export type Usage = Meting;
+export type Usage = Meting & { aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
+
+// Alleen een echte Cloudflare-dagquota-fout (zelfde regel als #79) telt als "Cloudflare op"; geen brede regex.
+export const ketenQuota = (e: unknown) => e instanceof KetenFout && !!e.cloudflare && isDagQuota(e.cloudflare);
+export class KetenFout extends Error {
+  constructor(public cloudflare?: string) { super(`AI-keten uitgeput${cloudflare ? `; cloudflare: ${cloudflare}` : ""}`); }
+}
 
 const STIJL =
   "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf voor volwassenen in eenvoudig Nederlands (B1): korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), gewone woorden; leg jargon en moeilijke woorden kort uit. Schrijf afkortingen bij eerste gebruik voluit. " +
@@ -17,19 +24,44 @@ const STIJL =
 
 export async function chat(ai: Ai, model: string, sys: string, user: string, maxTokens: number, u: Usage, json = false): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
-  let r: any;
-  try {
-    r = await ai.run(model as any, {
+  const v = { sys, user, maxTokens, json };
+  const extern = async () => keten([groq(u.llm?.sleutel)].filter((a): a is NonNullable<typeof a> => !!a), u.llm?.state || {}, v, (naam, _model, antwoord) => {
+    u.calls++; u.inTok += antwoord.inTok; u.outTok += antwoord.outTok;
+    const t = (u.aanbieders ||= {})[naam] ||= { inTok: 0, outTok: 0 }; t.inTok += antwoord.inTok; t.outTok += antwoord.outTok;
+  }, u.llm ? (u.llm.wacht ||= { totaal: 0 }) : undefined);
+  const cf = async () => {
+    if (!ai || u.llm?.cloudflare === false) throw new Error("Cloudflare niet beschikbaar");
+    let r: any;
+    const i0 = u.inTok, o0 = u.outTok;
+    const tokensCf = (i: number, o: number) => { const t = (u.aanbieders ||= {}).cloudflare ||= { inTok: 0, outTok: 0 }; t.inTok += u.inTok - i; t.outTok += u.outTok - o; };
+    try {
+      r = await ai.run(model as any, {
       messages: [{ role: "system", content: sys }, { role: "user", content: user }],
       max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3,
       chat_template_kwargs: { enable_thinking: false, thinking: false },
       ...(json ? { response_format: { type: "json_object" } } : {}),
     } as any);
-  } catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } // een mislukte aanroep kan toch neuronen kosten
-  u.calls++;
-  meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
-  const txt = typeof r?.response === "string" ? r.response : r?.response ? JSON.stringify(r.response) : r?.choices?.[0]?.message?.content || "";
-  return String(txt).replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    } catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); tokensCf(i0, o0); throw e; } // een mislukte aanroep kan toch neuronen kosten
+    u.calls++;
+    meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
+    tokensCf(i0, o0);
+    const txt = typeof r?.response === "string" ? r.response : r?.response ? JSON.stringify(r.response) : r?.choices?.[0]?.message?.content || "";
+    if (!txt) throw new Error("Leeg AI-antwoord");
+    return String(txt);
+  };
+  let txt: string;
+  let cloudflareFout = u.llm?.cloudflareFout;
+  try {
+    if (u.llm?.groqEerst && u.llm.sleutel || u.llm?.cloudflare === false) txt = await extern();
+    else {
+      try { txt = await cf(); } catch (e) {
+        cloudflareFout = e instanceof Error ? e.message : String(e);
+        if (u.llm && isDagQuota(cloudflareFout)) { u.llm.cloudflare = false; u.llm.cloudflareFout = cloudflareFout; }
+        txt = await extern();
+      }
+    }
+  } catch { throw new KetenFout(cloudflareFout); }
+  return txt.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 function jsonFrom(s: string): any {
   const a = s.indexOf("{"), b = s.lastIndexOf("}");

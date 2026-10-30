@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import { chat, ketenQuota, type Usage } from "../worker/src/ai";
+import { groq, keten, type LlmState } from "../worker/src/llm";
+
+const origineel = globalThis.fetch;
+const state: LlmState = {};
+const usage = (): Usage => ({ neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: "test-sleutel", state } });
+const modellen: string[] = [];
+globalThis.fetch = (async (_url: any, init: any) => {
+  const model = JSON.parse(init.body).model; modellen.push(model);
+  if (model.endsWith("120b")) return new Response("", { status: 429 });
+  return Response.json({ choices: [{ message: { content: "antwoord" } }], usage: { prompt_tokens: 10, completion_tokens: 5 } });
+}) as typeof fetch;
+const QUOTA = "4006: you have used up your daily free allocation of 10,000 neurons";
+const ai = { run: async () => { throw new Error(QUOTA); } } as unknown as Ai;
+const u = usage();
+assert.equal(await chat(ai, "cf", "s", "u", 10, u), "antwoord");
+assert.deepEqual(modellen, ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]);
+// #79: de mislukte Cloudflare-aanroep wordt gemeten (invoer geschat); Groq voegt tokens toe maar geen neuronen
+assert.equal(u.foutN, u.neurons);
+assert.ok(u.neurons > 0 && u.geschat === 1);
+assert.equal(u.aanbieders?.groq.inTok, 10);
+assert.ok(u.aanbieders?.cloudflare.inTok);
+assert.equal(groq(), undefined);
+await assert.rejects(chat(ai, "cf", "s", "u", 10, { ...usage(), llm: { state: {} } }), (e: Error) => ketenQuota(e) && e.message.includes("cloudflare: 4006"));
+// een tijdelijke 429 is geen dagquota: Cloudflare wordt niet als "op" gemarkeerd
+const t429 = usage();
+await chat({ run: async () => { throw new Error("429 too many requests"); } } as unknown as Ai, "cf", "s", "u", 10, t429);
+assert.equal(t429.llm?.cloudflare, undefined);
+const tijdelijk = { run: async () => { throw new Error("tijdelijk onbereikbaar"); } } as unknown as Ai;
+await assert.rejects(chat(tijdelijk, "cf", "s", "u", 10, { ...usage(), llm: { state: {} } }), (e: Error) => !ketenQuota(e) && e.message.includes("tijdelijk onbereikbaar"));
+let cfCalls = 0;
+const cfEenmaal = { run: async () => { cfCalls++; throw new Error(QUOTA); } } as unknown as Ai;
+const run = usage();
+await chat(cfEenmaal, "cf", "s", "u", 10, run);
+await chat(cfEenmaal, "cf", "s", "u", 10, run);
+assert.equal(cfCalls, 1);
+assert.equal(run.llm?.cloudflare, false);
+const dag = new Date().toISOString().slice(0, 10);
+state["groq:openai/gpt-oss-120b"] = { dag, calls: 1, tokens: 200000, venster: [] };
+modellen.length = 0;
+await keten([groq("test-sleutel")!], state, { sys: "s", user: "u", maxTokens: 10, json: false }, () => {});
+assert.equal(modellen[0], "qwen/qwen3.8-27b");
+const logs: unknown[] = [];
+const log = console.error; console.error = (...args) => { logs.push(args); };
+globalThis.fetch = (async () => { throw new Error("test-sleutel"); }) as typeof fetch;
+await assert.rejects(chat(ai, "cf", "s", "u", 10, usage()));
+console.error = log; globalThis.fetch = origineel;
+assert.ok(!JSON.stringify(logs).includes("test-sleutel"));
+console.log("llm-tests geslaagd");
+
+let nu = Date.UTC(2026, 0, 1, 12), geslapen = 0, calls = 0;
+const wacht = { totaal: 0, nu: () => nu, slaap: async (ms: number) => { geslapen += ms; nu += ms; } };
+const aanbieder = { naam: "proef", modellen: ["a", "b"], limieten: { rpm: 2, rpd: 10, tpm: 100, tpd: 1000 }, call: async () => { calls++; return { tekst: "ok", inTok: 1, outTok: 1 }; } };
+const v = { sys: "", user: "", maxTokens: 60, json: false };
+const dagTest = new Date(nu).toISOString().slice(0, 10);
+const vol: LlmState = Object.fromEntries(aanbieder.modellen.map((m) => [`proef:${m}`, { dag: dagTest, calls: 1, tokens: 60, venster: [{ tijd: nu - 45000, tokens: 60 }] }]));
+assert.equal(await keten([aanbieder], vol, v, () => {}, wacht), "ok");
+assert.equal(geslapen, 15000);
+assert.equal(calls, 1);
+const geblokkeerd: LlmState = Object.fromEntries(aanbieder.modellen.map((m) => [`proef:${m}`, { dag: dagTest, calls: 10, tokens: 60, venster: [{ tijd: nu - 45000, tokens: 60 }] }]));
+await assert.rejects(keten([aanbieder], geblokkeerd, v, () => {}, wacht));
+assert.equal(geslapen, 15000);
+const opnieuwVol: LlmState = Object.fromEntries(aanbieder.modellen.map((m) => [`proef:${m}`, { dag: dagTest, calls: 1, tokens: 60, venster: [{ tijd: nu - 45000, tokens: 60 }] }]));
+wacht.totaal = 170000;
+await assert.rejects(keten([aanbieder], opnieuwVol, v, () => {}, wacht));
+assert.equal(geslapen, 15000);
