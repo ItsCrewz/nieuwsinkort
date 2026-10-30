@@ -1,0 +1,1 @@
+- Mistral: minimaal 1,1 s tussen verzoeken per aanbieder (instelbaar via `MISTRAL_TUSSENPOOS_MS`) en bij HTTP 429 eenmaal een retry na `Retry-After` (max 5 s), tegen de per-secondelimiet van de free tier (#159, #141).
