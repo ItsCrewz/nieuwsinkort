@@ -10,17 +10,19 @@ import { schoon } from "./schoon";
 import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
+import { herindeel } from "./regio";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
 const CATS: { id: Cat; label: string; slug: string }[] = [
   { id: "nl", label: "Nederland", slug: "nederland" },
+  { id: "buitenland", label: "Buitenland", slug: "buitenland" },
   { id: "tech", label: "Tech & AI", slug: "tech" },
   { id: "haarlem", label: "Haarlem", slug: "haarlem" },
   { id: "showbizz", label: "Showbizz", slug: "showbizz" },
   { id: "politiek", label: "Politiek", slug: "politiek" },
 ];
-const CAT_LABEL: Record<Cat, string> = { nl: "Nederland", tech: "Tech & AI", haarlem: "Haarlem", showbizz: "Showbizz", politiek: "Politiek" };
+const CAT_LABEL: Record<Cat, string> = { nl: "Nederland", buitenland: "Buitenland", tech: "Tech & AI", haarlem: "Haarlem", showbizz: "Showbizz", politiek: "Politiek" };
 const ALLES_FIRST = 24; // op "Alles" eerst zoveel kaarten, daarna "Toon alle"
 const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
@@ -1008,6 +1010,7 @@ function useData() {
       if (!r.ok) throw new Error(String(r.status));
       const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
+      d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
       d.filmpjes ??= [];
       zaaiSamenvattingen(d.samenvattingen);
       d.dumpert ??= [];

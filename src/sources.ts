@@ -26,6 +26,8 @@ export const GROUP_ORDER: { id: GroupId; label: string }[] = [
   { id: "dumpert", label: "Dumpert" },
 ];
 const FILTER_KEY = "nieuwsinkort-bronnen-uit";
+// Buitenland is een rubriek, maar geen bronnengroep: die bronnen staan onder "nl".
+const groepVan = (it: Item): GroupId => (it.cat === "buitenland" ? "nl" : it.cat);
 
 // Gelijk aan norm() in scripts/build-bronnen.mjs
 export const norm = (s: string) =>
@@ -87,14 +89,14 @@ export function buildSources(catalog: Catalog | null, data: Data | null): { grou
     row.count++;
   };
   for (const it of data?.items ?? []) {
-    if (!index.has(it.cat as GroupId)) continue;
+    if (!index.has(groepVan(it))) continue;
     // per bericht één keer tellen per bron
     const seen = new Set<string>();
     for (const b of it.bronnen ?? []) {
-      const id = resolveIn(index.get(it.cat as GroupId)!, b.site, b.href);
+      const id = resolveIn(index.get(groepVan(it))!, b.site, b.href);
       if (seen.has(id)) continue;
       seen.add(id);
-      add(it.cat as GroupId, b.site, b.href);
+      add(groepVan(it), b.site, b.href);
     }
   }
   for (const v of data?.filmpjes ?? []) add("filmpjes", v.bron, v.href);
@@ -189,11 +191,11 @@ export function useFiltered(data: Data | null, index: Index, off: Set<string>) {
     const items: Item[] = [];
     for (const it of data.items) {
       const bronnen = it.bronnen ?? [];
-      if (!bronnen.length || !index.has(it.cat as GroupId)) {
+      if (!bronnen.length || !index.has(groepVan(it))) {
         items.push(it);
         continue;
       }
-      const active: Bron[] = bronnen.filter((b) => !off.has(sourceKey(index, it.cat as GroupId, b.site, b.href)));
+      const active: Bron[] = bronnen.filter((b) => !off.has(sourceKey(index, groepVan(it), b.site, b.href)));
       if (active.length === 0) hidden++;
       else items.push(active.length === bronnen.length ? it : { ...it, bronnen: active });
     }
