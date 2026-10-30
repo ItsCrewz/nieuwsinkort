@@ -9,6 +9,7 @@ Werkinstructies voor Claude Code in deze repo (nieuwsinkort). Overzicht: [README
 - **Werk op een branch en maak een PR.** Nooit pushen naar `main`. Niet mergen: dat doet Joey.
 - Draai de **volledige testsuite (`npm test`) één keer aan het eind**, niet na elke stap.
 - **Respecteer het Workers AI-neuronbudget** (`BUDGET`=9000, `CAP`=40, zie hieronder) bij elke wijziging aan AI-aanroepen. Gratis limiet is 10.000 neuronen per dag, gedeeld door de uur-Worker en `functions/samenvatting.ts`.
+- **Changelog per PR als fragment**: werk `changelog.d/<issue>-<slug>.md` bij (opsommingspunt(en)) en bewerk `CHANGELOG.md` niet zelf; de coördinator draait `npm run changelog` (`scripts/changelog.mjs`, test `tests/changelog.test.ts`) vóór een release, niet in `deploy.sh`.
 - Wijzig `DEPLOY_BRANCH`, `wrangler.toml`, `worker/wrangler.toml` (crons, bindings, vars) alleen als de taak dat vraagt.
 
 ## Commando's
