@@ -5,6 +5,7 @@ import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./source
 import { SourcesSheet } from "./sheet";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { VideoGrid, playerFor, soortVan, startSoort } from "./video";
+import { useVoorladen } from "./usevoorladen";
 import { videoSlug, zaaiSamenvattingen } from "./feed";
 import { schoon } from "./schoon";
 import { Beelden, Thumb } from "./beelden";
@@ -1188,6 +1189,7 @@ export default function App() {
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
     [data, flt.f, flt.vorig]
   );
+  useVoorladen(vids, data?.gegenereerd, !!route.video); // Filmpjes/Dumpert vooraf warm, na load en in idle-tijd
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const routeRef = useRef(route);
   routeRef.current = route;
