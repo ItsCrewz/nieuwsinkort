@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
 import { playerFor, viaProxy, youtubeId } from "./video";
+import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
@@ -226,6 +227,18 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
   const [reloadKey, setReloadKey] = useState(0);
   const resumeAt = useRef(0);
   const budget = useRef(new HerstelBudget());
+  const route = useRef({ src, gewisseld: false });
+  if (route.current.src !== src) route.current = { src, gewisseld: false };
+  const wisselRoute = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!active || paused) return;
+    const video = ref.current;
+    const timer = window.setTimeout(() => {
+      if (activeNow.current && !pausedRef.current && video.readyState < 1 && !beeldRef.current) wisselRoute.current?.();
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [active, paused, src, reloadKey]);
 
   // Buffergrootte meeschalen met de positie in de feed (hls.js leest de config live).
   useEffect(() => {
@@ -545,6 +558,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
     video.playsInline = true;
     video.setAttribute("webkit-playsinline", "");
     delete video.dataset.mse;
+    delete video.dataset.dumpertRoute;
     let destroyed = false;
     let recovered = false;
     let cancelWait = () => {};
@@ -552,6 +566,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
     const fout = () => {
       if (destroyed || !pool.eigenaars.actueel(slot, g)) return;
       debugEvent(`fout ${video.error?.code ?? "?"}`);
+      if (wisselRoute.current && !route.current.gewisseld) { wisselRoute.current(); if (route.current.gewisseld) return; }
       // Native HLS: eerst begrensd herstel; mp4 (en een op herstel uitgeputte stream) geeft op.
       if (kind === "hls" && herstel(video, performance.now())) return;
       onFail();
@@ -561,14 +576,29 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       cancelWait();
       hlsRef.current = null;
       video.removeEventListener("error", fout);
+      wisselRoute.current = null;
       maakBronvrij(video, hls);
       hls = null;
       zetBeeld(false);
     };
     pool.eigenaars.zetOpruim(slot, g, opruimen);
     const koppelNative = () => {
+      delete video.dataset.mse;
+      const dumpert = kind === "hls" && isDumpertBron(src);
+      if (dumpert) {
+        video.dataset.dumpertRoute = route.current.gewisseld ? "proxy" : "direct";
+        wisselRoute.current = () => {
+          if (destroyed || !pool.eigenaars.actueel(slot, g) || dumpertRoute({ src, nativeHls: true, fout: true, msSindsStart: 0, heeftFrame: false, alGewisseld: route.current.gewisseld }) !== "proxy" || route.current.gewisseld) return;
+          route.current.gewisseld = true;
+          video.dataset.dumpertRoute = "proxy";
+          debugEvent("dumpert proxy");
+          video.src = viaProxy(src);
+          video.load();
+          if (activeNow.current && !pausedRef.current) speelRef.current();
+        };
+      }
       video.addEventListener("error", fout);
-      video.src = src;
+      video.src = dumpert && route.current.gewisseld ? viaProxy(src) : src;
       video.load();
       if (activeNow.current && !pausedRef.current && !resumeAt.current) speelRef.current();
     };
@@ -581,6 +611,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       return () => { pool.eigenaars.ruimOp(slot, g); };
     }
     video.dataset.mse = "1";
+    if (isDumpertBron(src)) video.dataset.dumpertRoute = "proxy";
     import("hls.js").then(({ default: Hls }) => {
       if (destroyed || !pool.eigenaars.actueel(slot, g)) return;
       if (!Hls.isSupported()) {
