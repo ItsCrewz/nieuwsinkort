@@ -26,3 +26,13 @@ t("merge + schoon: uur-filmpjes en statische filmpjes ontdubbeld, foto's per ber
 });
 
 console.log(`\n${n} tests geslaagd`);
+
+t("merge weert ook geblokkeerde routinevideo's uit beide lijsten", () => {
+  const nu = new Date().toISOString();
+  const video = { href: "https://youtu.be/gmkJBKiE77Q" };
+  const S = { gegenereerd: nu, items: [], filmpjes: [video], dumpert: [video] };
+  const H = { gegenereerd: nu, items: [], filmpjes: [], dumpert: [], ytGeblokkeerd: ["gmkJBKiE77Q"] };
+  const uit = merge(S, H);
+  assert.deepEqual(uit.filmpjes, []);
+  assert.deepEqual(uit.dumpert, []);
+});

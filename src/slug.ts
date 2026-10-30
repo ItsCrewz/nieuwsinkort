@@ -1,6 +1,6 @@
 // Vaste id per filmpje (voor #/filmpjes/<id>, en de KV-cache van video-samenvattingen). Zonder React, ook bruikbaar in Functions.
 import type { Video } from "./types";
-function youtubeId(url: string): string | null {
+export function youtubeId(url: string): string | null {
   const m = /youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|live\/|watch\?(?:.*&)?v=)([\w-]{6,})/.exec(url) || /youtu\.be\/([\w-]{6,})/.exec(url);
   return m ? m[1] : null;
 }
