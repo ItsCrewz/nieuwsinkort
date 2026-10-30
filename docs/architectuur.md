@@ -210,3 +210,9 @@ De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daar
 ### Taboverzichten (#134)
 
 De uurdata bevat optioneel `tab_samenvatting`, met per rubriekcode `tekst`, `ai`, `bron` en `gegenereerd`. Home gebruikt de bestaande `dag_samenvatting`. De Worker gebruikt uur- en routineartikelen en bewaart succesvolle AI-teksten met een volgordeonafhankelijke inhoudshash maximaal zeven dagen in de bestaande KV onder `tabsam:<tab>:laatste`. Bij wijzigingen blijft de vorige tekst minstens zes uur staan; voor AI worden maximaal tien korte berichten gebruikt. Bij cachemissers zonder AI ontstaat extractieve tekst; die wordt niet gecachet zodat een volgende run AI kan proberen. Filmpjes en Dumpert krijgen geen overzicht. Oude data zonder dit veld toont geen taboverzicht.
+
+Workers AI-aanroepen zijn begrensd op 20 seconden per poging. Bij een timeout,
+HTTP 429 of HTTP 5xx volgt eenmaal een nieuwe poging na 250 ms. Fouten worden
+zonder invoertekst gelogd met model, duur en een code (`LLM_TIMEOUT`,
+`LLM_RATE_LIMIT`, `LLM_HTTP_5XX` of `LLM_FOUT`). Een timeout kan de onderliggende
+Workers AI-aanroep niet afbreken; die kan nog neuronen kosten.

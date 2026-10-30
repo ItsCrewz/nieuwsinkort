@@ -1,3 +1,4 @@
+import { llmAanroep } from "./llm-aanroep";
 import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
 import { groq, mistral, keten, type LlmState, type Wacht } from "./llm";
 // Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq- en Mistral-terugval tellen tokens, geen neuronen.
@@ -35,13 +36,13 @@ export async function chat(ai: Ai, model: string, sys: string, user: string, max
     const i0 = u.inTok, o0 = u.outTok;
     const tokensCf = (i: number, o: number) => { const t = (u.aanbieders ||= {}).cloudflare ||= { inTok: 0, outTok: 0 }; t.inTok += u.inTok - i; t.outTok += u.outTok - o; };
     try {
-      r = await ai.run(model as any, {
+      r = await llmAanroep(model, async () => { try { return await ai.run(model as any, {
       messages: [{ role: "system", content: sys }, { role: "user", content: user }],
       max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3,
       chat_template_kwargs: { enable_thinking: false, thinking: false },
       ...(json ? { response_format: { type: "json_object" } } : {}),
-    } as any);
-    } catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); tokensCf(i0, o0); throw e; } // een mislukte aanroep kan toch neuronen kosten
+    } as any); } catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } });
+    } catch (e) { tokensCf(i0, o0); throw e; } // een mislukte aanroep kan toch neuronen kosten
     u.calls++;
     meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
     tokensCf(i0, o0);
