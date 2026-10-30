@@ -165,3 +165,5 @@ De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daar
 Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
 
 Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Dit is nog niet op een echte iPhone geverifieerd.
+
+De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
