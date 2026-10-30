@@ -71,4 +71,69 @@ assert.equal(sourceKey(index, "nl", "", "https://nieuw.example/a"), "nl|nieuw.ex
 const onbekendeCatalogus: Catalog = { groepen: [{ id: "onbekend" as "nl", label: "Onbekend", bronnen: [{ id: "x", naam: "X" }] }] };
 assert.deepEqual(buildSources(onbekendeCatalogus, null).groups, []);
 
+// norm: lidwoord "de" alleen vooraan, ontbrekende invoer wordt leeg
+assert.equal(norm("De Telegraaf"), "telegraaf");
+assert.equal(norm("Omroep de Gelderlander"), "omroepdegelderlander");
+assert.equal(norm("Ñü Crème"), "nucreme");
+assert.equal(norm(undefined as unknown as string), "");
+
+// buildSources zonder catalogus en data: index met alle groepen, geen zichtbare groepen
+const leeg = buildSources(null, null);
+assert.deepEqual(leeg.groups, []);
+assert.deepEqual([...leeg.index.keys()], GROUP_ORDER.map((g) => g.id));
+
+// zonder bronstats: published null en geen stat; volgorde count, dan vandaag, dan naam
+const sorteerCatalogus: Catalog = {
+  groepen: [
+    { id: "tech", label: "Tech & AI", bronnen: [{ id: "b", naam: "beta" }, { id: "a", naam: "Alpha" }, { id: "c", naam: "Gamma" }, { id: "d", naam: "Delta" }] },
+    { id: "f1", label: "Formule 1" } as unknown as Catalog["groepen"][number],
+  ],
+};
+const zonderStats = buildSources(sorteerCatalogus, { ...data, items: [item("tech", [{ site: "Gamma", href: "" }])], filmpjes: [], dumpert: [], bronstats: undefined });
+assert.deepEqual(zonderStats.groups.map((g) => [g.id, g.total, g.published]), [["tech", 1, null]]);
+assert.deepEqual(zonderStats.groups[0].sources.map((s) => s.id), ["c", "a", "b", "d"]);
+assert.equal(zonderStats.groups[0].sources.some((s) => "stat" in s), false);
+const metStats = buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: { "tech|d": { vandaag: 5 }, "tech|b": { vandaag: 1 }, "tech|a": { vandaag: null } } });
+assert.deepEqual(metStats.groups[0].sources.map((s) => s.id), ["d", "b", "a", "c"]);
+assert.deepEqual(metStats.groups.map((g) => [g.id, g.total, g.published]), [["tech", 0, 6]]);
+
+// eerste bron wint bij dubbele alias of host
+const dubbelCatalogus: Catalog = {
+  groepen: [
+    {
+      id: "nl",
+      label: "Nederland",
+      bronnen: [
+        { id: "rtl-nieuws", naam: "RTL Nieuws", alias: ["rtl"], hosts: ["rtl.nl"] },
+        { id: "rtl-z", naam: "RTL Z", alias: ["rtl"], hosts: ["rtl.nl"] },
+        { id: "nhnieuws", naam: "NH Nieuws", hosts: ["nhnieuws.nl", "nh.nl"] },
+      ],
+    },
+  ],
+};
+const dubbel = buildSources(dubbelCatalogus, null).index;
+assert.equal(sourceKey(dubbel, "nl", "RTL", "https://example.org"), "nl|rtl-nieuws");
+assert.equal(sourceKey(dubbel, "nl", "", "https://www.rtl.nl/nieuws/1"), "nl|rtl-nieuws");
+assert.equal(sourceKey(dubbel, "nl", "RTL Z", "https://www.rtl.nl/z/1"), "nl|rtl-z");
+
+// sourceKey: X-handle, host-terugval alleen bij gelijkende naam, onbekende groep
+assert.equal(sourceKey(dubbel, "nl", "X (@NHNieuws)", "https://x.com/NHNieuws/status/1"), "nl|nhnieuws");
+assert.equal(sourceKey(dubbel, "nl", "X (@onbekend_account)", "https://x.com/a"), "nl|xonbekendaccount");
+assert.equal(sourceKey(dubbel, "nl", "Rtl", "https://rtl.nl/a"), "nl|rtl-nieuws");
+assert.equal(sourceKey(dubbel, "nl", "NH", "https://www.nhnieuws.nl/a"), "nl|nh");
+assert.equal(sourceKey(dubbel, "nl", "NH", "https://nh.nl/a"), "nl|nhnieuws");
+assert.equal(sourceKey(dubbel, "nl", "", "geen url"), "nl|onbekend");
+assert.equal(sourceKey(dubbel, "politiek", "RTL Nieuws", "https://rtl.nl/a"), "politiek|rtlnieuws");
+assert.equal(sourceKey(dubbel, "onbekend" as "nl", "Dé Bron", "https://rtl.nl/a"), "onbekend|bron");
+
+// bronnen uit data zonder naam: naam valt terug op host of "Onbekend"
+const naamloos = buildSources(null, { ...data, items: [], filmpjes: [video("", "https://www.video.example/1"), video("", "geen url")], dumpert: [video("", "https://dumpert.nl/item/2")], bronstats: undefined });
+assert.deepEqual(
+  naamloos.groups.map((g) => g.sources.map((s) => [s.key, s.naam, s.count, s.fromData])),
+  [
+    [["filmpjes|onbekend", "Onbekend", 1, true], ["filmpjes|video.example", "video.example", 1, true]],
+    [["dumpert|dumpert", "Dumpert", 1, true]],
+  ]
+);
+
 console.log("sources: tests geslaagd");

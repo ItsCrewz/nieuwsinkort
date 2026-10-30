@@ -31,7 +31,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
 | `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
 | `prod-frozen/` | Bevroren oude productiebuild (zie deploy) |
-| `tests/` | Alle `*.test.ts` draaien met `npm test`, waaronder `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `worker-hulpmodules.test.ts`, `x-artikel-foutpaden.test.ts`, `stall.test.ts` en `videopool.test.ts`; Pages Functions worden getest met lokale nep-KV en nep-AI; X-foutpaden gebruiken een lokale fetch-mock. `live-dedup.ts` en `live-cluster.ts` zijn handmatige checks op echte data |
+| `tests/` | Alle `*.test.ts` draaien met `npm test`, waaronder `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `worker-hulpmodules.test.ts`, `x-artikel-foutpaden.test.ts`, `stall.test.ts`, `videopool.test.ts`, `sources.test.ts` en `sources-hooks.test.ts`; Pages Functions worden getest met lokale nep-KV en nep-AI; X-foutpaden gebruiken een lokale fetch-mock. `live-dedup.ts` en `live-cluster.ts` zijn handmatige checks op echte data |
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
 | `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
 
