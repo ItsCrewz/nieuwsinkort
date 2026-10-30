@@ -1,3 +1,4 @@
+import type { SwipeMeting } from "./swipemeting";
 import { useEffect, useState } from "react";
 import { videoEvents } from "./debug";
 import { ytStatusNaam } from "./ytstart";
@@ -42,7 +43,10 @@ export function DebugOverlay() {
       const status = yt?.dataset.ytStatus ? Number(yt.dataset.ytStatus) : null;
       const ytId = yt?.getAttribute("src")?.split("/embed/")[1]?.split("?")[0] ?? "-";
       const ytRegel = yt ? `YouTube ${ytId} status ${status ?? "-"} ${ytStatusNaam(status)} onReady ${yt.dataset.ytReady === "true" ? "ja" : "nee"} pogingen ${yt.dataset.ytPogingen ?? "0"} vangnet ${yt.dataset.ytVangnet ?? "nee"} sinds activatie ${Math.max(0, Math.round(nu - Number(yt.dataset.ytSinds || nu)))}ms laatste opdracht ${yt.dataset.ytOpdracht ?? "-"} autoplay geblokkeerd: ${yt.dataset.ytBlokkade && yt.dataset.ytBlokkade !== "-" ? `ja (${yt.dataset.ytBlokkade})` : "nee"}\n` : "";
-      zetTekst(`iOS/UA: ${ios}\nstil ${diag?.stil ?? 0} vast ${diag?.vast ?? 0} herladen ${diag?.herladen ?? 0}\npool ${pool}\n${routeRegel}${ytRegel}video's ${videos.length}, src-attribuut ${metSrc}, currentSrc ${metCur}\n${regels.join("\n")}\nEvents:\n${videoEvents.lijst().join("\n")}`);
+      const meting = (window as unknown as { __swipeMetingen?: SwipeMeting[] }).__swipeMetingen?.at(-1);
+      const stap = (t?: number) => t === undefined || !meting ? "-" : `${Math.round(t - meting.gesture)} ms`;
+      const swipe = meting ? `swipe→eerste frame: ${stap(meting.frame)}\nslide ${meting.slide}: actief ${stap(meting.actief)}, play() ${stap(meting.play)}, playing ${stap(meting.playing)}, poster weg ${stap(meting.poster)}\n` : "";
+      zetTekst(`iOS/UA: ${ios}\nstil ${diag?.stil ?? 0} vast ${diag?.vast ?? 0} herladen ${diag?.herladen ?? 0}\npool ${pool}\n${routeRegel}${ytRegel}${swipe}video's ${videos.length}, src-attribuut ${metSrc}, currentSrc ${metCur}\n${regels.join("\n")}\nEvents:\n${videoEvents.lijst().join("\n")}`);
     };
     update();
     const timer = window.setInterval(update, 250);

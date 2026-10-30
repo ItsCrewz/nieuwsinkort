@@ -3,6 +3,7 @@
 // - Alleen huidige ±1 heeft een speler; de volgende wordt vooraf geladen, de rest is alleen een poster.
 // - Actieve video via IntersectionObserver (60%); die speelt (standaard zonder geluid), de rest pauzeert.
 // - Voortgangsbalk via de Web Animations API op transform: loopt op de compositor, geen JS per frame.
+import { bewaarMeting, herstelSwipe, swipeDoel, type SwipeMeting } from "./swipemeting";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Video } from "./types";
@@ -1269,6 +1270,22 @@ export function Feed({
     window.setTimeout(onClose, 220);
   }, [onClose]);
 
+  const metingen = useRef<SwipeMeting[]>([]);
+  const lopendeMeting = useRef<SwipeMeting | null>(null);
+  const swipeStart = useRef<{ van: number; naar: number; speelde: boolean } | null>(null);
+  const herstel = useCallback(() => {
+    const poging = swipeStart.current;
+    if (!poging) return;
+    swipeStart.current = null;
+    if (!herstelSwipe(poging.van, poging.naar, activeRef.current)) return;
+    const volgend = pool.els[slotVan(poging.naar)];
+    if (Number(volgend.closest<HTMLElement>(".fslide")?.dataset.i) === poging.naar) {
+      volgend.pause();
+      try { volgend.currentTime = 0; } catch {}
+    }
+    const huidig = pool.els[slotVan(poging.van)];
+    if (poging.speelde && !pausedRef.current && Number(huidig.closest<HTMLElement>(".fslide")?.dataset.i) === poging.van) huidig.play().catch(() => {});
+  }, [pool]);
   const startDirect = useCallback((i: number) => {
     const video = pool.els[slotVan(i)];
     const slide = video.closest<HTMLElement>(".fslide");
@@ -1282,13 +1299,14 @@ export function Feed({
     const uitSpeelde = !!uit && !uit.paused && Number(uitSlide?.dataset.i) === vorige;
     if (uitSpeelde) uit!.pause();
     video.muted = !geluidMag(soundRef.current.want, geluidTik(), soundRef.current.blocked);
+    if (lopendeMeting.current?.slide === i && lopendeMeting.current.play === undefined) lopendeMeting.current.play = performance.now();
     video.play().catch((err: DOMException) => {
       if (err?.name === "NotAllowedError") {
         video.dataset.autoplayBlokkade = "NotAllowedError";
         if (!video.muted) { setBlocked(true); video.muted = true; video.play().catch(() => {}); }
       }
     });
-    if (i !== vorige) window.setTimeout(() => {
+    if (i !== vorige && swipeStart.current?.naar !== i) window.setTimeout(() => {
       if (i === activeRef.current) return;
       if (video.closest<HTMLElement>(".fslide") === slide) video.pause();
       // Swipe ging niet door: de vorige speelt verder.
@@ -1333,6 +1351,7 @@ export function Feed({
             if (i !== activeRef.current) {
               ytSkips.current.laatste = -1;
               startDirect(i);
+              if (lopendeMeting.current?.slide === i) lopendeMeting.current.actief = performance.now();
               setActive(i);
               setPaused(false);
             }
@@ -1436,19 +1455,60 @@ export function Feed({
       }
     };
     let startY = 0;
-    const touchStart = (e: TouchEvent) => { startY = e.changedTouches[0]?.clientY ?? 0; };
-    const touchEnd = (e: TouchEvent) => {
-      const dy = (e.changedTouches[0]?.clientY ?? startY) - startY;
-      if (Math.abs(dy) > 30) startDirect(activeRef.current + (dy < 0 ? 1 : -1));
+    let gestart = false;
+    const touchStart = (e: TouchEvent) => { startY = e.changedTouches[0]?.clientY ?? 0; gestart = false; };
+    const touchMove = (e: TouchEvent) => {
+      if (gestart) return;
+      const i = swipeDoel(startY, e.changedTouches[0]?.clientY ?? startY, activeRef.current);
+      if (i === null) return;
+      if (root.current?.querySelector(`.fslide[data-i="${activeRef.current}"] iframe.f-yt`)) return;
+      const video = pool.els[slotVan(i)];
+      if (Number(video.closest<HTMLElement>(".fslide")?.dataset.i) !== i || !video.getAttribute("src")) return;
+      gestart = true;
+      const huidig = pool.els[slotVan(activeRef.current)];
+      swipeStart.current = { van: activeRef.current, naar: i, speelde: !huidig.paused && Number(huidig.closest<HTMLElement>(".fslide")?.dataset.i) === activeRef.current };
+      if (DEBUG) {
+        const m: SwipeMeting = { slide: i, gesture: performance.now() };
+        lopendeMeting.current = m;
+        bewaarMeting(metingen.current, m);
+        (window as unknown as { __swipeMetingen: SwipeMeting[] }).__swipeMetingen = metingen.current;
+        video.addEventListener("playing", () => { m.playing ??= performance.now(); }, { once: true });
+        (video as VideoMetFrames).requestVideoFrameCallback?.(() => { m.frame ??= performance.now(); });
+        const poster = video.closest(".fcol")?.querySelector(".f-poster");
+        if (poster?.classList.contains("weg")) m.poster = performance.now();
+        else if (poster) {
+          const observer = new MutationObserver(() => { if (poster.classList.contains("weg")) { m.poster = performance.now(); observer.disconnect(); } });
+          observer.observe(poster, { attributes: true, attributeFilter: ["class"] });
+          window.setTimeout(() => observer.disconnect(), 5000);
+        }
+      }
+      startDirect(i);
     };
+    let herstelTimer: number | undefined;
+    const touchEnd = (e: TouchEvent) => {
+      const doel = swipeDoel(startY, e.changedTouches[0]?.clientY ?? startY, swipeStart.current?.van ?? activeRef.current);
+      if (doel === null || (swipeStart.current && doel !== swipeStart.current.naar)) herstel();
+      if (doel !== null) startDirect(doel);
+      window.clearTimeout(herstelTimer);
+      herstelTimer = window.setTimeout(herstel, 1500);
+    };
+    const touchCancel = () => herstel();
+    const scrollEnd = () => herstel();
     r.addEventListener("touchstart", touchStart, { passive: true });
+    r.addEventListener("touchmove", touchMove, { passive: true });
     r.addEventListener("touchend", touchEnd, { passive: true });
+    r.addEventListener("touchcancel", touchCancel, { passive: true });
+    scroller.current?.addEventListener("scrollend", scrollEnd);
     const types = ["touchend", "pointerup", "click"];
     types.forEach((t) => r.addEventListener(t, onGesture, { capture: true, passive: true }));
     window.addEventListener("keydown", onGesture, { capture: true, passive: true });
     return () => {
       r.removeEventListener("touchstart", touchStart);
+      r.removeEventListener("touchmove", touchMove);
       r.removeEventListener("touchend", touchEnd);
+      r.removeEventListener("touchcancel", touchCancel);
+      scroller.current?.removeEventListener("scrollend", scrollEnd);
+      window.clearTimeout(herstelTimer);
       types.forEach((t) => r.removeEventListener(t, onGesture, { capture: true }));
       window.removeEventListener("keydown", onGesture, { capture: true });
     };
