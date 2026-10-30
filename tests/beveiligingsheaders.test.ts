@@ -22,17 +22,29 @@ t("CSP staat alleen het exacte thema-script en de benodigde mediabronnen toe", (
   const hash = createHash("sha256").update(script).digest("base64");
   const csp = /Content-Security-Policy: (.+)/.exec(headers)![1];
   const regels = new Map(csp.split("; ").map((r) => { const [k, ...v] = r.split(" "); return [k, v.join(" ")]; }));
-  assert.equal(regels.get("script-src"), "'self' 'sha256-" + hash + "'");
+  assert.equal(regels.get("script-src"), "'self' 'sha256-" + hash + "' https://static.cloudflareinsights.com");
   for (const [k, v] of Object.entries({
     "default-src": "'self'", "style-src": "'self' 'unsafe-inline'",
     "font-src": "'self'", "img-src": "'self' https: data:",
-    "media-src": "'self' https: blob:", "connect-src": "'self' https:",
+    "media-src": "'self' https: blob:", "connect-src": "'self' https: https://cloudflareinsights.com",
     "frame-src": "https://www.youtube-nocookie.com", "worker-src": "'self' blob:",
     "object-src": "'none'", "base-uri": "'self'", "form-action": "'none'", "frame-ancestors": "'none'",
   })) assert.equal(regels.get(k), v, k);
   assert.match(headers, /X-Frame-Options: DENY/);
   assert.match(headers, /Permissions-Policy: camera=\(\), microphone=\(\), geolocation=\(\), payment=\(\), usb=\(\)/);
   assert.ok(!headers.includes("/data.json"));
+});
+
+t("Cloudflare Analytics-bronnen staan alleen in de bedoelde CSP-richtlijnen", () => {
+  const headers = readFileSync("public/_headers", "utf8");
+  const csp = /Content-Security-Policy: (.+)/.exec(headers)![1];
+  const regels = csp.split(";").map((regel) => regel.trim().split(/\s+/));
+  for (const [bron, richtlijn] of [
+    ["https://static.cloudflareinsights.com", "script-src"],
+    ["https://cloudflareinsights.com", "connect-src"],
+  ]) {
+    assert.deepEqual(regels.filter((regel) => regel.slice(1).includes(bron)).map((regel) => regel[0]), [richtlijn]);
+  }
 });
 
 const req = (pad: string) => new Request("https://voorbeeld.test" + pad);
