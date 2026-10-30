@@ -5,6 +5,22 @@ export type Verzoek = { sys: string; user: string; maxTokens: number; json: bool
 export type Antwoord = { tekst: string; inTok: number; outTok: number };
 export type Aanbieder = { naam: string; modellen: string[]; limieten: { rpm: number; rpd: number; tpm: number; tpd: number; maandTokens?: number }; call: (model: string, verzoek: Verzoek) => Promise<Antwoord> };
 
+class HttpFout extends Error {
+  constructor(status: number, readonly details: { code?: string; type?: string }) { super(`AI-aanbieder HTTP ${status}`); }
+}
+
+async function httpFout(r: Response, sleutel: string): Promise<HttpFout> {
+  const details: { code?: string; type?: string } = {};
+  try {
+    const data: any = await r.json();
+    for (const veld of ["code", "type"] as const) {
+      const waarde = data?.error?.[veld];
+      if (typeof waarde === "string" && /^[a-zA-Z][a-zA-Z0-9_.-]{0,63}$/.test(waarde) && !waarde.includes(sleutel)) details[veld] = waarde;
+    }
+  } catch { /* Ongeldige of ontbrekende body: alleen de status loggen. */ }
+  return new HttpFout(r.status, details);
+}
+
 function groqJson(model: string, v: Verzoek): boolean { return v.json && (model === "openai/gpt-oss-120b" || model === "openai/gpt-oss-20b"); }
 
 export function groq(sleutel?: string): Aanbieder | undefined {
@@ -12,7 +28,7 @@ export function groq(sleutel?: string): Aanbieder | undefined {
   return { naam: "groq", modellen: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"], limieten: { rpm: 30, rpd: 1000, tpm: 8000, tpd: 200000 },
     async call(model, v) {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sleutel}`, "User-Agent": "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)" }, body: JSON.stringify({ model, messages: [{ role: "system", content: v.sys }, { role: "user", content: v.user }], ...(groqJson(model, v) ? { max_completion_tokens: v.maxTokens * 2, reasoning_effort: "low" } : { max_tokens: v.maxTokens }), temperature: 0.3, ...(v.json ? { response_format: { type: "json_object" } } : {}) }), signal: AbortSignal.timeout(15000) });
-      if (!r.ok) throw new Error(`AI-aanbieder HTTP ${r.status}`);
+      if (!r.ok) throw await httpFout(r, sleutel);
       const data: any = await r.json();
       const tekst = data?.choices?.[0]?.message?.content;
       if (typeof tekst !== "string" || !tekst.trim()) throw new Error("Leeg AI-antwoord");
@@ -26,7 +42,7 @@ export function mistral(sleutel?: string, maandTokens?: string): Aanbieder | und
   return { naam: "mistral", modellen: ["mistral-small-latest"], limieten: { rpm: 60, rpd: 2000, tpm: 100000, tpd: 1000000, maandTokens: maandTokens && Number.isSafeInteger(max) && max >= 0 ? max : 30000000 },
     async call(model, v) {
       const r = await fetch("https://api.mistral.ai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sleutel}`, "User-Agent": "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)" }, body: JSON.stringify({ model, messages: [{ role: "system", content: v.sys }, { role: "user", content: v.user }], max_tokens: v.maxTokens, temperature: 0.3, ...(v.json ? { response_format: { type: "json_object" } } : {}) }), signal: AbortSignal.timeout(15000) });
-      if (!r.ok) throw new Error(`AI-aanbieder HTTP ${r.status}`);
+      if (!r.ok) throw await httpFout(r, sleutel);
       const data: any = await r.json();
       const tekst = data?.choices?.[0]?.message?.content;
       if (typeof tekst !== "string" || !tekst.trim()) throw new Error("Leeg AI-antwoord");
@@ -63,7 +79,8 @@ export async function keten(aanbieders: Aanbieder[], state: LlmState, v: Verzoek
     try { const antwoord = await a.call(model, v); gebruik(a.naam, model, antwoord); return antwoord.tekst; } catch (e) {
       const melding = e instanceof Error ? e.message : "";
       const http = /^AI-aanbieder HTTP (\d{3})$/.exec(melding);
-      console.error("AI-aanbieder mislukt", a.naam, model, http ? `HTTP ${http[1]}` : melding === "Leeg AI-antwoord" ? melding : "overige fout");
+      const details = e instanceof HttpFout && Object.keys(e.details).length ? [e.details] : [];
+      console.error("AI-aanbieder mislukt", a.naam, model, http ? `HTTP ${http[1]}` : melding === "Leeg AI-antwoord" ? melding : "overige fout", ...details);
     }
   }
   if (poging || !modellen || !alleenVenster || eerste > 20000 || wacht.totaal + eerste > 180000 || !Number.isFinite(eerste)) break;
