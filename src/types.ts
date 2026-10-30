@@ -1,4 +1,4 @@
-export type Cat = "nl" | "buitenland" | "tech" | "haarlem" | "showbizz" | "politiek";
+export type Cat = "nl" | "buitenland" | "tech" | "haarlem" | "showbizz" | "politiek" | "voetbal" | "f1" | "auto";
 export type Bron = { site: string; href: string };
 export type Item = {
   cat: Cat;

@@ -21,10 +21,13 @@ const REGIO_LABEL: Record<Regio, string> = { haarlem: "Haarlem", nl: "Nederland"
 const CAT_OPT: { id: Cat; label: string }[] = [
   { id: "nl", label: "Nederland" },
   { id: "buitenland", label: "Buitenland" },
+  { id: "politiek", label: "Politiek" },
+  { id: "voetbal", label: "Voetbal" },
+  { id: "f1", label: "Formule 1" },
+  { id: "auto", label: "Auto" },
   { id: "tech", label: "Tech & AI" },
   { id: "haarlem", label: "Haarlem" },
   { id: "showbizz", label: "Showbizz" },
-  { id: "politiek", label: "Politiek" },
 ];
 
 function lees(): Filters {
