@@ -1,0 +1,1 @@
+- Tests: randgevallen van `worker/src/parse.ts` vastgelegd (entiteiten, dubbel-geëscapete HTML, CET/CEST, igTime, Atom met meerdere links, CDATA) (#213).
