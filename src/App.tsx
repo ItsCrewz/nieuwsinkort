@@ -13,6 +13,7 @@ import { FilterBalk, FilterBlad, filterNieuws, filterVideos, useFilters } from "
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { detailInhoud, heeftLeesVerder } from "./leesverder";
+import { uitgebreidAlineas } from "./uitgebreid";
 import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
@@ -866,25 +867,22 @@ function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
 function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   const { meer, laden } = useMeer(item);
   if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
-  if (!meer) return null;
-  const uitleg = meer.uitleg ?? [];
-  const per = (meer.perBron ?? []).filter((b) => b.punten?.length);
-  // het artikel zelf alleen als er geen AI-uitleg is (anders dubbel)
-  const uit = uitleg.length ? [] : (meer.uittreksel ?? []).filter((b) => b.alineas?.length);
+  const uitleg = uitgebreidAlineas(item, meer);
+  const per = (meer?.perBron ?? []).filter((b) => b.punten?.length);
+  // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg is; de alineas staan dan al onder Uitgebreid
+  const uit = meer?.uitleg?.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
   return (
     <>
-      {uitleg.length ? (
-        <section className="d-sec d-meer" aria-label="Uitgebreid">
-          <h2 className="d-h">Uitgebreid</h2>
-          <div className="d-body bn">
-            {uitleg.map((p, n) => (
-              <p key={n}>
-                <BionicText text={p} on={bionic} />
-              </p>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <section className="d-sec d-meer" aria-label="Uitgebreid">
+        <h2 className="d-h">Uitgebreid</h2>
+        <div className="d-body bn">
+          {uitleg.map((p, n) => (
+            <p key={n}>
+              <BionicText text={p} on={bionic} />
+            </p>
+          ))}
+        </div>
+      </section>
       {per.length ? (
         <section className="d-sec" aria-label="Wat elke bron meldt">
           <h2 className="d-h">Wat elke bron meldt</h2>
@@ -908,15 +906,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
         </section>
       ) : null}
       {uit.map((b, n) => (
-        <section className="d-sec d-meer" key={b.href + n} aria-label={`Uit het artikel bij ${b.site}`}>
-          <h2 className="d-h">Uit het artikel bij {b.site}</h2>
-          <div className="d-body d-quote bn">
-            {b.alineas.map((p, k) => (
-              <p key={k}>
-                <BionicText text={p} on={bionic} />
-              </p>
-            ))}
-          </div>
+        <section className="d-sec d-meer" key={b.href + n} aria-label={`Bron: ${b.site}`}>
           <a className="btn ghost d-more" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
             Lees het hele artikel bij {b.site}
             <Icon name="ext" />

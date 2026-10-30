@@ -10,7 +10,7 @@ export const RATES: Record<string, [number, number]> = { // neuronen per 1M toke
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [26668, 204805],
   "@cf/mistralai/mistral-small-3.1-24b-instruct": [31876, 50488],
 };
-export type Usage = Meting & { aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
+export type Usage = Meting & { aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
 
 // Alleen een echte Cloudflare-dagquota-fout (zelfde regel als #79) telt als "Cloudflare op"; geen brede regex.
 export const ketenQuota = (e: unknown) => e instanceof KetenFout && !!e.cloudflare && isDagQuota(e.cloudflare);
@@ -25,7 +25,7 @@ const STIJL =
 export async function chat(ai: Ai, model: string, sys: string, user: string, maxTokens: number, u: Usage, json = false): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
   const v = { sys, user, maxTokens, json };
-  const extern = async () => keten([groq(u.llm?.sleutel), mistral(u.llm?.mistralSleutel, u.llm?.mistralMaandTokens)].filter((a): a is NonNullable<typeof a> => !!a), u.llm?.state || {}, v, (naam, _model, antwoord) => {
+  const extern = async () => keten([groq(u.llm?.sleutel), mistral(u.llm?.mistralSleutel, u.llm?.mistralMaandTokens, u.llm?.mistralTussenpoos)].filter((a): a is NonNullable<typeof a> => !!a), u.llm?.state || {}, v, (naam, _model, antwoord) => {
     u.calls++; u.inTok += antwoord.inTok; u.outTok += antwoord.outTok;
     const t = (u.aanbieders ||= {})[naam] ||= { inTok: 0, outTok: 0 }; t.inTok += antwoord.inTok; t.outTok += antwoord.outTok;
   }, u.llm ? (u.llm.wacht ||= { totaal: 0 }) : undefined);

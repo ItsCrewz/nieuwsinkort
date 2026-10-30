@@ -29,6 +29,7 @@ import { maakTabSam, tabTekst, tabAiRoute } from "./tabsam";
 import { herindeel } from "../../src/regio";
 import { herindeelSport, sportCat } from "./sportcat";
 import { herindeelShow, showCat, nietAlsNieuws } from "./showcat";
+import { zonderUitleg } from "../../src/uitgebreid";
 
 export { Budget };
 
@@ -54,7 +55,7 @@ export function kiesVoorAI<T>(byCat: Record<string, T[]>, tier: number, capN: nu
 
 export interface Env {
   NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>; BUDGET_DO: DurableObjectNamespace<Budget>;
-  RUN_KEY?: string; GROQ_API_KEY?: string; MISTRAL_API_KEY?: string; MISTRAL_MAAND_TOKENS?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string; NEURON_FACTOR?: string;
+  RUN_KEY?: string; GROQ_API_KEY?: string; MISTRAL_API_KEY?: string; MISTRAL_MAAND_TOKENS?: string; MISTRAL_TUSSENPOOS_MS?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string; NEURON_FACTOR?: string;
 }
 const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";
 const TZ = "Europe/Amsterdam";
@@ -461,7 +462,7 @@ export class Runner extends DurableObject<Env> {
       for (const c of k.c) { const id = st.links[normLink(c.href)]; if (id && st.sums[id]) return st.sums[id]; }
       return vindClusterSum(st.hashes!, st.sums, k.c[0].t, k.cat, now);
     };
-    const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, state: st.llm } };
+    const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: st.llm } };
     // Alleen-politiek (losse partijposts) nooit door de AI: die tonen we zoals de partij ze schrijft.
     const todo = clusters.filter((k) => !sumOf(k) && k.cat !== "politiek");
     // ---- AI-budget in trappen (gratis = 10.000 neuronen/dag, BUDGET = eigen plafond daaronder)
@@ -624,7 +625,7 @@ export class Runner extends DurableObject<Env> {
     const diepRun = Math.max(120, Math.min(700, ((diepGrens - used()) / runsLeft) * 2));
     const diepStart = usage.neurons;
     let diepNieuw = 0, diepStop = "";
-    const diepTodo = mOrde.filter((m) => !st.diep![m.key] && artVan(m).length);
+    const diepTodo = zonderUitleg(mOrde, st.diep!).filter((m) => artVan(m).length);
     const dGroepen: MC[][] = [];
     for (let i = 0; i < diepTodo.length; i += 2) dGroepen.push(diepTodo.slice(i, i + 2));
     const doDiep = async (g: MC[]) => {
