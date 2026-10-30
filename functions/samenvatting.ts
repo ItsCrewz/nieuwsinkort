@@ -5,6 +5,9 @@
 // 3. Samenvatten in simpele, informele punten. Zelfde dagbudget als de uur-Worker: het uurnieuws gaat voor
 //    (er blijft ruimte gereserveerd voor de rest van de dag), boven 70% het kleine model, pas bij het plafond een nette melding.
 // Alleen filmpjes die nu op de site staan (geen willekeurige URL's ophalen).
+// Bescherming van het budget: JSON-Content-Type verplicht (415), vreemde Origin geweigerd (403), slot per video
+// (geheugen + KV) vóór budget/media, neuronen vooraf gereserveerd, Whisper-teller per uur, ook fouten kort gecachet,
+// en `why` (interne foutteksten) alleen bij pre:true.
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
 
@@ -22,7 +25,7 @@ async function chat(ai: any, model: string, sys: string, user: string, maxTokens
   return String(txt).replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
-interface KV { get(key: string, type?: "json" | "text"): Promise<any>; put(key: string, v: string, o?: { expirationTtl?: number }): Promise<void> }
+interface KV { get(key: string, type?: "json" | "text"): Promise<any>; put(key: string, v: string, o?: { expirationTtl?: number }): Promise<void>; delete(key: string): Promise<void> }
 interface Env { NIEUWS: KV; AI: any; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; MODEL?: string; SMALL_MODEL?: string }
 interface Ctx { request: Request; env: Env }
 
@@ -34,6 +37,9 @@ const MAX_SEC = 180; // hooguit de eerste 3 minuten geluid
 const MAX_MP4 = 12e6; // mp4 zonder knippen: alleen korte filmpjes
 const PER_RUN = 260;
 const PRE_MAX = 0.85, PRE_MARGE = 600; // vooraf maken: niet boven 85% van het budget, en 600 neuronen marge // reserve per nog komend uur-nieuws (gemiddelde run ±210–480)
+const MAX_WHISPER_UUR = 30; // globale rem: hooguit zoveel Whisper-aanroepen per uur (KV-teller vs-uur:<datum>T<uur>)
+const FOUT_TTL = 1800; // een falend filmpje kost hooguit één keer per half uur geld
+const bezigNu = new Set<string>(); // slot binnen deze isolate: KV is eventual consistent, dit sluit de gelijktijdige verzoeken op één PoP
 const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const json = (o: any, s = 200) => new Response(JSON.stringify(o), { status: s, headers: HDR });
 
@@ -45,6 +51,9 @@ const MSG = {
   bezig: "Deze samenvatting wordt net gemaakt. Probeer het over een paar tellen nog eens.",
   onbekend: "Dit filmpje staat niet (meer) op de site.",
   fout: "Samenvatten lukt even niet. Probeer het later nog eens.",
+  druk: "Er worden nu veel samenvattingen gemaakt. Probeer het over een uur nog eens.",
+  type: "Alleen JSON wordt geaccepteerd.",
+  origin: "Verzoek van een andere website geweigerd.",
 };
 
 function ams(t = Date.now()) {
@@ -171,6 +180,10 @@ async function vindVideo(env: Env, req: Request, id: string): Promise<any | null
 }
 
 export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> => {
+  // geen "simple" cross-site POST (text/plain zonder preflight) en geen vreemde Origin; vooraf.ts stuurt geen Origin
+  if (!/^application\/json\b/i.test(request.headers.get("Content-Type") || "")) return json({ ok: false, code: "type", fout: MSG.type }, 415);
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== new URL(request.url).origin) return json({ ok: false, code: "origin", fout: MSG.origin }, 403);
   let body: any = {};
   try { body = await request.json(); } catch {}
   const id = String(body?.id || "");
@@ -182,8 +195,23 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   if (hit) return json({ ...hit, cached: true });
   const v = await vindVideo(env, request, id);
   if (!v) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 404);
-  if (await env.NIEUWS.get(`vs-bezig:${id}`).catch(() => null)) return json({ ok: false, code: "bezig", fout: MSG.bezig }, 409);
+  // slot vóór budget en media: eerst synchroon in het geheugen (geen await tussen check en set), dan in KV
+  if (bezigNu.has(id)) return json({ ok: false, code: "bezig", fout: MSG.bezig }, 409);
+  bezigNu.add(id);
+  const slot = `vs-bezig:${id}`;
+  let eigen = false;
+  try {
+    if (await env.NIEUWS.get(slot).catch(() => null)) return json({ ok: false, code: "bezig", fout: MSG.bezig }, 409);
+    eigen = true;
+    await env.NIEUWS.put(slot, "1", { expirationTtl: 60 }).catch(() => {});
+    return await maak(env, v, id, key, pre);
+  } finally {
+    bezigNu.delete(id);
+    if (eigen) await env.NIEUWS.delete(slot).catch(() => {}); // klaar (of geweigerd): slot niet 60 s laten hangen
+  }
+};
 
+async function maak(env: Env, v: any, id: string, key: string, pre: boolean): Promise<Response> {
   // ---- budget (gedeeld met de uur-Worker)
   const BUDGET = +(env.BUDGET || BUDGET_DEF);
   const A = ams();
@@ -203,9 +231,10 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   const maxMp4 = pre ? (zuinig ? 4e6 : 8e6) : MAX_MP4;
   const ruimteNu = pre ? ruimte - PRE_MARGE : ruimte;
 
-  await env.NIEUWS.put(`vs-bezig:${id}`, "1", { expirationTtl: 60 }).catch(() => {});
   const u: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0 };
-  const why: string[] = [];
+  const why: string[] = []; // intern: alleen naar de client bij pre:true
+  const uit = (o: any, s = 200) => json(pre ? { ...o, why } : o, s);
+  let reserved = 0; // vooraf weggeschreven schatting, wordt na afloop gecorrigeerd
   let tekst = "", bron = "", sec = 0;
   try {
     const yt = ytId(v.embed) || ytId(v.href);
@@ -220,10 +249,17 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
         else if (/\.mp4(\?|$)/.test(media) || /cdninstagram|fbcdn|twimg/.test(media)) a = await mp4Audio(media, why, maxMp4);
         else why.push("geen geluidsbron");
       } catch (e: any) { why.push(`geluid ophalen: ${String(e?.message || e).slice(0, 60)}`); }
-      if (a && a.sec < 0) { await env.NIEUWS.put(key, JSON.stringify({ ok: false, code: "te-lang", fout: MSG.teLang }), { expirationTtl: 6 * 3600 }); return json({ ok: false, code: "te-lang", fout: MSG.teLang, why }); }
+      if (a && a.sec < 0) { await env.NIEUWS.put(key, JSON.stringify({ ok: false, code: "te-lang", fout: MSG.teLang }), { expirationTtl: 6 * 3600 }); return uit({ ok: false, code: "te-lang", fout: MSG.teLang }); }
       if (a && a.bytes.length) {
         const estMin = a.sec ? a.sec / 60 : Math.min(4, a.bytes.length / 1.2e6); // mp4: ruwe schatting
         if (estMin * WHISPER_PER_MIN + 30 > ruimteNu) return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
+        // rem per uur + neuronen vooraf reserveren, zodat gelijktijdige verzoeken het budget al zien slinken
+        const uurKey = `vs-uur:${A.iso}T${A.h}`;
+        const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0;
+        if (nUur >= MAX_WHISPER_UUR) return json({ ok: false, code: pre ? "budget-pre" : "druk", fout: MSG.druk });
+        await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => {});
+        reserved = estMin * WHISPER_PER_MIN;
+        await addNeurons(env, vKey, reserved);
         const r: any = await env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false });
         const dur = +r?.transcription_info?.duration || estMin * 60;
         u.neurons += (dur / 60) * WHISPER_PER_MIN; u.calls++;
@@ -238,28 +274,34 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
       const out = blok ? { ok: false, code: "geblokkeerd", fout: MSG.yt } : { ok: false, code: "geen-tekst", fout: MSG.geenTekst };
       // geen spraak verandert niet: lang onthouden (geen dubbele Whisper-kosten); YouTube-blokkade sneller opnieuw
       await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: blok ? 3 * 3600 : bron === "spraak" ? 24 * 3600 : 6 * 3600 });
-      await addNeurons(env, vKey, u.neurons);
-      return json({ ...out, why, neuronen: Math.round(u.neurons * 10) / 10 });
+      await addNeurons(env, vKey, u.neurons - reserved);
+      return uit({ ...out, neuronen: Math.round(u.neurons * 10) / 10 });
     }
     const p = await punten(env.AI, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u);
-    await addNeurons(env, vKey, u.neurons);
-    if (p.length < 2) return json({ ok: false, code: "fout", fout: MSG.fout, why: [...why, "samenvatting leeg"] });
+    await addNeurons(env, vKey, u.neurons - reserved);
+    if (p.length < 2) {
+      why.push("samenvatting leeg");
+      const out = { ok: false, code: "fout", fout: MSG.fout };
+      await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => {});
+      return uit(out);
+    }
     const out = { ok: true, punten: p, bron, sec, model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString(), ...(pre ? { vooraf: true } : {}) };
     await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: 30 * 86400 });
     return json(out);
   } catch (e: any) {
-    await addNeurons(env, vKey, u.neurons).catch(() => {});
+    await addNeurons(env, vKey, Math.max(0, u.neurons - reserved)).catch(() => {}); // reservering blijft staan, alleen extra bijtellen
     const m = String(e?.message || e);
     if (/quota|neuron|exceed|429|limit/i.test(m)) return json({ ok: false, code: "budget", fout: MSG.budget });
-    return json({ ok: false, code: "fout", fout: MSG.fout, why: [...why, m.slice(0, 120)] }, 500);
-  } finally {
-    // slot hoeft niet weg: verloopt na 60 s; cache staat er al
+    why.push(m.slice(0, 120));
+    const out = { ok: false, code: "fout", fout: MSG.fout };
+    await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => {});
+    return uit(out, 500);
   }
-};
+}
 async function addNeurons(env: Env, k: string, n: number) {
-  if (!(n > 0)) return;
+  if (!n) return; // n mag negatief zijn: correctie van een eerdere schatting
   const cur = +(await env.NIEUWS.get(k).catch(() => 0)) || 0;
-  await env.NIEUWS.put(k, String(Math.round((cur + n) * 10) / 10), { expirationTtl: 3 * 86400 });
+  await env.NIEUWS.put(k, String(Math.max(0, Math.round((cur + n) * 10) / 10)), { expirationTtl: 3 * 86400 });
 }
 export const onRequestGet = async ({ request, env }: Ctx) => {
   // GET /samenvatting?id=... alleen uit de cache (handig om te tonen of er al een samenvatting is)
