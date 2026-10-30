@@ -1,5 +1,7 @@
 # Changelog
 
+- Extractieve fallback (#80): zonder AI krijgen alle rubrieken (ook tech, Haarlem en Engelstalige bronnen) een deterministische samenvatting uit de feed (`worker/src/extractief.ts`): opgeschoonde kop, eerste 2–3 zinnen (±50 woorden), Engels met "(Engels)". Items houden `ruw: true`; de kaarten tonen "nog niet samengevat" en een run met AI vervangt ze.
+
 - AI-meting (#79): de neuronenteller loopt op de UTC-dag (Cloudflare-reset 00:00 UTC) en legt per aanroep `r.usage` vast (anders een schatting met vlag `geschat`), ook bij mislukte aanroepen; tokens en neuronen per run en per dag in `uur.meta` en `state`. `quotaOut` alleen bij een echte dagquota-fout (4006, KV-vlag `ai-quota:<UTC-dag>`), een tijdelijke 429 stopt alleen de rest van de run. Optionele env `NEURON_FACTOR` (standaard 1) als veiligheidsmarge. Nieuw: `docs/ai-budget.md` met alle AI-aanroepen en wat niet wordt meegeteld.
 
 - Voeg bronnen en indeling voor Voetbal, Formule 1 en Auto toe, met een vaste plek in de AI-ronde: maximaal één per sportrubriek, hooguit drie per run, binnen CAP (#58); de frontend volgt in #59.

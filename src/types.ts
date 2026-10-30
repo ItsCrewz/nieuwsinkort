@@ -13,6 +13,8 @@ export type Item = {
   beelden?: string[];
   /** Sleutel voor /meer?k=… : er staat extra tekst klaar achter "Lees verder" (uur-Worker). */
   meer?: string;
+  /** Nog niet door AI samengevat: extractieve tekst uit de feed (uur-Worker). */
+  ruw?: boolean;
 };
 /** Extra tekst achter "Lees verder" (/meer). */
 export type Meer = {
