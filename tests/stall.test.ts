@@ -76,3 +76,29 @@ t("herladen wacht wanneer de laadstatus vooruitgaat", () => {
   assert.equal(s.tik(laden(13300, 2)), "ok");
   assert.equal(s.tik(laden(13600, 2)), "herlaad");
 });
+t("tijdgrenzen voor balk, herstel en herladen zijn inclusief", () => {
+  const s = new Stall();
+  assert.equal(s.tik(invoer(0)), "ok");
+  assert.equal(s.tik(invoer(599)), "ok");
+  assert.equal(s.tik(invoer(600)), "balk-stop");
+  assert.equal(s.tik(invoer(2999)), "ok");
+  assert.equal(s.tik(invoer(3000)), "nudge");
+  assert.equal(s.tik(invoer(5999)), "ok");
+  assert.equal(s.tik(invoer(6000)), "herlaad");
+});
+t("minimale beweging en balkafwijking overschrijden pas na de grens", () => {
+  const s = new Stall();
+  s.tik(invoer(0, 0));
+  assert.equal(s.tik(invoer(100, 0.001)), "ok");
+  assert.equal(s.tik({ ...invoer(200, 0.002), balkTijd: 0.302 }), "ok");
+  assert.equal(s.tik({ ...invoer(300, 0.004), balkTijd: 0.305 }), "balk-sync");
+});
+t("een gewone seek wist een lopende herstelpoging", () => {
+  const s = new Stall();
+  s.tik(invoer(0));
+  assert.equal(s.tik(invoer(3000)), "nudge");
+  assert.equal(s.tik({ ...invoer(4000), seeking: true }), "ok");
+  assert.equal(s.tik(invoer(6000)), "ok");
+  assert.equal(s.tik(invoer(8999)), "balk-stop");
+  assert.equal(s.tik(invoer(9000)), "nudge");
+});

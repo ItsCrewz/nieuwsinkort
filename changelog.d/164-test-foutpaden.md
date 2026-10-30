@@ -1,0 +1,1 @@
+- Testdekking voor foutpaden bij X-responsen en het uitlezen van artikeltekst uitgebreid (#164).
