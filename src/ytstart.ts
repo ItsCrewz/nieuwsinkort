@@ -25,3 +25,8 @@ export function ytStatusNaam(status: number | null): string {
     default: return "onbekend";
   }
 }
+
+// Een actieve slide wordt maar één keer per activatie overgeslagen.
+export function ytSkipBesluit(code: unknown, actief: boolean, alOvergeslagen: boolean, volgende: boolean): boolean {
+  return actief && ytEchteFout(code) && !alOvergeslagen && volgende;
+}

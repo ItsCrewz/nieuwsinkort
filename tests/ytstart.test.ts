@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ytStartBesluit, ytStatusNaam, ytEchteFout, geluidMag, autoplayGeblokkeerd } from "../src/ytstart";
+import { ytStartBesluit, ytSkipBesluit, ytStatusNaam, ytEchteFout, geluidMag, autoplayGeblokkeerd } from "../src/ytstart";
 
 const basis = { actief: true, gepauzeerd: false, klaar: true, status: -1, pogingen: 0, sinds: 1000, nu: 1000 };
 // onReady, -1 en geen verdere events: drie pogingen binnen de activatietijd.
@@ -21,3 +21,10 @@ assert.equal(geluidMag(true, false, false), false);
 assert.equal(geluidMag(true, true, true), false);
 assert.equal(geluidMag(false, true, false), false);
 assert.equal(ytStatusNaam(-1), "unstarted");
+
+for (const code of [100, 101, 150, 152]) assert.equal(ytSkipBesluit(code, true, false, true), true);
+assert.equal(ytSkipBesluit(5, true, false, true), false);
+assert.equal(ytSkipBesluit(150, false, false, true), false);
+assert.equal(ytSkipBesluit(150, true, true, true), false);
+assert.equal(ytSkipBesluit(150, true, false, true), true);
+assert.equal(ytSkipBesluit(150, true, false, false), false);

@@ -5,6 +5,7 @@
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { alleenVandaag } from "../src/vandaag";
 import { schoon } from "../src/schoon";
+import { youtubeId } from "../src/slug";
 interface KV { get(key: string, type: "json"): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env }
@@ -34,6 +35,11 @@ export function merge(S: any, H: any) {
   if (!H || dag(H.gegenereerd) !== vandaag) return S; // uur-data van gisteren: niet gebruiken
   const sOk = S && dag(S.gegenereerd) === vandaag;
   const base = sOk ? S : { items: [], filmpjes: [], dumpert: [] };
+  const geblokkeerd = new Set<string>(Array.isArray(H.ytGeblokkeerd) ? H.ytGeblokkeerd : []);
+  const toegestaan = (v: any) => {
+    const id = youtubeId(v.embed || "") || youtubeId(v.href || "");
+    return !id || !geblokkeerd.has(id);
+  };
   const sLinks = new Set<string>((base.items || []).flatMap((i: any) => (i.bronnen || []).map((b: any) => norm(b.href))));
   const nieuw = (H.items || []).filter((i: any) => !(i.bronnen || []).some((b: any) => sLinks.has(norm(b.href))));
   const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
@@ -58,8 +64,8 @@ export function merge(S: any, H: any) {
     tab_samenvatting: H.tab_samenvatting,
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
     items: [...nieuw, ...(base.items || [])].map(metMeer),
-    filmpjes: sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || [],
-    dumpert: (H.dumpert || []).length >= 5 ? H.dumpert : base.dumpert || H.dumpert || [],
+    filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
+    dumpert: ((H.dumpert || []).length >= 5 ? H.dumpert : base.dumpert || H.dumpert || []).filter(toegestaan),
     bronstats: h.bronstats || base.bronstats,
     gegenereerd: hNieuwer ? H.gegenereerd : S.gegenereerd,
     routine_gegenereerd: sOk ? S.gegenereerd : null,
