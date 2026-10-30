@@ -12,7 +12,9 @@ Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages
 
 ## Filters
 
-Filter artikelen op tijd, rubriek (bij Alles), regio, video en meerdere bronnen.
+Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home.
+
+Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen.
 Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
 Bij Nieuwste eerst staat het openingsartikel met de meeste bronnen bovenaan, gevolgd door de overige artikelen op tijd.
 Bij Oudste eerst en Meeste bronnen geldt de gekozen volgorde ook voor het openingsartikel.
@@ -24,7 +26,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | Map / bestand | Inhoud |
 |---|---|
 | `src/` | Frontend (React, feed, filters, video, ontdubbelen, `buffer.ts` = pure bufferregels voor de videofeed, nog niet gekoppeld) |
-| `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts` |
+| `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/[[path]].ts` |
 | `worker/` | Uur-Worker `nieuwsinkort-uur` (eigen `package.json` en `wrangler.toml`) |
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
 | `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
@@ -33,7 +35,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
 | `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
 
-Met `scripts/feedtitels.mts` zijn nieuwsfeeds voor het lokaal naspelen van clustering op te halen, inclusief Voetbal, Formule 1 en Auto. Buitenland wordt per bericht herkend uit Nederlandse feeds; YouTube, Instagram en podcasts blijven uitgesloten. Het script schrijft alleen een lokaal JSON-bestand.
+Met `scripts/feedtitels.mts` zijn nieuwsfeeds voor het lokaal naspelen van clustering op te halen, inclusief Voetbal, Formule 1 en Auto. Buitenland wordt per bericht herkend uit Nederlandse feeds; YouTube, Instagram, Reddit en podcasts blijven uitgesloten. Het script schrijft alleen een lokaal JSON-bestand.
 
 Buitenland is een rubriek, geen bronnengroep: de feedgroep `nl` bevat ook buitenlandfeeds, en `src/regio.ts` deelt berichten uit `nl` achteraf in. De Worker doet dit bij het bouwen van `uur`; de frontend past dezelfde `herindeel()` toe bij het laden, zodat ook statische en oude data kloppen. Regels: een buitenlandfeed of een heel URL-padsegment (`/buitenland/`, `/world/`; geen substring van een slug) telt als buiten, `/binnenland/`, `/regio/`, `/politiek/` als binnen; meer buiten dan binnen = Buitenland; een Nederlands anker in kop of samenvatting (Nederland, kabinet, Den Haag, enz.) houdt het bij Nederland; zonder signaal beslist een lijst landnamen (sport- en entertainmentpaden tellen niet mee). Bronnen van Buitenland-berichten tellen en schakelen onder groep Nederland in het Bronnen-paneel.
 
@@ -43,7 +45,7 @@ Bij uitputting van de AI-ruimte of een tijdelijke AI-fout maakt `worker/src/extr
 
 ## Vooraf laden
 
-Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de eerste Filmpjes en Dumpert-video's op, zodat een klik op die tabs niet hoeft te wachten: thumbnails, de hls.js-chunk, het begin van geschikte streams en de eerste bytes van de eerste mp4. Bij Save-Data of 2g gebeurt niets, op mobiel (cellular/3g) alleen thumbnails, hls.js en preconnect. Dumpert-video’s op het eigen CDN tonen een link naar Dumpert; YouTube-video’s spelen via de embed. Zie `src/voorladen.ts`; data: ≈1,55 MB normaal, ≈0,36 MB zuinig.
+Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de eerste Filmpjes en Dumpert-video's op, zodat een klik op die tabs niet hoeft te wachten: thumbnails, de hls.js-chunk, het begin van de eerste streams en de eerste bytes van de eerste mp4. Bij Save-Data of 2g gebeurt niets, op mobiel (cellular/3g) alleen thumbnails, hls.js en preconnect. Zie `src/voorladen.ts`; data: ≈1,55 MB normaal, ≈0,36 MB zuinig.
 
 ## Lokaal draaien
 
@@ -55,7 +57,7 @@ npm test         # tests
 npm run build    # bronnen.json + tsc + vite build -> dist/
 ```
 
-Pages Functions lokaal: `npx wrangler pages dev dist --port 4173`.
+Pages Functions lokaal (incl. Dumpert-proxy): `npx wrangler pages dev dist --port 4173`.
 Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled` met lokaal ingestelde `RUN_KEY`, dan `/run` en `/uur` met de header `Authorization: Bearer <RUN_KEY>`. Sleutels in queryparameters worden niet geaccepteerd. `force=1` geeft 429 als de laatste runstart minder dan tien minuten geleden was. Workers AI is altijd remote en kost dus echte neuronen.
 
 ## Deployen
@@ -93,7 +95,7 @@ Statische bestanden krijgen via `public/_headers` een CSP (fonts alleen van eige
 
 ### KV-schrijflimiet uur-Worker
 
-Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
+Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de door Fetcher gemelde Instagram-cachepogingen en de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
 
 `uur` wordt eerst apart geschreven. KV-eindschrijffouten worden gelogd via `console.error`; ook bij fouten op `state` of `meer` wordt het video-alarm gezet. Een mislukte `vooraf-log`-schrijfactie houdt het volgende alarm evenmin tegen. Bij een fout op `uur` blijft de eerder opgeslagen versie staan.
 

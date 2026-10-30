@@ -17,10 +17,11 @@ import { touchNu } from "./invoer";
 import { neemVroegeData } from "./vroeg";
 import { CATS, CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
 import { TabBriefing } from "./tabbriefing";
+import { parseHash, viewHash, type Route } from "./route";
 
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
-const ALLES_FIRST = 24; // op "Alles" eerst zoveel kaarten, daarna "Toon alle"
+const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
 const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
@@ -59,21 +60,12 @@ function amsterdamTime(iso?: string) {
 }
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-// ---- routing via hash: #/nederland, #/filmpjes, #/bericht/<slug>
-type Route = { view: View; selected: string | null; video: string | null };
-function parseHash(): Route {
-  const h = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
-  if (h.startsWith("bericht/")) return { view: "alles", selected: h.slice(8), video: null };
-  const c = CATS.find((c) => c.slug === h);
-  if (c) return { view: c.id, selected: null, video: null };
-  const m = /^(filmpjes|dumpert)(?:\/(.+))?$/.exec(h);
-  if (m) return { view: m[1] as View, selected: null, video: m[2] || null };
-  return { view: "alles", selected: null, video: null };
-}
-function viewHash(v: View) {
-  if (v === "alles") return "#/";
-  const c = CATS.find((c) => c.id === v);
-  return `#/${c ? c.slug : v}`;
+// De oude Alles-route vervangen zonder een extra geschiedenisitem.
+function huidigeRoute(): Route {
+  if (window.location.hash === "#/alles") {
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#/`);
+  }
+  return parseHash(window.location.hash);
 }
 
 // ---------------------------------------------------------------- weer
@@ -537,7 +529,7 @@ function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: {
 // en pas als het dan nog niet past mag de kaart zelf scrollen. De kop wordt nooit ingekort.
 function fitCard(el: HTMLElement) {
   const sum = el.querySelector<HTMLElement>(".nc-sum");
-  el.classList.remove("fit-imgsm", "fit-noimg", "fit-nopts", "fit-scroll");
+  el.classList.remove("fit-imgsm", "fit-imgxs", "fit-noimg", "fit-nopts", "fit-scroll");
   el.querySelectorAll<HTMLElement>(".nc-pts li").forEach((li) => (li.hidden = false));
   if (sum) {
     sum.classList.remove("clamp");
@@ -545,7 +537,7 @@ function fitCard(el: HTMLElement) {
   }
   const over = () => el.scrollHeight - el.clientHeight > 1;
   if (!el.clientHeight || !over()) return;
-  // eerst de foto kleiner, dan de punten, dan pas de foto weg
+  // eerst de foto kleiner, dan de punten en samenvatting, als laatste de foto weg
   el.classList.add("fit-imgsm");
   if (!over()) return;
   // punten één voor één van achteren weghalen; pas als er geen meer past, de hele lijst weg
@@ -553,7 +545,6 @@ function fitCard(el: HTMLElement) {
   for (let k = pts.length - 1; k >= 0 && over(); k--) pts[k].hidden = true;
   if (pts.length && !over()) return;
   if (pts.length) el.classList.add("fit-nopts");
-  if (el.querySelector(".nc-img")) { el.classList.add("fit-noimg"); if (!over()) return; }
   if (sum) {
     const lh = parseFloat(getComputedStyle(sum).lineHeight) || 26;
     const lines = Math.round(sum.getBoundingClientRect().height / lh);
@@ -563,6 +554,12 @@ function fitCard(el: HTMLElement) {
       sum.style.setProperty("--sum-lines", String(keep));
       if (!over() || keep <= 2) break;
     }
+    if (!over()) return;
+  }
+  if (el.querySelector(".nc-img")) {
+    el.classList.add("fit-imgxs");
+    if (!over()) return;
+    el.classList.add("fit-noimg");
     if (!over()) return;
   }
   el.classList.add("fit-scroll");
@@ -655,6 +652,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
         </ul>
       ) : null}
       <div className="nc-act">
+        <div className="nc-act-row">
         {meer ? (
           <a className="btn" href={`#/bericht/${key}`} onClick={click} onTouchStart={() => prefetchMeer(item)} onMouseEnter={() => prefetchMeer(item)}>
             Lees verder
@@ -662,10 +660,11 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
         ) : null}
         {first ? (
           <a className={`btn${meer ? " ghost" : ""}`} href={veiligeUrl(first.href)} target="_blank" rel="noopener noreferrer">
-            Origineel bij {first.site}
+            <span>Origineel bij {first.site}</span>
             <Icon name="ext" />
           </a>
         ) : null}
+        </div>
         {bronnen.length > 1 ? <span className="nc-more">+{bronnen.length - 1} {bronnen.length === 2 ? "bron" : "bronnen"}</span> : null}
       </div>
       </div>
@@ -1009,7 +1008,7 @@ function useData() {
       d.filmpjes ??= [];
       zaaiSamenvattingen(d.samenvattingen);
       d.dumpert ??= [];
-      d.dumpert = d.dumpert.filter((v) => !!playerFor(v) || !!veiligeUrl(v.href));
+      d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
       d.filmpjes = d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) })); // Shorts of Journaals
       setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
       setError(false);
@@ -1182,7 +1181,7 @@ export default function App() {
   const { groups, index } = useMemo(() => buildSources(catalog, raw), [catalog, raw]);
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
-  const [route, setRoute] = useState<Route>(() => parseHash());
+  const [route, setRoute] = useState<Route>(() => huidigeRoute());
   const [bionic, setBionic] = useState(true);
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
@@ -1205,7 +1204,7 @@ export default function App() {
       /* standaard aan */
     }
     const onHash = () => {
-      const next = parseHash();
+      const next = huidigeRoute();
       const prev = routeRef.current;
       const back = prev.selected && !next.selected ? prev.selected : null;
       // concurrent renderen: de browser blijft frames tekenen terwijl React de nieuwe weergave bouwt
@@ -1430,7 +1429,7 @@ export default function App() {
                 {dateline}
                 <Front>
                   {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
-                  <WeatherBox W={raw.weer} bionic={bionic} />
+                  {alles && <WeatherBox W={raw.weer} bionic={bionic} />}
                 </Front>
               </div>
             }
@@ -1444,7 +1443,6 @@ export default function App() {
       <main className="wrap" id="top">
         <Front>
           <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
-          <WeatherBox W={raw.weer} bionic={bionic} />
         </Front>
         <Tabs data={data} view={view} onChange={setView} />
         {filterBalk}

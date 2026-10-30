@@ -16,11 +16,11 @@ export const CAT_LABEL = Object.fromEntries(CATS.map((c) => [c.id, c.label])) as
 
 export type TabOpt = { value: View; id: string; label: string; short: string };
 
-/** Tabbalk: nieuws-tabs zonder items verdwijnen, behalve de actieve (deeplink); Alles, Filmpjes en Dumpert blijven altijd. */
+/** Tabbalk: nieuws-tabs zonder items verdwijnen, behalve de actieve (deeplink); Home, Filmpjes en Dumpert blijven altijd. */
 export function tabOpties(items: { cat: Cat }[], view: View): TabOpt[] {
   const gevuld = new Set(items.map((i) => i.cat));
   return [
-    { value: "alles", id: "all", label: "Alles", short: "Alles" },
+    { value: "alles", id: "all", label: "Home", short: "Home" },
     ...CATS.filter((c) => gevuld.has(c.id) || c.id === view).map((c) => ({
       value: c.id as View, id: c.id, label: c.label, short: c.id === "nl" ? "NL" : c.id === "tech" ? "Tech" : c.label,
     })),

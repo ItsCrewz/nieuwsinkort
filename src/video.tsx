@@ -29,13 +29,22 @@ export function playerFor(v: Video): Player {
       src: `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&rel=0&playsinline=1&modestbranding=1`,
     };
   }
-  try {
-    const url = new URL(e);
-    if (url.protocol !== "https:" || url.hostname.toLowerCase() === "media.dumpert.nl") return null;
-  } catch { return null; }
+  try { if (new URL(e).protocol !== "https:") return null; } catch { return null; }
   if (/\.m3u8(\?|$)/i.test(e)) return { kind: "hls", src: e };
   if (/\.mp4(\?|$)/i.test(e)) return { kind: "mp4", src: e };
   return null;
+}
+
+// media.dumpert.nl staat geen andere sites toe (CORS). Native HLS (Safari/iOS) heeft daar geen last
+// van; hls.js (Chrome/Firefox) haalt Dumpert via onze eigen proxy /media/dumpert/... (Pages Function).
+export function viaProxy(src: string): string {
+  try {
+    const u = new URL(src);
+    if (u.hostname === "media.dumpert.nl") return `/media/dumpert${u.pathname}${u.search}`;
+  } catch {
+    /* laat staan */
+  }
+  return src;
 }
 
 // Shorts vs. Journaals: zelfde regels als worker/src/videos.ts (soortVan) en filmpjes.py (soort_van).
@@ -71,7 +80,7 @@ function popIcon(p: string) {
   return /weergaven|views/i.test(p) ? "eye" : "up";
 }
 
-export function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; cat: string; bionic: boolean; enter: boolean; onPlay: (v: Video) => void }) {
+function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; cat: string; bionic: boolean; enter: boolean; onPlay: (v: Video) => void }) {
   const [failed, setFailed] = useState(false);
   const playable = !!playerFor(v);
   const activate = () => onPlay(v);
@@ -117,7 +126,7 @@ export function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: n
             <span className="v-pop tnum"><Icon name={popIcon(v.populariteit)} className="sm" />{v.populariteit}</span>
           ) : <span />}
           <a href={veiligeUrl(v.href)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="v-ext">
-            {cat === "dumpert" && !playable ? "Bekijk op Dumpert" : "Open bij bron"} <Icon name="ext" className="sm" />
+            Open bij bron <Icon name="ext" className="sm" />
           </a>
         </div>
       </div>

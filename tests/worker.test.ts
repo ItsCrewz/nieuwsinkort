@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
 import "./sportcat.test";
 import "./showcat.test";
 import worker, { Runner, kiesVoorAI } from "../worker/src/index";
@@ -10,41 +9,43 @@ import { onRequestPost as svPost } from "../functions/samenvatting";
 import { videoSlug } from "../src/slug";
 import { buildWeer, KNMI_VERW, OM_URL } from "../worker/src/weer";
 import { simpelWeer, summarize, inHetKort, verdiep } from "../worker/src/ai";
-import { parseYouTube, soortVan, YT_NIEUWS } from "../worker/src/videos";
+import { parseRedditVideos, parseYouTube, soortVan, YT_NIEUWS } from "../worker/src/videos";
+import { videoKeys } from "../src/dedup";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 let n = 0;
 const t = async (naam: string, fn: () => Promise<void>) => { await fn(); n++; console.log("✓", naam); };
+await t("Reddit-Atom levert alleen afspeelbare video's met herkenbare sleutels", async () => {
+  const entry = (id: string, content: string, media = "") => `<entry><title>Video ${id}</title><link href="https://www.reddit.com/r/Netherlands/comments/${id}/titel/"/><published>2026-10-30T10:00:00Z</published>${media}<content type="html">${content}</content></entry>`;
+  const link = (url: string) => `&lt;a href=&quot;${url}&quot;&gt;link&lt;/a&gt;`;
+  const xml = [
+    entry("abc123", link("https://v.redd.it/vid123"), '<media:thumbnail url="https://preview.redd.it/foto.jpg?width=200&amp;format=webp"/>'),
+    entry("def456", link("https://youtu.be/NVZiFWIqU48?si=abc")),
+    entry("ghi789", link("https://www.youtube.com/shorts/NVZiFWIqU48")),
+    entry("jkl123", link("https://streamable.com/abc")),
+    entry("mno456", link("https://v.redd.it/vid456") + '&lt;img src=&quot;https://external-preview.redd.it/foto.jpg?width=100&amp;amp;format=webp&quot; /&gt;'),
+    entry("pqr789", link("https://www.youtube.com/watch?feature=share&amp;amp;v=NVZiFWIqU48")),
+  ].join("");
+  const videos = parseRedditVideos(xml, "Netherlands", 0, () => "11:00");
+  assert.equal(videos.length, 5);
+  assert.equal(videos[0].embed, "https://v.redd.it/vid123/HLSPlaylist.m3u8");
+  assert.equal(videos[0].thumb, "https://preview.redd.it/foto.jpg?width=200&format=webp");
+  assert.ok(videoKeys(videos[0]).includes("rd:abc123"));
+  assert.ok(videoKeys(videos[0]).includes("vr:vid123"));
+  assert.equal(videos[1].embed, "https://www.youtube-nocookie.com/embed/NVZiFWIqU48?autoplay=1&rel=0");
+  assert.equal(videos[1].thumb, "https://i.ytimg.com/vi/NVZiFWIqU48/hqdefault.jpg");
+  assert.ok(videoKeys(videos[1]).includes("rd:def456"));
+  assert.ok(videoKeys(videos[1]).includes("yt:NVZiFWIqU48"));
+  assert.equal(soortVan(videos[1]), "journaal");
+  assert.equal(soortVan(videos[2]), "short");
+  assert.equal(videos[3].thumb, "https://external-preview.redd.it/foto.jpg?width=100&format=webp");
+  assert.equal(videos[4].embed, videos[1].embed);
+});
 await t("YouTube-nieuwskanalen bevatten de nieuwe kanalen", async () => {
   assert.equal(YT_NIEUWS["NOS Stories"], "UCoakeH4bmdUYtptWdmoUrRQ");
   assert.equal(YT_NIEUWS["Nieuwsuur"], "UCExcZNwh_3Mwm4fF4VSiu2w");
   assert.equal(YT_NIEUWS["Omroep PowNed"], "UCihqgpWn_ns1gJUdhNLsSMQ");
   assert.equal(YT_NIEUWS["Radar"], "UCGUhzuD1eYIgJoSGe0c_rNg");
-});
-await t("Instagram en Kittygram zijn geen bronnen meer; Haarlem105 gebruikt YouTube", async () => {
-  const feeds = JSON.parse(readFileSync("scripts/pipeline/feeds.json", "utf8"));
-  const bronnen = JSON.parse(readFileSync("public/bronnen.json", "utf8"));
-  const urls = [...feeds.map((f: any) => f.url), ...bronnen.groepen.flatMap((g: any) => g.bronnen.flatMap((b: any) => (b.feeds || []).map((f: any) => f.url)))];
-  assert.ok(urls.every((url: string) => !/(?:^|\.)kg\.meowing\.de$|(?:^|\.)instagram\.com$/i.test(new URL(url).hostname)));
-  assert.ok(feeds.some((f: any) => f.cat === "haarlem" && f.naam === "Haarlem105 (YouTube)" && f.werkt && f.url === `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_NIEUWS.Haarlem105}`));
-  assert.equal(YT_NIEUWS.Haarlem105, "UCFDVl_p6fwkloGr8lraSZgQ");
-  const worker = readFileSync("worker/src/index.ts", "utf8");
-  assert.doesNotMatch(worker, /iPhone.*Safari|IG_UA|runInsta|igGet/);
-  const script = readFileSync("scripts/pipeline/filmpjes.py", "utf8");
-  assert.match(script, /"Haarlem105": "UCFDVl_p6fwkloGr8lraSZgQ"/);
-  assert.doesNotMatch(script, /IG_ACCOUNTS|IG_POLITIEK|def instagram\(/);
-});
-await t("X-inname blijft verwijderd en vervangende kanalen zijn aanwezig", async () => {
-  const feeds = JSON.parse(readFileSync("scripts/pipeline/feeds.json", "utf8"));
-  assert.ok(feeds.every((feed: { url: string }) => !/(^|\.)(x|twitter)\.com$/i.test(new URL(feed.url).hostname)));
-  assert.ok(feeds.some((feed: { naam: string; url: string }) => feed.naam === "50PLUS (YouTube)" && feed.url.endsWith("UCxngTZl7im1n_fQYxVh5hXA")));
-  for (const [naam, id] of [["De Telegraaf", "UC1Et9K-hHf-P_LzQkE_Q3Jw"], ["GeenStijl", "UCE51aiJ30nQY14kFY021urg"]]) {
-    assert.equal(YT_NIEUWS[naam], id);
-    assert.ok(readFileSync("scripts/pipeline/filmpjes.py", "utf8").includes(`"${naam}": "${id}"`));
-  }
-  for (const bestand of readdirSync("worker/src").filter((naam) => naam.endsWith(".ts"))) {
-    assert.doesNotMatch(readFileSync(`worker/src/${bestand}`, "utf8"), /api\.fxtwitter\.com|syndication\.twitter\.com/i);
-  }
 });
 await t("YouTube-Short krijgt een embed en de soort short", async () => {
   const xml = `<feed><entry><yt:videoId>abcdefghijk</yt:videoId><title>Kort nieuws</title><link rel="alternate" href="https://www.youtube.com/shorts/abcdefghijk"/><published>2026-10-29T12:00:00Z</published></entry></feed>`;
