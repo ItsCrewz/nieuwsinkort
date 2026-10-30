@@ -23,6 +23,8 @@ Alles draait op Cloudflare (Free plan). Geen eigen server.
  Frontend (React, hls.js) op nieuwsinkort.pages.dev
 ```
 
+Cloudflare Pages serveert `public/404.html` met status 404 voor onbekende paden; de app en deeplinks gebruiken hash-routes onder `/`. `node scripts/check-status.mjs <basis-url>` controleert de statische bestanden, Functions en onbekende paden op een Pages-preview of productie. Function-antwoorden zijn afhankelijk van hun invoer.
+
 Oude flow (nog aanwezig): routine → Grok-canvas → `export_from_canvas.mjs` → `public/data.json` → `deploy.sh` → statisch `dist/data.json`. De Worker vult die data elk uur aan.
 
 ## Frontend (`src/`)

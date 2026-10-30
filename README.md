@@ -12,6 +12,8 @@ Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages
 
 ## Filters
 
+Onbekende paden geven op Cloudflare Pages een 404 met `public/404.html`; de app gebruikt hash-routes en deeplinks blijven onder `/`. Controleer een Pages-preview of productie met `node scripts/check-status.mjs <basis-url>`. De controle gebruikt veilige foutverzoeken voor Functions en start geen AI.
+
 Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home.
 
 Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen.
