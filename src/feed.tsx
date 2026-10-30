@@ -15,10 +15,11 @@ export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
-import { bronIndexen, gebruiktNativeHls, POOL_GROOTTE, slotVan } from "./videopool";
+import { bronIndexen, gebruiktNativeHls, maakBronvrij, PoolEigenaars, POOL_GROOTTE, slotVan } from "./videopool";
+import { decodeTeller, FrameGezondheid, frameTeller, HerstelBudget } from "./framegezondheid";
 import { niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
-import { balkTijden, DebugOverlay } from "./debug-overlay";
+import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound } from "./geluid";
 
@@ -70,6 +71,8 @@ type PlayerProps = {
   bar: Bar;
   onFail: () => void;
   onAutoplayBlocked: () => void;
+  /** Er is echt beeld (poster mag weg) of niet meer (poster terug). */
+  onBeeld: (beeld: boolean) => void;
 };
 
 // ------------------------------------------------------------- voorrang voor het actieve filmpje
@@ -107,7 +110,7 @@ function whenReady(fn: () => void, delay = 0) {
 // ------------------------------------------------------------- vaste videopool (#50)
 // iOS laat maar een paar decoders tegelijk toe en onthoudt per element of het mag spelen. Daarom precies
 // POOL_GROOTTE <video>-elementen, één keer gemaakt en geparkeerd in .f-park als ze niet in een slide staan.
-type Pool = { els: HTMLVideoElement[]; park: HTMLDivElement };
+type Pool = { els: HTMLVideoElement[]; park: HTMLDivElement; eigenaars: PoolEigenaars };
 function maakPool(): Pool {
   const park = document.createElement("div");
   park.className = "f-park";
@@ -122,31 +125,76 @@ function maakPool(): Pool {
     park.appendChild(el);
     return el;
   });
-  return { els, park };
+  return { els, park, eigenaars: new PoolEigenaars() };
 }
+
+type VideoMetFrames = HTMLVideoElement & {
+  requestVideoFrameCallback?: (cb: (now: number, meta?: { mediaTime?: number; presentedFrames?: number }) => void) => number;
+  cancelVideoFrameCallback?: (h: number) => void;
+  webkitDecodedFrameCount?: number;
+};
+type FrameStand = { gepresenteerd: number; gedecodeerd: number; op: number; mediaTijd: number; rvfc: boolean; decode: boolean };
 
 // ------------------------------------------------------------- MP4 / HLS
 // De <video> komt uit de vaste pool (3 elementen, slot = index % 3) en wordt hier alleen van bron gewisseld;
 // hij wordt nooit aangemaakt of verwijderd. De host-div is het enige dat React voor deze speler rendert.
-function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted, bar, seek, onFail, onAutoplayBlocked }: PlayerProps & { kind: "hls" | "mp4"; src: string; pool: Pool; slot: number }) {
+function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted, bar, seek, onFail, onAutoplayBlocked, onBeeld }: PlayerProps & { kind: "hls" | "mp4"; src: string; pool: Pool; slot: number }) {
   const ref = useRef<HTMLVideoElement>(pool.els[slot]);
   const host = useRef<HTMLDivElement>(null);
+  const gen = useRef(0);
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const activeNow = useRef(active);
+  activeNow.current = active;
+  const rankRef = useRef(preload);
+  rankRef.current = preload;
+  // Poster blijft liggen tot er echt een beeld gepresenteerd is (niet al bij playing/loadeddata).
+  const beeldRef = useRef(false);
+  const zetBeeld = useCallback((aan: boolean) => {
+    if (beeldRef.current === aan) return;
+    beeldRef.current = aan;
+    onBeeld(aan);
+  }, [onBeeld]);
+  const speel = () => {
+    const video = ref.current;
+    video.muted = mutedRef.current;
+    video.play()?.catch((err: DOMException) => {
+      // Geluid zonder tik mag niet: dan zonder geluid verder.
+      if (err?.name === "NotAllowedError" && !video.muted) {
+        onAutoplayBlocked();
+        video.muted = true;
+        video.play().catch(() => {});
+      }
+    });
+  };
+  const speelRef = useRef(speel);
+  speelRef.current = speel;
+
   useLayoutEffect(() => {
     const video = ref.current;
+    // Eerst eigenaar worden (een achtergebleven bron wordt dan synchroon opgeruimd), pas daarna verplaatsen.
+    const g = pool.eigenaars.claim(slot);
+    gen.current = g;
     host.current?.appendChild(video);
     video.className = "f-media";
     video.loop = true;
+    video.muted = mutedRef.current;
+    video.playsInline = true;
+    video.setAttribute("webkit-playsinline", "");
     video.setAttribute("aria-label", v.titel);
     if (v.thumb) video.poster = v.thumb;
     video.preload = active || preload ? "auto" : "metadata";
-    if (DEBUG) video.dataset.debugKind = kind;
+    if (DEBUG) { video.dataset.debugKind = kind; video.dataset.gen = String(g); }
     delete video.dataset.mse;
     return () => {
-      video.classList.remove("on");
-      pool.park.appendChild(video);
+      // Synchroon: pauze, hls.js weg, src weg, load(), beeldstatus wissen; dan pas parkeren.
+      pool.eigenaars.geefVrij(slot, g, () => pool.park.appendChild(video));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const seekOp = useRef(-Infinity);
   useEffect(() => {
     const api: SeekApi = {
       dur: () => ref.current?.duration ?? 0,
@@ -158,6 +206,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         if (!video || !(video.duration > 0)) return;
         const max = Math.max(0, video.duration - 0.25);
         const to = Math.min(max, Math.max(0, t));
+        seekOp.current = performance.now();
         video.currentTime = to;
       },
     };
@@ -166,127 +215,12 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       if (seek.current === api) seek.current = null;
     };
   }, [seek]);
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    ref.current.classList.toggle("on", shown);
-  }, [shown]);
   const hlsRef = useRef<{ config: { maxBufferLength: number; maxMaxBufferLength: number; maxBufferSize: number }; startLoad: (p?: number) => void; recoverMediaError: () => void } | null>(null);
   const started = useRef(false);
-  const rankRef = useRef(preload);
-  rankRef.current = preload;
-  const activeNow = useRef(active);
-  activeNow.current = active;
-  // Waakhond: herladen op dezelfde plek als het beeld vastloopt terwijl de tijd (en dus het geluid) doorloopt.
+  // Herstel: zelfde element, bron opnieuw koppelen en terug naar dezelfde plek (begrensd, nooit een lus).
   const [reloadKey, setReloadKey] = useState(0);
   const resumeAt = useRef(0);
-  const reloads = useRef<number[]>([]);
-  // bron koppelen (HLS: native op Safari/iOS, anders hls.js via onze proxy)
-  useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    video.muted = mutedRef.current;
-    video.playsInline = true;
-    video.setAttribute("webkit-playsinline", "");
-    delete video.dataset.mse;
-    if (kind === "mp4") {
-      const fout = () => onFail();
-      video.addEventListener("error", fout);
-      video.src = src;
-      return () => {
-        video.removeEventListener("error", fout);
-        video.removeAttribute("src");
-        video.load();
-      };
-    }
-    // Native HLS alleen op Apple (Safari/iOS). Chrome zegt sinds kort ook "maybe" op HLS, maar zijn eigen
-    // speler blijft op Dumpert-streams vaak op 0:00 hangen; daar dus altijd hls.js (MSE) via onze proxy.
-    const native = !!video.canPlayType("application/vnd.apple.mpegurl");
-    const mse = typeof window !== "undefined" && ("MediaSource" in window || "ManagedMediaSource" in window);
-    if (gebruiktNativeHls(native, navigator.vendor || "", navigator.userAgent, mse)) {
-      video.src = src;
-      return () => {
-        video.removeAttribute("src");
-        video.load();
-      };
-    }
-    video.dataset.mse = "1";
-    let recovered = false;
-    let destroyed = false;
-    let cancelWait = () => {};
-    let hls: { destroy: () => void } | null = null;
-    import("hls.js").then(({ default: Hls }) => {
-      if (destroyed) return;
-      if (!Hls.isSupported()) {
-        if (native) {
-          video.src = src;
-          return;
-        }
-        return onFail();
-      }
-      // De volgende speler buffert kort op het laagste startniveau; het actieve filmpje mag verder bufferen.
-      const on = activeNow.current;
-      const plan = planVoor(on ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
-      const h = new Hls({
-        enableWorker: true,
-        startLevel: 0,
-        capLevelToPlayerSize: true,
-        startFragPrefetch: true,
-        autoStartLoad: on || rankRef.current === 1,
-        maxBufferLength: plan.secs,
-        maxMaxBufferLength: on ? 60 : plan.secs,
-        maxBufferSize: plan.bytes,
-        backBufferLength: 10,
-        startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
-      });
-      // Niet hoger dan 720p, en H.264 (avc1) als die er is: soepel decoderen op telefoons.
-      h.on(Hls.Events.MANIFEST_PARSED, (_e, d) => {
-        const lv = d.levels as { height?: number; videoCodec?: string }[];
-        const avc = lv.some((l) => /avc1/i.test(l.videoCodec || ""));
-        let cap = -1;
-        lv.forEach((l, k) => {
-          if ((l.height || 0) <= 720 && (!avc || /avc1/i.test(l.videoCodec || ""))) cap = k;
-        });
-        if (cap >= 0 && cap < lv.length - 1) h.autoLevelCapping = cap;
-      });
-      hls = h;
-      hlsRef.current = h as unknown as typeof hlsRef.current;
-      h.on(Hls.Events.ERROR, (_e, d) => {
-        if (DEBUG) console.log("[hls]", v.titel, d.type, d.details, d.fatal);
-        if (!d.fatal) return;
-        // Mediafout: eerst één keer herstellen (standaard hls.js-recept), pas daarna opgeven.
-        if (d.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) {
-          recovered = true;
-          h.recoverMediaError();
-          if (activeNow.current && !pausedRef.current) video.play().catch(() => {});
-          return;
-        }
-        onFail();
-      });
-      if (DEBUG) {
-        h.on(Hls.Events.LEVEL_SWITCHED, (_e, d) => console.log("[hls] level", v.titel, d.level));
-        h.on(Hls.Events.BUFFER_FLUSHING, (_e, d) => console.log("[hls] flush", v.titel, d.startOffset, d.endOffset, d.type));
-        video.addEventListener("seeking", () => console.log("[hls] seeking", v.titel, video.currentTime));
-      }
-      started.current = on || rankRef.current === 1;
-      h.loadSource(viaProxy(src));
-      h.attachMedia(video);
-      if (!started.current) {
-        cancelWait = whenReady(() => {
-          if (destroyed || started.current) return;
-          started.current = true;
-          h.startLoad(-1);
-        }, rankRef.current === 1 ? 0 : 350);
-      }
-    });
-    return () => {
-      destroyed = true;
-      cancelWait();
-      hlsRef.current = null;
-      hls?.destroy();
-      video.removeAttribute("src");
-      video.load();
-    };
-  }, [kind, src, onFail, reloadKey]);
+  const budget = useRef(new HerstelBudget());
 
   // Buffergrootte meeschalen met de positie in de feed (hls.js leest de config live).
   useEffect(() => {
@@ -321,12 +255,6 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       video.removeEventListener("timeupdate", check);
     };
   }, [active]);
-  // MP4/native: bij voorladen meteen de data ophalen
-  useEffect(() => {
-    const video = ref.current;
-    if (!video || !(active || preload)) return;
-    if (video.readyState < 2 && video.networkState === 1 /* IDLE */) video.load();
-  }, [active, preload]);
 
   useEffect(() => {
     const video = ref.current;
@@ -336,25 +264,41 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
     ref.current.preload = active || preload ? "auto" : "metadata";
   }, [active, preload]);
 
-  // Na herladen: terug naar dezelfde tijd en verder spelen.
+  // Na herstel: na de metadata terug naar dezelfde tijd, en pas na die seek weer spelen.
   useEffect(() => {
     const video = ref.current;
     if (!video || !reloadKey) return;
+    let gestart = false;
+    let timer = 0;
+    const start = () => {
+      if (gestart) return;
+      gestart = true;
+      window.clearTimeout(timer);
+      video.removeEventListener("seeked", start);
+      if (activeNow.current && !pausedRef.current) speelRef.current();
+    };
     const go = () => {
       const t = resumeAt.current;
+      resumeAt.current = 0;
       if (t > 0 && Math.abs(video.currentTime - t) > 0.5) {
         try {
+          seekOp.current = performance.now();
+          video.addEventListener("seeked", start);
+          timer = window.setTimeout(start, 2000);
           video.currentTime = t;
+          return;
         } catch {
           /* negeer */
         }
       }
-      resumeAt.current = 0;
-      video.muted = mutedRef.current;
-      if (activeNow.current && !pausedRef.current) video.play().catch(() => {});
+      start();
     };
     video.addEventListener("loadedmetadata", go, { once: true });
-    return () => video.removeEventListener("loadedmetadata", go);
+    return () => {
+      window.clearTimeout(timer);
+      video.removeEventListener("loadedmetadata", go);
+      video.removeEventListener("seeked", start);
+    };
   }, [reloadKey]);
 
   const barStand = useRef({ tijd: 0, sinds: 0, loopt: false });
@@ -377,17 +321,20 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
     return () => { namen.forEach((naam) => video.removeEventListener(naam, luister)); balkTijden.delete(video); };
   }, [active]);
 
-  // Dezelfde limiet geldt voor beide waakhonden.
-  const herlaad = useCallback((video: HTMLVideoElement, now: number) => {
-    reloads.current = reloads.current.filter((x) => now - x < 60e3);
-    if (reloads.current.length >= 2) return false;
-    reloads.current.push(now);
-    debugEvent("herladen");
+  // Eén budget voor alle waakhonden: max 2× per minuut en 4× per speler.
+  const herstel = useCallback((video: HTMLVideoElement, now: number) => {
+    if (!budget.current.probeer(now)) {
+      debugEvent("herstel-op");
+      return false;
+    }
+    debugEvent("herstel");
     diag.herladen++;
     resumeAt.current = video.currentTime;
+    zetBeeld(false);
+    try { video.pause(); } catch { /* negeer */ }
     setReloadKey((k) => k + 1);
     return true;
-  }, []);
+  }, [zetBeeld]);
 
   useEffect(() => {
     const video = ref.current;
@@ -430,94 +377,112 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         if (Number.isFinite(video.duration)) doel = Math.min(doel, Math.max(0, video.duration - 0.01));
         try {
           herstelSeek = true;
+          seekOp.current = now;
           video.currentTime = doel;
           stall.herstelNaar(video.currentTime);
         } catch { herstelSeek = false; }
         video.play().catch(() => {});
       }
-      if (besluit === "herlaad") herlaad(video, now);
+      if (besluit === "herlaad") herstel(video, now);
     }, 300);
     return () => {
       window.clearInterval(iv);
       video.removeEventListener("seeked", seekKlaar);
     };
-  }, [active, paused, reloadKey, zetBar, herlaad]);
+  }, [active, paused, reloadKey, zetBar, herstel]);
 
-  // Waakhond: loopt de tijd door maar komt er >2,5 s geen nieuw beeld, dan de bron herladen (max 2× per minuut).
+  // Beeldteller per bron: rVFC telt gepresenteerde beelden (leidend zodra hij één keer vuurde), de
+  // decodeerteller is terugval. Beide blijven aanwijzingen: een compositorfout kan onzichtbaar blijven.
+  const frameStand = useRef<FrameStand>({ gepresenteerd: 0, gedecodeerd: 0, op: 0, mediaTijd: -1, rvfc: false, decode: false });
+  useEffect(() => {
+    const video = ref.current as VideoMetFrames;
+    const g = gen.current;
+    const stand: FrameStand = { gepresenteerd: 0, gedecodeerd: 0, op: performance.now(), mediaTijd: -1,
+      rvfc: !!video.requestVideoFrameCallback, decode: decodeTeller(video) !== null };
+    frameStand.current = stand;
+    let h = 0;
+    let iv = 0;
+    if (stand.rvfc) {
+      const cb = (_now: number, meta?: { mediaTime?: number }) => {
+        if (!pool.eigenaars.actueel(slot, g)) return;
+        stand.gepresenteerd++;
+        stand.op = performance.now();
+        stand.mediaTijd = meta?.mediaTime ?? -1;
+        if (video.videoWidth > 0) zetBeeld(true);
+        h = video.requestVideoFrameCallback!(cb);
+      };
+      h = video.requestVideoFrameCallback!(cb);
+    }
+    if (stand.decode) {
+      // Teller van een vorige bron telt niet mee; een reset (bv. na load) geeft een nieuwe basis.
+      let basis = decodeTeller(video) ?? 0;
+      let decodeSinds = 0;
+      let gemeld = false;
+      iv = window.setInterval(() => {
+        const n = decodeTeller(video);
+        if (n === null || !pool.eigenaars.actueel(slot, g)) return;
+        if (n < basis) basis = 0;
+        const d = n - basis;
+        if (d === stand.gedecodeerd) return;
+        stand.gedecodeerd = d;
+        if (!stand.rvfc || !stand.gepresenteerd) stand.op = performance.now();
+        if (d <= 0 || !video.videoWidth) return;
+        if (!stand.rvfc) zetBeeld(true);
+        else if (!stand.gepresenteerd) {
+          // rVFC zwijgt terwijl er gedecodeerd wordt: na 1,5 s toch tonen (en in de debug melden).
+          decodeSinds ||= performance.now();
+          if (performance.now() - decodeSinds >= 1500 && !video.paused) {
+            if (!gemeld) debugEvent("rvfc-stil");
+            gemeld = true;
+            zetBeeld(true);
+          }
+        }
+      }, 250);
+    }
+    // Geen enkele teller: dan het oude signaal (eerste beelddata met afmetingen).
+    const toon = () => { if (!stand.rvfc && !stand.decode && video.videoWidth > 0) zetBeeld(true); };
+    video.addEventListener("loadeddata", toon);
+    video.addEventListener("playing", toon);
+    if (DEBUG) frameTijden.set(video, () => ({ ...stand, gen: g }));
+    return () => {
+      if (h && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(h);
+      window.clearInterval(iv);
+      video.removeEventListener("loadeddata", toon);
+      video.removeEventListener("playing", toon);
+    };
+  }, [kind, src, reloadKey, slot, pool, zetBeeld]);
+
+  // Frame-waakhond: loopt de klok zonder nieuwe beelden, of komt er geen eerste beeld (ook bij breedte 0),
+  // dan begrensd herstel op hetzelfde element. Pauze, seek, achtergrond en einde tellen niet.
   useEffect(() => {
     const video = ref.current;
     if (!video || !active || paused) return;
-    let lastFrame = performance.now();
-    let frames = -1;
-    let lastT = video.currentTime;
-    let rvfc = 0;
-    const vv = video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number; cancelVideoFrameCallback?: (h: number) => void };
-    const onFrame = () => {
-      lastFrame = performance.now();
-      rvfc = vv.requestVideoFrameCallback!(onFrame);
-    };
-    if (vv.requestVideoFrameCallback) rvfc = vv.requestVideoFrameCallback(onFrame);
+    const fg = new FrameGezondheid();
     const iv = window.setInterval(() => {
       const now = performance.now();
-      const t = video.currentTime;
-      const moving = t > lastT + 0.5 || t + 1 < lastT; // ook een loop telt als beweging
-      lastT = t;
-      if (!vv.requestVideoFrameCallback) {
-        const q = video.getVideoPlaybackQuality?.();
-        const n = q ? q.totalVideoFrames : -1;
-        if (n !== frames) {
-          frames = n;
-          lastFrame = now;
-        }
-      }
-      if (video.paused || document.hidden || video.readyState < 3 || !video.videoWidth || !moving) {
-        if (!moving || video.paused || document.hidden) lastFrame = now;
-        return;
-      }
-      if (now - lastFrame < 2500) return;
-      debugEvent("beeld vast");
+      const st = frameStand.current;
+      const besluit = fg.tik({ now, currentTime: video.currentTime, paused: video.paused, hidden: document.hidden,
+        seeking: video.seeking, ended: video.ended, seekRecent: now - seekOp.current < 1500,
+        frames: frameTeller(st), videoWidth: video.videoWidth, readyState: video.readyState });
+      if (besluit === "ok") return;
+      debugEvent(besluit);
       diag.vast++;
-      if (!herlaad(video, now)) return;
-      if (DEBUG) console.log("[waakhond] beeld staat stil, herladen op", t, v.titel);
-      lastFrame = now + 5000;
-    }, 1000);
-    return () => {
-      window.clearInterval(iv);
-      if (rvfc && vv.cancelVideoFrameCallback) vv.cancelVideoFrameCallback(rvfc);
-    };
-  }, [active, paused, reloadKey, v.titel, herlaad]);
+      if (DEBUG) console.log("[waakhond]", besluit, video.currentTime, v.titel);
+      // Geen herstel meer over: de poster mag een beeld zonder framebewijs niet blijven afdekken.
+      if (!herstel(video, now) && besluit === "geen-eerste-frame" && video.videoWidth > 0) zetBeeld(true);
+    }, 500);
+    return () => window.clearInterval(iv);
+  }, [active, paused, reloadKey, v.titel, herstel, zetBeeld]);
 
-  const mutedRef = useRef(muted);
-  mutedRef.current = muted;
-  const pausedRef = useRef(paused);
-  pausedRef.current = paused;
   useEffect(() => {
     const video = ref.current;
     if (!video) return;
     if (active && !paused) {
-      video.muted = mutedRef.current;
-      const p = video.play();
-      p?.catch((err: DOMException) => {
-        // Geluid zonder tik mag niet: dan zonder geluid verder.
-        if (err?.name === "NotAllowedError" && !video.muted) {
-          onAutoplayBlocked();
-          video.muted = true;
-          video.play().catch(() => {});
-        }
-      });
+      speelRef.current();
       // Net gemount (bv. terug swipen): de bron komt soms pas na play() (hls.js laadt async) en dan blijft hij
       // stilstaan. Zodra er data is nog een keer starten.
       const kick = () => {
-        if (activeNow.current && !pausedRef.current && video.paused) {
-          video.muted = mutedRef.current;
-          video.play().catch((err: DOMException) => {
-            if (err?.name === "NotAllowedError" && !video.muted) {
-              onAutoplayBlocked();
-              video.muted = true;
-              video.play().catch(() => {});
-            }
-          });
-        }
+        if (activeNow.current && !pausedRef.current && video.paused) speelRef.current();
       };
       video.addEventListener("loadeddata", kick);
       video.addEventListener("canplay", kick);
@@ -535,7 +500,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         }
       }
     }
-  }, [active, paused, onAutoplayBlocked]);
+  }, [active, paused]);
 
   useEffect(() => {
     const video = ref.current;
@@ -546,15 +511,8 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       if (video.currentTime !== last && (!barStand.current.loopt || video.currentTime + 0.4 < last)) sync();
       last = video.currentTime;
     };
-    const onPlaying = () => {
-      setShown(true);
-      sync();
-    };
-    // eerste beeld staat klaar (ook gepauzeerd bij het voorladen): video al tonen, geen zwarte flits
-    const onFrame = () => setShown(true);
-    video.addEventListener("loadeddata", onFrame);
     const onStop = () => zetBar(video.currentTime, video.duration, false);
-    video.addEventListener("playing", onPlaying);
+    video.addEventListener("playing", sync);
     video.addEventListener("pause", onStop);
     video.addEventListener("waiting", onStop);
     video.addEventListener("stalled", onStop);
@@ -562,8 +520,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
     video.addEventListener("ratechange", sync);
     video.addEventListener("timeupdate", onTime);
     return () => {
-      video.removeEventListener("playing", onPlaying);
-      video.removeEventListener("loadeddata", onFrame);
+      video.removeEventListener("playing", sync);
       video.removeEventListener("pause", onStop);
       video.removeEventListener("waiting", onStop);
       video.removeEventListener("stalled", onStop);
@@ -573,15 +530,129 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
     };
   }, [zetBar]);
 
+  // Bron koppelen als laatste effect: na plaatsing, inline-instellingen en alle listeners (HLS: native op
+  // Safari/iOS, anders hls.js via onze proxy). De opruimfunctie staat bij de pool, zodat parkeren synchroon opruimt.
+  useEffect(() => {
+    const video = ref.current;
+    const g = gen.current;
+    if (!video || !pool.eigenaars.actueel(slot, g)) return;
+    video.muted = mutedRef.current;
+    video.playsInline = true;
+    video.setAttribute("webkit-playsinline", "");
+    delete video.dataset.mse;
+    let destroyed = false;
+    let recovered = false;
+    let cancelWait = () => {};
+    let hls: { destroy: () => void } | null = null;
+    const fout = () => {
+      if (destroyed || !pool.eigenaars.actueel(slot, g)) return;
+      debugEvent(`fout ${video.error?.code ?? "?"}`);
+      // Native HLS: eerst begrensd herstel; mp4 (en een op herstel uitgeputte stream) geeft op.
+      if (kind === "hls" && herstel(video, performance.now())) return;
+      onFail();
+    };
+    const opruimen = () => {
+      destroyed = true;
+      cancelWait();
+      hlsRef.current = null;
+      video.removeEventListener("error", fout);
+      maakBronvrij(video, hls);
+      hls = null;
+      zetBeeld(false);
+    };
+    pool.eigenaars.zetOpruim(slot, g, opruimen);
+    const koppelNative = () => {
+      video.addEventListener("error", fout);
+      video.src = src;
+      video.load();
+      if (activeNow.current && !pausedRef.current && !resumeAt.current) speelRef.current();
+    };
+    // Native HLS alleen op Apple (Safari/iOS). Chrome zegt sinds kort ook "maybe" op HLS, maar zijn eigen
+    // speler blijft op Dumpert-streams vaak op 0:00 hangen; daar dus altijd hls.js (MSE) via onze proxy.
+    const native = kind === "hls" && !!video.canPlayType("application/vnd.apple.mpegurl");
+    const mse = typeof window !== "undefined" && ("MediaSource" in window || "ManagedMediaSource" in window);
+    if (kind === "mp4" || gebruiktNativeHls(native, navigator.vendor || "", navigator.userAgent, mse)) {
+      koppelNative();
+      return () => { pool.eigenaars.ruimOp(slot, g); };
+    }
+    video.dataset.mse = "1";
+    import("hls.js").then(({ default: Hls }) => {
+      if (destroyed || !pool.eigenaars.actueel(slot, g)) return;
+      if (!Hls.isSupported()) {
+        if (native) return koppelNative();
+        return onFail();
+      }
+      // De volgende speler buffert kort op het laagste startniveau; het actieve filmpje mag verder bufferen.
+      const on = activeNow.current;
+      const plan = planVoor(on ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
+      const h = new Hls({
+        enableWorker: true,
+        startLevel: 0,
+        capLevelToPlayerSize: true,
+        startFragPrefetch: true,
+        autoStartLoad: on || rankRef.current === 1,
+        maxBufferLength: plan.secs,
+        maxMaxBufferLength: on ? 60 : plan.secs,
+        maxBufferSize: plan.bytes,
+        backBufferLength: 10,
+        startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
+      });
+      // Niet hoger dan 720p, en H.264 (avc1) als die er is: soepel decoderen op telefoons.
+      h.on(Hls.Events.MANIFEST_PARSED, (_e, d) => {
+        const lv = d.levels as { height?: number; videoCodec?: string }[];
+        const avc = lv.some((l) => /avc1/i.test(l.videoCodec || ""));
+        let cap = -1;
+        lv.forEach((l, k) => {
+          if ((l.height || 0) <= 720 && (!avc || /avc1/i.test(l.videoCodec || ""))) cap = k;
+        });
+        if (cap >= 0 && cap < lv.length - 1) h.autoLevelCapping = cap;
+      });
+      hls = h;
+      hlsRef.current = h as unknown as typeof hlsRef.current;
+      h.on(Hls.Events.ERROR, (_e, d) => {
+        if (DEBUG) console.log("[hls]", v.titel, d.type, d.details, d.fatal);
+        if (!d.fatal || destroyed) return;
+        // Mediafout: eerst één keer herstellen (standaard hls.js-recept), pas daarna opgeven.
+        if (d.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) {
+          recovered = true;
+          h.recoverMediaError();
+          if (activeNow.current && !pausedRef.current) video.play().catch(() => {});
+          return;
+        }
+        onFail();
+      });
+      if (DEBUG) {
+        h.on(Hls.Events.LEVEL_SWITCHED, (_e, d) => console.log("[hls] level", v.titel, d.level));
+        h.on(Hls.Events.BUFFER_FLUSHING, (_e, d) => console.log("[hls] flush", v.titel, d.startOffset, d.endOffset, d.type));
+      }
+      started.current = on || rankRef.current === 1;
+      h.loadSource(viaProxy(src));
+      h.attachMedia(video);
+      if (!started.current) {
+        cancelWait = whenReady(() => {
+          if (destroyed || started.current) return;
+          started.current = true;
+          h.startLoad(-1);
+        }, rankRef.current === 1 ? 0 : 350);
+      }
+    });
+    return () => { pool.eigenaars.ruimOp(slot, g); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, src, onFail, reloadKey]);
+
   return <div ref={host} className="f-slot" />;
 }
 
 // ------------------------------------------------------------- YouTube (IFrame API via postMessage)
 const YT_ORIGIN = "https://www.youtube-nocookie.com";
-function YouTubePlayer({ v, id, active, paused, muted, bar, seek }: PlayerProps & { id: string }) {
+function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld }: PlayerProps & { id: string }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const loaded = useRef(false);
   const [shown, setShown] = useState(false);
+  useEffect(() => {
+    onBeeld(shown);
+  }, [shown, onBeeld]);
+  useEffect(() => () => onBeeld(false), [onBeeld]);
   // src staat vast bij het mounten; daarna stuurt alles via postMessage (geen herladen).
   const [src] = useState(
     () =>
@@ -796,8 +867,9 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
   const bar = useBar(barEl);
   const seek = useRef<SeekApi | null>(null);
   const [posterOk, setPosterOk] = useState(true);
+  const [beeld, setBeeld] = useState(false);
   const playable = !!p && !failed;
-  const props: PlayerProps = { v, active, preload, paused, muted, bar, seek, onFail: fail, onAutoplayBlocked };
+  const props: PlayerProps = { v, active, preload, paused, muted, bar, seek, onFail: fail, onAutoplayBlocked, onBeeld: setBeeld };
   // Dubbel tikken links/rechts = 5 s terug/vooruit. De eerste tik pauzeert meteen (geen vertraging);
   // blijkt het een dubbele tik, dan draaien we die pauze terug en springen we.
   const lastTap = useRef({ t: 0, side: 0 });
@@ -830,9 +902,17 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
   return (
     <section className={`fslide cat-${cat}`} data-i={i} aria-label={`${i + 1} van ${total}: ${v.titel}`} aria-current={active ? "true" : undefined}>
       <div className="fcol">
+        {playable && mount ? (
+          p!.kind === "youtube" ? (
+            <YouTubePlayer {...props} id={youtubeId(p!.src)!} />
+          ) : (
+            <NativePlayer {...props} kind={p!.kind} src={p!.src} pool={pool} slot={slotVan(i)} />
+          )
+        ) : null}
+        {/* Poster boven de speler (die zelf zichtbaar en renderbaar blijft) tot er een echt beeld is. */}
         {v.thumb && posterOk ? (
           <img
-            className="f-poster"
+            className={`f-poster${beeld && playable && mount ? " weg" : ""}`}
             src={v.thumb}
             alt=""
             loading={Math.abs(i) < 2 || mount ? "eager" : "lazy"}
@@ -840,13 +920,6 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
             referrerPolicy="no-referrer"
             onError={() => setPosterOk(false)}
           />
-        ) : null}
-        {playable && mount ? (
-          p!.kind === "youtube" ? (
-            <YouTubePlayer {...props} id={youtubeId(p!.src)!} />
-          ) : (
-            <NativePlayer {...props} kind={p!.kind} src={p!.src} pool={pool} slot={slotVan(i)} />
-          )
         ) : null}
         {playable ? (
           <button type="button" className="ftap" aria-label={paused && active ? "Afspelen" : "Pauzeren"} onClick={tap} tabIndex={-1}>
@@ -1039,6 +1112,8 @@ export function Feed({
   const root = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   // Spelers: de pool heeft 3 vaste <video>'s voor slide i-1, i en i+1; welke daarvan een bron krijgen bepaalt
   // videopool.ts (actief + volgende). YouTube-iframes blijven per
   // slide (actief + volgende) buiten de pool.
@@ -1054,7 +1129,7 @@ export function Feed({
     r?.appendChild(pool.park);
     return () => {
       pool.park.remove();
-      pool.els.forEach((el) => { el.removeAttribute("src"); el.load(); });
+      pool.els.forEach((el) => maakBronvrij(el));
     };
   }, [pool]);
 
@@ -1067,11 +1142,20 @@ export function Feed({
   const startDirect = useCallback((i: number) => {
     const video = pool.els[slotVan(i)];
     const slide = video.closest<HTMLElement>(".fslide");
-    if (!slide || Number(slide.dataset.i) !== i || !video.currentSrc && !video.src) return;
+    if (!slide || Number(slide.dataset.i) !== i || !video.getAttribute("src")) return;
+    // Eerst de uitgaande speler stil, dan pas de inkomende starten: nooit twee decoders tegelijk aan het spelen.
+    const vorige = activeRef.current;
+    const uit = i !== vorige ? pool.els[slotVan(vorige)] : null;
+    const uitSlide = uit?.closest<HTMLElement>(".fslide") ?? null;
+    const uitSpeelde = !!uit && !uit.paused && Number(uitSlide?.dataset.i) === vorige;
+    if (uitSpeelde) uit!.pause();
     video.muted = !soundRef.current.want || soundRef.current.blocked;
     video.play().catch(() => {});
-    if (i !== activeRef.current) window.setTimeout(() => {
-      if (i !== activeRef.current && video.closest<HTMLElement>(".fslide") === slide) video.pause();
+    if (i !== vorige) window.setTimeout(() => {
+      if (i === activeRef.current) return;
+      if (video.closest<HTMLElement>(".fslide") === slide) video.pause();
+      // Swipe ging niet door: de vorige speelt verder.
+      if (uitSpeelde && activeRef.current === vorige && !pausedRef.current && uit!.closest<HTMLElement>(".fslide") === uitSlide) uit!.play().catch(() => {});
     }, 1500);
   }, [pool]);
 
@@ -1149,29 +1233,37 @@ export function Feed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [close, go]);
 
-  // Binnen een tik/swipe (gebruikersgebaar): geluid aanzetten op de huidige video en de volgende alvast
-  // "vrijgeven" (play+pause met geluid), zodat iOS die straks ook met geluid laat starten.
+  // Binnen een tik/swipe (gebruikersgebaar): geluid aanzetten op de huidige video en de andere poolelementen
+  // één keer "vrijgeven" (play+pause met geluid), zodat iOS die straks ook met geluid laat starten. iOS
+  // onthoudt dat per element; niet bij elk gebaar opnieuw, dat geeft alleen play/pause-churn.
+  const vrijgegeven = useRef(new WeakSet<HTMLVideoElement>());
   const unmuteNow = useCallback(() => {
     const r = root.current;
     if (!r) return;
     const cur = r.querySelector<HTMLElement>(`.fslide[data-i="${activeRef.current}"]`);
+    let huidig: HTMLVideoElement | null = null;
     pool.els.forEach((el) => {
       el.muted = false;
       if (cur?.contains(el)) {
-        if (!pausedRef.current) el.play().catch(() => {});
-      } else if (el.paused && el.dataset.mse !== "1") {
+        huidig = el;
+      } else if (el.paused && el.dataset.mse !== "1" && !vrijgegeven.current.has(el)) {
         // (niet bij hls.js/MSE: daar is vrijgeven niet nodig en kan play+pause de MediaSource breken)
+        vrijgegeven.current.add(el);
         const p = el.play();
         el.pause();
         p?.catch(() => {});
       }
     });
+    // De huidige pas na het (gepauzeerde) vrijgeven van de andere starten.
+    const h = huidig as HTMLVideoElement | null;
+    if (h) {
+      vrijgegeven.current.add(h);
+      if (h.paused && !pausedRef.current) h.play().catch(() => {});
+    }
     r.querySelectorAll<HTMLIFrameElement>("iframe.f-yt").forEach((f) =>
       f.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "unMute", args: [] }), "https://www.youtube-nocookie.com")
     );
   }, [pool]);
-  const pausedRef = useRef(paused);
-  pausedRef.current = paused;
   const soundRef = useRef({ want, blocked });
   soundRef.current = { want, blocked };
   useEffect(() => {
@@ -1183,6 +1275,8 @@ export function Feed({
       if (e.type === "keydown" && /^m$/i.test((e as KeyboardEvent).key)) return; // M = geluid aan/uit
       if (w) {
         if (b) {
+          // Geluid werd geweigerd: alle elementen opnieuw vrijgeven.
+          vrijgegeven.current = new WeakSet();
           unmuteNow();
           unmutedAt.current = Date.now();
           setBlocked(false);
@@ -1213,6 +1307,7 @@ export function Feed({
       saveSound(true);
       setWant(true);
       setBlocked(false);
+      vrijgegeven.current = new WeakSet();
       unmuteNow();
     } else {
       saveSound(false);

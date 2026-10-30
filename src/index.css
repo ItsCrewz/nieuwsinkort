@@ -260,18 +260,21 @@ li:last-child > .srcrow,.srcrow:last-child{border-bottom:0}
 .srcrow .ic{color:var(--muted)}
 
 /* ---------- Verticale video-feed ---------- */
-.feed{position:fixed;inset:0;z-index:60;height:100vh;height:100dvh;background:#000;color:#fff;animation:fadein 240ms var(--ease) both;overscroll-behavior:contain;touch-action:pan-y}
+.feed{position:fixed;inset:0;z-index:60;height:100vh;height:100dvh;background:#000;color:#fff;animation:fadein 240ms var(--ease) backwards;overscroll-behavior:contain;touch-action:pan-y}
 .feed.out{animation:fadeout 180ms var(--ease-out) both}
 .feed-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
 .feed-scroll::-webkit-scrollbar{display:none}
-.fslide{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;justify-content:center;contain:strict}
+.fslide{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;justify-content:center;contain:size layout style}
 .fcol{position:relative;height:100%;width:min(100%,calc(100dvh * 9 / 16));background:#000;overflow:hidden;container-type:size}
 .f-poster,.f-media{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border:0;display:block}
 .f-slot{position:absolute;inset:0;pointer-events:none}
 .f-park{display:none}
-.f-media{opacity:0;transition:opacity var(--base) var(--ease);background:transparent}
-.f-media.on{opacity:1}
-video.f-media.on{background:#000}
+/* Video zonder opacity-overgang (iOS-videolaag); de poster ligt erboven tot er echt beeld is. */
+.f-media{background:transparent}
+.f-poster{pointer-events:none}
+.f-poster.weg{visibility:hidden}
+iframe.f-media{opacity:0;transition:opacity var(--base) var(--ease)}
+iframe.f-media.on{opacity:1}
 /* gecentreerd zonder transform (transform op een spelende video/iframe kan op iOS het beeld laten bevriezen) */
 .f-yt{inset:auto 0;height:auto;aspect-ratio:16/9;top:calc(50% - min(100vw, 100vh * 9 / 16) * 9 / 32);top:calc(50% - min(100vw, 100dvh * 9 / 16) * 9 / 32);top:calc(50% - 28.125cqw)}
 .f-yt.short{top:0;height:100%;aspect-ratio:auto;transform:none}
@@ -546,7 +549,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .f-tab[aria-selected="true"]{color:#fff}
 .f-tab[aria-selected="true"]::after{content:"";position:absolute;left:50%;bottom:3px;width:20px;height:2px;margin-left:-10px;border-radius:1px;background:#fff;animation:tabline 200ms var(--ease) both}
 @keyframes tabline{from{transform:scaleX(0)}}
-.feed-scroll.g0,.feed-scroll.g1{animation:fadein 180ms var(--ease) both}
+.feed-scroll.g0,.feed-scroll.g1{animation:fadein 180ms var(--ease) backwards}
 
 /* ---- foto's bij berichten (vervangt het grote volgnummer) ---- */
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
