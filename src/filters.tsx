@@ -7,7 +7,7 @@ import { Icon } from "./icons";
 
 export type Tijd = "auto" | "sinds" | "vandaag" | "1u" | "3u" | "alles";
 export type Regio = "haarlem" | "nl" | "wereld";
-export type Filters = { tijd: Tijd; cats: Cat[]; video: boolean; samen: boolean; regio: Regio[]; sort: "nieuw" | "bronnen" };
+export type Filters = { tijd: Tijd; cats: Cat[]; video: boolean; samen: boolean; regio: Regio[]; sort: "nieuw" | "oud" | "bronnen" };
 const KEY = "nieuwsinkort-filters";
 const BEZOEK = "nieuwsinkort-laatste-bezoek";
 const BEZOEK_SESSIE = "nieuwsinkort-bezoek-ref";
@@ -161,10 +161,20 @@ export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: stri
     tijd = vorig && Date.now() - vorig < 24 * 3600e3 && sindsMetTijd >= GENOEG && sindsMetTijd < metTijd ? "sinds" : vandaagMetTijd >= GENOEG ? "vandaag" : "alles";
   } else tijd = f.tijd as Exclude<Tijd, "auto">;
   const vanaf = tijd === "sinds" && !vorig ? -Infinity : vanafVoor(tijd, vorig);
-  let out = basis.filter((_, i) => ts[i] == null || ts[i]! >= vanaf);
-  if (f.sort === "bronnen") {
-    out = out.slice().sort((a, b) => sites(b) - sites(a) || (b.tijd || "").localeCompare(a.tijd || ""));
-  }
+  const out = basis
+    .map((item, i) => ({ item, ts: ts[i] }))
+    .filter(({ ts }) => ts == null || ts >= vanaf)
+    .sort((a, b) => {
+      if (f.sort === "bronnen") {
+        const verschil = sites(b.item) - sites(a.item);
+        if (verschil) return verschil;
+      }
+      // Zonder tijd onderaan; gelijke tijden behouden hun oorspronkelijke volgorde.
+      if (a.ts == null) return b.ts == null ? 0 : 1;
+      if (b.ts == null) return -1;
+      return f.sort === "oud" ? a.ts - b.ts : b.ts - a.ts;
+    })
+    .map(({ item }) => item);
   return { items: out, tijd, auto, per, nieuwSinds: vorig ? per.sinds : 0 };
 }
 /** Filmpjes: alleen het tijdfilter (de rest gaat over berichten). Automatisch = Vandaag, of Alles als er vandaag nog bijna niets is. */
@@ -336,6 +346,9 @@ export function FilterBlad({
                   <div className="fchips">
                     <Chip on={f.sort === "nieuw"} onClick={() => set({ sort: "nieuw" })}>
                       Nieuwste eerst
+                    </Chip>
+                    <Chip on={f.sort === "oud"} onClick={() => set({ sort: "oud" })}>
+                      Oudste eerst
                     </Chip>
                     <Chip on={f.sort === "bronnen"} onClick={() => set({ sort: "bronnen" })}>
                       Meeste bronnen

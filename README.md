@@ -8,6 +8,14 @@ Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone
 
 Vite 5, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects, KV en Workers AI.
 
+## Filters
+
+Filter artikelen op tijd, rubriek (bij Alles), regio, video en meerdere bronnen.
+Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
+Bij Nieuwste eerst staat het openingsartikel met de meeste bronnen bovenaan, gevolgd door de overige artikelen op tijd.
+Bij Oudste eerst en Meeste bronnen geldt de gekozen volgorde ook voor het openingsartikel.
+Je filters worden in localStorage onthouden.
+
 ## Indeling
 
 | Map / bestand | Inhoud |
