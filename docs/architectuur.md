@@ -134,7 +134,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - `scripts/fix-dumpert.mjs`: zorgt voor afspeelbare Dumpert-embeds, laat items zonder video weg.
 - `scripts/add-beelden.mts` + `dhash.py`: foto's per bericht (og:image, dubbele foto's weg via URL en perceptuele hash); cache in `scripts/.cache/` (genegeerd door git).
 - `scripts/pipeline/`: komt via PR #1 en staat mogelijk nog niet op `main`. Controleer de map voor je ervan uitgaat dat hij er is.
-- `tests/`: `dedup.test.ts` (ook beeld/schoon/merge), `stall.test.ts` (videoherstel) en andere regressietests via `npm test`, plus `live-dedup.ts` (handmatige check op echte data).
+- `tests/`: één `*.test.ts` per onderwerp, zoals `dedup.test.ts` (video-ontdubbelen), `beeld-ontdubbelen.test.ts`, `data-merge.test.ts` (merge/schoon), `stall.test.ts` (videoherstel) en andere regressietests via `npm test`, plus `live-dedup.ts` (handmatige check op echte data).
 
 ## Deploy
 

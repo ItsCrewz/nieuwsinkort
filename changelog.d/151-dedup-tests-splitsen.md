@@ -1,0 +1,1 @@
+- `tests/dedup.test.ts` opgesplitst in testbestanden per onderwerp (video-ontdubbelen, beelden, merge, links, externe URL's, beveiligingsheaders, laadprestaties, samenvatting-slot, KV-schrijven, runstatus en deploy-integriteit); zelfde 40 tests en 135 asserties (#151).
