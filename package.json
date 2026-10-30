@@ -14,7 +14,9 @@
     "test": "node scripts/run-tests.mjs",
     "typecheck:tests": "tsc -p tsconfig.tests.json",
     "changelog": "node scripts/changelog.mjs",
-    "coverage": "vitest run --coverage && node scripts/coverage-groepen.mjs"
+    "coverage": "vitest run --coverage && node scripts/coverage-groepen.mjs",
+    "lint:css": "stylelint \"src/**/*.css\"",
+    "lint:html": "html-validate index.html dist/index.html"
   },
   "dependencies": {
     "hls.js": "^1.5.0",

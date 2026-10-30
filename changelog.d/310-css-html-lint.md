@@ -1,0 +1,1 @@
+- Voeg CSS- en HTML-lint toe aan de controles voor de frontend (#310).

@@ -52,7 +52,9 @@ Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de 
 ```bash
 npm ci
 npm run dev      # Vite dev-server
-npm run check    # tests, build en typechecks voor Worker en Functions
+npm run check    # tests, build, CSS- en HTML-lint en typechecks voor Worker en Functions
+npm run lint:css # Stylelint voor src/**/*.css
+npm run lint:html # HTML-validatie van index.html en dist/index.html (na build)
 npm test         # tests
 npm run coverage # tests met Vitest en regeldekking per kritieke groep
 npm run typecheck:tests  # typecheck van tests/ (los van build; vereist @types/node)
