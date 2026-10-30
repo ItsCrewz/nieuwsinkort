@@ -7,3 +7,5 @@ Elke PR schrijft hier één fragment `<issue>-<slug>.md` (bijv. `98-changelog-fr
 ```
 
 De coördinator voegt de fragmenten vóór een release samen met `npm run changelog` (voegt toe onder "Onuitgebracht" in `CHANGELOG.md` en verwijdert de fragmenten; `-- --dry` toont alleen). Dit bestand blijft staan.
+
+Fragmenten worden op bestandsnaam met een tekstuele vergelijking (`localeCompare`) gesorteerd, niet numeriek: `105-…` komt daardoor vóór `98-…`. Lege fragmenten worden overgeslagen; begint een fragment niet met `- ` of `* `, dan voegt het script automatisch `- ` toe.

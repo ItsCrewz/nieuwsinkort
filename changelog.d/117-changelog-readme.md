@@ -1,0 +1,1 @@
+- Documenteerde de verwerking en volgorde van changelogfragmenten (#117).
