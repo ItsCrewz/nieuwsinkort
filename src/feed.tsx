@@ -5,7 +5,7 @@
 // - Voortgangsbalk via de Web Animations API op transform: loopt op de compositor, geen JS per frame.
 import { bewaarMeting, herstelSwipe, swipeDoel, type SwipeMeting } from "./swipemeting";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { AiVermelding } from "./ai-vermelding";
 import { Icon } from "./icons";
@@ -26,7 +26,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
-import { ytStartBesluit, ytSkipBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
+import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -760,7 +760,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         if (d.event === "onError") {
           echteFout.current = true; foutCode.current = d.info; setVangnet(false);
           if (ytEchteFout(d.info)) setShown(true);
-          if (state.current.active) onYtFout(d.info);
+          onYtFout(d.info);
         } else if (!echteFout.current && state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
           blokkade.current = d.event; diagnose();
           if (!state.current.muted) { onAutoplayBlocked(); post("mute"); post("playVideo"); }
@@ -1317,23 +1317,37 @@ export function Feed({
     }, 1500);
   }, [pool]);
 
+  const richting = useRef<-1 | 1>(1);
+  const aanraking = useRef(false);
   const go = useCallback((i: number) => {
     const s = scroller.current;
     if (!s) return;
     const n = Math.max(0, Math.min(items.length - 1, i));
+    if (n !== activeRef.current) richting.current = n < activeRef.current ? -1 : 1;
     startDirect(n);
     s.scrollTo({ top: n * s.clientHeight, behavior: motionOK() ? "smooth" : "auto" });
   }, [items.length, startDirect]);
 
-  const ytSkips = useRef({ laatste: -1 });
   const ytFout = useCallback((i: number, code: unknown) => {
-    const s = ytSkips.current;
-    if (!ytSkipBesluit(code, i === activeRef.current, s.laatste === i, i + 1 < items.length)) return;
-    s.laatste = i;
-    go(i + 1);
-  }, [go, items.length]);
+    const besluit = ytVerwijderBesluit(code, i, activeRef.current, items.length, richting.current);
+    if (!besluit.verwijder) return;
+    const s = scroller.current;
+    const oudActief = activeRef.current;
+    const top = s?.scrollTop ?? 0;
+    const hoogte = s?.clientHeight ?? 0;
+    // Bewaar ook een gedeeltelijke swipe wanneer een vooraf geladen video verdwijnt.
+    const nieuwTop = i === oudActief && !aanraking.current
+      ? besluit.actief * hoogte
+      : top - (i * hoogte < top ? Math.min(hoogte, top - i * hoogte) : 0);
+    swipeStart.current = null;
+    activeRef.current = besluit.actief;
+    flushSync(() => {
+      setItems((oud) => oud.filter((_, index) => index !== i));
+      setActive(besluit.actief);
+    });
+    if (s) s.scrollTop = nieuwTop;
+  }, [items.length]);
   const ytSpeelt = useCallback(() => {}, []);
-  useEffect(() => { ytSkips.current = { laatste: -1 }; }, [gi]);
 
   // Start op de gekozen video, vóór de eerste paint.
   useLayoutEffect(() => {
@@ -1348,11 +1362,12 @@ export function Feed({
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (e.isIntersecting && e.intersectionRatio >= 0.6) {
+          if (e.target.isConnected && e.isIntersecting && e.intersectionRatio >= 0.6) {
             const i = Number((e.target as HTMLElement).dataset.i);
             if (i !== activeRef.current) {
-              ytSkips.current.laatste = -1;
+              richting.current = i < activeRef.current ? -1 : 1;
               startDirect(i);
+              activeRef.current = i;
               if (lopendeMeting.current?.slide === i) lopendeMeting.current.actief = performance.now();
               setActive(i);
               setPaused(false);
@@ -1364,7 +1379,7 @@ export function Feed({
     );
     s.querySelectorAll(".fslide").forEach((n) => io.observe(n));
     return () => io.disconnect();
-  }, [gi, startDirect]);
+  }, [gi, items, startDirect]);
 
   // Deep link per video, zonder nieuwe history-stap en zonder hashchange.
   useEffect(() => {
@@ -1458,11 +1473,12 @@ export function Feed({
     };
     let startY = 0;
     let gestart = false;
-    const touchStart = (e: TouchEvent) => { startY = e.changedTouches[0]?.clientY ?? 0; gestart = false; };
+    const touchStart = (e: TouchEvent) => { aanraking.current = true; startY = e.changedTouches[0]?.clientY ?? 0; gestart = false; };
     const touchMove = (e: TouchEvent) => {
       if (gestart) return;
       const i = swipeDoel(startY, e.changedTouches[0]?.clientY ?? startY, activeRef.current);
       if (i === null) return;
+      richting.current = i < activeRef.current ? -1 : 1;
       if (root.current?.querySelector(`.fslide[data-i="${activeRef.current}"] iframe.f-yt`)) return;
       const video = pool.els[slotVan(i)];
       if (Number(video.closest<HTMLElement>(".fslide")?.dataset.i) !== i || !video.getAttribute("src")) return;
@@ -1488,13 +1504,14 @@ export function Feed({
     };
     let herstelTimer: number | undefined;
     const touchEnd = (e: TouchEvent) => {
+      aanraking.current = false;
       const doel = swipeDoel(startY, e.changedTouches[0]?.clientY ?? startY, swipeStart.current?.van ?? activeRef.current);
       if (doel === null || (swipeStart.current && doel !== swipeStart.current.naar)) herstel();
       if (doel !== null) startDirect(doel);
       window.clearTimeout(herstelTimer);
       herstelTimer = window.setTimeout(herstel, 1500);
     };
-    const touchCancel = () => herstel();
+    const touchCancel = () => { aanraking.current = false; herstel(); };
     const scrollEnd = () => herstel();
     r.addEventListener("touchstart", touchStart, { passive: true });
     r.addEventListener("touchmove", touchMove, { passive: true });

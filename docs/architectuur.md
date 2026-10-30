@@ -55,11 +55,15 @@ De feednavigatie is met `inert` niet focusbaar zolang zij verborgen is; de start
 
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
 
+YouTube-fouten 100, 101, 150 en 152 verwijderen de geblokkeerde video uit de open feed, ook bij vooraf laden. De actieve video en scrollpositie blijven behouden; bij een actieve fout volgt de navigatie de laatst gekozen richting. Aan het begin blijft bij teruggaan het vangnet zichtbaar. Een lopende swipe wordt niet door een automatische sprong vervangen. Tests: `tests/ytverwijderen.test.ts`.
+
 Bufferregels (#36): `src/buffer.ts` bepaalt per netwerkniveau de seconden en bytes voor de actieve en volgende hls.js-speler. De pool laadt geen spelers vanaf +2. Tests: `tests/buffer.test.ts` en `tests/videopool.test.ts`.
 
 Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert de offset op DST-wisseldagen naar die van middernacht zelf. `filters.tsx` gebruikt `gegenereerd` als referentiedag (bij ontbrekende/ongeldige waarde: nu) en laat berichttijden tot 20 minuten vooruit op die dag staan. Vandaag begint op de huidige Amsterdamse middernacht; 1u/3u rekenen tegen `Date.now()`. Regressietests: `tests/filters.test.ts`.
 
 Een lege nieuwsrubriek toont dat er nog geen berichten zijn; als nieuwsfilters alle beschikbare berichten uitsluiten, toont de leegmelding knoppen om de filters aan te passen of te herstellen. Zie `src/leegmelding.tsx` en `tests/leegmelding.test.ts`.
+
+De rubriektabs vormen een tablist; de knop Meer staat daarbuiten. Links en rechts selecteren en focussen de volgende zichtbare tab, met doorloop aan de uiteinden; alleen de geselecteerde tab staat in de tabvolgorde.
 
 De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de achtergronden van rubriektabs en filterpillen.
 
@@ -78,6 +82,7 @@ Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zicht
 - Max 3 requests tegelijk, alles `priority: low`. Geen AI-aanroepen.
 - De mp4-Range: of de browser de gecachete bytes voor `<video>` hergebruikt hangt af van de cache-headers van de Instagram-CDN en de browser (Chrome kan gedeeltelijke cache-items hergebruiken); dat is niet in een echte browser geverifieerd. Zeker is het nut van de warme DNS/TLS-verbinding en de CDN-edge.
 - CSP: `img-src https:`, `connect-src https:` en `media-src https:` dekken dit; `_headers` is niet gewijzigd.
+- Lighthouse best practices (#294): live 96 (30-10, na #283/#322/#323/#278). De resterende audit `errors-in-console` bestaat uit 6x `net::ERR_CONNECTION_CLOSED` voor Dumpert-`poster-small.jpg` (media.dumpert.nl) uit de thumbnailstap hierboven; Dumpert sluit die verbindingen in de headless meting. Een mislukte beeldaanvraag logt Chrome altijd, ook als `onerror` hem opvangt; alleen niet aanvragen voorkomt de fout. Omdat het voorladen bewust zo blijft (keuze Joey), is hier niets aan gewijzigd.
 
 ## Pages Functions (`functions/`)
 
@@ -227,3 +232,9 @@ Bij YouTube bewaakt een activatieklok het starten: een actieve iframe krijgt max
 De uur-Worker controleert maximaal 15 YouTube-embeds per run in bestaande og- of artikelbatches; zonder batch wachten controles. Per ID komt één oEmbed-subrequest erbij (maximaal 15 per run), plus hooguit één embed-herpoging bij consent (maximaal 15). De batch reserveert drie subrequests per controle naast maximaal 30 bestaande jobs en beperkt zo het aantal controles per batch. Redirects worden niet gevolgd; bij consent wordt de oorspronkelijke embed eenmaal opnieuw opgehaald met toestemmingscookies en de standaard fetch-User-Agent. Embedblokkade of oEmbed 401/403/404 betekent geblokkeerd; alleen embedstatus OK betekent speelbaar. oEmbed 200 is geen bewijs. De bestaande state bewaart onbekend één uur, geblokkeerd twee dagen en speelbaar zeven dagen, maximaal 300 ID’s. Er zijn geen extra KV-schrijfacties of Fetcher-aanroepen. `ytDiag` geeft per controle status, uitkomst, eventuele reden, paginatitel, hosts en oEmbed-status; `ytWeggelaten` en `ytControles` staan eveneens in de runmetadata. Onbekende video's blijven zichtbaar. De Pages Function filtert bekende blokkades; de client slaat bij fout 100, 101, 150 of 152 de actieve slide over.
 
 AI-teksten krijgen de vermelding „Samenvatting gemaakt met AI”: berichten tenzij `ruw`, het dagoverzicht, rubriekoverzichten met `ai: true` en geslaagde videosamenvattingen. Bij Uitgebreid volgt de vermelding de gekozen tekst: AI-uitleg of de eigen AI-samenvatting, maar geen bronalinea’s, ruwe terugval of losse kop.
+
+### Vooraf berekende datarespons (#363)
+
+De uur-Worker gebruikt de al opgehaalde statische data en `uur` om dezelfde merge, dagfilter, opschoning en compacte respons vooraf te berekenen. KV `data-vooraf` bevat de Amsterdamse dag, de zwakke ETag en de JSON-body als tekst. Pages leest deze tekst en geeft bij een passende dag direct de body of een 304 terug. Bij een ontbrekende of verouderde sleutel blijft het bestaande pad beschikbaar. `sv-klaar` wordt meegenomen; na een video-alarm wordt de respons opnieuw berekend, met één extra KV-schrijfpoging buiten de runteller. De run telt maximaal één extra schrijfpoging in `meta.kvWrites`. Bij een mislukte berekening blijft de vorige respons staan.
+
+Lokale Node-meting met de incidentkopieën `/tmp/kv-uur.json` (331.623 bytes) en `/tmp/st-bb662877.json` (117.318 bytes), 20 verzoeken na opwarming: oud 60,672 ms CPU per verzoek, nieuw 1,566 ms. Dit is een lokale indicatie, geen meting van Cloudflare-CPU; de oude meting gebruikt lokale KV-doubles.

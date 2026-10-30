@@ -1,3 +1,3 @@
 declare module "react-dom/server.browser" {
-  export * from "react-dom/server";
+  export { renderToStaticMarkup } from "react-dom/server";
 }

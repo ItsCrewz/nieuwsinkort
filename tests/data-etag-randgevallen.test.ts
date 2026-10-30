@@ -142,17 +142,17 @@ try {
     assert.equal(r.status, 200);
   });
 
-  await t("zonder ?statisch leest de KV uur en sv-klaar", async () => {
+  await t("zonder ?statisch leest de KV eerst data-vooraf en daarna uur en sv-klaar", async () => {
     const { env, kvLeest } = maakEnv({});
     await data({ request: req("/data.json"), env });
-    assert.deepEqual(kvLeest, ["uur", "sv-klaar"]);
+    assert.deepEqual(kvLeest, ["data-vooraf", "uur", "sv-klaar"]);
   });
 
-  await t("mislukte ASSETS-fetch geeft de status door zonder KV te lezen", async () => {
+  await t("mislukte ASSETS-fetch geeft de status door na de data-vooraf-read", async () => {
     const { env, kvLeest } = maakEnv({}, { assetStatus: 404 });
     const r = await data({ request: req("/data.json"), env });
     assert.equal(r.status, 404);
-    assert.deepEqual(kvLeest, []);
+    assert.deepEqual(kvLeest, ["data-vooraf"]);
     assert.equal(r.headers.get("etag"), null);
   });
 
