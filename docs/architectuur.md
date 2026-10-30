@@ -63,6 +63,8 @@ Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert d
 
 Een lege nieuwsrubriek toont dat er nog geen berichten zijn; als nieuwsfilters alle beschikbare berichten uitsluiten, toont de leegmelding knoppen om de filters aan te passen of te herstellen. Zie `src/leegmelding.tsx` en `tests/leegmelding.test.ts`.
 
+De rubriektabs vormen een tablist; de knop Meer staat daarbuiten. Links en rechts selecteren en focussen de volgende zichtbare tab, met doorloop aan de uiteinden; alleen de geselecteerde tab staat in de tabvolgorde.
+
 De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de achtergronden van rubriektabs en filterpillen.
 
 ## Laadprestaties (#35)

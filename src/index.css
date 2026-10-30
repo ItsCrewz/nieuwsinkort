@@ -160,6 +160,7 @@ body { margin:0; background:var(--paper); color:var(--ink); overflow-x:clip; ove
 .more-btn.open{color:var(--ink)}
 .more-btn.open .ic{transform:rotate(180deg)}
 /* Pil op de eindbreedte; schuift met transform (FLIP), dus alleen compositor-werk */
+.seg-tabs{display:contents}
 .seg-ind{position:absolute;left:0;top:3px;bottom:3px;width:60px;border-radius:9px;background:var(--seg-on);box-shadow:var(--seg-shadow);transform-origin:0 50%;opacity:0;pointer-events:none;transition:transform 260ms cubic-bezier(.3,.9,.3,1)}
 .seg-ind.ready{opacity:1}
 .seg-measure{position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;height:0;overflow:hidden;contain:layout paint}
@@ -406,7 +407,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   .dateline{padding-top:28px}
   .tabs{top:calc(56px + env(safe-area-inset-top));margin:32px -16px 0;padding:8px 16px}
   .seg{display:flex;width:100%}
-  .seg > .tab,.seg > .more-wrap{flex:1 1 auto;justify-content:center}
+  .seg-tabs > .tab,.seg > .more-wrap{flex:1 1 auto;justify-content:center}
   .seg > .more-wrap > .tab{width:100%;justify-content:center}
   .tab,.tab-m{padding:0 10px}
   .date{font-size:24px}
