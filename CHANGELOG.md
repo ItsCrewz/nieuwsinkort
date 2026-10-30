@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Direct starten (#51): volgende video vooraf in de slide en klein bufferen; native voorladen en hele HLS-segmenten kunnen de richtgrenzen van 1,55 MB wifi en 0,36 MB mobiel overschrijden. Save-Data/2G laden geen volgende video. Nog niet op iPhone geverifieerd.
 - Nieuws-AI (#83): kortere samenvattingen en hooguit twee aanvullende punten, lagere uitvoerlimieten en hergebruik via een rubriekgebonden titelwoordencache van 24 uur.
 - Mistral is na Groq een optionele reserve voor tekst-AI, met een eigen dag- en maandlimiet.
 - Video-samenvattingen gebruiken Groq voor transcriptie en punten met Cloudflare als terugval binnen het bestaande budget.
