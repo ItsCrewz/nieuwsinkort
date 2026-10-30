@@ -1,3 +1,4 @@
+import { berekenBody, etag } from "../../functions/data.json";
 import type { LlmState } from "./llm";
 // nieuwsinkort-uur: elk uur (06:00–23:00 Amsterdam) feeds ophalen, samenvatten met Workers AI en in KV zetten.
 // De Pages Function /data.json voegt dit samen met de data.json van de routine.
@@ -333,6 +334,18 @@ export class Runner extends DurableObject<Env> {
     let r: any = { overgeslagen: "geen budget", vrij: Math.round(vrij) };
     if (perAlarm >= 40) {
       try { r = await vooraf(env, perAlarm); } catch (e: any) { r = { fout: String(e?.message || e).slice(0, 200) }; }
+    }
+    if (r.klaar !== undefined) {
+      try {
+        const [statR, uur, sv] = await Promise.all([
+          fetch(`${env.SITE.replace(/\/$/, "")}/data.json?statisch=1`, { headers: { "User-Agent": UA } }),
+          env.NIEUWS.get("uur", "json"), env.NIEUWS.get("sv-klaar", "json"),
+        ]);
+        if (statR.ok && uur) {
+          const body = await berekenBody(await statR.json(), uur, sv);
+          await env.NIEUWS.put("data-vooraf", `${ams().iso}\n${await etag(body)}\n${body}`);
+        }
+      } catch { console.error("KV-schrijffout data-vooraf na video-alarm"); }
     }
     k.n++; k.laatst = { ...r, perAlarm: Math.round(perAlarm), used: Math.round(used), at: new Date().toISOString() };
     await this.ctx.storage.put("vooraf", k);
@@ -807,18 +820,26 @@ export class Runner extends DurableObject<Env> {
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys, ytGeblokkeerd,
-      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + tabWrites + 3, kvWritesOg, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + tabWrites + (stat ? 4 : 3), kvWritesOg, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));
     for (const id of Object.keys(st.sums)) if (!live.has(id) && now - st.sums[id].at >= 24 * 3600e3) { delete st.sums[id]; }
     for (const [l, id] of Object.entries(st.links)) if (!st.sums[id]) delete st.links[l];
     for (const [h, id] of Object.entries(st.hashes)) if (!st.sums[id] || now - st.sums[id].at >= 24 * 3600e3) delete st.hashes[h];
-    await schrijfRun(env.NIEUWS, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
+    const uurGelukt = await schrijfRun(env.NIEUWS, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
       // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.
       await this.ctx.storage.put("vooraf", { uur: A.h, n: 0 });
       await this.ctx.storage.setAlarm(Date.now() + 60e3);
     });
+    if (stat && uurGelukt && ams().iso === A.iso) {
+      try {
+        const sv = await env.NIEUWS.get("sv-klaar", "json");
+        const body = await berekenBody(stat, out, sv, Date.now());
+        const tag = await etag(body);
+        await env.NIEUWS.put("data-vooraf", `${A.iso}\n${tag}\n${body}`);
+      } catch { console.error("KV-schrijffout data-vooraf"); }
+    }
     return { ok: true, ...out.meta, gegenereerd: out.gegenereerd };
   }
 }
