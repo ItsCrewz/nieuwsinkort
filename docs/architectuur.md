@@ -156,4 +156,4 @@ De AI-ronde kiest bij de eerste twee budgettrappen eerst hooguit één cluster p
 
 ## AI-aanbieders
 
-De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq als fallback en per model conservatieve UTC-dag- en minuutlimieten. Lees verder geeft Groq voorrang. De bestaande Workers AI-budgettrappen blijven gelden. Zie [AI-aanbieders en secrets](ai-aanbieders.md).
+De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daarna Mistral als fallback en per model conservatieve UTC-dag- en minuutlimieten. Mistral heeft daarnaast een UTC-maandlimiet, instelbaar via `MISTRAL_MAAND_TOKENS`. Lees verder geeft Groq voorrang. De bestaande Workers AI-budgettrappen blijven gelden. Zie [AI-aanbieders en secrets](ai-aanbieders.md).
