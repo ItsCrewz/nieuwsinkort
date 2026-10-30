@@ -1,0 +1,1 @@
+- Verbeter de YouTube-start op iOS met een herhaalde handdruk, begrensde herpogingen en een vangnet waarin tikken rechtstreeks naar de speler gaan; een hint blijft zichtbaar en de debug-overlay toont de spelerstatus (#267).

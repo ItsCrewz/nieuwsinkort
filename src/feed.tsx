@@ -23,6 +23,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound } from "./geluid";
 import { posterVerborgen } from "./poster";
+import { ytStartBesluit } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -646,9 +647,12 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
 
 // ------------------------------------------------------------- YouTube (IFrame API via postMessage)
 const YT_ORIGIN = "https://www.youtube-nocookie.com";
-function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld }: PlayerProps & { id: string }) {
+function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, vangnet, setVangnet }: PlayerProps & { id: string; vangnet: boolean; setVangnet: (aan: boolean) => void }) {
   const ref = useRef<HTMLIFrameElement>(null);
-  const loaded = useRef(false);
+  const klaar = useRef(false);
+  const start = useRef({ status: null as number | null, pogingen: 0, sinds: performance.now() });
+  const handdruk = useRef(0);
+  const geladen = useRef(false);
   const [shown, setShown] = useState(false);
   useEffect(() => {
     onBeeld(shown);
@@ -657,7 +661,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld }: Pla
   // src staat vast bij het mounten; daarna stuurt alles via postMessage (geen herladen).
   const [src] = useState(
     () =>
-      `${YT_ORIGIN}/embed/${id}?autoplay=${active ? 1 : 0}&mute=1&playsinline=1&enablejsapi=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&loop=1&playlist=${id}&origin=${encodeURIComponent(window.location.origin)}`
+      `${YT_ORIGIN}/embed/${id}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&controls=0&rel=0&modestbranding=1&iv_load_policy=3&loop=1&playlist=${id}&origin=${encodeURIComponent(window.location.origin)}`
   );
   const post = useCallback((func: string, args: unknown[] = []) => {
     ref.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), YT_ORIGIN);
@@ -665,38 +669,69 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld }: Pla
   const state = useRef({ active, paused, muted });
   state.current = { active, paused, muted };
   const apply = useCallback(() => {
-    if (!loaded.current) return;
+    if (!klaar.current) return;
     const s = state.current;
     post(s.muted ? "mute" : "unMute");
     if (s.active && !s.paused) post("playVideo");
     else post("pauseVideo");
   }, [post]);
+  const listening = useCallback(() => {
+    ref.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id, channel: "widget" }), YT_ORIGIN);
+  }, [id]);
+  const diagnose = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.dataset.ytReady = String(klaar.current);
+    el.dataset.ytStatus = start.current.status === null ? "" : String(start.current.status);
+    el.dataset.ytPogingen = String(start.current.pogingen);
+  }, []);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.origin !== YT_ORIGIN || e.source !== ref.current?.contentWindow) return;
-      let d: { event?: string; info?: { playerState?: number; currentTime?: number; duration?: number } } | null = null;
+      let d: { event?: string; info?: unknown } | null = null;
       try {
         d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
       } catch {
         return;
       }
       if (!d) return;
-      if (d.event === "onReady") apply();
+      if (d.event === "onReady" && !klaar.current) {
+        klaar.current = true;
+        start.current.sinds = performance.now();
+        post("addEventListener", ["onStateChange"]);
+        post("addEventListener", ["onError"]);
+        post("addEventListener", ["onAutoplayBlocked"]);
+        debugEvent(`YouTube ${id} onReady`);
+        diagnose();
+        apply();
+      }
+      if (d.event === "onError" || d.event === "onAutoplayBlocked") {
+        debugEvent(`YouTube ${id} ${d.event} ${typeof d.info === "number" ? d.info : ""}`);
+        setVangnet(true);
+      }
       const info = d.info;
+      const status = d.event === "onStateChange" && typeof info === "number" ? info :
+        info && typeof info === "object" && typeof (info as { playerState?: unknown }).playerState === "number" ? (info as { playerState: number }).playerState : null;
+      if (d.event === "onStateChange") debugEvent(`YouTube ${id} onStateChange ${status ?? "?"}`);
+      if (status !== null) {
+        if (status !== start.current.status) start.current.sinds = performance.now();
+        start.current.status = status;
+        if (status === 1) { setShown(true); setVangnet(false); }
+        diagnose();
+      }
       if (info && typeof info === "object") {
         const t = info as { playerState?: number; currentTime?: number; duration?: number };
         if (typeof t.duration === "number") dur.current = t.duration;
         if (typeof t.currentTime === "number") cur.current = t.currentTime;
-        if (typeof t.playerState === "number") {
-          const playing = t.playerState === 1;
-          if (playing) setShown(true);
-          if (t.playerState !== ps.current || (playing && typeof t.currentTime === "number" && Math.abs(t.currentTime - expect()) > 1)) {
-            ps.current = t.playerState;
-            since.current = performance.now();
-            base.current = cur.current;
-            bar.set(cur.current, dur.current, playing);
-          }
+      }
+      if (status !== null) {
+        const playing = status === 1;
+        if (status !== ps.current || (playing && typeof (info as { currentTime?: number })?.currentTime === "number" && Math.abs(cur.current - expect()) > 1)) {
+          ps.current = status;
+          since.current = performance.now();
+          base.current = cur.current;
+          bar.set(cur.current, dur.current, playing);
         }
       }
     };
@@ -725,30 +760,60 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld }: Pla
       window.removeEventListener("message", onMsg);
       if (seek.current === api) seek.current = null;
     };
-  }, [apply, bar, post, seek]);
+  }, [apply, bar.set, diagnose, id, post, seek, setVangnet]);
 
   useEffect(() => {
+    start.current = { status: null, pogingen: 0, sinds: performance.now() };
+    setVangnet(false);
+    if (!active) setShown(false);
+    diagnose();
     apply();
-    if (!active && loaded.current) post("seekTo", [0, true]);
-  }, [active, paused, muted, apply, post]);
+    if (!active && klaar.current) post("seekTo", [0, true]);
+  }, [active, paused, apply, diagnose, post, setVangnet]);
+
+  useEffect(() => { apply(); }, [muted, apply]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (geladen.current && !klaar.current && handdruk.current < 10) {
+        listening();
+        handdruk.current++;
+      }
+      const s = state.current;
+      const besluit = ytStartBesluit({ actief: s.active, gepauzeerd: s.paused, klaar: klaar.current, ...start.current, nu: performance.now() });
+      if (besluit === "probeer") {
+        start.current.pogingen++;
+        start.current.sinds = performance.now();
+        diagnose();
+        apply();
+      } else if (besluit === "vangnet") setVangnet(true);
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [apply, diagnose, listening, setVangnet]);
 
   const isShort = /\/shorts\//.test(v.href);
   return (
+    <>
     <iframe
       ref={ref}
-      className={`f-media f-yt ${isShort ? "short" : ""} ${shown ? "on" : ""}`}
+      className={`f-media f-yt ${isShort ? "short" : ""}`}
       src={src}
       title={v.titel}
+      data-yt-vangnet={vangnet ? "ja" : "nee"}
       tabIndex={-1}
       allow="autoplay; encrypted-media; picture-in-picture"
       referrerPolicy="strict-origin-when-cross-origin"
       onLoad={() => {
-        loaded.current = true;
-        // handdruk: daarna stuurt de speler onReady + infoDelivery (tijd, duur, status)
-        ref.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id, channel: "widget" }), YT_ORIGIN);
-        apply();
+        if (klaar.current) return;
+        geladen.current = true;
+        handdruk.current = 1;
+        start.current.sinds = performance.now();
+        diagnose();
+        listening();
       }}
     />
+    {active && !paused && vangnet ? <div className={`f-yt-start${isShort ? " short" : ""}`}>Tik op het filmpje om te starten</div> : null}
+    </>
   );
 }
 
@@ -869,7 +934,9 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
   const seek = useRef<SeekApi | null>(null);
   const [posterOk, setPosterOk] = useState(true);
   const [beeld, setBeeld] = useState(false);
+  const [vangnet, setVangnet] = useState(false);
   const playable = !!p && !failed;
+  const ytVangnet = p?.kind === "youtube" && active && !paused && playable && mount && vangnet;
   const props: PlayerProps = { v, active, preload, paused, muted, bar, seek, onFail: fail, onAutoplayBlocked, onBeeld: setBeeld };
   // Dubbel tikken links/rechts = 5 s terug/vooruit. De eerste tik pauzeert meteen (geen vertraging);
   // blijkt het een dubbele tik, dan draaien we die pauze terug en springen we.
@@ -902,18 +969,18 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
   }, [jump]);
   return (
     <section className={`fslide cat-${cat}`} data-i={i} aria-label={`${i + 1} van ${total}: ${v.titel}`} aria-current={active ? "true" : undefined}>
-      <div className="fcol">
+      <div className={`fcol${ytVangnet ? " yt-vangnet" : ""}`}>
         {playable && mount ? (
           p!.kind === "youtube" ? (
-            <YouTubePlayer {...props} id={youtubeId(p!.src)!} />
+            <YouTubePlayer {...props} id={youtubeId(p!.src)!} vangnet={ytVangnet} setVangnet={setVangnet} />
           ) : (
             <NativePlayer {...props} kind={p!.kind} src={p!.src} pool={pool} slot={slotVan(i)} />
           )
         ) : null}
-        {/* Poster boven de speler (die zelf zichtbaar en renderbaar blijft) tot er een echt beeld is (YouTube: direct weg). */}
+        {/* Poster boven de speler tot er echt beeld is. */}
         {v.thumb && posterOk ? (
           <img
-            className={`f-poster${posterVerborgen(p?.kind, beeld, playable, mount) ? " weg" : ""}`}
+            className={`f-poster${posterVerborgen(p?.kind, beeld, playable, mount, ytVangnet) ? " weg" : ""}`}
             src={v.thumb}
             alt=""
             loading={Math.abs(i) < 2 || mount ? "eager" : "lazy"}
