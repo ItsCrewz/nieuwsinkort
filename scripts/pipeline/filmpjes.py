@@ -48,6 +48,13 @@ YT_NIEUWS = {  # kanaalnaam -> channel_id
     "Nieuwsuur": "UCExcZNwh_3Mwm4fF4VSiu2w",
     "Omroep PowNed": "UCihqgpWn_ns1gJUdhNLsSMQ",
     "Radar": "UCGUhzuD1eYIgJoSGe0c_rNg",
+    "NOS Sport": "UCT4oPufBQa0f6C67Fw_HXNg",
+    "Ziggo Sport": "UCueOZEvMffxjJyVO1fGiJNQ",
+    "ESPN NL": "UCXnPiEv1DoUCDAqDUXT9shQ",
+    "OnsOranje": "UCpnmJcBhJqKIHFkKvgdkdMQ",
+    "FORMULA 1": "UCB_qr75-ydFVKSF9Dmo6izg",
+    "AutoWeek": "UCzToShYR6Sw_k1i6FsdEr6g",
+    "Autovisie": "UCAkqAwuyz_qu3vfgAMQPCBw",
 }
 # Instagram: profiel-embed van Instagram zelf (openbaar, zonder login); Kittygram geeft geen media.
 IG_ACCOUNTS = {
