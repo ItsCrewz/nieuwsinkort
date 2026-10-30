@@ -15,7 +15,7 @@ import { herindeel } from "./regio";
 import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { uitgebreidAlineas } from "./uitgebreid";
 import { touchNu } from "./invoer";
-import { neemVroegeData } from "./vroeg";
+import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
@@ -1006,9 +1006,7 @@ function useData() {
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
     try {
-      const r = await (neemVroegeData()?.catch(() => null) ?? null) ?? await fetch("/data.json", { cache: "no-cache" }); // altijd hervalideren: ETag geeft een 304 als er niets nieuws is
-      if (!r.ok) throw new Error(String(r.status));
-      const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
+      const d = schoon((await laadData(neemVroegeData())) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
       d.filmpjes ??= [];
