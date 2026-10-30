@@ -43,6 +43,10 @@ Worker: `cd worker && npm ci`; typecheck zie `worker/tsconfig.json`. Lokaal draa
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`). Geen `javascript:`-links.
 - Nieuwe test: voeg een `t("...", () => {...})` toe in `tests/dedup.test.ts`.
 
+## Externe artikel-URL's
+
+Gebruik `worker/src/url.ts` voor og/artikel-fetches en controleer feedlinks vóór Jina en jobselectie. Alleen HTTP(S), poort 80/443 en geen IP-literals of lokale/interne hostnamen. Controleer ook de redirect-eind-URL; tests gebruiken fetch-mocks.
+
 ## Neuronbudget (AI-wijzigingen)
 
 `BUDGET`=9000 neuronen/dag, `CAP`=40 nieuwe samenvattingen per run. Tiers in `worker/src/index.ts`:

@@ -8,6 +8,7 @@ import { buildWeer, BR_URL, OM_URL, KNMI_VERW, KNMI_WAARSCH } from "./weer";
 import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
+import { externeUrl, externeFetch } from "./url";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
 import { vooraf, MAX_ALARMS_PER_UUR } from "./vooraf";
 import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
@@ -74,10 +75,11 @@ async function runInsta(j: Job, since: number, t0: number, kv?: KVNamespace): Pr
 
 // og:image van een artikel (alleen als de feed zelf geen foto had). Leest alleen de <head>, 3 dagen in KV.
 async function runOg(j: Job, t0: number, kv?: KVNamespace): Promise<Res> {
+  if (!externeUrl(j.url)) throw new Error("geweigerde externe URL");
   const key = `og:${normLink(j.url)}`.slice(0, 500);
   const c = await kv?.get(key).catch(() => null);
   if (c != null) return { url: j.url, ok: true, status: 200, ms: Date.now() - t0, text: c };
-  const r = await fetch(j.url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(8000), redirect: "follow" });
+  const r = await externeFetch(j.url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(8000), redirect: "follow" });
   let html = "";
   if (r.ok && r.body && /html/i.test(r.headers.get("content-type") || "html")) {
     const rd = r.body.getReader(), dec = new TextDecoder();
@@ -96,7 +98,7 @@ async function runOg(j: Job, t0: number, kv?: KVNamespace): Promise<Res> {
 
 // "Lees verder": de artikeltekst zelf (alinea's, zonder AI). Browser-UA (DPG e.d. weigeren bots), max 900 kB lezen.
 async function runArt(j: Job, t0: number): Promise<Res> {
-  const r = await fetch(j.url, { headers: { "User-Agent": BR_UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8" }, signal: AbortSignal.timeout(10000), redirect: "follow" });
+  const r = await externeFetch(j.url, { headers: { "User-Agent": BR_UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8" }, signal: AbortSignal.timeout(10000), redirect: "follow" });
   if (!r.ok || !r.body || !/html/i.test(r.headers.get("content-type") || "html")) {
     r.body?.cancel().catch(() => {});
     return { url: j.url, ok: false, status: r.status, err: `HTTP ${r.status}`, ms: Date.now() - t0, json: [] };
@@ -114,6 +116,7 @@ async function runArt(j: Job, t0: number): Promise<Res> {
 
 // Terugval voor sites die Cloudflare weigeren (DPG: AD/NU/RTL/Volkskrant/Trouw/Tweakers): r.jina.ai (Reader) leest de pagina.
 async function runArtJ(j: Job, t0: number): Promise<Res> {
+  if (!externeUrl(j.url)) throw new Error("geweigerde externe URL");
   const r = await fetch(`https://r.jina.ai/${j.url}`, { headers: { Accept: "text/plain", "X-Return-Format": "markdown", "X-Timeout": "15" }, signal: AbortSignal.timeout(25000) });
   if (!r.ok) { r.body?.cancel().catch(() => {}); return { url: j.url, ok: false, status: r.status, err: `jina HTTP ${r.status}`, ms: Date.now() - t0, json: [] }; }
   const md = (await r.text()).slice(0, 400000);
@@ -485,7 +488,7 @@ export class Runner extends DurableObject<Env> {
     const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
     const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : noAI && isNL(k) && k.c[0].s));
     // ---- foto's: uit de feeds; ontbreekt die bij een bron, dan og:image van het artikel (gecachet in KV)
-    const ogLinks = [...new Set(shown.flatMap((k) => k.c.filter((c) => !c.img && !/instagram\.com|youtube\.com|youtu\.be|reddit\.com|x\.com|twitter\.com/.test(c.href)).slice(0, 3).map((c) => c.href)))].slice(0, 120);
+    const ogLinks = [...new Set(shown.flatMap((k) => k.c.filter((c) => !c.img && !/instagram\.com|youtube\.com|youtu\.be|reddit\.com|x\.com|twitter\.com/.test(c.href)).slice(0, 3).map((c) => c.href).filter((h) => externeUrl(h) !== null)))].slice(0, 120);
     const og = new Map<string, string>();
     const ogB: Job[][] = [];
     for (let i = 0; i < ogLinks.length; i += 30) ogB.push(ogLinks.slice(i, i + 30).map((url) => ({ url, kind: "og" as const })));
@@ -528,7 +531,7 @@ export class Runner extends DurableObject<Env> {
     for (const i of items) pushM({ key: normLink(i.bronnen?.[0]?.href || ""), kop: i.kop, kort: [i.ai, i.samenvatting].filter(Boolean).join(" "), bronnen: i.bronnen || [], t: Date.parse(`${A.iso}T${i.tijd || "00:00"}:00`) || 0, item: i });
     for (const i of statItems) pushM({ key: normLink(i.bronnen?.[0]?.href || ""), kop: i.kop, kort: [i.ai, i.samenvatting].filter(Boolean).join(" "), bronnen: i.bronnen || [], t: 0 });
     const hp = (h: string) => { try { const x = new URL(h); return /^https?:$/.test(x.protocol) ? x.hostname + x.pathname : ""; } catch { return ""; } };
-    const artLinks = (m: MC) => m.bronnen.filter((b) => { const x = hp(b.href || ""); return x && !SOCIAAL.test(x); }).slice(0, 3);
+    const artLinks = (m: MC) => m.bronnen.filter((b) => { const x = hp(b.href || ""); return externeUrl(b.href) !== null && x && !SOCIAAL.test(x); }).slice(0, 3);
     // nieuwste/meeste bronnen eerst; max 120 nieuwe artikelen per run (4 Fetcher-DO's x 30)
     const mOrde = [...mc].sort((a, b) => b.bronnen.length - a.bronnen.length || b.t - a.t);
     const nodig = [...new Set(mOrde.flatMap((m) => artLinks(m).map((b) => b.href)).filter((h) => !(normLink(h) in st.art!)))].slice(0, 120);

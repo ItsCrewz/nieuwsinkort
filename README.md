@@ -55,6 +55,8 @@ Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled --var R
 - Handige schakelaars: `DRY_RUN=1` (niets uploaden), `SKIP_BUILD=1`, `CANVAS_SRC=<pad>`, `FROZEN_BRANCH`, `FEEDS_JSON`.
 - Inloggen via wrangler OAuth of `CLOUDFLARE_API_TOKEN`. Zet nooit tokens in de repo.
 
+Artikel- en og-fetches en de Jina-terugval accepteren alleen HTTP(S)-links op poort 80/443, zonder IP-adressen of lokale/interne hostnamen. Resultaten met een geweigerde redirect-eind-URL worden weggegooid.
+
 ## Meer
 
 - [docs/architectuur.md](docs/architectuur.md): architectuur, dataflow, bronnen, budget, open punten
