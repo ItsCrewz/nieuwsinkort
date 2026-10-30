@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Showbizz (#103): RTL Boulevard-site, Telegraaf Entertainment, NU.nl Achterklap/Muziek/Film, NOS Cultuur & media en Linda.nl (max 5) als feeds; RTL Boulevard en Shownieuws in `YT_NIEUWS`. Showbizzverhalen uit algemene feeds verhuizen via `worker/src/showcat.ts` naar Showbizz; social-feeds worden per feed-URL als niet-nieuws overgeslagen, zodat de RTL Boulevard-site wel telt.
 - F1-berichten uit autobronnen komen niet meer onder Auto (#93): `sportCat` kijkt nu ook naar items met cat `auto` en herkent meer F1-termen (coureurs, GP, pole position).
 - Feedtitels voor lokaal naspelen bevatten ook Voetbal, Formule 1, Auto en herkende Buitenland-berichten (#92).
 - Geluidskeuze voor filmpjes, shorts en Dumpert onthouden; de videopool wordt bij een gebruikersgebaar vrijgegeven (#66). Nog niet op een echte iPhone geverifieerd.

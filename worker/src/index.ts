@@ -26,6 +26,7 @@ import { cluster, normLink, sim, toks, type Cand, type Cluster } from "./cluster
 import { Budget, utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quotaSleutel } from "./budget";
 import { clusterHash, vindClusterSum } from "./clusterhash";
 import { herindeelSport, sportCat } from "./sportcat";
+import { herindeelShow, showCat, nietAlsNieuws } from "./showcat";
 
 export { Budget };
 
@@ -265,7 +266,6 @@ export class Fetcher extends DurableObject<Env> {
 
 // ---------------------------------------------------------------- clusteren
 // ---------------------------------------------------------------- runner-DO
-const SOCIAL_INFO = /YouTube|Instagram|Reddit|Podcast/; // X (bv. Politie Haarlem) telt wel als nieuws
 const NIET_ALS_NIEUWS = new Set(["burgernet", "gemeenteraadhaarlem"]);
 const BEKENDMAKING_HINTS = /raadsbesluit|collegebesluit|verordening|verkeersbesluit|omgevingsplan|bestemmingsplan|apv|referendum|parkeer|evenement|sluiting|aanwijzing|exploitatie/i;
 const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz", "politiek", "voetbal", "f1", "auto"];
@@ -418,8 +418,9 @@ export class Runner extends DurableObject<Env> {
     const buitenL = new Set<string>(); // links uit buitenlandfeeds, ook als een algemene feed ze eerder bracht
     for (const f of srcFeeds) {
       // Politiek: ook Instagram/YouTube-posts van partijen zijn 'nieuws' (eigen rubriek); andere social-bronnen niet.
-      if (!NEWS_CATS.includes(f.g) || (f.g !== "politiek" && SOCIAL_INFO.test(f.s.info || "")) || NIET_ALS_NIEUWS.has(f.s.id)) continue;
+      if (!NEWS_CATS.includes(f.g) || NIET_ALS_NIEUWS.has(f.s.id)) continue;
       for (const u of f.urls) {
+        if (nietAlsNieuws(f.g, f.s.info || "", u)) continue; // per feed-URL: RTL Boulevard-site telt, de YouTube-feed niet
         if (/known_exploited|\.json($|\?)/.test(u)) continue;
         for (const e of [...(R.get(u)?.entries || [])].sort((a, b) => (b.d || 0) - (a.d || 0)).slice(0, f.s.feeds.find((feed: any) => feed.url === u)?.max)) {
           if (!e.t || !e.l) continue;
@@ -437,12 +438,16 @@ export class Runner extends DurableObject<Env> {
     for (const k of clusters) {
       if (!k.c.some((c) => ["f1", "voetbal", "auto"].includes(c.cat))) k.cat = k.c.find((c) => c.cat !== "politiek")?.cat || "politiek";
       herindeelSport(k);
+      herindeelShow(k);
     }
 
     // ---- wat de routine (08:00) al heeft: niet opnieuw samenvatten
     const statToday = stat && typeof stat.gegenereerd === "string" && ams(Date.parse(stat.gegenereerd)).iso === A.iso;
     const statItems: any[] = statToday ? stat.items || [] : [];
-    for (const i of statItems) i.cat = sportCat({ cat: i.cat, kop: i.kop || "", hrefs: (i.bronnen || []).map((b: any) => b.href || "") }) || i.cat;
+    for (const i of statItems) {
+      i.cat = sportCat({ cat: i.cat, kop: i.kop || "", hrefs: (i.bronnen || []).map((b: any) => b.href || "") }) || i.cat;
+      i.cat = showCat({ cat: i.cat, items: (i.bronnen || []).map((b: any) => ({ href: b.href || "" })) }) || i.cat;
+    }
     const statLinks = new Set(statItems.flatMap((i: any) => (i.bronnen || []).map((b: any) => normLink(b.href || ""))));
     const statTok = statItems.map((i: any) => toks(`${i.kop} ${i.ai}`));
     const covered = (k: Cluster) => k.c.some((c) => statLinks.has(normLink(c.href))) || statTok.some((t) => { const { n, j } = sim(k.tok, t); return n >= 4 && j >= 0.25; });
