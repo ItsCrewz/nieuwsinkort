@@ -1,0 +1,1 @@
+- De YouTube-embedcontrole toont diagnosegegevens, gebruikt ook oEmbed en bewaart onbekende uitkomsten kort (#283).
