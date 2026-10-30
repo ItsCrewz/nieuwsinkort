@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { schoon } from "../src/schoon";
+assert.equal(schoon(null), null);
+assert.equal(schoon("tekst"), "tekst");
+assert.deepEqual(schoon({}), { items: undefined, dumpert: [], filmpjes: [], ontdubbeld: { filmpjes: 0, dumpert: 0 } });
+const video = { titel: "Een filmpje", href: "https://youtu.be/abcDEF12345", bron: "Bron" };
+const invoer = { dumpert: [video], filmpjes: [video], items: [{ beeld: "http://voorbeeld.nl/foto.jpg", beelden: ["https://voorbeeld.nl/foto.jpg", "https://voorbeeld.nl/logo.png"], bronnen: [{ href: "https://voorbeeld.nl" }, { href: "javascript:alert(1)" }, {}] }, { beeld: "" }] };
+const resultaat = schoon(invoer);
+assert.equal(resultaat.dumpert.length, 1);
+assert.equal(resultaat.filmpjes.length, 0);
+assert.equal(resultaat.ontdubbeld.filmpjes, 1);
+assert.deepEqual(resultaat.items[0], { beelden: ["https://voorbeeld.nl/foto.jpg"], bronnen: [{ href: "https://voorbeeld.nl" }] });
+assert.deepEqual(resultaat.items[1], {});
+assert.equal(invoer.items[0].bronnen.length, 3);
+console.log("✓ schoon: beelden, bronnen en dubbele video's");

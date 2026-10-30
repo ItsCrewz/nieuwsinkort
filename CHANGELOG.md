@@ -7,6 +7,7 @@
 - Feedtitels voor lokaal naspelen bevatten ook Voetbal, Formule 1, Auto en herkende Buitenland-berichten (#92).
 - Geluidskeuze voor filmpjes, shorts en Dumpert onthouden; de videopool wordt bij een gebruikersgebaar vrijgegeven (#66). Nog niet op een echte iPhone geverifieerd.
 - Direct starten (#51): volgende video vooraf in de slide en klein bufferen; native voorladen en hele HLS-segmenten kunnen de richtgrenzen van 1,55 MB wifi en 0,36 MB mobiel overschrijden. Save-Data/2G laden geen volgende video. Nog niet op iPhone geverifieerd.
+- Tests toegevoegd voor feedparsing, externe URL-controle, videoslugs, Amsterdamse tijd en dataopschoning (#97).
 - Nieuws-AI (#83): kortere samenvattingen en hooguit twee aanvullende punten, lagere uitvoerlimieten en hergebruik via een rubriekgebonden titelwoordencache van 24 uur.
 - Buitenland (#33): oorspronkelijke koppen en alle bronnen van een cluster bepalen samen de regio; enkele buitenlandse economische namen worden in economische context herkend.
 

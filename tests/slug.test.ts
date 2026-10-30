@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { videoSlug } from "../src/slug";
+import type { Video } from "../src/types";
+const video = (href: string, titel = "Titel", embed = ""): Video => ({ href, titel, embed, ai: "", bron: "", thumb: "", populariteit: "", tijd: "" });
+for (const [href, verwacht] of [["https://youtu.be/abcDEF12345", "yt-abcDEF12345"], ["https://youtube.com/watch?t=1&v=abcDEF12345", "yt-abcDEF12345"], ["https://dumpert.nl/item/abc-12", "d-abc-12"], ["https://x.com/a/status/123", "x-123"], ["https://reddit.com/r/test/comments/abc123/titel", "r-abc123"], ["https://instagram.com/reel/ABC_123", "ig-ABC_123"]]) assert.equal(videoSlug(video(href)), verwacht);
+assert.equal(videoSlug(video("", "Één bijzondere titel!")), "een-bijzondere-titel");
+assert.equal(videoSlug(video("", "!!!")), "video");
+assert.equal(videoSlug(video("", "a".repeat(70))).length, 60);
+assert.equal(videoSlug(video("https://dumpert.nl/item/abc", "Titel", "https://youtube.com/embed/abcDEF12345")), "yt-abcDEF12345");
+console.log("✓ slug: platforms en terugval");
