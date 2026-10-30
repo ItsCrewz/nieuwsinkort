@@ -11,7 +11,7 @@ import { bewaakteRun } from "./run-status";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
-import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, selecteerFilmpjes, ytEmbedGeblokkeerd, ytEmbedStatus, ytCombineer, type YtDiag, ytVideoId, ytNieuweControles, ruimYtCache, type YtCache, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
+import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, selecteerFilmpjes, ytEmbedGeblokkeerd, ytEmbedStatus, ytCombineer, type YtDiag, ytVideoId, ytNieuweControles, ytGeblokkeerdeShorts, ytBlokkades, ruimYtCache, type YtCache, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
 import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
@@ -584,7 +584,8 @@ export class Runner extends DurableObject<Env> {
     // YouTube-kanalen van partijen/overheid (bronnen.json, Politiek): max 2 per kanaal
     for (const f of srcFeeds) if (f.g === "politiek") for (const u of f.urls) if (/youtube\.com\/feeds/.test(u)) for (const v of (R.get(u)?.videos || []).slice(0, 2)) fv.push({ ...v, ai: kortAi(v.ai) });
     const ytIds = [...new Set([...dOut, ...fv, ...(stat?.filmpjes || []), ...(stat?.dumpert || [])].map(ytVideoId).filter((id): id is string => !!id))];
-    const ytNieuw = ytNieuweControles(ytIds, st.ytEmbed);
+    const ytKanaalBlokkades = ytGeblokkeerdeShorts(fv);
+    const ytNieuw = ytNieuweControles(ytIds.filter((id) => !ytKanaalBlokkades.includes(id)), st.ytEmbed);
     let ytControles = 0;
     const ytDiag: YtDiag[] = [];
     const voegYtToe = (batches: Job[][]) => {
@@ -800,8 +801,9 @@ export class Runner extends DurableObject<Env> {
       if (st.weerHash === wh && st.weerTxt) W.weer.verwachting = st.weerTxt;
     }
 
-    const ytGeblokkeerd = ytIds.filter((id) => st.ytEmbed?.[id]?.geblokkeerd === true);
-    const ytToegestaan = (v: Video) => { const id = ytVideoId(v); return !id || st.ytEmbed?.[id]?.geblokkeerd !== true; };
+    const ytGeblokkeerd = ytBlokkades(ytIds, ytKanaalBlokkades, st.ytEmbed);
+    const ytGeblokkeerdSet = new Set(ytGeblokkeerd);
+    const ytToegestaan = (v: Video) => { const id = ytVideoId(v); return !id || !ytGeblokkeerdSet.has(id); };
     const ytWeggelaten = dOut.filter((v) => !ytToegestaan(v)).length + fv.filter((v) => !ytToegestaan(v)).length;
     dOut.splice(0, dOut.length, ...dOut.filter(ytToegestaan));
     fv.splice(0, fv.length, ...fv.filter(ytToegestaan));
