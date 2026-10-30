@@ -15,7 +15,7 @@ export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
-import { bronIndexen, gebruiktNativeHls, isZuinig, POOL_GROOTTE, slotVan } from "./videopool";
+import { bronIndexen, gebruiktNativeHls, isZuinig, voorbuffer, POOL_GROOTTE, slotVan } from "./videopool";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay } from "./debug-overlay";
 
@@ -151,6 +151,8 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
     video.className = "f-media";
     video.loop = true;
     video.setAttribute("aria-label", v.titel);
+    if (v.thumb) video.poster = v.thumb;
+    video.preload = active || preload ? "auto" : "metadata";
     if (DEBUG) video.dataset.debugKind = kind;
     delete video.dataset.mse;
     return () => {
@@ -235,17 +237,17 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         }
         return onFail();
       }
-      // TikTok-achtig voorladen: ook de volgende filmpjes laden meteen hun eerste ~8 s, op het laagste
-      // niveau (snelste start); ABR schaalt daarna op. Het actieve filmpje mag verder bufferen.
+      // De volgende speler buffert kort op het laagste startniveau; het actieve filmpje mag verder bufferen.
       const on = activeNow.current;
+      const seconden = voorbuffer((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
       const h = new Hls({
         enableWorker: true,
         startLevel: 0,
         capLevelToPlayerSize: true,
         startFragPrefetch: true,
-        autoStartLoad: on,
-        maxBufferLength: on ? 30 : 8,
-        maxMaxBufferLength: on ? 60 : 8,
+        autoStartLoad: on || rankRef.current === 1,
+        maxBufferLength: on ? 30 : seconden,
+        maxMaxBufferLength: on ? 60 : seconden,
         backBufferLength: 10,
         startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
       });
@@ -278,10 +280,10 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         h.on(Hls.Events.BUFFER_FLUSHING, (_e, d) => console.log("[hls] flush", v.titel, d.startOffset, d.endOffset, d.type));
         video.addEventListener("seeking", () => console.log("[hls] seeking", v.titel, video.currentTime));
       }
-      started.current = on;
+      started.current = on || rankRef.current === 1;
       h.loadSource(viaProxy(src));
       h.attachMedia(video);
-      if (!on) {
+      if (!started.current) {
         cancelWait = whenReady(() => {
           if (destroyed || started.current) return;
           started.current = true;
@@ -303,8 +305,9 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
   useEffect(() => {
     const h = hlsRef.current;
     if (!h) return;
-    h.config.maxBufferLength = active ? 30 : 8;
-    h.config.maxMaxBufferLength = active ? 60 : 8;
+    const seconden = voorbuffer((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
+    h.config.maxBufferLength = active ? 30 : seconden;
+    h.config.maxMaxBufferLength = active ? 60 : seconden;
     if (active && !started.current) {
       started.current = true;
       h.startLoad(-1);
@@ -998,44 +1001,6 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
   );
 }
 
-// ------------------------------------------------------------- cache opwarmen
-const warmed = new Set<string>();
-function warmHls(v: Video) {
-  const p = playerFor(v);
-  if (!p || p.kind !== "hls" || warmed.has(p.src)) return;
-  if (/Apple/.test(navigator.vendor || "")) return; // Safari speelt HLS zelf, rechtstreeks van Dumpert
-  warmed.add(p.src);
-  const master = viaProxy(p.src);
-  const get = (u: string) => fetch(u, { credentials: "omit", priority: "low" } as RequestInit).then((r) => (r.ok ? r.text() : ""));
-  const lowestVariant = (txt: string, base: string) => {
-    const lines = txt.split("\n").map((l) => l.trim());
-    let best = "";
-    let bw = Infinity;
-    lines.forEach((l, i) => {
-      const m = /^#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)/.exec(l);
-      const u = lines[i + 1];
-      if (m && u && !u.startsWith("#") && +m[1] < bw) {
-        bw = +m[1];
-        best = u;
-      }
-    });
-    return best ? new URL(best, base).href : "";
-  };
-  get(master)
-    .then((m) => {
-      const base = new URL(master, location.href).href;
-      if (!/#EXT-X-STREAM-INF/.test(m)) return { txt: m, base };
-      const variant = lowestVariant(m, base); // hls.js start ook op het laagste niveau (startLevel 0)
-      return variant ? get(variant).then((txt) => ({ txt, base: variant })) : null;
-    })
-    .then((r) => {
-      if (!r) return;
-      const segs = r.txt.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")).slice(0, 2);
-      for (const sg of segs) fetch(new URL(sg, r.base).href, { credentials: "omit", priority: "low" } as RequestInit).catch(() => {});
-    })
-    .catch(() => {});
-}
-
 // ------------------------------------------------------------- de feed
 export type FeedGroup = { id: string; label: string; list: Video[] };
 export function Feed({
@@ -1087,7 +1052,7 @@ export function Feed({
   const activeRef = useRef(active);
   activeRef.current = active;
   // Spelers: de pool heeft 3 vaste <video>'s voor slide i-1, i en i+1; welke daarvan een bron krijgen bepaalt
-  // videopool.ts (Apple/native HLS: actief + volgende, Save-Data/2G: alleen actief). YouTube-iframes blijven per
+  // videopool.ts (actief + volgende, Save-Data/2G: alleen actief). YouTube-iframes blijven per
   // slide (actief + volgende) buiten de pool.
   const [pool] = useState(maakPool);
   const [nativeHls] = useState(() => gebruiktNativeHls(!!pool.els[0].canPlayType("application/vnd.apple.mpegurl"), navigator.vendor || "", navigator.userAgent, "MediaSource" in window || "ManagedMediaSource" in window));
@@ -1097,13 +1062,6 @@ export function Feed({
     for (let i = active; i <= active + (zuinig ? 0 : 1); i++) if (i >= 0 && i < items.length && playerFor(items[i])?.kind === "youtube") next.add(i);
     return next;
   }, [active, items, nativeHls, zuinig]);
-  // Cache opwarmen: playlist + eerste stukjes van de komende HLS-filmpjes via onze proxy (edge + browsercache).
-  useEffect(() => {
-    return whenReady(() => {
-      for (let i = active + 1; i <= active + 3 && i < items.length; i++) warmHls(items[i]);
-    }, 500);
-  }, [active, items]);
-
   // Geparkeerde pool-elementen blijven in het document (overlay, iOS-gebruiksstatus); weg als de feed sluit.
   useLayoutEffect(() => {
     const r = root.current;
@@ -1120,12 +1078,24 @@ export function Feed({
     window.setTimeout(onClose, 220);
   }, [onClose]);
 
+  const startDirect = useCallback((i: number) => {
+    const video = pool.els[slotVan(i)];
+    const slide = video.closest<HTMLElement>(".fslide");
+    if (!slide || Number(slide.dataset.i) !== i || !video.currentSrc && !video.src) return;
+    video.muted = !soundRef.current.want || soundRef.current.blocked;
+    video.play().catch(() => {});
+    if (i !== activeRef.current) window.setTimeout(() => {
+      if (i !== activeRef.current && video.closest<HTMLElement>(".fslide") === slide) video.pause();
+    }, 1500);
+  }, [pool]);
+
   const go = useCallback((i: number) => {
     const s = scroller.current;
     if (!s) return;
     const n = Math.max(0, Math.min(items.length - 1, i));
+    startDirect(n);
     s.scrollTo({ top: n * s.clientHeight, behavior: motionOK() ? "smooth" : "auto" });
-  }, [items.length]);
+  }, [items.length, startDirect]);
 
   // Start op de gekozen video, vóór de eerste paint.
   useLayoutEffect(() => {
@@ -1143,6 +1113,7 @@ export function Feed({
           if (e.isIntersecting && e.intersectionRatio >= 0.6) {
             const i = Number((e.target as HTMLElement).dataset.i);
             if (i !== activeRef.current) {
+              startDirect(i);
               setActive(i);
               setPaused(false);
             }
@@ -1153,7 +1124,7 @@ export function Feed({
     );
     s.querySelectorAll(".fslide").forEach((n) => io.observe(n));
     return () => io.disconnect();
-  }, [gi]);
+  }, [gi, startDirect]);
 
   // Deep link per video, zonder nieuwe history-stap en zonder hashchange.
   useEffect(() => {
@@ -1232,14 +1203,24 @@ export function Feed({
         } else if (e.type !== "keydown") unmuteNow(); // volgende video's blijven vrijgegeven
       }
     };
+    let startY = 0;
+    const touchStart = (e: TouchEvent) => { startY = e.changedTouches[0]?.clientY ?? 0; };
+    const touchEnd = (e: TouchEvent) => {
+      const dy = (e.changedTouches[0]?.clientY ?? startY) - startY;
+      if (Math.abs(dy) > 30) startDirect(activeRef.current + (dy < 0 ? 1 : -1));
+    };
+    r.addEventListener("touchstart", touchStart, { passive: true });
+    r.addEventListener("touchend", touchEnd, { passive: true });
     const types = ["touchend", "pointerup", "click"];
     types.forEach((t) => r.addEventListener(t, onGesture, { capture: true, passive: true }));
     window.addEventListener("keydown", onGesture, { capture: true, passive: true });
     return () => {
+      r.removeEventListener("touchstart", touchStart);
+      r.removeEventListener("touchend", touchEnd);
       types.forEach((t) => r.removeEventListener(t, onGesture, { capture: true }));
       window.removeEventListener("keydown", onGesture, { capture: true });
     };
-  }, [unmuteNow]);
+  }, [unmuteNow, startDirect]);
   const toggleMute = useCallback(() => {
     const { want: w, blocked: b } = soundRef.current;
     if (!w || b) {
@@ -1251,7 +1232,7 @@ export function Feed({
       saveSound(false);
       setWant(false);
     }
-  }, [unmuteNow]);
+  }, [unmuteNow, startDirect]);
   // De tik die het geluid aanzette pauzeert het filmpje niet.
   const onTap = useCallback(() => {
     if (Date.now() - unmutedAt.current < 700) return;

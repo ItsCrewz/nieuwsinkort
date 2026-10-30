@@ -6,7 +6,7 @@ export function videopool(active: number, lengte: number, nativeHls: boolean, zu
   for (let index = active - 1; index <= active + 1; index++) {
     if (index < 0 || index >= lengte) continue;
     const slot = index % 3;
-    slots[slot] = { slot, index, bron: index === active || (!zuinig && (!nativeHls || index === active + 1)) };
+    slots[slot] = { slot, index, bron: index === active || (!zuinig && index === active + 1) };
   }
   return slots;
 }
@@ -29,4 +29,10 @@ export function gebruiktNativeHls(canPlayHls: boolean, vendor: string, ua: strin
 /** Data besparen of een trage verbinding: dan alleen het actieve filmpje laden. */
 export function isZuinig(conn?: { saveData?: boolean; effectiveType?: string } | null): boolean {
   return !!conn && (conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType || ""));
+}
+
+// De duur is een richtwaarde: native preload en complete HLS-segmenten kunnen meer data ophalen.
+export function voorbuffer(conn?: { saveData?: boolean; effectiveType?: string; type?: string } | null): number {
+  if (isZuinig(conn)) return 0;
+  return conn?.type === "cellular" || conn?.effectiveType === "3g" ? 2 : 4;
 }
