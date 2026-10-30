@@ -15,6 +15,7 @@
 
 ## 2026-10-30
 
+- Vaste videopool (#50): 3 hergebruikte `<video>`-elementen in de feed i.p.v. een nieuw element per slide (Apple/native HLS: max 2 met bron, Save-Data/2G: alleen actief), tegen vastlopen op iOS. Op een echte iPhone nog niet geverifieerd.
 - Verborgen video-debug-overlay voor diagnose op de iPhone (#50).
 
 - Filmpjes (#60): sport-, voetbal-, Formule 1- en autokanalen toegevoegd aan de YouTube-kanaalfeeds, inclusief Shorts; bouwt voort op PR #55.

@@ -18,9 +18,11 @@ export function DebugOverlay() {
         const type = v.dataset.mse === "1" ? "hls.js-MSE" : v.dataset.debugKind === "hls" ? "native HLS" : "mp4";
         const buffer = Array.from({ length: v.buffered.length }, (_, j) => `${getal(v.buffered.start(j))}–${getal(v.buffered.end(j))}`).join(",") || "-";
         const balk = balkTijden.get(v)?.();
-        return `#${i} slide ${slide?.dataset.i ?? "-"} actief ${actief ? "ja" : "nee"} ${type}\n src ${bron.slice(0, 65) || "-"}\n paused ${v.paused} ready ${v.readyState} net ${v.networkState} tijd ${getal(v.currentTime)}/${getal(v.duration)}\n buffer ${buffer}${actief && balk !== undefined ? `\n balk ${getal(balk)} drift ${getal(balk - v.currentTime)}` : ""}`;
+        return `#${i} slot ${v.dataset.slot ?? "-"} slide ${slide?.dataset.i ?? "geparkeerd"} actief ${actief ? "ja" : "nee"} ${type}\n src ${bron.slice(0, 65) || "-"}\n paused ${v.paused} ready ${v.readyState} net ${v.networkState} tijd ${getal(v.currentTime)}/${getal(v.duration)}\n buffer ${buffer}${actief && balk !== undefined ? `\n balk ${getal(balk)} drift ${getal(balk - v.currentTime)}` : ""}`;
       });
-      zetTekst(`iOS/UA: ${ios}\nstil ${diag?.stil ?? 0} vast ${diag?.vast ?? 0} herladen ${diag?.herladen ?? 0}\nvideo's ${videos.length}, met src ${videos.filter((v) => v.getAttribute("src") || v.currentSrc).length}\n${regels.join("\n")}\nEvents:\n${videoEvents.lijst().join("\n")}`);
+      const pool = videos.filter((v) => v.dataset.slot !== undefined).sort((a, b) => Number(a.dataset.slot) - Number(b.dataset.slot))
+        .map((v) => `${v.dataset.slot}→${v.closest<HTMLElement>(".fslide")?.dataset.i ?? "-"}(${v.getAttribute("src") ? (v.dataset.mse === "1" ? "MSE" : v.dataset.debugKind === "hls" ? "HLS" : "mp4") : "leeg"})`).join(" ");
+      zetTekst(`iOS/UA: ${ios}\nstil ${diag?.stil ?? 0} vast ${diag?.vast ?? 0} herladen ${diag?.herladen ?? 0}\npool ${pool}\nvideo's ${videos.length}, met src ${videos.filter((v) => v.getAttribute("src") || v.currentSrc).length}\n${regels.join("\n")}\nEvents:\n${videoEvents.lijst().join("\n")}`);
     };
     update();
     const timer = window.setInterval(update, 250);

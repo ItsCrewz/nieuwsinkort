@@ -67,3 +67,12 @@ t("data die tijdens wachten aankomt maakt eerder herstel mogelijk", () => {
   assert.equal(s.tik({ ...invoer(3000), bufferVooruit: 0 }), "balk-stop");
   assert.equal(s.tik(invoer(4000)), "nudge");
 });
+t("herladen wacht wanneer de laadstatus vooruitgaat", () => {
+  const s = new Stall();
+  const laden = (now: number, readyState: number) => ({ ...invoer(now), bufferVooruit: 0, networkState: 2, readyState });
+  s.tik(laden(0, 0));
+  assert.equal(s.tik(laden(10000, 0)), "nudge");
+  assert.equal(s.tik(laden(13000, 1)), "ok");
+  assert.equal(s.tik(laden(13300, 2)), "ok");
+  assert.equal(s.tik(laden(13600, 2)), "herlaad");
+});
