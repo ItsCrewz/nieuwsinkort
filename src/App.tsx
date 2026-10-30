@@ -1,6 +1,7 @@
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
+import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
@@ -13,7 +14,6 @@ import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
-import { AiVermelding, isAiSamenvatting } from "./ai-vermelding";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
@@ -31,7 +31,6 @@ const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m
 
 
 const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
-const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
@@ -214,7 +213,7 @@ function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   );
 }
 
-function Briefing({ text, bionic, sources, time, note, ai = true }: { text: string; bionic: boolean; sources: number; time: string; note?: string; ai?: boolean }) {
+function Briefing({ text, bionic, sources, time, note }: { text: string; bionic: boolean; sources: number; time: string; note?: string }) {
   return (
     <section className="brief" aria-label="In het kort">
       <h2 className="kicker">In het kort</h2>
@@ -225,7 +224,6 @@ function Briefing({ text, bionic, sources, time, note, ai = true }: { text: stri
       ) : (
         <p className="brief-text muted">De samenvatting van vandaag komt er zo aan.</p>
       )}
-      <AiVermelding tonen={!!text && ai} />
       {sources > 0 ? (
         <p className="brief-meta">
           Samengevat uit {bronnenTekst(sources)}
@@ -461,7 +459,6 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
           <BionicText text={item.ai} on={bionic} />
         </p>
       ) : null}
-      <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
       <div className="row-foot">
         <span className="src">{n > 0 ? `${bronLabel(item.bronnen)} · ${bronnenTekst(n)}` : "Geen bron"}</span>
       </div>
@@ -495,7 +492,6 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
             <BionicText text={item.ai} on={bionic} />
           </p>
         ) : null}
-        <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
         <div className="row-foot">
           <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
             {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
@@ -665,7 +661,6 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
           <BionicText text={sum} on={bionic} />
         </p>
       ) : null}
-      <AiVermelding tonen={!!sum && isAiSamenvatting(item)} />
       {punten.length ? (
         <ul className="nc-pts">
           {punten.map((t, k) => (
@@ -1026,7 +1021,7 @@ export default function App() {
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
-  const [bionic, setBionic] = useState(true);
+  const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const flt = useFilters();
@@ -1040,13 +1035,7 @@ export default function App() {
   routeRef.current = route;
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(BIONIC_KEY);
-      if (saved === "0") setBionic(false);
-      else if (saved === "1") setBionic(true);
-    } catch {
-      /* standaard aan */
-    }
+    ruimOudeFocusKeuzeOp(browserStorage());
     const onHash = () => {
       const next = huidigeRoute();
       const prev = routeRef.current;
@@ -1086,11 +1075,7 @@ export default function App() {
 
   const setBionicPersist = (v: boolean) => {
     setBionic(v);
-    try {
-      localStorage.setItem(BIONIC_KEY, v ? "1" : "0");
-    } catch {
-      /* negeer */
-    }
+    bewaarFocusKeuze(browserStorage(), v);
   };
   const setView = (v: View) => {
     // Touch: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht); desktop houdt het overzicht met kopjes.
@@ -1274,7 +1259,7 @@ export default function App() {
               <div className="wrap nc-head-in">
                 {dateline}
                 <Front>
-                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing ai={!!raw.tab_samenvatting?.[view]?.ai} text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
+                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
                   {alles && <WeatherBox W={raw.weer} bionic={bionic} />}
                 </Front>
               </div>

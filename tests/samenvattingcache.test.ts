@@ -6,5 +6,7 @@ zaaiSamenvattingen({ a: { punten: ["Eerste punt"], bron: "spraak" }, leeg: { pun
 assert.deepEqual(svCache.get("a"), { ok: true, punten: ["Eerste punt"], bron: "spraak", sec: undefined, cached: true });
 assert.equal(svCache.has("leeg"), false);
 zaaiSamenvattingen({ a: { punten: ["Ander punt"], bron: "ondertiteling" } });
-assert.deepEqual(svCache.get("a")?.ok && svCache.get("a")?.punten, ["Eerste punt"]);
+const naLaden = svCache.get("a");
+assert.ok(naLaden?.ok);
+assert.deepEqual(naLaden.punten, ["Eerste punt"]);
 console.log("✓ vooraf gemaakte videosamenvattingen blijven beschikbaar bij later laden van de feed");
