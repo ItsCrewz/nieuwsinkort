@@ -7,6 +7,7 @@ import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
+import { batchesOphalen, foutcode, type Broncode, type Bronfout } from "./bronfouten";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
@@ -66,7 +67,7 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 
 // ---------------------------------------------------------------- fetcher-DO
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj"; label?: string; sub?: string; max?: number; alleenVideo?: boolean };
-type Res = { kvWrites?: number; url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
+type Res = { code?: Broncode; kvWrites?: number; url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
@@ -219,14 +220,17 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
       else { await sleep(1500); r = await get(u, 15000, BR_UA); }
     }
     status = r.status;
-    if (!r.ok) return { url: j.url, ok: false, status, err: `HTTP ${status}`, ms: Date.now() - t0 };
+    if (!r.ok) return { url: j.url, ok: false, status, code: "SRC_HTTP", err: `HTTP ${status}`, ms: Date.now() - t0 };
     const body = await r.text();
+    if (!body.trim()) return { url: j.url, ok: false, status, code: "SRC_EMPTY", err: "lege respons", ms: Date.now() - t0 };
     const base: Res = { url: j.url, ok: true, status, ms: 0 };
     if (j.kind === "json") base.json = JSON.parse(body);
     else if (j.kind === "text") base.text = body.length > 400000 ? body.slice(0, 400000) : body;
     else if (j.kind === "dumpert") base.videos = parseDumpert(body, hhmm);
     else {
       if (/^\s*<!doctype html|^\s*<html/i.test(body.slice(0, 300))) throw new Error("HTML i.p.v. feed");
+      if (!/^[\s]*[\[{]/.test(body) && !/<(?:rss|feed|rdf:RDF|(?:\w+:)?searchRetrieveResponse)\b/i.test(body)) throw new Error("ongeldige feed");
+      if (!/^[\s]*[\[{]/.test(body) && !/<\/(?:rss|feed|rdf:RDF|(?:\w+:)?searchRetrieveResponse)\s*>/i.test(body)) throw new Error("onvolledige feed");
       const all = parseFeed(body, j.url);
       const now = Date.now();
       base.total = all.length;
@@ -238,7 +242,7 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
     base.ms = Date.now() - t0;
     return base;
   } catch (e: any) {
-    return { url: j.url, ok: false, status, err: String(e?.message || e).slice(0, 120), ms: Date.now() - t0 };
+    return { url: j.url, ok: false, status, code: foutcode(e, status), err: String(e?.message || e).slice(0, 120), ms: Date.now() - t0 };
   }
 }
 
@@ -292,7 +296,8 @@ export class Runner extends DurableObject<Env> {
     });
     // geweigerd verzoek is geen mislukte run: telt niet mee in de faalreeks
     if (!toegestaan) return Response.json({ ok: false, err: "Laatste run minder dan 10 minuten geleden" }, { status: 429 });
-    return bewaakteRun(() => this.run(force), this.ctx.storage, this.env.NIEUWS);
+    let bronfouten: Bronfout[] = [];
+    return bewaakteRun(() => this.run(force, (fouten) => { bronfouten = fouten; }), this.ctx.storage, this.env.NIEUWS, () => bronfouten);
   }
 
   async alarm() {
@@ -317,14 +322,14 @@ export class Runner extends DurableObject<Env> {
     if (r.nogTeDoen > 0 && r.stop !== "dagbudget" && r.stop !== "run-budget" && k.n < MAX_ALARMS_PER_UUR) await this.ctx.storage.setAlarm(Date.now() + 5 * 60e3);
   }
 
-  async run(force: boolean) {
+  async run(force: boolean, meldBronfouten: (fouten: Bronfout[]) => void = () => {}) {
     const env = this.env, T0 = Date.now(), now = Date.now(), A = ams(now), U = utcDag(now), since = midnight(now);
     // BUDGET / NEURON_FACTOR: de echte Cloudflare-teller kan hoger staan dan onze schatting (docs/ai-budget.md)
     const model = env.MODEL, CAP = +(env.CAP || 40), FACTOR = neuronFactor(env.NEURON_FACTOR), BUDGET = +(env.BUDGET || 9000) / FACTOR;
     const site = env.SITE.replace(/\/$/, "");
     const [bronnenR, staticR, stateRaw] = await Promise.all([
-      fetch(`${site}/bronnen.json?t=${now}`, { headers: { "User-Agent": UA } }),
-      fetch(`${site}/data.json?statisch=1&t=${now}`, { headers: { "User-Agent": UA } }),
+      fetch(`${site}/bronnen.json?t=${now}`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15000) }),
+      fetch(`${site}/data.json?statisch=1&t=${now}`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15000) }).catch(() => new Response(null, { status: 503 })),
       env.NIEUWS.get("state", "json") as Promise<State | null>,
     ]);
     const bronnen: any = await bronnenR.json();
@@ -369,13 +374,17 @@ export class Runner extends DurableObject<Env> {
     // Instagram apart: per account 1 profiel + max 3 video-embeds = max 4 verzoeken (DO-limiet 50)
     for (let i = 0; i < insta.length; i += 10) batches.push(insta.slice(i, i + 10));
     for (let i = 0; i < rest.length; i += 30) batches.push(rest.slice(i, i + 30));
-    const results = (await Promise.all(batches.map(async (b, i) => {
+    const results = await batchesOphalen<Job, Res>(batches, async (b, i) => {
       if (!b.length) return [] as Res[];
       const naam = b[0].kind === "reddit" ? "reddit" : b[0].kind === "x" ? `x${i}` : b[0].kind === "insta" ? `ig${i}` : `f${i}`;
       const stub = env.FETCHER.get(env.FETCHER.idFromName(naam));
       const r = await stub.fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return (await r.json()) as Res[];
-    }))).flat();
+    });
+    meldBronfouten(results.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0 })));
+    const nieuwsUrls = new Set(srcFeeds.flatMap((f) => f.urls));
+    if (nieuwsUrls.size && !results.some((r) => nieuwsUrls.has(r.url) && r.ok)) throw new Error("Geen nieuwsbron bereikbaar; vorige data behouden");
     const R = new Map(results.map((r) => [r.url, r]));
     const T1 = Date.now();
 

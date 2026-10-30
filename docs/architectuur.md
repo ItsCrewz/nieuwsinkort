@@ -210,3 +210,7 @@ De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daar
 ### Taboverzichten (#134)
 
 De uurdata bevat optioneel `tab_samenvatting`, met per rubriekcode `tekst`, `ai`, `bron` en `gegenereerd`. Home gebruikt de bestaande `dag_samenvatting`. De Worker gebruikt uur- en routineartikelen en bewaart succesvolle AI-teksten met een volgordeonafhankelijke inhoudshash maximaal zeven dagen in de bestaande KV onder `tabsam:<tab>:laatste`. Bij wijzigingen blijft de vorige tekst minstens zes uur staan; voor AI worden maximaal tien korte berichten gebruikt. Bij cachemissers zonder AI ontstaat extractieve tekst; die wordt niet gecachet zodat een volgende run AI kan proberen. Filmpjes en Dumpert krijgen geen overzicht. Oude data zonder dit veld toont geen taboverzicht.
+
+### Uitval van bronnen
+
+De uur-Worker isoleert bronverzoeken en fetcherbatches. Een geslaagde nieuwsfeed volstaat om de run voort te zetten; als alle geconfigureerde nieuwsfeeds falen, blijft de vorige `uur`-waarde in KV staan en wordt de run als mislukt gemeld. `run-status` bevat voor de laatste run `bronfouten` met per mislukte feed de URL, duur in milliseconden en code: `SRC_TIMEOUT` (timeout), `SRC_HTTP` (HTTP-fout), `SRC_PARSE` (onleesbare respons of batchfout) of `SRC_EMPTY` (lege respons). Een geldige feed zonder berichten is geen lege respons. Social-cache kan eerdere resultaten tonen terwijl de bron als mislukt geregistreerd blijft.
