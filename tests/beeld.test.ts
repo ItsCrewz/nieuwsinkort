@@ -48,7 +48,8 @@ t("ogImage leest een relatieve og:image ten opzichte van de basis-URL", () => {
 });
 
 t("schermBeeld verkleint alleen bekende CDN-parameters en vergroot nooit", () => {
-  assert.equal(schermBeeld("https://redactie.rtl.nl/a.png?itok=x&width=1024&height=576&impolicy=semi_dynamic"), "https://redactie.rtl.nl/a.png?itok=x&width=800&height=450&impolicy=semi_dynamic");
+  assert.equal(schermBeeld("https://redactie.rtl.nl/a.png?itok=x&width=1600&height=900&impolicy=semi_dynamic"), "https://redactie.rtl.nl/a.png?itok=x&width=1024&height=576&impolicy=semi_dynamic");
+  assert.equal(schermBeeld("https://redactie.rtl.nl/a.png?width=1024&height=576"), "https://redactie.rtl.nl/a.png?width=1024&height=576");
   assert.equal(schermBeeld("https://techcrunch.com/a.jpg?resize=1200,867"), "https://techcrunch.com/a.jpg?resize=800,578");
   assert.equal(schermBeeld("https://images.nrc.nl/k=/1280x/filters:no_upscale()/s3/a.jpg"), "https://images.nrc.nl/k=/800x/filters:no_upscale()/s3/a.jpg");
   assert.equal(schermBeeld("https://blogger.googleusercontent.com/img/b/x/s1600/a.jpg"), "https://blogger.googleusercontent.com/img/b/x/s800/a.jpg");

@@ -1,1 +1,1 @@
-- Snel: nieuwsfoto's op Home worden via maatparameters van de bron zelf (RTL, FD, TechCrunch/Photon, NRC, Blogger, NU.nl) op max. ~800 px breed gevraagd (`schermBeeld` in `src/beeld.ts`); laadt de variant niet, dan het origineel (#359)
+- Snel: nieuwsfoto's op Home worden via maatparameters van de bron zelf (RTL, FD, TechCrunch/Photon, NRC, Blogger, NU.nl) op een breedte per bron gevraagd (RTL 1024 px, overig max. 800 px, NU.nl 640 px; `BEELD_BREEDTE`) (`schermBeeld` in `src/beeld.ts`); laadt de variant niet, dan het origineel (#359)

@@ -54,31 +54,33 @@ export function beterBeeld(raw: string): string {
   return u;
 }
 
-/** Kleinere variant voor het scherm (max ~800 px breed, NU.nl 640) via maatparameters die de bron zelf kent; onbekende bronnen blijven ongemoeid.
+/** Kleinere variant voor het scherm via maatparameters die de bron zelf kent; onbekende bronnen blijven ongemoeid.
+ *  De breedte staat per bron (BEELD_BREEDTE): die geeft het kleinste bestand (doel ≤150 kB), RTL is bij 1024 px kleiner dan bij 800 px.
  *  Alleen verkleinen, nooit vergroten. Faalt de variant, dan valt de weergave terug op het origineel (zie beelden.tsx). */
-export const BEELD_MAX = 800;
+export const BEELD_BREEDTE = { rtl: 1024, pxr: 800, fd: 800, wp: 800, nrc: 800, blogger: 800, nu: 640 };
 export function schermBeeld(u: string): string {
-  const kleiner = (n: number) => n > BEELD_MAX;
   let x: URL;
   try { x = new URL(u); } catch { return u; }
   const h = x.hostname, p = x.searchParams;
   const w = +(p.get("width") || p.get("w") || 0), hh = +(p.get("height") || p.get("h") || 0);
-  if (/^(redactie\.rtl\.nl|webp\.br\.cdn\.pxr\.nl)$/.test(h) || /\.fd\.nl$/.test(h)) {
-    if (!kleiner(w)) return u;
+  const rtl = h === "redactie.rtl.nl";
+  if (rtl || h === "webp.br.cdn.pxr.nl" || /\.fd\.nl$/.test(h)) {
+    const m = rtl ? BEELD_BREEDTE.rtl : /\.fd\.nl$/.test(h) ? BEELD_BREEDTE.fd : BEELD_BREEDTE.pxr;
+    if (w <= m) return u;
     const k = p.has("width") ? "width" : "w", l = p.has("height") ? "height" : "h";
-    p.set(k, String(BEELD_MAX));
-    if (hh && w) p.set(l, String(Math.round(hh * BEELD_MAX / w)));
+    p.set(k, String(m));
+    if (hh && w) p.set(l, String(Math.round(hh * m / w)));
     return x.toString();
   }
   if (p.has("resize") && /^(techcrunch\.com|[^.]+\.wp\.com)$/.test(h)) {
-    const m = /^(\d+),(\d+)$/.exec(p.get("resize")!);
-    if (!m || !kleiner(+m[1])) return u;
-    p.set("resize", `${BEELD_MAX},${Math.round(+m[2] * BEELD_MAX / +m[1])}`);
+    const m = /^(\d+),(\d+)$/.exec(p.get("resize")!), b = BEELD_BREEDTE.wp;
+    if (!m || +m[1] <= b) return u;
+    p.set("resize", `${b},${Math.round(+m[2] * b / +m[1])}`);
     return x.toString().replace("%2C", ",");
   }
-  if (h === "images.nrc.nl") return u.replace(/\/(\d{4,})x\//, (a, n) => (kleiner(+n) ? `/${BEELD_MAX}x/` : a));
-  if (h === "blogger.googleusercontent.com") return u.replace(/\/s(\d{4})\//, (a, n) => (kleiner(+n) ? `/s${BEELD_MAX}/` : a));
-  if (h === "images.nu.nl") return u.replace(/_wd(\d{4})\.jpg/, (a, n) => (kleiner(+n) ? "_wd640.jpg" : a));
+  if (h === "images.nrc.nl") return u.replace(/\/(\d{4,})x\//, (a, n) => (+n > BEELD_BREEDTE.nrc ? `/${BEELD_BREEDTE.nrc}x/` : a));
+  if (h === "blogger.googleusercontent.com") return u.replace(/\/s(\d{4})\//, (a, n) => (+n > BEELD_BREEDTE.blogger ? `/s${BEELD_BREEDTE.blogger}/` : a));
+  if (h === "images.nu.nl") return u.replace(/_wd(\d{4})\.jpg/, (a, n) => (+n > BEELD_BREEDTE.nu ? `_wd${BEELD_BREEDTE.nu}.jpg` : a));
   return u;
 }
 
