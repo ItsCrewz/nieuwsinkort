@@ -6,7 +6,7 @@ Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone
 
 ## Stack
 
-Vite 5, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects, KV en Workers AI.
+Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects, KV en Workers AI.
 
 ## Filters
 
