@@ -1,0 +1,1 @@
+- /data.json sneller: statische data en KV-reads (`uur`, `sv-klaar`) lopen parallel en lezen met `cacheTtl` 60 s; merge-keten gebundeld in `bouw()` (inhoud ongewijzigd, test vergelijkt oud en nieuw).

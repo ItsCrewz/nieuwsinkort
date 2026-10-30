@@ -36,3 +36,15 @@ t("merge weert ook geblokkeerde routinevideo's uit beide lijsten", () => {
   assert.deepEqual(uit.filmpjes, []);
   assert.deepEqual(uit.dumpert, []);
 });
+
+t("bouw: gelijk aan de oude stapsgewijze keten (merge, dagfilter, schoon, samenvattingen)", async () => {
+  const { bouw } = await import("../functions/data.json");
+  const { alleenVandaag } = await import("../src/vandaag");
+  const nu = new Date().toISOString();
+  const S = { gegenereerd: nu, items: [{ cat: "nl", kop: "A", bronnen: [{ site: "NOS", href: "https://nos.nl/1" }] }], filmpjes: [], dumpert: [] };
+  const H = { gegenereerd: nu, items: [{ cat: "nl", kop: "B", bronnen: [{ site: "NU", href: "https://nu.nl/2" }] }], filmpjes: [], dumpert: [], meta: { aiStand: "ok" } };
+  const sv = { klaar: { x: { tekst: "s" } } };
+  const oud = { ...schoon(alleenVandaag(merge(S, H), Date.now())), samenvattingen: sv.klaar };
+  assert.deepEqual(bouw(S, H, sv), oud);
+  assert.deepEqual(bouw(S, null, null), schoon(alleenVandaag(merge(S, null), Date.now())));
+});
