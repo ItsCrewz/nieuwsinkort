@@ -1,0 +1,1 @@
+- Codebase-review vastgelegd in `docs/codebase-review-20261030.md`: dode code, duplicatie, grote bestanden, patronen, docs vs code en een genummerde lijst refactor-issues zonder gedragswijziging (#298).
