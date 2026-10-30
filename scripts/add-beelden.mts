@@ -52,7 +52,7 @@ const feedImg = new Map<string, string>();
 const FEEDS = process.env.FEEDS_JSON || "/workspace/nieuws/feeds.json";
 let feedsOk = 0, feedsFout: string[] = [];
 if (fs.existsSync(FEEDS)) {
-  const feeds = JSON.parse(fs.readFileSync(FEEDS, "utf8")).filter((f: any) => f.werkt && ["nl", "tech", "haarlem", "showbizz", "politiek"].includes(f.cat) && !/^https?:\/\/(x|twitter)\.com|reddit\.com|kg\.meowing\.de/.test(f.url));
+  const feeds = JSON.parse(fs.readFileSync(FEEDS, "utf8")).filter((f: any) => f.werkt && ["nl", "tech", "haarlem", "showbizz", "politiek", "voetbal", "f1", "auto"].includes(f.cat) && !/^https?:\/\/(x|twitter)\.com|reddit\.com|kg\.meowing\.de/.test(f.url));
   await pool(feeds, 8, async (f: any) => {
     try {
       const r = await fetch(f.url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(12000) });

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import worker, { Runner } from "../worker/src/index";
+import "./sportcat.test";
+import worker, { Runner, kiesVoorAI } from "../worker/src/index";
 import { Budget } from "../worker/src/budget";
 import { onRequestPost as svPost } from "../functions/samenvatting";
 import { videoSlug } from "../src/slug";
@@ -313,3 +314,12 @@ await t("artikelprompts vragen B1 en behouden één call per groep", async () =>
 });
 
 console.log(`\n${n} Worker-tests geslaagd`);
+
+await t("AI-ronde verdeelt sport binnen de limiet", async () => {
+  const cats = ["nl", "tech", "haarlem", "showbizz", "voetbal", "f1", "auto"];
+  const groepen = Object.fromEntries(cats.map((c) => [c, Array(20).fill(c)]));
+  const picks = kiesVoorAI(groepen, 1, 40);
+  assert.equal(picks.length, 40);
+  for (const c of cats) assert.ok(picks.includes(c));
+  assert.equal(kiesVoorAI({ f1: ["f1"] }, 3, 8).length, 0);
+});

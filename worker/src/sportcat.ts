@@ -1,0 +1,20 @@
+// Deel algemeen nieuws conservatief in op basis van bronpad en titel.
+type Cat = "f1" | "voetbal" | "auto";
+export function sportCat({ cat, kop, hrefs }: { cat: string; kop: string; hrefs: string[] }): Cat | null {
+  if (!["nl", "buitenland", "tech"].includes(cat)) return null;
+  const paden = hrefs.map((href) => { try { return new URL(href).pathname.toLowerCase(); } catch { return ""; } });
+  const pad = (re: RegExp) => paden.some((p) => re.test(p));
+  const f1 = /\b(?:formule\s*1|f1|grand prix|verstappen|red bull racing|hadjar)\b/i.test(kop);
+  const club = /\b(?:ajax|psv|feyenoord|az|fc twente)\b/i.test(kop);
+  const voetbal = club || /\b(?:eredivisie|champions league|europa league|knvb|doelpunt)\b/i.test(kop) || (/\boranje\b/i.test(kop) && /\b(?:voetbal|bondscoach|koeman|wk|ek)\b/i.test(kop));
+  if (pad(/(?:\/formule-?1(?:\/|$)|\/formula1(?:\/|$)|\/f1(?:\/|$)|nossportformule1)/) || f1) return "f1";
+  if (pad(/\/(?:voetbal|eredivisie|champions-league|football|soccer)(?:\/|$)/) || voetbal) return "voetbal";
+  if (/\b(?:ongeluk|crash|botsing|kop|gewond|politie|brand|a2|snelweg|brandstofprijzen?)\b/i.test(kop)) return null;
+  if (pad(/\/(?:auto|autovisie)(?:\/|$)/)) return "auto";
+  const woorden = kop.match(/\b(?:automerk|autofabrikant|auto(?:'s)?|ev|rijtest|tesla|volkswagen|bmw|toyota|kia|hyundai|renault|peugeot|volvo|byd|laadpaal|apk)\b/gi) || [];
+  return woorden.length >= 2 ? "auto" : null;
+}
+export function herindeelSport(k: { cat: string; c: { t: string; href: string }[] }): void {
+  // Alle titels en bronpaden tellen mee, ook als de oudste bron een algemene feed is.
+  k.cat = sportCat({ cat: k.cat, kop: k.c.map((c) => c.t).join(" "), hrefs: k.c.map((c) => c.href) }) || k.cat;
+}
