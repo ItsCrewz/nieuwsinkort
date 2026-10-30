@@ -63,6 +63,7 @@ De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de a
 
 - **Vroege data.json**: het inline script in `index.html` start `window.__vroegData = fetch("/data.json", {cache:"no-cache"})` tijdens het parsen; `useData` neemt die promise eenmalig over via `neemVroegeData()` (`src/vroeg.ts`), daarna haalt elke verversing zelf op. Wijzig je dat script, werk dan de CSP-hash in `public/_headers` bij (de test bewaakt het).
 - **Fonts self-hosted**: Inter (OFL, variabel 400-600) staat in `public/fonts/` (`inter-latin`, `inter-latin-ext`, woff2 uit Google Fonts v20), `@font-face` met `font-display: swap` bovenaan `src/index.css`, preload van het latin-bestand in `index.html`. CSP: `font-src 'self'`, geen Google-origins meer; `/fonts/*` is immutable gecachet.
+- **YouTube-thumbnails**: `index.html` opent alvast een verbinding met `https://i.ytimg.com` via preconnect; de bestaande CSP staat HTTPS-afbeeldingen en verbindingen toe.
 - **Kaarten gemount op afroep**: `NewsFeed` geeft alleen de eerste `KAARTEN_VOORAF` (6) kaarten en een venster van `KAARTEN_VOORUIT` (6) voorbij de huidige kaart (en voorbij `focusKey`) inhoud (`KaartInhoud`); de rest blijft een lege `<section class="nc">` met dezelfde hoogte, `data-id` en `aria-label`, zodat scroll-snap, `scrollIntoView`/`offsetTop`-sprongen en toetsenbordnavigatie ongewijzigd werken. Het venster krimpt nooit.
 
 ### Vooraf laden (`src/voorladen.ts`, `src/usevoorladen.ts`)

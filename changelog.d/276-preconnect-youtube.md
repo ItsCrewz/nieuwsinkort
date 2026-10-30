@@ -1,0 +1,1 @@
+- Open alvast een verbinding voor YouTube-thumbnails; de bestaande Inter-preload blijft behouden (#276).
