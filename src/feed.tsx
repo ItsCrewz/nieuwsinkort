@@ -15,6 +15,8 @@ export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
+import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
+import { balkTijden, DebugOverlay } from "./debug-overlay";
 
 // Geluid staat standaard aan en de keuze wordt onthouden (localStorage). Weigert de browser geluid zonder tik
 // (iPhone Safari), dan start het filmpje zonder geluid en gaat het geluid aan bij de eerste tik of swipe.
@@ -116,13 +118,6 @@ function whenReady(fn: () => void, delay = 0) {
 }
 
 // ------------------------------------------------------------- MP4 / HLS
-const DEBUG = (() => {
-  try {
-    return localStorage.getItem("nieuwsinkort-debug") === "1";
-  } catch {
-    return false;
-  }
-})();
 function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek, onFail, onAutoplayBlocked }: PlayerProps & { kind: "hls" | "mp4"; src: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -326,11 +321,26 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     bar.set(tijd, duur, loopt);
   }, [bar.set]);
 
+  useEffect(() => {
+    const video = ref.current;
+    if (!DEBUG || !video || !active) return;
+    videoEvents.wis();
+    balkTijden.set(video, () => {
+      const stand = barStand.current;
+      return stand.tijd + (stand.loopt ? (performance.now() - stand.sinds) / 1000 : 0);
+    });
+    const namen = ["waiting", "stalled", "playing", "pause", "suspend", "error", "emptied"];
+    const luister = (e: Event) => debugEvent(e.type);
+    namen.forEach((naam) => video.addEventListener(naam, luister));
+    return () => { namen.forEach((naam) => video.removeEventListener(naam, luister)); balkTijden.delete(video); };
+  }, [active]);
+
   // Dezelfde limiet geldt voor beide waakhonden.
   const herlaad = useCallback((video: HTMLVideoElement, now: number) => {
     reloads.current = reloads.current.filter((x) => now - x < 60e3);
     if (reloads.current.length >= 2) return false;
     reloads.current.push(now);
+    debugEvent("herladen");
     diag.herladen++;
     resumeAt.current = video.currentTime;
     setReloadKey((k) => k + 1);
@@ -361,6 +371,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
         bufferVooruit, readyState: video.readyState });
       if (besluit === "balk-stop") zetBar(video.currentTime, video.duration, false);
       if (besluit === "balk-sync") zetBar(video.currentTime, video.duration, true);
+      if (besluit === "balk-stop" || besluit === "balk-sync" || besluit === "nudge" || besluit === "herlaad") debugEvent(besluit);
       if (besluit === "nudge") {
         diag.stil++;
         const h = hlsRef.current;
@@ -422,6 +433,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
         return;
       }
       if (now - lastFrame < 2500) return;
+      debugEvent("beeld vast");
       diag.vast++;
       if (!herlaad(video, now)) return;
       if (DEBUG) console.log("[waakhond] beeld staat stil, herladen op", t, v.titel);
@@ -522,6 +534,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
   return (
     <video
       ref={ref}
+      data-debug-kind={DEBUG ? kind : undefined}
       className={`f-media ${shown ? "on" : ""}`}
       playsInline
       muted={muted}
@@ -1198,6 +1211,7 @@ export function Feed({
   const label = cat === "dumpert" ? "Dumpert" : gs ? gs[gi].label : "Filmpjes";
   return createPortal(
     <div className="app modal-root">
+      {DEBUG && <DebugOverlay />}
       <div
         ref={root}
         className={`feed ${closing ? "out" : ""}`}
