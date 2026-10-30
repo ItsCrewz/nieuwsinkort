@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { merge } from "../functions/data.json";
 import { schoon } from "../src/schoon";
+import { parseYouTube, ytGeblokkeerdeShorts } from "../worker/src/videos";
 
 let n = 0;
 const t = (name: string, fn: () => void | Promise<void>) => {
@@ -35,4 +36,14 @@ t("merge weert ook geblokkeerde routinevideo's uit beide lijsten", () => {
   const uit = merge(S, H);
   assert.deepEqual(uit.filmpjes, []);
   assert.deepEqual(uit.dumpert, []);
+});
+
+t("merge weert F1-Shorts via de kanaalblokkade van de Worker", () => {
+  const nu = new Date().toISOString();
+  const xml = `<entry><yt:videoId>gmkJBKiE77Q</yt:videoId><title>F1</title><link rel="alternate" href="https://www.youtube.com/shorts/gmkJBKiE77Q"/><published>${nu}</published></entry>`;
+  const videos = parseYouTube(xml, "FORMULA 1", 0, () => "12:00");
+  const lang = { href: "https://www.youtube.com/watch?v=abcdefghijk", titel: "Lange video", bron: "YouTube" };
+  const S = { gegenereerd: nu, items: [], filmpjes: [...videos, lang], dumpert: [] };
+  const H = { gegenereerd: nu, items: [], filmpjes: [], dumpert: [], ytGeblokkeerd: ytGeblokkeerdeShorts(videos) };
+  assert.deepEqual(merge(S, H).filmpjes.map((v: any) => v.href), [lang.href]);
 });
