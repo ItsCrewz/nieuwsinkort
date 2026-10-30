@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { parseRedditVideos, parseYouTube, soortVan, selecteerFilmpjes, YT_NIEUWS } from "../worker/src/videos";
+import { parseRedditVideos, parseYouTube, soortVan, selecteerFilmpjes, ytGeblokkeerdeShorts, ytBlokkades, YT_NIEUWS } from "../worker/src/videos";
 import { videoKeys } from "../src/dedup";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
@@ -59,6 +59,17 @@ await t("YouTube-Short krijgt een embed en de soort short", async () => {
   assert.equal(videos.length, 1);
   assert.equal(videos[0].embed, "https://www.youtube-nocookie.com/embed/abcdefghijk?autoplay=1&rel=0");
   assert.equal(soortVan(videos[0]), "short");
+});
+await t("F1-Shorts worden ondanks een speelbare cache geblokkeerd, lange video's blijven staan", async () => {
+  const entry = (id: string, pad: string) => `<entry><yt:videoId>${id}</yt:videoId><title>Video</title><link rel="alternate" href="https://www.youtube.com/${pad}/${id}"/><published>2026-10-29T12:00:00Z</published></entry>`;
+  const f1 = parseYouTube(entry("gmkJBKiE77Q", "shorts") + entry("oCN0cP1RnFc", "shorts") + entry("abcdefghijk", "watch"), "FORMULA 1", 0, () => "13:00");
+  const ander = parseYouTube(entry("12345678901", "shorts"), "NOS Sport", 0, () => "13:00");
+  const ids = ytGeblokkeerdeShorts([...f1, ...ander]);
+  assert.deepEqual(ids, ["gmkJBKiE77Q", "oCN0cP1RnFc"]);
+  const cache = { gmkJBKiE77Q: { geblokkeerd: false, at: Date.now() } };
+  const geblokkeerd = ytBlokkades([...ids, "abcdefghijk", "12345678901"], ids, cache);
+  assert.deepEqual(geblokkeerd, ids);
+  assert.deepEqual(selecteerFilmpjes([...f1, ...ander].filter((v) => !geblokkeerd.some((id) => v.embed?.includes(id))).map((v) => ({ ...v, soort: soortVan(v) }))).map((v) => v.href), [ander[0].href, f1[2].href]);
 });
 await t("Sport- en autokanalen en NOS Sport-Short", async () => {
   assert.equal(YT_NIEUWS["NOS Sport"], "UCT4oPufBQa0f6C67Fw_HXNg");

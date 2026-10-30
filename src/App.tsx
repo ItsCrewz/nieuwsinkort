@@ -15,9 +15,10 @@ import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { detailInhoud, heeftLeesVerder } from "./leesverder";
 import { uitgebreidAlineas } from "./uitgebreid";
+import { AiVermelding, isAiSamenvatting, isAiUitgebreid } from "./ai-vermelding";
 import { touchNu } from "./invoer";
-import { neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
+import { laadData, neemVroegeData } from "./vroeg";
+import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
@@ -210,7 +211,7 @@ function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   );
 }
 
-function Briefing({ text, bionic, sources, time, note }: { text: string; bionic: boolean; sources: number; time: string; note?: string }) {
+function Briefing({ text, bionic, sources, time, note, ai = true }: { text: string; bionic: boolean; sources: number; time: string; note?: string; ai?: boolean }) {
   return (
     <section className="brief" aria-label="In het kort">
       <h2 className="kicker">In het kort</h2>
@@ -221,6 +222,7 @@ function Briefing({ text, bionic, sources, time, note }: { text: string; bionic:
       ) : (
         <p className="brief-text muted">De samenvatting van vandaag komt er zo aan.</p>
       )}
+      <AiVermelding tonen={!!text && ai} />
       {sources > 0 ? (
         <p className="brief-meta">
           Samengevat uit {bronnenTekst(sources)}
@@ -333,8 +335,9 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
   return (
     <nav className="tabs" aria-label="Rubrieken">
       <div className="tabs-in" ref={wrapRef}>
-        <div className="seg" role="tablist" ref={listRef}>
+        <div className="seg" ref={listRef}>
           <span className="seg-ind" ref={indRef} aria-hidden="true" />
+          <div className="seg-tabs" role="tablist" aria-label="Rubrieken">
           {shown.map((o) => (
             <button
               key={o.value}
@@ -342,7 +345,17 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               className={`tab cat-${o.id}`}
               role="tab"
               aria-selected={view === o.value}
-              aria-label={o.label}
+              tabIndex={view === o.value ? 0 : -1}
+              onKeyDown={(e) => {
+                const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+                const i = tabs.indexOf(e.currentTarget);
+                const volgende = volgendeTab(i, tabs.length, e.key);
+                if (volgende === null) return;
+                e.preventDefault();
+                const next = tabs[volgende];
+                next.focus();
+                next.click();
+              }}
               onClick={(e) => {
                 place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
                 onChange(o.value);
@@ -351,6 +364,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               {label(o)}
             </button>
           ))}
+          </div>
           {rest.length ? (
             <div className="more-wrap" ref={moreRef}>
               <button type="button" className={`tab more-btn ${open ? "open" : ""}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
@@ -444,6 +458,7 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
           <BionicText text={item.ai} on={bionic} />
         </p>
       ) : null}
+      <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
       <div className="row-foot">
         <span className="src">{n > 0 ? `${bronLabel(item.bronnen)} · ${bronnenTekst(n)}` : "Geen bron"}</span>
       </div>
@@ -477,6 +492,7 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
             <BionicText text={item.ai} on={bionic} />
           </p>
         ) : null}
+        <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
         <div className="row-foot">
           <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
             {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
@@ -646,6 +662,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
           <BionicText text={sum} on={bionic} />
         </p>
       ) : null}
+      <AiVermelding tonen={!!sum && isAiSamenvatting(item)} />
       {punten.length ? (
         <ul className="nc-pts">
           {punten.map((t, k) => (
@@ -887,6 +904,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
             </p>
           ))}
         </div>
+        <AiVermelding tonen={isAiUitgebreid(item, meer)} />
       </section>
       {per.length ? (
         <section className="d-sec" aria-label="Wat elke bron meldt">
@@ -950,6 +968,7 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
             <BionicText text={item.ai} on={bionic} />
           </p>
         ) : null}
+        <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
       </header>
       {paragraphs.length ? (
         <div className="d-body bn">
@@ -960,6 +979,7 @@ function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; 
           ))}
         </div>
       ) : null}
+      <AiVermelding tonen={paragraphs.length > 0 && isAiSamenvatting(item)} />
       {punten.length ? (
         <section className="d-sec" aria-label="Belangrijkste punten">
           <h2 className="d-h">Belangrijkste punten</h2>
@@ -995,9 +1015,7 @@ function useData() {
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
     try {
-      const r = await (neemVroegeData()?.catch(() => null) ?? null) ?? await fetch("/data.json", { cache: "no-cache" }); // altijd hervalideren: ETag geeft een 304 als er niets nieuws is
-      if (!r.ok) throw new Error(String(r.status));
-      const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
+      const d = schoon((await laadData(neemVroegeData())) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
       d.filmpjes ??= [];
@@ -1140,6 +1158,7 @@ function Footer() {
         </span>
         Nieuws in het kort
       </div>
+      <p>Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron.</p>
       <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk uur bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
     </footer>
   );
@@ -1155,6 +1174,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
     <div className={`app ${feed ? "app-feed" : ""}`}>
       <IconSprite />
       <div className="shell">
+        <a className="skip" href="#top" onClick={(e) => { e.preventDefault(); document.getElementById("top")?.focus(); }}>Naar de inhoud</a>
         {top}
         {children}
       </div>
@@ -1308,7 +1328,7 @@ export default function App() {
   if (!data || !raw) {
     return (
       <Frame top={top}>
-        <main className="wrap" id="top">
+        <main className="wrap" id="top" tabIndex={-1}>
           {error ? (
             <div className="empty" style={{ marginTop: 24 }}>
               <Icon name="alert" />
@@ -1348,7 +1368,7 @@ export default function App() {
   if (selectedItem) {
     return (
       <Frame top={top}>
-        <main className="wrap page-in" id="top" key={`d-${route.selected}`}>
+        <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
           <DetailView
             item={selectedItem}
             bionic={bionic}
@@ -1391,7 +1411,7 @@ export default function App() {
   if (!isVideo) {
     return (
       <Frame top={top} feed>
-        <main className="nf-main" id="top">
+        <main className="nf-main" id="top" tabIndex={-1}>
           <div className="nf-tabs">
             <div className="wrap">
               <Tabs data={data} view={view} onChange={setView} />
@@ -1414,7 +1434,7 @@ export default function App() {
               <div className="wrap nc-head-in">
                 {dateline}
                 <Front>
-                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
+                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing ai={!!raw.tab_samenvatting?.[view]?.ai} text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
                   {alles && <WeatherBox W={raw.weer} bionic={bionic} />}
                 </Front>
               </div>
@@ -1426,7 +1446,7 @@ export default function App() {
   }
   return (
     <Frame top={top}>
-      <main className="wrap" id="top">
+      <main className="wrap" id="top" tabIndex={-1}>
         <Front>
           <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
         </Front>

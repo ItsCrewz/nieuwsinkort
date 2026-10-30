@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { CATS, CAT_LABEL, tabOpties } from "../src/tabs";
+import { CATS, CAT_LABEL, tabOpties, volgendeTab } from "../src/tabs";
 import type { Cat } from "../src/types";
 
 const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
@@ -30,4 +30,11 @@ t("slug en label voor de nieuwe rubrieken", () => {
 
 t("eerste tab heet Home", () => {
   assert.deepEqual(tabOpties([], "alles")[0], { value: "alles", id: "all", label: "Home", short: "Home" });
+});
+
+t("pijltjestoetsen doorlopen de zichtbare tabs in beide richtingen", () => {
+  assert.equal(volgendeTab(0, 3, "ArrowRight"), 1);
+  assert.equal(volgendeTab(2, 3, "ArrowRight"), 0);
+  assert.equal(volgendeTab(0, 3, "ArrowLeft"), 2);
+  assert.equal(volgendeTab(1, 3, "Tab"), null);
 });
