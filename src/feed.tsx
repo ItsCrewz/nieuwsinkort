@@ -15,7 +15,8 @@ export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
-import { bronIndexen, gebruiktNativeHls, isZuinig, voorbuffer, POOL_GROOTTE, slotVan } from "./videopool";
+import { bronIndexen, gebruiktNativeHls, POOL_GROOTTE, slotVan } from "./videopool";
+import { niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay } from "./debug-overlay";
 
@@ -169,7 +170,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
   useEffect(() => {
     ref.current.classList.toggle("on", shown);
   }, [shown]);
-  const hlsRef = useRef<{ config: { maxBufferLength: number; maxMaxBufferLength: number }; startLoad: (p?: number) => void; recoverMediaError: () => void } | null>(null);
+  const hlsRef = useRef<{ config: { maxBufferLength: number; maxMaxBufferLength: number; maxBufferSize: number }; startLoad: (p?: number) => void; recoverMediaError: () => void } | null>(null);
   const started = useRef(false);
   const rankRef = useRef(preload);
   rankRef.current = preload;
@@ -224,15 +225,16 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       }
       // De volgende speler buffert kort op het laagste startniveau; het actieve filmpje mag verder bufferen.
       const on = activeNow.current;
-      const seconden = voorbuffer((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
+      const plan = planVoor(on ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
       const h = new Hls({
         enableWorker: true,
         startLevel: 0,
         capLevelToPlayerSize: true,
         startFragPrefetch: true,
         autoStartLoad: on || rankRef.current === 1,
-        maxBufferLength: on ? 30 : seconden,
-        maxMaxBufferLength: on ? 60 : seconden,
+        maxBufferLength: plan.secs,
+        maxMaxBufferLength: on ? 60 : plan.secs,
+        maxBufferSize: plan.bytes,
         backBufferLength: 10,
         startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
       });
@@ -290,9 +292,10 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
   useEffect(() => {
     const h = hlsRef.current;
     if (!h) return;
-    const seconden = voorbuffer((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
-    h.config.maxBufferLength = active ? 30 : seconden;
-    h.config.maxMaxBufferLength = active ? 60 : seconden;
+    const plan = planVoor(active ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
+    h.config.maxBufferLength = plan.secs;
+    h.config.maxMaxBufferLength = active ? 60 : plan.secs;
+    h.config.maxBufferSize = plan.bytes;
     if (active && !started.current) {
       started.current = true;
       h.startLoad(-1);
@@ -1037,16 +1040,14 @@ export function Feed({
   const activeRef = useRef(active);
   activeRef.current = active;
   // Spelers: de pool heeft 3 vaste <video>'s voor slide i-1, i en i+1; welke daarvan een bron krijgen bepaalt
-  // videopool.ts (actief + volgende, Save-Data/2G: alleen actief). YouTube-iframes blijven per
+  // videopool.ts (actief + volgende). YouTube-iframes blijven per
   // slide (actief + volgende) buiten de pool.
   const [pool] = useState(maakPool);
-  const [nativeHls] = useState(() => gebruiktNativeHls(!!pool.els[0].canPlayType("application/vnd.apple.mpegurl"), navigator.vendor || "", navigator.userAgent, "MediaSource" in window || "ManagedMediaSource" in window));
-  const [zuinig] = useState(() => isZuinig((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection));
   const mounted = useMemo(() => {
-    const next = bronIndexen(active, items.length, nativeHls, zuinig);
-    for (let i = active; i <= active + (zuinig ? 0 : 1); i++) if (i >= 0 && i < items.length && playerFor(items[i])?.kind === "youtube") next.add(i);
+    const next = bronIndexen(active, items.length);
+    for (let i = active; i <= active + 1; i++) if (i >= 0 && i < items.length && playerFor(items[i])?.kind === "youtube") next.add(i);
     return next;
-  }, [active, items, nativeHls, zuinig]);
+  }, [active, items]);
   // Geparkeerde pool-elementen blijven in het document (overlay, iOS-gebruiksstatus); weg als de feed sluit.
   useLayoutEffect(() => {
     const r = root.current;

@@ -1,11 +1,26 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { parseRedditVideos, parseYouTube, soortVan, YT_NIEUWS } from "../worker/src/videos";
+import { parseRedditVideos, parseYouTube, soortVan, selecteerFilmpjes, YT_NIEUWS } from "../worker/src/videos";
 import { videoKeys } from "../src/dedup";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 let n = 0;
 const t = async (naam: string, fn: () => Promise<void>) => { await fn(); n++; console.log("✓", naam); };
+await t("socials krijgen plaats binnen de plafonds en behouden scorevolgorde", async () => {
+  const videos = [
+    ...Array.from({ length: 22 }, (_, i) => ({ bron: "YouTube", soort: "short", id: `s${i}` })),
+    ...Array.from({ length: 16 }, (_, i) => ({ bron: "YouTube", soort: "journaal", id: `j${i}` })),
+    { bron: "Reddit", soort: "short", id: "r" }, { bron: "X", soort: "journaal", id: "x" },
+    ...Array.from({ length: 5 }, (_, i) => ({ bron: "Instagram", soort: "short", id: `i${i}` })),
+  ];
+  const gekozen = selecteerFilmpjes(videos);
+  assert.equal(gekozen.filter((v) => v.soort === "short").length, 18);
+  assert.equal(gekozen.filter((v) => v.soort === "journaal").length, 14);
+  assert.deepEqual(gekozen.filter((v) => v.bron !== "YouTube").map((v) => v.id), ["r", "i0", "i1", "x"]);
+  for (const soort of ["short", "journaal"]) {
+    assert.deepEqual(gekozen.filter((v) => v.soort === soort), videos.filter((v) => v.soort === soort && gekozen.includes(v)));
+  }
+});
 await t("Reddit-Atom levert alleen afspeelbare video's met herkenbare sleutels", async () => {
   const entry = (id: string, content: string, media = "") => `<entry><title>Video ${id}</title><link href="https://www.reddit.com/r/Netherlands/comments/${id}/titel/"/><published>2026-10-30T10:00:00Z</published>${media}<content type="html">${content}</content></entry>`;
   const link = (url: string) => `&lt;a href=&quot;${url}&quot;&gt;link&lt;/a&gt;`;

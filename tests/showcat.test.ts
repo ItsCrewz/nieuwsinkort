@@ -34,4 +34,11 @@ const voetbal = { cat: "nl", c: [{ t: "Ajax wint", href: "https://www.nu.nl/voet
 herindeelSport(voetbal);
 herindeelShow(voetbal);
 assert.equal(voetbal.cat, "voetbal");
+// misdaad en justitie blijven buiten Showbizz, ook met showbizzpad (#110)
+const bolle = ex("nl", [links[0]]);
+bolle.c[0] = { href: "https://www.rtl.nl/boulevard/artikel/1/bolle-jos", cat: "nl", t: "Bolle Jos opgepakt na liquidatie", s: "De politie heeft de verdachte aangehouden. Het OM eist celstraf." } as any;
+herindeelShow(bolle);
+assert.equal(bolle.cat, "nl");
+assert.equal(showCat({ cat: "nl", items: [{ href: links[0] }], kop: "Rechtbank beslist over BN'er" }), null);
+assert.equal(showCat({ cat: "nl", items: [{ href: links[0] }], kop: "Davina Michelle gaat trouwen" }), "showbizz");
 console.log("✓ showcat");
