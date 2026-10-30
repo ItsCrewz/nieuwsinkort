@@ -18,7 +18,7 @@ Alles draait op Cloudflare (Free plan). Geen eigen server.
         │ leest
         ▼
  Pages Functions: /data.json (merge KV uur + statische data.json)
-                  /samenvatting, /meer, /media/dumpert/*
+                  /samenvatting, /meer
         ▼
  Frontend (React, hls.js) op nieuwsinkort.pages.dev
 ```
@@ -57,7 +57,7 @@ Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert d
 
 Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zichtbaar tabblad, plant `planVoorladen` (puur, getest in `tests/voorladen.test.ts`) wat er warm moet, met de lijsten zoals de UI ze toont (Filmpjes: startsoort met actieve filters; Dumpert). `useVoorladen` in `App.tsx` doet dit één keer per sessie en opnieuw alleen bij een nieuwe `gegenereerd`; niets als je al op een video-route zit. Niveau uit `navigator.connection` (`budgetVan`): `geen` bij `saveData` of 2g/slow-2g, `zuinig` bij cellular of 3g, anders `normaal` (ook zonder API, zoals Safari).
 
-- normaal: 6 thumbnails per tab (`new Image`, async decoding, `fetchPriority` low), `import("hls.js")` (zelfde chunk als `feed.tsx`, niet op Apple), voor de eerste 2 HLS-video's master → laagste variant → 2 segmenten via `/media/dumpert` (zelfde logica als `warmHls` in `feed.tsx`, bewust gedupliceerd), de eerste 256 KB van de eerste mp4 (Range-request), `preconnect` naar de mp4-host en youtube-nocookie.
+- normaal: 6 thumbnails per tab (`new Image`, async decoding, `fetchPriority` low), `import("hls.js")` (zelfde chunk als `feed.tsx`, niet op Apple), voor de eerste 2 HLS-video's master → laagste variant → 2 segmenten rechtstreeks (zelfde logica als `warmHls` in `feed.tsx`, bewust gedupliceerd), de eerste 256 KB van de eerste mp4 (Range-request), `preconnect` naar de mp4-host en youtube-nocookie.
 - zuinig: 3 thumbnails per tab, hls.js-chunk en preconnect; geen video-bytes. geen: niets.
 - Max 3 requests tegelijk, alles `priority: low`. Geen AI-aanroepen.
 - De mp4-Range: of de browser de gecachete bytes voor `<video>` hergebruikt hangt af van de cache-headers van de video-CDN en de browser (Chrome kan gedeeltelijke cache-items hergebruiken); dat is niet in een echte browser geverifieerd. Zeker is het nut van de warme DNS/TLS-verbinding en de CDN-edge.
@@ -68,7 +68,6 @@ Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zicht
 - `data.json.ts`: haalt het statische `data.json` (ASSETS) en KV `uur`, voegt ze samen (`merge`): routine-samenvattingen blijven, nieuwe berichten van het uur komen bovenaan, weer/filmpjes/Dumpert worden ververst. Uur-data van een andere dag wordt genegeerd. `src/vandaag.ts` filtert na de merge artikelen en video's op de huidige Amsterdamse dag; bij oude data verdwijnt ook de dagsamenvatting. Legacy-items zonder publicatiedatum gebruiken de tijd van generatie met 20 minuten marge. `?statisch=1` geeft het onbewerkte statische bestand, zonder dagfilter. Voegt ook `sv-klaar` (vooraf gemaakte video-samenvattingen) toe. Antwoord met zwakke ETag en 304 bij `If-None-Match`; `Cache-Control: max-age=0, must-revalidate, stale-while-revalidate=300` (de client vraagt altijd met `cache: "no-cache"` zonder cachebuster, dus de uurdata is direct vers en een ongewijzigde respons kost alleen een 304). `slim()` haalt de niet-gebruikte diagnosevelden `ontdubbeld` en `routine_gegenereerd` weg.
 - `samenvatting.ts`: `POST /samenvatting {id}`, samenvatting van één filmpje (alleen filmpjes die op de site staan). Tekst via YouTube-ondertiteling of Whisper, daarna samenvatten. Cache in KV (`vs:<id>`), ook fout-uitkomsten (30 min). Bewaakt het gedeelde dagbudget. Bescherming tegen misbruik: `Content-Type: application/json` verplicht (415), vreemde `Origin` geweigerd (403; `vooraf.ts` stuurt geen Origin), slot per video (409 bij bezig) vóór de budget- en mediastappen, geschatte Whisper-neuronen worden vóór `AI.run` atomair gereserveerd en achteraf verrekend met het echte verbruik, een globale rem van max 30 Whisper-aanroepen per uur (daarna code `druk`), en interne foutteksten (`why`) gaan alleen terug bij `pre:true`. Slot, reservering en uurrem zijn van de Durable Object `Budget` (binding `BUDGET_DO`, één instantie `dag`; zie hieronder), want KV is niet atomair. Is de DO onbereikbaar, dan antwoordt de Function 503 (niet gecachet); ontbreekt de binding (lokaal/preview), dan valt ze terug op het oude KV-gedrag (`vs-bezig:<id>`, `vs-uur:<datum>T<uur>`, `vid-neurons:<datum>`), een rem zonder harde garantie. De Cloudflare Rate Limiting-regel (issue #8) blijft apart en is nog open.
 - `meer.ts`: `GET /meer?k=<sleutel>`, extra tekst voor "Lees verder" uit KV `meer` (artikeltekst, AI-uitleg, kernpunten per bron), anders 404.
-- `media/dumpert/[[path]].ts`: GET/HEAD-proxy naar media.dumpert.nl voor HLS (CORS staat daar alleen dumpert.nl toe).
 
 Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 
@@ -117,7 +116,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - **Hacker News**: `hnrss.org/best` (news.ycombinator.com/rss geeft 419 aan Cloudflare).
 - **YouTube**: officiële gratis kanaal-RSS voor Filmpjes van NOS, RTL Nieuws, NU.nl, Hart van Nederland, NH Nieuws, PowNews, WNL, EenVandaag, RTL Z, BNR, NOS Stories, Nieuwsuur, Omroep PowNed, Radar, NOS Sport, De Telegraaf, GeenStijl, Ziggo Sport, ESPN NL, OnsOranje, FORMULA 1, AutoWeek, Autovisie en Haarlem105, inclusief Shorts. Ondertiteling geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
 - **TikTok en Facebook**: geen kanaalfeed voor Filmpjes, omdat daarvoor geen gratis feed beschikbaar is die aan de voorwaarden voldoet.
-- **Dumpert**: toppers-pagina en HLS via de proxy (max 720p, H.264).
+- **Dumpert**: toppers-pagina; CDN-video’s krijgen een linkkaart naar Dumpert, YouTube-video’s een embed.
 - **Weer** (landelijk, plaats "Nederland"): Buienradar (alle landstations: mediaan en koudste–warmste, landelijke 5-daagse), Open-Meteo als terugval (Groningen, De Bilt, Maastricht in één verzoek), KNMI-weerbericht (bron: KNMI, CC0) en de landelijke waarschuwingsregel uit datzelfde weerbericht (code geel/oranje/rood, ergste wint). Geen provinciepagina's: `/waarschuwingen` stuurt door naar Utrecht en per provincie ophalen kost subrequests. Ontbrekende bron = veld weg. De AI-herschrijving (`simpelWeer`) blijft één aanroep met max 1500 tekens invoer. Rubriek Haarlem is los van het weer.
 - **Overig**: openraadsinformatie (gemeenteraad), og:image van artikelpagina's.
 - Lukt niet: BleepingComputer (403).

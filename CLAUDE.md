@@ -31,7 +31,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 
 - `src/vandaag.ts`: gedeeld dagfilter en publicatietijden voor Worker en Pages.
 - `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `buffer.ts` (pure bufferregels per netwerkniveau, nog niet in `feed.tsx` gekoppeld; getest in `tests/buffer.test.ts`), `sources.ts`, `types.ts`.
-- `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
+- `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder").
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
 - `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`) en `stall.test.ts` voor videoherstel.
@@ -66,7 +66,7 @@ Pure module `worker/src/cluster.ts` (`toks`, `sim`, `gelijk`, `cluster`) cluster
 
 Vooraf laden (issue #34): `src/voorladen.ts` (pure keuzelogica + runner), `src/netwerk.ts` (budget `geen`/`zuinig`/`normaal` uit `navigator.connection`) en `src/usevoorladen.ts` (hook in `App.tsx`). Alleen na `load` + idle, alleen als het tabblad zichtbaar is en je niet al op een video-route zit; alles `priority: low`, hooguit 3 requests tegelijk, één keer per sessie (opnieuw alleen bij nieuwe `gegenereerd`). Geen AI, geen `/samenvatting`, geen `/meer`. Wijzig `feed.tsx`-`warmHls` en dit samen als de HLS-logica verandert (de code is bewust gedupliceerd).
 
-Niveaus: `normaal` = 6 thumbnails per tab, hls.js-chunk (niet op Safari), 2 Dumpert-streams (master, laagste variant, 2 segmenten) en de eerste ~256 KB van de eerste mp4; `zuinig` (cellular of 3g) = 3 thumbnails per tab, hls.js-chunk en preconnect; `geen` (Save-Data, 2g) = niets. Past binnen de CSP (`img-src https:`, `connect-src https:`).
+Niveaus: `normaal` = 6 thumbnails per tab, hls.js-chunk (niet op Safari), 2 geschikte HLS-streams (master, laagste variant, 2 segmenten) en de eerste ~256 KB van de eerste mp4; `zuinig` (cellular of 3g) = 3 thumbnails per tab, hls.js-chunk en preconnect; `geen` (Save-Data, 2g) = niets. Past binnen de CSP (`img-src https:`, `connect-src https:`).
 
 ## Rubriek Buitenland
 

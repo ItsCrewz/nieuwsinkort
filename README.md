@@ -24,7 +24,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | Map / bestand | Inhoud |
 |---|---|
 | `src/` | Frontend (React, feed, filters, video, ontdubbelen, `buffer.ts` = pure bufferregels voor de videofeed, nog niet gekoppeld) |
-| `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/[[path]].ts` |
+| `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts` |
 | `worker/` | Uur-Worker `nieuwsinkort-uur` (eigen `package.json` en `wrangler.toml`) |
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
 | `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
@@ -43,7 +43,7 @@ Bij uitputting van de AI-ruimte of een tijdelijke AI-fout maakt `worker/src/extr
 
 ## Vooraf laden
 
-Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de eerste Filmpjes en Dumpert-video's op, zodat een klik op die tabs niet hoeft te wachten: thumbnails, de hls.js-chunk, het begin van de eerste streams en de eerste bytes van de eerste mp4. Bij Save-Data of 2g gebeurt niets, op mobiel (cellular/3g) alleen thumbnails, hls.js en preconnect. Zie `src/voorladen.ts`; data: ≈1,55 MB normaal, ≈0,36 MB zuinig.
+Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de eerste Filmpjes en Dumpert-video's op, zodat een klik op die tabs niet hoeft te wachten: thumbnails, de hls.js-chunk, het begin van geschikte streams en de eerste bytes van de eerste mp4. Bij Save-Data of 2g gebeurt niets, op mobiel (cellular/3g) alleen thumbnails, hls.js en preconnect. Dumpert-video’s op het eigen CDN tonen een link naar Dumpert; YouTube-video’s spelen via de embed. Zie `src/voorladen.ts`; data: ≈1,55 MB normaal, ≈0,36 MB zuinig.
 
 ## Lokaal draaien
 
@@ -55,7 +55,7 @@ npm test         # tests
 npm run build    # bronnen.json + tsc + vite build -> dist/
 ```
 
-Pages Functions lokaal (incl. Dumpert-proxy): `npx wrangler pages dev dist --port 4173`.
+Pages Functions lokaal: `npx wrangler pages dev dist --port 4173`.
 Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled` met lokaal ingestelde `RUN_KEY`, dan `/run` en `/uur` met de header `Authorization: Bearer <RUN_KEY>`. Sleutels in queryparameters worden niet geaccepteerd. `force=1` geeft 429 als de laatste runstart minder dan tien minuten geleden was. Workers AI is altijd remote en kost dus echte neuronen.
 
 ## Deployen

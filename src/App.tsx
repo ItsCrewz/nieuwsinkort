@@ -1008,7 +1008,7 @@ function useData() {
       d.filmpjes ??= [];
       zaaiSamenvattingen(d.samenvattingen);
       d.dumpert ??= [];
-      d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
+      d.dumpert = d.dumpert.filter((v) => !!playerFor(v) || !!veiligeUrl(v.href));
       d.filmpjes = d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) })); // Shorts of Journaals
       setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
       setError(false);

@@ -7,7 +7,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { createPortal } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
-import { playerFor, viaProxy, youtubeId } from "./video";
+import { playerFor, youtubeId } from "./video";
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
@@ -179,7 +179,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
   const [reloadKey, setReloadKey] = useState(0);
   const resumeAt = useRef(0);
   const reloads = useRef<number[]>([]);
-  // bron koppelen (HLS: native op Safari/iOS, anders hls.js via onze proxy)
+  // bron koppelen (HLS: native op Safari/iOS, anders hls.js)
   useEffect(() => {
     const video = ref.current;
     if (!video) return;
@@ -197,8 +197,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         video.load();
       };
     }
-    // Native HLS alleen op Apple (Safari/iOS). Chrome zegt sinds kort ook "maybe" op HLS, maar zijn eigen
-    // speler blijft op Dumpert-streams vaak op 0:00 hangen; daar dus altijd hls.js (MSE) via onze proxy.
+    // Kies native HLS op ondersteunde Apple-apparaten.
     const native = !!video.canPlayType("application/vnd.apple.mpegurl");
     const mse = typeof window !== "undefined" && ("MediaSource" in window || "ManagedMediaSource" in window);
     if (gebruiktNativeHls(native, navigator.vendor || "", navigator.userAgent, mse)) {
@@ -266,7 +265,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         video.addEventListener("seeking", () => console.log("[hls] seeking", v.titel, video.currentTime));
       }
       started.current = on || rankRef.current === 1;
-      h.loadSource(viaProxy(src));
+      h.loadSource(src);
       h.attachMedia(video);
       if (!started.current) {
         cancelWait = whenReady(() => {
@@ -862,7 +861,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
           <div className="f-fail">
             <p>{!p ? "Dit filmpje speelt hier niet af." : v.bron === "Instagram" ? "Afspelen lukt niet: de Instagram-link is verlopen of geblokkeerd." : "Afspelen lukt even niet: de bron gaf geen beeld."}</p>
             <a className="f-btn" href={veiligeUrl(v.href)} target="_blank" rel="noreferrer">
-              Bekijk bij {v.bron} <Icon name="ext" className="sm" />
+              {cat === "dumpert" ? "Bekijk op Dumpert" : `Bekijk bij ${v.bron}`} <Icon name="ext" className="sm" />
             </a>
           </div>
         )}
