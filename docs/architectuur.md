@@ -62,6 +62,8 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 
 ### Workers AI en budget
 
+Artikelteksten, het dagoverzicht en “Lees verder” vragen om eenvoudig Nederlands voor volwassenen (ongeveer B1): korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), moeilijke woorden uitleggen, afkortingen bij eerste gebruik voluit en alleen feiten uit de invoer. Bestaande samenvattingen blijven per bronlink in `st.sums` gecachet; een promptwijziging maakt ze niet opnieuw.
+
 Modellen: `@cf/google/gemma-4-26b-a4b-it` (`MODEL`, hoofd), `@cf/meta/llama-3.2-1b-instruct` (`SMALL_MODEL`), `@cf/openai/whisper-large-v3-turbo` (audio, max 3 min). Dagbudget `BUDGET`=9000 neuronen (gratis limiet 10.000), `CAP`=40 per run. Het budget wordt gedeeld door de Worker en `functions/samenvatting.ts`.
 
 | Verbruik | Gedrag |

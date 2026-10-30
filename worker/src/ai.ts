@@ -1,4 +1,4 @@
-// Workers AI: samenvattingen in simpele, informele taal. Houdt neuronen bij (geschat uit tokens).
+// Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (geschat uit tokens).
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
   "@cf/google/gemma-4-26b-a4b-it": [9091, 27273],
   "@cf/meta/llama-3.2-1b-instruct": [2457, 18252],
@@ -11,7 +11,7 @@ export const RATES: Record<string, [number, number]> = { // neuronen per 1M toke
 export type Usage = { neurons: number; calls: number; fails: number; inTok: number; outTok: number };
 
 const STIJL =
-  "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf in heel simpel, informeel Nederlands (Jip-en-Janneke-taal): korte zinnen, gewone woorden, geen jargon. " +
+  "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf voor volwassenen in eenvoudig Nederlands (B1): korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), gewone woorden; leg jargon en moeilijke woorden kort uit. Schrijf afkortingen bij eerste gebruik voluit. " +
   "Gebruik ALLEEN feiten uit de aangeleverde tekst; verzin niets, geen eigen mening. Is de bron Engels, schrijf dan toch in het Nederlands. Namen en getallen precies overnemen.";
 
 export async function chat(ai: Ai, model: string, sys: string, user: string, maxTokens: number, u: Usage, json = false): Promise<string> {
@@ -43,7 +43,7 @@ export type Sum = { kop: string; ai: string; samenvatting: string; punten: strin
 export async function summarize(ai: Ai, model: string, items: In[], u: Usage): Promise<Map<number, Sum>> {
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
   const user =
-    `Vat elk bericht samen. Geef per bericht:\n- "kop": korte Nederlandse kop, max 8 woorden\n- "ai": één simpele zin (max 25 woorden) wat er gebeurde\n` +
+    `Vat elk bericht samen. Geef per bericht:\n- "kop": korte Nederlandse kop, max 8 woorden\n- "ai": één korte zin (liefst max 20 woorden) wat er gebeurde\n` +
     `- "samenvatting": 2 tot 4 korte zinnen met de belangrijkste feiten\n- "punten": 2 of 3 korte kernpunten (elk max 12 woorden)\n` +
     `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
     JSON.stringify(items.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
@@ -67,7 +67,7 @@ const str = (x: any, n: number) => String(x ?? "").replace(/\s+/g, " ").trim().s
 export async function inHetKort(ai: Ai, model: string, lines: string[], u: Usage): Promise<string> {
   const sys = STIJL + " Geef alleen de tekst zelf, geen kopje, geen opsomming.";
   const user =
-    "Schrijf 'In het kort': een overzicht van het nieuws van vandaag in 3 tot 4 korte zinnen (samen max 90 woorden), als één alinea. " +
+    "Schrijf 'In het kort': een helder overzicht van het nieuws van vandaag in 3 tot 4 korte zinnen (samen max 90 woorden), als één alinea. " +
     "Begin met het grootste nieuws. Noem kort ook iets uit Haarlem, tech en showbizz als dat erbij staat. Verzin niets.\n\nBerichten (rubriek: kop — samenvatting):\n" +
     lines.join("\n");
   const t = await chat(ai, model, sys, user, 260, u);
@@ -86,7 +86,7 @@ export type Diep = { uitleg: string[]; perBron: { site: string; punten: string[]
 export async function verdiep(ai: Ai, model: string, items: DiepIn[], u: Usage): Promise<Map<number, Diep>> {
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
   const user =
-    `Schrijf voor elk bericht een langere uitleg voor wie meer wil weten dan de korte samenvatting ("kort").\n` +
+    `Schrijf voor elk bericht een eenvoudige langere uitleg voor wie meer wil weten dan de korte samenvatting ("kort").\n` +
     `- "uitleg": 3 tot 5 korte alinea's (samen 120 tot 220 woorden): wat er precies gebeurde, de achtergrond, wie erbij betrokken zijn, wat het betekent en wat er nu gaat gebeuren. Herhaal "kort" niet letterlijk. Alleen wat in de bronteksten staat.\n` +
     `- "perBron": per bron 2 tot 4 korte kernpunten (elk max 15 woorden) met wat díe bron meldt; "site" precies zoals aangeleverd.\n` +
     `Antwoord als {"items":[{"id":1,"uitleg":["alinea","..."],"perBron":[{"site":"...","punten":["..."]}]}]}\n\nBerichten:\n` +
