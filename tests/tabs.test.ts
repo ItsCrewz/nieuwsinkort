@@ -11,7 +11,7 @@ t("tabvolgorde met alle rubrieken gevuld", () => {
   assert.deepEqual(ids(tabOpties(items(...ALLE), "alles")),
     ["alles", "nl", "buitenland", "politiek", "voetbal", "f1", "auto", "tech", "haarlem", "showbizz", "filmpjes", "dumpert"]);
 });
-t("lege nieuws-tabs verborgen; Alles, Filmpjes en Dumpert blijven", () => {
+t("lege nieuws-tabs verborgen; Home, Filmpjes en Dumpert blijven", () => {
   assert.deepEqual(ids(tabOpties(items("nl", "auto"), "alles")), ["alles", "nl", "auto", "filmpjes", "dumpert"]);
   assert.deepEqual(ids(tabOpties([], "alles")), ["alles", "filmpjes", "dumpert"]);
 });
@@ -26,4 +26,8 @@ t("slug en label voor de nieuwe rubrieken", () => {
   assert.equal(CATS.find((c) => c.slug === "formule-1")?.id, "f1");
   assert.deepEqual([CAT_LABEL.voetbal, CAT_LABEL.f1, CAT_LABEL.auto], ["Voetbal", "Formule 1", "Auto"]);
   assert.equal(new Set(CATS.map((c) => c.slug)).size, CATS.length);
+});
+
+t("eerste tab heet Home", () => {
+  assert.deepEqual(tabOpties([], "alles")[0], { value: "alles", id: "all", label: "Home", short: "Home" });
 });
