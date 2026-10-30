@@ -1,0 +1,1 @@
+- Tests toegevoegd voor het bronnenpaneel en zijn bediening (#208).
