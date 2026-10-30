@@ -1,6 +1,7 @@
 import { memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Meer, Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch, host } from "./ui";
+import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { SourcesSheet } from "./sheet";
 import { Icon, IconSprite, type IconName } from "./icons";
@@ -27,7 +28,6 @@ import { LeegMelding } from "./leegmelding";
 const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
 
 const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
-const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
@@ -1197,7 +1197,7 @@ export default function App() {
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
-  const [bionic, setBionic] = useState(true);
+  const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const flt = useFilters();
@@ -1211,13 +1211,7 @@ export default function App() {
   routeRef.current = route;
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(BIONIC_KEY);
-      if (saved === "0") setBionic(false);
-      else if (saved === "1") setBionic(true);
-    } catch {
-      /* standaard aan */
-    }
+    ruimOudeFocusKeuzeOp(browserStorage());
     const onHash = () => {
       const next = huidigeRoute();
       const prev = routeRef.current;
@@ -1252,11 +1246,7 @@ export default function App() {
 
   const setBionicPersist = (v: boolean) => {
     setBionic(v);
-    try {
-      localStorage.setItem(BIONIC_KEY, v ? "1" : "0");
-    } catch {
-      /* negeer */
-    }
+    bewaarFocusKeuze(browserStorage(), v);
   };
   const setView = (v: View) => {
     // Touch: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht); desktop houdt het overzicht met kopjes.
