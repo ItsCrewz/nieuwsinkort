@@ -1,0 +1,1 @@
+- Voeg HSTS met een dag geldigheid toe aan statische bestanden en verwijder de CORS-header van de HTML (#309).
