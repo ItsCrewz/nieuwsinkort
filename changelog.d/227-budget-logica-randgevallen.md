@@ -1,0 +1,1 @@
+- Tests: randgevallen van `src/budget.ts` (dagteller bij UTC-datumwissel, oude state zonder `neuronDag`, `quotaSleutel`, `BudgetLogica` met nep-opslag) (#227).
