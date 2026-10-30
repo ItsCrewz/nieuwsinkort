@@ -64,6 +64,7 @@ Artikel- en og-fetches en de Jina-terugval accepteren alleen HTTP(S)-links op po
 ## Meer
 
 - [docs/architectuur.md](docs/architectuur.md): architectuur, dataflow, bronnen, budget, open punten
+- [docs/ai-budget.md](docs/ai-budget.md): meting van het Workers AI-verbruik (UTC-dag, echte `usage`, quotafouten, optionele env `NEURON_FACTOR`) en alle plekken die AI aanroepen
 - [CLAUDE.md](CLAUDE.md): werkinstructies voor Claude Code
 - [AGENTS.md](AGENTS.md): regels voor Codex en andere agents
 

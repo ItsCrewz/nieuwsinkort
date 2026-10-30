@@ -1,4 +1,5 @@
-// Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (geschat uit tokens).
+// Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens).
+import { meetChat, meetFout, type Meting } from "../../src/budget";
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
   "@cf/google/gemma-4-26b-a4b-it": [9091, 27273],
   "@cf/meta/llama-3.2-1b-instruct": [2457, 18252],
@@ -8,25 +9,25 @@ export const RATES: Record<string, [number, number]> = { // neuronen per 1M toke
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [26668, 204805],
   "@cf/mistralai/mistral-small-3.1-24b-instruct": [31876, 50488],
 };
-export type Usage = { neurons: number; calls: number; fails: number; inTok: number; outTok: number };
+export type Usage = Meting;
 
 const STIJL =
   "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf voor volwassenen in eenvoudig Nederlands (B1): korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), gewone woorden; leg jargon en moeilijke woorden kort uit. Schrijf afkortingen bij eerste gebruik voluit. " +
   "Gebruik ALLEEN feiten uit de aangeleverde tekst; verzin niets, geen eigen mening. Is de bron Engels, schrijf dan toch in het Nederlands. Namen en getallen precies overnemen.";
 
 export async function chat(ai: Ai, model: string, sys: string, user: string, maxTokens: number, u: Usage, json = false): Promise<string> {
-  const r: any = await ai.run(model as any, {
-    messages: [{ role: "system", content: sys }, { role: "user", content: user }],
-    max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3,
-    chat_template_kwargs: { enable_thinking: false, thinking: false },
-    ...(json ? { response_format: { type: "json_object" } } : {}),
-  } as any);
+  const tarief = RATES[model] || [10000, 30000];
+  let r: any;
+  try {
+    r = await ai.run(model as any, {
+      messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+      max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3,
+      chat_template_kwargs: { enable_thinking: false, thinking: false },
+      ...(json ? { response_format: { type: "json_object" } } : {}),
+    } as any);
+  } catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } // een mislukte aanroep kan toch neuronen kosten
   u.calls++;
-  const pt = r?.usage?.prompt_tokens ?? Math.ceil((sys.length + user.length) / 3.5);
-  const ct = r?.usage?.completion_tokens ?? Math.ceil(String(r?.response ?? "").length / 3.5);
-  const [ri, ro] = RATES[model] || [10000, 30000];
-  u.inTok += pt; u.outTok += ct;
-  u.neurons += typeof r?.usage?.neurons === "number" ? r.usage.neurons : (pt * ri + ct * ro) / 1e6;
+  meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
   const txt = typeof r?.response === "string" ? r.response : r?.response ? JSON.stringify(r.response) : r?.choices?.[0]?.message?.content || "";
   return String(txt).replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
