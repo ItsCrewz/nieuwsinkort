@@ -309,7 +309,7 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   }
 };
 
-async function maak(env: Env, poort: Poort, v: any, id: string, key: string, pre: boolean): Promise<Response> {
+async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pre: boolean): Promise<Response> {
   // ---- budget (gedeeld met de uur-Worker)
   const BUDGET = +(env.BUDGET || BUDGET_DEF) / neuronFactor(env.NEURON_FACTOR); // marge: de echte teller kan hoger staan
   const A = ams();

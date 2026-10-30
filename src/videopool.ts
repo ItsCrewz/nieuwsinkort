@@ -1,7 +1,7 @@
 // Vaste slots blijven gekoppeld aan index modulo drie; lege slots hebben geen bron.
 export type PoolSlot = { slot: number; index: number | null; bron: boolean };
 
-export function videopool(active: number, lengte: number, nativeHls: boolean, zuinig: boolean): PoolSlot[] {
+export function videopool(active: number, lengte: number, _nativeHls: boolean, zuinig: boolean): PoolSlot[] {
   const slots: PoolSlot[] = Array.from({ length: 3 }, (_, slot) => ({ slot, index: null, bron: false }));
   for (let index = active - 1; index <= active + 1; index++) {
     if (index < 0 || index >= lengte) continue;
