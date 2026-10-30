@@ -160,6 +160,7 @@ body { margin:0; background:var(--paper); color:var(--ink); overflow-x:clip; ove
 .more-btn.open{color:var(--ink)}
 .more-btn.open .ic{transform:rotate(180deg)}
 /* Pil op de eindbreedte; schuift met transform (FLIP), dus alleen compositor-werk */
+.seg-tabs{display:contents}
 .seg-ind{position:absolute;left:0;top:3px;bottom:3px;width:60px;border-radius:9px;background:var(--seg-on);box-shadow:var(--seg-shadow);transform-origin:0 50%;opacity:0;pointer-events:none;transition:transform 260ms cubic-bezier(.3,.9,.3,1)}
 .seg-ind.ready{opacity:1}
 .seg-measure{position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;height:0;overflow:hidden;contain:layout paint}
@@ -230,7 +231,7 @@ body { margin:0; background:var(--paper); color:var(--ink); overflow-x:clip; ove
 .v-ai{font-size:14px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .v-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted)}
 .v-pop{display:inline-flex;align-items:center;gap:5px}
-.v-ext{display:inline-flex;align-items:center;gap:4px;color:var(--muted)}
+.v-ext{display:inline-flex;align-items:center;gap:4px;min-height:24px;color:var(--muted)}
 .v-ext:hover{color:var(--ink)}
 
 /* ---------- Detail ---------- */
@@ -382,7 +383,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 @keyframes pulse{50%{opacity:.55}}
 /* intro: eerste ~12 items, 16ms na elkaar (max ~200ms), 220ms per item */
 .enter{animation:up 220ms var(--ease) backwards;animation-delay:calc(var(--i,0) * 16ms)}
-.front.enter > *{animation:up 220ms var(--ease) backwards}
+.front.enter > *:not(.brief){animation:up 220ms var(--ease) backwards}
 .front.enter{animation:none}
 .front.enter > :nth-child(2){animation-delay:40ms}
 .swap{animation:fadein var(--fast) var(--ease) both}
@@ -406,7 +407,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   .dateline{padding-top:28px}
   .tabs{top:calc(56px + env(safe-area-inset-top));margin:32px -16px 0;padding:8px 16px}
   .seg{display:flex;width:100%}
-  .seg > .tab,.seg > .more-wrap{flex:1 1 auto;justify-content:center}
+  .seg-tabs > .tab,.seg > .more-wrap{flex:1 1 auto;justify-content:center}
   .seg > .more-wrap > .tab{width:100%;justify-content:center}
   .tab,.tab-m{padding:0 10px}
   .date{font-size:24px}
@@ -555,6 +556,8 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .feed-scroll.g0,.feed-scroll.g1{animation:fadein 180ms var(--ease) backwards}
 
 /* ---- foto's bij berichten (vervangt het grote volgnummer) ---- */
+.skip{position:absolute;left:8px;top:-60px;z-index:100;padding:10px 14px;border-radius:8px;background:var(--ink);color:var(--paper);font-size:14px}
+.skip:focus{top:8px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .bl{position:relative;border-radius:12px;overflow:hidden;background:var(--seg);isolation:isolate;flex:none}
 .bl-track{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
@@ -651,3 +654,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .d-meer-laden span:nth-child(2){width:92%}.d-meer-laden span:nth-child(3){width:70%}
 @keyframes mlaad{to{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.d-meer-laden span{animation:none}}
+
+.ai-vermelding{margin:6px 0 0;font-size:12px;line-height:1.4;color:var(--ink-2)}
+.sv-sheet .ai-vermelding{color:#3d3d3d}
+:root[data-theme="dark"] .sv-sheet .ai-vermelding{color:#c2c2c2}

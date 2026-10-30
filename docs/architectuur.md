@@ -63,11 +63,14 @@ Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert d
 
 Een lege nieuwsrubriek toont dat er nog geen berichten zijn; als nieuwsfilters alle beschikbare berichten uitsluiten, toont de leegmelding knoppen om de filters aan te passen of te herstellen. Zie `src/leegmelding.tsx` en `tests/leegmelding.test.ts`.
 
+De rubriektabs vormen een tablist; de knop Meer staat daarbuiten. Links en rechts selecteren en focussen de volgende zichtbare tab, met doorloop aan de uiteinden; alleen de geselecteerde tab staat in de tabvolgorde.
+
 De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de achtergronden van rubriektabs en filterpillen.
 
 ## Laadprestaties (#35)
 
-- **Vroege data.json**: het inline script in `index.html` start `window.__vroegData = fetch("/data.json", {cache:"no-cache"})` tijdens het parsen; `useData` neemt die promise eenmalig over via `neemVroegeData()` (`src/vroeg.ts`), daarna haalt elke verversing zelf op. Wijzig je dat script, werk dan de CSP-hash in `public/_headers` bij (de test bewaakt het).
+- **Briefing en videofeed** (#277): de briefing heeft geen intro-animatie en is direct zichtbaar zodra React de data verwerkt. De grote videofeed wordt pas geladen bij openen; vooraf gemaakte videosamenvattingen blijven in een gedeelde cache beschikbaar. De vroege fetch wacht op de respons, niet op fonts; `document.fonts.ready` wordt alleen gebruikt voor latere maatberekeningen. De daadwerkelijke LCP-winst en CLS moeten nog met drie mobiele Lighthouse-runs worden gemeten.
+- **Vroege data.json**: het inline script in `index.html` start `window.__vroegData = fetch("/data.json", {cache:"no-cache"})` tijdens het parsen; `useData` neemt die promise eenmalig over via `neemVroegeData()` (`src/vroeg.ts`), daarna haalt elke verversing zelf op. Bij een fout of ongeldige JSON probeert de client eenmaal `/data.json?statisch=1` met dezelfde cache-instelling. Wijzig je dat script, werk dan de CSP-hash in `public/_headers` bij (de test bewaakt het).
 - **Fonts self-hosted**: Inter (OFL, variabel 400-600) staat in `public/fonts/` (`inter-latin`, `inter-latin-ext`, woff2 uit Google Fonts v20), `@font-face` met `font-display: swap` bovenaan `src/index.css`, preload van het latin-bestand in `index.html`. CSP: `font-src 'self'`, geen Google-origins meer; `/fonts/*` is immutable gecachet.
 - **YouTube-thumbnails**: `index.html` opent alvast een verbinding met `https://i.ytimg.com` via preconnect; de bestaande CSP staat HTTPS-afbeeldingen en verbindingen toe.
 - **Kaarten gemount op afroep**: `NewsFeed` geeft alleen de eerste `KAARTEN_VOORAF` (6) kaarten en een venster van `KAARTEN_VOORUIT` (6) voorbij de huidige kaart (en voorbij `focusKey`) inhoud (`KaartInhoud`); de rest blijft een lege `<section class="nc">` met dezelfde hoogte, `data-id` en `aria-label`, zodat scroll-snap, `scrollIntoView`/`offsetTop`-sprongen en toetsenbordnavigatie ongewijzigd werken. Het venster krimpt nooit.
@@ -82,9 +85,25 @@ Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zicht
 - CSP: `img-src https:`, `connect-src https:` en `media-src https:` dekken dit; `_headers` is niet gewijzigd.
 - Lighthouse best practices (#294): live 96 (30-10, na #283/#322/#323/#278). De resterende audit `errors-in-console` bestaat uit 6x `net::ERR_CONNECTION_CLOSED` voor Dumpert-`poster-small.jpg` (media.dumpert.nl) uit de thumbnailstap hierboven; Dumpert sluit die verbindingen in de headless meting. Een mislukte beeldaanvraag logt Chrome altijd, ook als `onerror` hem opvangt; alleen niet aanvragen voorkomt de fout. Omdat het voorladen bewust zo blijft (keuze Joey), is hier niets aan gewijzigd.
 
+## Chunk-indeling (#296)
+
+Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React.lazy`/`import()` met `Suspense fallback={null}` en laadt pas bij gebruik. Houd nieuwe zware, niet-kritieke schermen op dezelfde manier buiten `index`.
+
+| Chunk | Inhoud | Wanneer geladen |
+| --- | --- | --- |
+| `index` | React, `App.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
+| `sheet` | `SourcesSheet` | bij openen van Bronnen |
+| `filters-blad` | `FilterBlad` | bij openen van het filterblad |
+| `detail` | `DetailView` (`#/bericht/...`) | bij openen van een bericht |
+| `video` | `VideoGrid` (Filmpjes/Dumpert-overzicht) | op een videoroute |
+| `feed` | `Feed`, spelers, `debug-overlay` | op touch + videoroute |
+| `hls` | hls.js | door `feed` en het voorladen |
+
+Daarom staan pure helpers die het hoofdscherm of het voorladen nodig hebben los van de lazy modules: `videosoort.ts` (`playerFor`, `soortVan`, `viaProxy`), `samenvattingcache.ts` (`zaaiSamenvattingen`), `meer.ts` (`prefetchMeer`) en `leesverder.ts` (`fotos`, `bronnenTekst`). Importeer die niet via `video.tsx`/`feed.tsx`, anders komt de lazy chunk terug in `index`. Meting (gzip, `npm run build`): hoofdchunk 89,0 kB → 69,2 kB (−22%); de ondergrens is React + react-dom (≈46 kB gzip).
+
 ## Pages Functions (`functions/`)
 
-- `data.json.ts`: haalt het statische `data.json` (ASSETS) en KV `uur`, voegt ze samen (`merge`): routine-samenvattingen blijven, nieuwe berichten van het uur komen bovenaan, weer/filmpjes/Dumpert worden ververst. Uur-data van een andere dag wordt genegeerd. `src/vandaag.ts` filtert na de merge artikelen en video's op de huidige Amsterdamse dag; bij oude data verdwijnt ook de dagsamenvatting. Legacy-items zonder publicatiedatum gebruiken de tijd van generatie met 20 minuten marge. `?statisch=1` geeft het onbewerkte statische bestand, zonder dagfilter. Voegt ook `sv-klaar` (vooraf gemaakte video-samenvattingen) toe. Antwoord met zwakke ETag en 304 bij `If-None-Match`; `Cache-Control: max-age=0, must-revalidate, stale-while-revalidate=300` (de client vraagt altijd met `cache: "no-cache"` zonder cachebuster, dus de uurdata is direct vers en een ongewijzigde respons kost alleen een 304). `slim()` haalt de niet-gebruikte diagnosevelden `ontdubbeld` en `routine_gegenereerd` weg.
+- `data.json.ts`: haalt het statische `data.json` (ASSETS) en KV `uur`, voegt ze samen (`merge`): routine-samenvattingen blijven, nieuwe berichten van het uur komen bovenaan, weer/filmpjes/Dumpert worden ververst. Uur-data van een andere dag wordt genegeerd. Bij meer dan 150 uurberichten worden alleen berichten van vandaag meegenomen, maximaal 150 nieuwe, op publicatietijd van nieuw naar oud. `src/vandaag.ts` filtert na de merge artikelen en video's op de huidige Amsterdamse dag; bij oude data verdwijnt ook de dagsamenvatting. Legacy-items zonder publicatiedatum gebruiken de tijd van generatie met 20 minuten marge. `?statisch=1` geeft het onbewerkte statische bestand, zonder dagfilter. Voegt ook `sv-klaar` (vooraf gemaakte video-samenvattingen) toe. Antwoord met zwakke ETag en 304 bij `If-None-Match`; `Cache-Control: max-age=0, must-revalidate, stale-while-revalidate=300` (de client vraagt altijd met `cache: "no-cache"` zonder cachebuster, dus de uurdata is direct vers en een ongewijzigde respons kost alleen een 304). `slim()` haalt de niet-gebruikte diagnosevelden `ontdubbeld` en `routine_gegenereerd` weg.
 - `samenvatting.ts`: `POST /samenvatting {id}`, samenvatting van één filmpje (alleen filmpjes die op de site staan). Tekst via YouTube-ondertiteling of Whisper, daarna samenvatten. Cache in KV (`vs:<id>`), ook fout-uitkomsten (30 min). Bewaakt het gedeelde dagbudget. Bescherming tegen misbruik: `Content-Type: application/json` verplicht (415), vreemde `Origin` geweigerd (403; `vooraf.ts` stuurt geen Origin), slot per video (409 bij bezig) vóór de budget- en mediastappen, geschatte Whisper-neuronen worden vóór `AI.run` atomair gereserveerd en achteraf verrekend met het echte verbruik, een globale rem van max 30 Whisper-aanroepen per uur (daarna code `druk`), en interne foutteksten (`why`) gaan alleen terug bij `pre:true`. Slot, reservering en uurrem zijn van de Durable Object `Budget` (binding `BUDGET_DO`, één instantie `dag`; zie hieronder), want KV is niet atomair. Is de DO onbereikbaar, dan antwoordt de Function 503 (niet gecachet); ontbreekt de binding (lokaal/preview), dan valt ze terug op het oude KV-gedrag (`vs-bezig:<id>`, `vs-uur:<datum>T<uur>`, `vid-neurons:<datum>`), een rem zonder harde garantie. De Cloudflare Rate Limiting-regel (issue #8) blijft apart en is nog open.
 - `meer.ts`: `GET /meer?k=<sleutel>`, extra tekst voor "Lees verder" uit KV `meer` (artikeltekst, AI-uitleg, kernpunten per bron), anders 404.
 - `media/dumpert/[[path]].ts`: GET/HEAD-proxy naar media.dumpert.nl voor HLS (CORS staat daar alleen dumpert.nl toe).
@@ -142,7 +161,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - **Reddit**: RSS (`top/.rss?t=day`) → old.reddit → Redlib-instances (roterend, HTML omgezet naar Atom) → laatste gelukte kopie van vandaag. Publieke Redlib-instances blokkeren Cloudflare nu vaak.
 - Filmpjes worden eerst ontdubbeld en op score geselecteerd: maximaal 18 Shorts en 14 Journaals. Binnen die plafonds krijgen Reddit, X en Instagram elk maximaal twee beschikbare unieke filmpjes voorrang; de resterende plaatsen volgen de scorevolgorde. Dumpert heeft een eigen tab.
 - Reddit-filmpjes spelen `v.redd.it` rechtstreeks af via HLS, zonder proxy. YouTube-links in posts gebruiken de YouTube-embed; andere videolinks worden overgeslagen. De verwijzing naar de Reddit-post blijft bewaard voor ontdubbeling.
-- **Weer** (landelijk, plaats "Nederland"): Buienradar (alle landstations: mediaan en koudste–warmste, landelijke 5-daagse), Open-Meteo als terugval (Groningen, De Bilt, Maastricht in één verzoek), KNMI-weerbericht (bron: KNMI, CC0) en de landelijke waarschuwingsregel uit datzelfde weerbericht (code geel/oranje/rood, ergste wint). Geen provinciepagina's: `/waarschuwingen` stuurt door naar Utrecht en per provincie ophalen kost subrequests. Ontbrekende bron = veld weg. De AI-herschrijving (`simpelWeer`) blijft één aanroep met max 1500 tekens invoer. Rubriek Haarlem is los van het weer.
+- **Weer** (landelijk, plaats "Nederland"): Buienradar (alle landstations: mediaan en koudste–warmste, landelijke 5-daagse), Open-Meteo als terugval (Groningen, De Bilt, Maastricht in één verzoek), KNMI-weerbericht (bron: KNMI, CC0) en de landelijke waarschuwingsregel uit datzelfde weerbericht (code geel/oranje/rood, ergste wint). Geen provinciepagina's: `/waarschuwingen` stuurt door naar Utrecht en per provincie ophalen kost subrequests. Ontbrekende bron = veld weg. De AI-herschrijving (`simpelWeer`) blijft één aanroep met max 1500 tekens invoer. Rubriek Haarlem is los van het weer. Een AI-uitvoer die de prompt herhaalt (`isPromptEcho` in `worker/src/ai.ts`) wordt afgewezen en niet in `weerTxt` bewaard (#378).
 - **Overig**: openraadsinformatie (gemeenteraad), og:image van artikelpagina's.
 - Lukt niet: BleepingComputer (403).
 
@@ -172,11 +191,10 @@ handmatige checks op echte data en draaien niet mee met `npm test`.
 
 ## Domein
 
-nieuwsinkort.nl staat bij STRATO en is **nog niet** aan het Pages-project gekoppeld. Plan: DNSSEC bij STRATO uit, nameservers naar Cloudflare, daarna nieuwsinkort.nl en www.nieuwsinkort.nl als custom domain aan het Pages-project toevoegen. Tot dan draait de site op nieuwsinkort.pages.dev (controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`).
+nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project (nieuwsinkort.pages.dev blijft werken). `functions/_middleware.ts` stuurt www met een 301 door naar `https://nieuwsinkort.nl` met pad en query behouden (de Cloudflare-login mag geen Redirect Rules schrijven, vandaar code); apex en `*.pages.dev` blijven ongemoeid. `public/_routes.json` houdt `/assets/*`, `/fonts/*`, iconen en vaste bestanden buiten de Functions (Free-plan-quotum, max 100 regels); HTML-navigaties en de functieroutes (`/data.json`, `/meer`, `/samenvatting`, `/media/dumpert/*`) lopen er wel doorheen. Test: `tests/www-redirect.test.ts`. Controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`.
 
 ## Open punten
 
-- Domein koppelen (zie boven).
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
 - "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd.
 - `src/leesverder.ts` bepaalt of een bericht Lees verder heeft en haalt alinea’s, kernpunten en bronnen voor de detailpagina uit het bericht.
@@ -227,7 +245,17 @@ Bij YouTube bewaakt een activatieklok het starten: een actieve iframe krijgt max
 
 ### YouTube-embeds
 
+De vaste kanaallijst `YT_SHORTS_GEBLOKKEERDE_KANALEN` in `worker/src/videos.ts` bevat `FORMULA 1`: diens Shorts zijn op de iPhone niet in te sluiten, terwijl servercontroles geen betrouwbaar onderscheid geven. De Worker laat deze Shorts weg en geeft hun ID's door in `ytGeblokkeerd`, ook bij een gecachte speelbare uitkomst; de Pages Function filtert daarmee ook statische video's. Journaals en lange video's van dit kanaal blijven toegestaan.
+
 De uur-Worker controleert maximaal 15 YouTube-embeds per run in bestaande og- of artikelbatches; zonder batch wachten controles. Per ID komt één oEmbed-subrequest erbij (maximaal 15 per run), plus hooguit één embed-herpoging bij consent (maximaal 15). De batch reserveert drie subrequests per controle naast maximaal 30 bestaande jobs en beperkt zo het aantal controles per batch. Redirects worden niet gevolgd; bij consent wordt de oorspronkelijke embed eenmaal opnieuw opgehaald met toestemmingscookies en de standaard fetch-User-Agent. Embedblokkade of oEmbed 401/403/404 betekent geblokkeerd; alleen embedstatus OK betekent speelbaar. oEmbed 200 is geen bewijs. De bestaande state bewaart onbekend één uur, geblokkeerd twee dagen en speelbaar zeven dagen, maximaal 300 ID’s. Er zijn geen extra KV-schrijfacties of Fetcher-aanroepen. `ytDiag` geeft per controle status, uitkomst, eventuele reden, paginatitel, hosts en oEmbed-status; `ytWeggelaten` en `ytControles` staan eveneens in de runmetadata. Onbekende video's blijven zichtbaar. De Pages Function filtert bekende blokkades; de client slaat bij fout 100, 101, 150 of 152 de actieve slide over.
+
+AI-teksten krijgen de vermelding „Samenvatting gemaakt met AI”: berichten tenzij `ruw`, het dagoverzicht, rubriekoverzichten met `ai: true` en geslaagde videosamenvattingen. Bij Uitgebreid volgt de vermelding de gekozen tekst: AI-uitleg of de eigen AI-samenvatting, maar geen bronalinea’s, ruwe terugval of losse kop.
+
+### Vooraf berekende datarespons (#363)
+
+De uur-Worker gebruikt de al opgehaalde statische data en `uur` om dezelfde merge, dagfilter, opschoning en compacte respons vooraf te berekenen. KV `data-vooraf` bevat de Amsterdamse dag, de zwakke ETag en de JSON-body als tekst. Pages leest deze tekst en geeft bij een passende dag direct de body of een 304 terug. Bij een ontbrekende of verouderde sleutel blijft het bestaande pad beschikbaar. `sv-klaar` wordt meegenomen; na een video-alarm wordt de respons opnieuw berekend, met één extra KV-schrijfpoging buiten de runteller. De run telt maximaal één extra schrijfpoging in `meta.kvWrites`. Bij een mislukte berekening blijft de vorige respons staan.
+
+Lokale Node-meting met de incidentkopieën `/tmp/kv-uur.json` (331.623 bytes) en `/tmp/st-bb662877.json` (117.318 bytes), 20 verzoeken na opwarming: oud 60,672 ms CPU per verzoek, nieuw 1,566 ms. Dit is een lokale indicatie, geen meting van Cloudflare-CPU; de oude meting gebruikt lokale KV-doubles.
 
 ## Toegankelijkheid: slider en focus (#328)
 

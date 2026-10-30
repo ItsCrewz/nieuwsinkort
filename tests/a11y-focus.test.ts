@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const feed = readFileSync("src/feed.tsx", "utf8");
 const app = readFileSync("src/App.tsx", "utf8");
+const detail = readFileSync("src/detail.tsx", "utf8");
 const t = (name: string, fn: () => void) => { fn(); console.log("✓", name); };
 
 t("scrubber heeft altijd aria-valuenow en aria-valuetext", () => {
@@ -20,8 +21,8 @@ t("YouTube-iframe is niet uit de tabvolgorde gehaald", () => {
 });
 
 t("artikel: focus op h1 (tabindex -1), Escape = terug, focus terug op de kaart", () => {
-  assert.match(app, /<h1 className="d-title" ref=\{kopRef\} tabIndex=\{-1\}>/);
-  assert.match(app, /kopRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
-  assert.match(app, /e\.key === "Escape" && onBack\(\)/);
+  assert.match(detail, /<h1 className="d-title" ref=\{kopRef\} tabIndex=\{-1\}>/);
+  assert.match(detail, /kopRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(detail, /e\.key === "Escape" && onBack\(\)/);
   assert.match(app, /scrollIntoView\(\{ block: "center" \}\);[\s\S]{0,300}f\.focus\(\{ preventScroll: true \}\)/);
 });

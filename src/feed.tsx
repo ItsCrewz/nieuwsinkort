@@ -7,8 +7,9 @@ import { bewaarMeting, herstelSwipe, swipeDoel, type SwipeMeting } from "./swipe
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
+import { AiVermelding } from "./ai-vermelding";
 import { Icon } from "./icons";
-import { playerFor, viaProxy, youtubeId } from "./video";
+import { playerFor, viaProxy, youtubeId } from "./videosoort";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -25,6 +26,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
+import { svCache, type Sv } from "./samenvattingcache";
 import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
@@ -1111,12 +1113,6 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
 // ------------------------------------------------------------- samenvatting op verzoek
 // Knop + onderblad. De server (functions/samenvatting.ts) haalt ondertiteling of luistert de eerste minuten,
 // vat samen in simpele punten en bewaart dat per filmpje, dus de tweede keer is het meteen klaar.
-type Sv = { ok: true; punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number; model?: string; neuronen?: number; cached?: boolean } | { ok: false; code: string; fout: string };
-const svCache = new Map<string, Sv>();
-/** Vooraf gemaakte samenvattingen uit /data.json in de cache zetten (knop toont dan "klaar"). */
-export function zaaiSamenvattingen(m?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>) {
-  for (const [id, x] of Object.entries(m || {})) if (Array.isArray(x?.punten) && x.punten.length && !svCache.has(id)) svCache.set(id, { ok: true, punten: x.punten, bron: x.bron, sec: x.sec, cached: true });
-}
 async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
   const hit = svCache.get(id);
   if (hit) return hit;
@@ -1185,6 +1181,7 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
           ) : res.ok ? (
             <>
               <ul className="sv-punten">{res.punten.map((p, k) => <li key={k}>{p}</li>)}</ul>
+              <AiVermelding tonen={res.punten.length > 0} />
               <p className="sv-bron">
                 {res.bron === "spraak" ? `Uit wat er gezegd wordt${min ? ` (eerste ${min} min)` : ""}` : "Uit de ondertiteling"} · samengevat door AI, kan foutjes bevatten
               </p>
