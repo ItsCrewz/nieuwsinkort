@@ -154,7 +154,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 
 ## Testopzet
 
-`npm test` bundelt alle `tests/*.test.ts` met esbuild en draait ze afzonderlijk met Node.
+`npm test` bundelt alle `tests/*.test.ts` met esbuild en draait ze afzonderlijk met Node. `npm run coverage` draait dezelfde bestanden afzonderlijk met Vitest en V8-coverage; de bestaande assertions worden bij het laden uitgevoerd. Het rapport toont regeldekking voor feed, tabs/filters, samenvatting/Uitgebreid en videopool, met de exacte bestandsindeling in `scripts/coverage-groepen.mjs`. De volledige resultaten staan in `coverage/coverage-summary.json`. Er gelden nog geen drempels. Vitest en c8 kunnen regels en bestandsindelingen anders tellen, waardoor hun percentages niet rechtstreeks vergelijkbaar zijn.
 Basistests zijn per module of onderwerp ingedeeld; sinds 30 oktober 2026 vullen
 `*-randgevallen.test.ts` die aan met grensgevallen, beschreven in het testbestand zelf.
 Pages Functions worden lokaal getest met onder meer nep-KV en nep-ASSETS.
