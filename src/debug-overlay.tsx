@@ -29,7 +29,7 @@ export function DebugOverlay() {
         const type = v.dataset.mse === "1" ? "hls.js-MSE" : v.dataset.debugKind === "hls" ? "native HLS" : "mp4";
         const buffer = Array.from({ length: v.buffered.length }, (_, j) => `${getal(v.buffered.start(j))}–${getal(v.buffered.end(j))}`).join(",") || "-";
         const balk = balkTijden.get(v)?.();
-        return `#${i} slot ${v.dataset.slot ?? "-"} slide ${slide?.dataset.i ?? "geparkeerd"} actief ${actief ? "ja" : "nee"} ${type}\n src ${(v.getAttribute("src") || "-").slice(0, 60)}\n cur ${(v.currentSrc || "-").slice(0, 60)}\n paused ${v.paused} muted ${v.muted} seeking ${v.seeking} ready ${v.readyState} net ${v.networkState} tijd ${getal(v.currentTime)}/${getal(v.duration)}\n${frameRegel(v.videoWidth, v.videoHeight, frameTijden.get(v)?.(), nu)}\n buffer ${buffer}${actief && balk !== undefined ? `\n balk ${getal(balk)} drift ${getal(balk - v.currentTime)}` : ""}`;
+        return `#${i} slot ${v.dataset.slot ?? "-"} slide ${slide?.dataset.i ?? "geparkeerd"} actief ${actief ? "ja" : "nee"} ${type}\n src ${(v.getAttribute("src") || "-").slice(0, 60)}\n cur ${(v.currentSrc || "-").slice(0, 60)}\n autoplay geblokkeerd: ${v.dataset.autoplayBlokkade ? `ja (${v.dataset.autoplayBlokkade})` : "nee"}\n paused ${v.paused} muted ${v.muted} seeking ${v.seeking} ready ${v.readyState} net ${v.networkState} tijd ${getal(v.currentTime)}/${getal(v.duration)}\n${frameRegel(v.videoWidth, v.videoHeight, frameTijden.get(v)?.(), nu)}\n buffer ${buffer}${actief && balk !== undefined ? `\n balk ${getal(balk)} drift ${getal(balk - v.currentTime)}` : ""}`;
       });
       const pool = videos.filter((v) => v.dataset.slot !== undefined).sort((a, b) => Number(a.dataset.slot) - Number(b.dataset.slot))
         .map((v) => `${v.dataset.slot}→${v.closest<HTMLElement>(".fslide")?.dataset.i ?? "-"}(${v.getAttribute("src") ? (v.dataset.mse === "1" ? "MSE" : v.dataset.debugKind === "hls" ? "HLS" : "mp4") : "leeg"})`).join(" ");
@@ -39,7 +39,7 @@ export function DebugOverlay() {
       const yt = document.querySelector<HTMLIFrameElement>('.fslide[aria-current="true"] iframe.f-yt');
       const status = yt?.dataset.ytStatus ? Number(yt.dataset.ytStatus) : null;
       const ytId = yt?.getAttribute("src")?.split("/embed/")[1]?.split("?")[0] ?? "-";
-      const ytRegel = yt ? `YouTube ${ytId} status ${status ?? "-"} ${ytStatusNaam(status)} onReady ${yt.dataset.ytReady === "true" ? "ja" : "nee"} pogingen ${yt.dataset.ytPogingen ?? "0"} vangnet ${yt.dataset.ytVangnet ?? "nee"}\n` : "";
+      const ytRegel = yt ? `YouTube ${ytId} status ${status ?? "-"} ${ytStatusNaam(status)} onReady ${yt.dataset.ytReady === "true" ? "ja" : "nee"} pogingen ${yt.dataset.ytPogingen ?? "0"} vangnet ${yt.dataset.ytVangnet ?? "nee"} sinds activatie ${Math.max(0, Math.round(nu - Number(yt.dataset.ytSinds || nu)))}ms laatste opdracht ${yt.dataset.ytOpdracht ?? "-"} autoplay geblokkeerd: ${yt.dataset.ytBlokkade && yt.dataset.ytBlokkade !== "-" ? `ja (${yt.dataset.ytBlokkade})` : "nee"}\n` : "";
       zetTekst(`iOS/UA: ${ios}\nstil ${diag?.stil ?? 0} vast ${diag?.vast ?? 0} herladen ${diag?.herladen ?? 0}\npool ${pool}\n${ytRegel}video's ${videos.length}, src-attribuut ${metSrc}, currentSrc ${metCur}\n${regels.join("\n")}\nEvents:\n${videoEvents.lijst().join("\n")}`);
     };
     update();
