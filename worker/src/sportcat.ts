@@ -1,10 +1,11 @@
 // Deel algemeen nieuws conservatief in op basis van bronpad en titel.
 type Cat = "f1" | "voetbal" | "auto";
 export function sportCat({ cat, kop, hrefs }: { cat: string; kop: string; hrefs: string[] }): Cat | null {
-  if (!["nl", "buitenland", "tech"].includes(cat)) return null;
+  // Autobronnen publiceren ook F1/voetbal: die cat mag omhoog (F1 > voetbal > auto).
+  if (!["nl", "buitenland", "tech", "auto"].includes(cat)) return null;
   const paden = hrefs.map((href) => { try { return new URL(href).pathname.toLowerCase(); } catch { return ""; } });
   const pad = (re: RegExp) => paden.some((p) => re.test(p));
-  const f1 = /\b(?:formule\s*1|f1|grand prix|verstappen|red bull racing|hadjar)\b/i.test(kop);
+  const f1 = /\b(?:formule\s*1|f1|grand prix|gp|verstappen|lando norris|oscar piastri|charles leclerc|lewis hamilton|george russell|fernando alonso|carlos sainz|kimi antonelli|isack hadjar|red bull racing|pole position|poleposition|pitstop)\b/i.test(kop);
   const club = /\b(?:ajax|psv|feyenoord|az|fc twente)\b/i.test(kop);
   const voetbal = club || /\b(?:eredivisie|champions league|europa league|knvb|doelpunt)\b/i.test(kop) || (/\boranje\b/i.test(kop) && /\b(?:voetbal|bondscoach|koeman|wk|ek)\b/i.test(kop));
   if (pad(/(?:\/formule-?1(?:\/|$)|\/formula1(?:\/|$)|\/f1(?:\/|$)|nossportformule1)/) || f1) return "f1";

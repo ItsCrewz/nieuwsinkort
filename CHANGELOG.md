@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- F1-berichten uit autobronnen komen niet meer onder Auto (#93): `sportCat` kijkt nu ook naar items met cat `auto` en herkent meer F1-termen (coureurs, GP, pole position).
 - Feedtitels voor lokaal naspelen bevatten ook Voetbal, Formule 1, Auto en herkende Buitenland-berichten (#92).
 - Geluidskeuze voor filmpjes, shorts en Dumpert onthouden; de videopool wordt bij een gebruikersgebaar vrijgegeven (#66). Nog niet op een echte iPhone geverifieerd.
 - Direct starten (#51): volgende video vooraf in de slide en klein bufferen; native voorladen en hele HLS-segmenten kunnen de richtgrenzen van 1,55 MB wifi en 0,36 MB mobiel overschrijden. Save-Data/2G laden geen volgende video. Nog niet op iPhone geverifieerd.
