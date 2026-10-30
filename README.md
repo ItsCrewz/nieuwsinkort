@@ -96,6 +96,8 @@ Elke PR voegt een fragment `changelog.d/<issue>-<slug>.md` toe (onderdeel van "k
 
 Statische bestanden krijgen via `public/_headers` een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, altijd hervalideren); `/assets/*` is immutable, `/bronnen.json` en de iconen hebben in `_headers` een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
 
+De CSP staat het Cloudflare Web Analytics-script van `static.cloudflareinsights.com` toe, zodat de door Cloudflare ingevoegde beacon kan werken. `cloudflareinsights.com` staat expliciet bij `connect-src`; HTTPS-verbindingen waren daar al toegestaan. Deze aanpassing vereist beoordeling door Joey.
+
 ### KV-schrijflimiet uur-Worker
 
 Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de door Fetcher gemelde Instagram-cachepogingen en de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
