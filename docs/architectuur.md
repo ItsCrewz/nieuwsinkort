@@ -69,6 +69,7 @@ Na `load` + `requestIdleCallback` (fallback `setTimeout`), wachtend op een zicht
 - Max 3 requests tegelijk, alles `priority: low`. Geen AI-aanroepen.
 - De mp4-Range: of de browser de gecachete bytes voor `<video>` hergebruikt hangt af van de cache-headers van de Instagram-CDN en de browser (Chrome kan gedeeltelijke cache-items hergebruiken); dat is niet in een echte browser geverifieerd. Zeker is het nut van de warme DNS/TLS-verbinding en de CDN-edge.
 - CSP: `img-src https:`, `connect-src https:` en `media-src https:` dekken dit; `_headers` is niet gewijzigd.
+- Lighthouse best practices (#294): live 96 (30-10, na #283/#322/#323/#278). De resterende audit `errors-in-console` bestaat uit 6x `net::ERR_CONNECTION_CLOSED` voor Dumpert-`poster-small.jpg` (media.dumpert.nl) uit de thumbnailstap hierboven; Dumpert sluit die verbindingen in de headless meting. Een mislukte beeldaanvraag logt Chrome altijd, ook als `onerror` hem opvangt; alleen niet aanvragen voorkomt de fout. Omdat het voorladen bewust zo blijft (keuze Joey), is hier niets aan gewijzigd.
 
 ## Pages Functions (`functions/`)
 
