@@ -11,7 +11,7 @@ Grok Bot-routine "Dagelijks Nieuws". Hier staan ze als kopie, ongewijzigd.
 | `gemeenteraad_ori.py` | Recente gemeenteraad-/collegevergaderingen via Open Raadsinformatie (Elastic). Opties: `--gemeente`, `--max`, `--type`. |
 | `officiele_bekendmakingen.py` | Recente officiële bekendmakingen via repository.overheid.nl (SRU), standaard gefilterd op nieuwswaardige types. Opties: `--gemeente`, `--max`, `--all`. |
 | `feeds.json` | Lijst van bronnen/feeds. |
-| `feeds_detail.json` | Extra detailgegevens per feed. |
+| `feeds_detail.json` | Extra detailgegevens per feed; bevat geen Reddit-feeds. |
 
 ## Koppeling met de rest van de repo
 

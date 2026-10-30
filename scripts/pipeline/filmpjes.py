@@ -93,7 +93,7 @@ def soort_van(f):
     return "short"
 
 # AD heeft geen herkenbaar officieel YouTube-kanaal (zoekresultaten zijn andere 'AD'-kanalen).
-VIDEO_RE = re.compile(r"v\.redd\.it|youtube\.com/watch|youtu\.be/|youtube\.com/shorts|streamable\.com|"
+VIDEO_RE = re.compile(r"youtube\.com/watch|youtu\.be/|youtube\.com/shorts|streamable\.com|"
                       r"(?:twitter|x)\.com/[^/]+/status|tiktok\.com|instagram\.com/reel|nos\.nl/video|rtl\.nl/video", re.I)
 
 
@@ -254,10 +254,6 @@ def video_keys(v):
         if m: ks.add("ig:" + m.group(1))
         m = re.search(r"(?:x|twitter)\.com/[^/]+/status/(\d+)", u)
         if m: ks.add("x:" + m.group(1))
-        m = re.search(r"reddit\.com/r/\w+/comments/(\w+)", u)
-        if m: ks.add("rd:" + m.group(1))
-        m = re.search(r"v\.redd\.it/(\w+)", u)
-        if m: ks.add("vr:" + m.group(1))
         m = re.search(r"dumpert\.nl/(?:item|mediabase|embed)/([\w_]+)", u)
         if m: ks.add("dp:" + m.group(1))
         if re.search(r"\.(mp4|m3u8)(\?|$)", u):

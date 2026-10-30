@@ -89,13 +89,12 @@ function soort(f) {
   const u = (f.url || "").toLowerCase();
   if (u.includes("youtube.com")) return "YouTube";
   if (u.includes("kg.meowing.de") || /instagram/i.test(f.naam)) return "Instagram";
-  if (u.includes("reddit.com")) return "Reddit";
   if (/(^|\/\/)(www\.)?(x|twitter)\.com/.test(u)) return "X";
   if (/podcast/i.test(f.naam)) return "Podcast";
   return "";
 }
 
-const GENERIC_HOSTS = /^(youtube\.com|x\.com|twitter\.com|reddit\.com|feedburner\.com|kg\.meowing\.de|githubusercontent\.com|hnrss\.org|blog\.google|npo\.nl)$/;
+const GENERIC_HOSTS = /^(youtube\.com|x\.com|twitter\.com|feedburner\.com|kg\.meowing\.de|githubusercontent\.com|hnrss\.org|blog\.google|npo\.nl)$/;
 function hostOf(url) {
   try {
     const h = new URL(url).hostname.replace(/^www\./, "");
@@ -134,12 +133,10 @@ if (existsSync(FILMPJES)) {
   const bronnen = [...py.matchAll(/"bron":\s*"([^"]+)"/g)].map((m) => m[1]);
   const yt = /YT_NIEUWS\s*=\s*\{([\s\S]*?)\n\}/.exec(py);
   const kanalen = yt ? [...yt[1].matchAll(/"([^"]+)"\s*:/g)].map((m) => m[1]) : [];
-  const subs = /REDDIT_SUBS\s*=\s*\[([^\]]*)\]/.exec(py);
-  const subreddits = subs ? [...subs[1].matchAll(/"([^"]+)"/g)].map((m) => `r/${m[1]}`) : [];
   for (const b of new Set(bronnen)) {
     const cat = /dumpert/i.test(b) ? "dumpert" : "filmpjes";
     const id = norm(b);
-    const info = b === "YouTube" && kanalen.length ? kanalen.join(", ") : b === "Reddit" && subreddits.length ? subreddits.join(", ") : b === "Dumpert" ? "Toppers van vandaag" : "";
+    const info = b === "YouTube" && kanalen.length ? kanalen.join(", ") : b === "Dumpert" ? "Toppers van vandaag" : "";
     groups.get(cat).set(id, { id, naam: b, alias: new Set([id]), hosts: new Set(), soort: new Set(), feeds: 1, info });
   }  // X-video's: elk uur door de uur-Worker (fxtwitter/syndication), niet meer via de routine
   groups.get("filmpjes").set("x", { id: "x", naam: "X", alias: new Set(["x", "twitter"]), hosts: new Set(), soort: new Set(), feeds: 1, info: "Video's van RTL Nieuws, De Telegraaf, AD, PowNed, GeenStijl, NH Nieuws, BNR en de politieke accounts" });
