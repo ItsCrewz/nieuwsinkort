@@ -1,0 +1,1 @@
+- Randgevallen voor videoherstel en feedstatus vastgelegd in tests (#174).
