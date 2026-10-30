@@ -2,7 +2,6 @@
 // Pure keuzelogica (plan) + een kleine browser-runner. Alleen na de load-event, in idle-tijd, alles met lage
 // prioriteit en hooguit 3 requests tegelijk. Geen AI, geen /samenvatting, geen /meer.
 import type { Video } from "./types";
-import type { Budget } from "./netwerk";
 
 export type Speler = { kind: "youtube" | "hls" | "mp4"; src: string } | null;
 export type Hulp = { playerFor: (v: Video) => Speler; viaProxy: (src: string) => string };
@@ -14,13 +13,12 @@ export type Plan = {
   mp4: string | null;
 };
 
-const THUMBS = { normaal: 6, zuinig: 3 };
+const THUMBS = 6;
 const KIJK = 3; // zoveel items per tab telt als "eerste"
 const HLS_MAX = 2;
 export const MP4_BYTES = 256 * 1024;
 export const GELIJK = 3;
 
-const LEEG: Plan = { thumbs: [], preconnect: [], hlsChunk: false, hls: [], mp4: null };
 const uniek = <T,>(l: T[]) => [...new Set(l)];
 const origin = (u: string) => {
   try {
@@ -32,10 +30,9 @@ const origin = (u: string) => {
 };
 const httpsUrl = (u: string) => !!origin(u);
 
-/** apple = Safari/iOS: speelt HLS zelf, rechtstreeks van Dumpert (zelfde check als warmHls in feed.tsx). */
-export function planVoorladen(filmpjes: Video[], dumpert: Video[], budget: Budget, apple: boolean, h: Hulp): Plan {
-  if (budget === "geen") return LEEG;
-  const n = budget === "normaal" ? THUMBS.normaal : THUMBS.zuinig;
+/** Apple-apparaten spelen HLS doorgaans zelf af. */
+export function planVoorladen(filmpjes: Video[], dumpert: Video[], apple: boolean, h: Hulp): Plan {
+  const n = THUMBS;
   const thumbs = uniek([...filmpjes.slice(0, n), ...dumpert.slice(0, n)].map((v) => v.thumb).filter(httpsUrl));
   const eerste = [...filmpjes.slice(0, KIJK), ...dumpert.slice(0, KIJK)];
   const sp = eerste.map((v) => h.playerFor(v)).filter((s): s is NonNullable<Speler> => !!s);
@@ -49,8 +46,7 @@ export function planVoorladen(filmpjes: Video[], dumpert: Video[], budget: Budge
     yt ? "https://www.youtube-nocookie.com" : "",
     apple ? hlsAll.slice(0, 1).map(origin)[0] ?? "" : "", // Safari haalt HLS rechtstreeks
   ].filter(Boolean);
-  const normaal = budget === "normaal";
-  return { thumbs, preconnect: uniek(hosts), hlsChunk: hlsViaJs, hls: normaal ? hls : [], mp4: normaal ? mp4 : null };
+  return { thumbs, preconnect: uniek(hosts), hlsChunk: hlsViaJs, hls, mp4 };
 }
 
 /** Laagste variant uit een master-playlist (hls.js start ook op niveau 0); "" als er geen is. */
