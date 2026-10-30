@@ -1,0 +1,1 @@
+- Herstel foto's op nieuwskaarten en breng sociale filmpjes en de Dumpert-omweg terug; behoud de nieuwe YouTube-kanalen. De knoppen op nieuwskaarten blijven naast elkaar en foto’s krijgen een extra klein formaat voordat ze verdwijnen.
