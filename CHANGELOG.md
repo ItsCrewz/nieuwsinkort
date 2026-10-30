@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Videoherstel (#44): de voortgangsbalk volgt de werkelijke afspeeltijd; bij stilstand volgt een herstelpoging en zo nodig herladen.
+
 - Performance artikelen (#35), vervolg: `/data.json` start vanuit `index.html` tijdens het parsen (hergebruikt door `useData`, `src/vroeg.ts`; nieuwe CSP-hash); Inter self-hosted i.p.v. Google Fonts (CSP `font-src 'self'`, `/fonts/*` immutable); `NewsFeed` mount kaartinhoud alleen rond de huidige kaart (DOM kleiner, lagere TBT).
 - Performance artikelen (#35): `/data.json` krijgt een ETag en antwoordt met 304 zonder body als er niets nieuws is (de `?t=`-cachebuster in `useData` is weg, zodat de 15-minutenverversing voorwaardelijk kan); `Cache-Control: max-age=0, must-revalidate, stale-while-revalidate=300`; diagnosevelden `ontdubbeld` en `routine_gegenereerd` gaan niet meer mee (`slim`). `public/_headers`: cache voor `/bronnen.json` en de iconen. Eerste foto van een bovenste kaart krijgt `fetchpriority=high`.
 - Weerblok is landelijk (issue #37): plaats "Nederland", Buienradar over alle landstations (mediaan en bereik), Open-Meteo met drie punten (noord/midden/zuid) in één verzoek, KNMI-weerbericht met de landelijke waarschuwingsregel (geen Noord-Holland-pagina meer, één verzoek minder per run). `simpelWeer`-prompt "heel Nederland"; zelfde aantal AI-calls en invoerlengte, de weertekst wordt na de deploy eenmalig opnieuw herschreven. Rubriek Haarlem ongewijzigd. `scripts/pipeline/weer.py` (oude pipeline) niet aangepast.

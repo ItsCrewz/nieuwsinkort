@@ -17,7 +17,7 @@ Werkinstructies voor Claude Code in deze repo (nieuwsinkort). Overzicht: [README
 npm ci
 npm run dev        # Vite 8 (devDependencies: vite, wrangler 4, esbuild expliciet; Node >= 20.19)
 npm run build      # build-bronnen.mjs + tsc --noEmit + vite build
-npm test           # esbuild-bundel van tests/dedup.test.ts, draait met node
+npm test           # esbuild-bundels van regressietests, draaien met node
 npm run bronnen    # alleen public/bronnen.json opnieuw bouwen
 ```
 
@@ -31,7 +31,7 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy).
 - `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
 - `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
-- `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`).
+- `tests/`: `dedup.test.ts` (bevat ook tests voor `beeld.ts`, `schoon.ts` en `merge`) en `stall.test.ts` voor videoherstel.
 - `worker/src/cluster.ts`: clusteren van feedberichten (pure module).
 
 ## Conventies

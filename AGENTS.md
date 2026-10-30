@@ -31,6 +31,7 @@ Behoud de controle via `worker/src/url.ts` bij og/artikel/Jina-jobs: HTTP(S), po
 - Alle teksten (UI, docs, commits, commentaar) zijn Nederlands.
 - Externe `href`'s in de UI altijd via `veiligeUrl()` (`src/url.ts`); feed-links in de Worker via `absUrl()` (`worker/src/parse.ts`).
 - Worker-endpoints `/run` en `/uur`: gebruik `Authorization: Bearer <RUN_KEY>`, nooit een URL-sleutel. `force=1` wordt binnen tien minuten na de laatste runstart geweigerd. Test dit zonder echte AI-aanroepen.
+- Videoherstel: `src/stall.ts` stopt de balk na 600 ms stilstand en probeert herstel na 3 s met data klaar of na 10 s zonder data; zo nodig herladen na nog 3 s. Tests: `tests/stall.test.ts`.
 - Tijdlogica: gedeelde Amsterdamse middernacht in `src/tijd.ts`; test DST en de referentiedag `gegenereerd` in `tests/filters.test.ts`. Relatieve filters blijven tegen nu rekenen, berichttijden hebben 20 minuten toekomstmarge.
 
 ## Beveiligingsheaders

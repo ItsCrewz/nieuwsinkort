@@ -14,6 +14,7 @@ const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").
 export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
 import { veiligeUrl } from "./url";
+import { Stall } from "./stall";
 
 // Geluid staat standaard aan en de keuze wordt onthouden (localStorage). Weigert de browser geluid zonder tik
 // (iPhone Safari), dan start het filmpje zonder geluid en gaat het geluid aan bij de eerste tik of swipe.
@@ -32,8 +33,9 @@ function saveSound(on: boolean) {
     /* privémodus */
   }
 }
-// Teller voor tests/diagnose: hoe vaak de waakhond een vastgelopen beeld herlaadde.
-const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number } }).__nikVideo ??= { herladen: 0, vast: 0 });
+// Tellers voor diagnose van stilstaande tijd en beeld.
+const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
+diag.stil ??= 0;
 
 // ------------------------------------------------------------- voortgangsbalk
 type Bar = { set: (cur: number, dur: number, playing: boolean) => void; stop: () => void };
@@ -143,7 +145,7 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     };
   }, [seek]);
   const [shown, setShown] = useState(false);
-  const hlsRef = useRef<{ config: { maxBufferLength: number; maxMaxBufferLength: number }; startLoad: (p?: number) => void } | null>(null);
+  const hlsRef = useRef<{ config: { maxBufferLength: number; maxMaxBufferLength: number }; startLoad: (p?: number) => void; recoverMediaError: () => void } | null>(null);
   const started = useRef(false);
   const rankRef = useRef(preload);
   rankRef.current = preload;
@@ -318,6 +320,76 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     return () => video.removeEventListener("loadedmetadata", go);
   }, [reloadKey]);
 
+  const barStand = useRef({ tijd: 0, sinds: 0, loopt: false });
+  const zetBar = useCallback((tijd: number, duur: number, loopt: boolean) => {
+    barStand.current = { tijd, sinds: performance.now(), loopt };
+    bar.set(tijd, duur, loopt);
+  }, [bar.set]);
+
+  // Dezelfde limiet geldt voor beide waakhonden.
+  const herlaad = useCallback((video: HTMLVideoElement, now: number) => {
+    reloads.current = reloads.current.filter((x) => now - x < 60e3);
+    if (reloads.current.length >= 2) return false;
+    reloads.current.push(now);
+    diag.herladen++;
+    resumeAt.current = video.currentTime;
+    setReloadKey((k) => k + 1);
+    return true;
+  }, []);
+
+  useEffect(() => {
+    const video = ref.current;
+    if (!video || !active || paused) return;
+    const stall = new Stall();
+    let herstelSeek = false;
+    const seekKlaar = () => { herstelSeek = false; };
+    video.addEventListener("seeked", seekKlaar);
+    const iv = window.setInterval(() => {
+      const now = performance.now();
+      if (herstelSeek && !video.seeking) herstelSeek = false;
+      const stand = barStand.current;
+      const balkTijd = stand.tijd + (stand.loopt ? (now - stand.sinds) / 1000 : 0);
+      let bufferVooruit = 0;
+      for (let i = 0; i < video.buffered.length; i++) {
+        if (video.buffered.start(i) <= video.currentTime && video.buffered.end(i) > video.currentTime) {
+          bufferVooruit = video.buffered.end(i) - video.currentTime;
+          break;
+        }
+      }
+      const besluit = stall.tik({ now, currentTime: video.currentTime, paused: video.paused,
+        hidden: document.hidden, ended: video.ended, seeking: video.seeking, herstelSeek, balkTijd,
+        bufferVooruit, readyState: video.readyState });
+      if (besluit === "balk-stop") zetBar(video.currentTime, video.duration, false);
+      if (besluit === "balk-sync") zetBar(video.currentTime, video.duration, true);
+      if (besluit === "nudge") {
+        diag.stil++;
+        const h = hlsRef.current;
+        h?.startLoad();
+        if (h && video.error?.code === 3) h.recoverMediaError();
+        let doel = video.currentTime + 0.01;
+        for (let i = 0; i < video.buffered.length; i++) {
+          if (video.buffered.start(i) > video.currentTime + 0.01) {
+            doel = video.buffered.start(i);
+            break;
+          }
+          if (video.buffered.end(i) > video.currentTime) break;
+        }
+        if (Number.isFinite(video.duration)) doel = Math.min(doel, Math.max(0, video.duration - 0.01));
+        try {
+          herstelSeek = true;
+          video.currentTime = doel;
+          stall.herstelNaar(video.currentTime);
+        } catch { herstelSeek = false; }
+        video.play().catch(() => {});
+      }
+      if (besluit === "herlaad") herlaad(video, now);
+    }, 300);
+    return () => {
+      window.clearInterval(iv);
+      video.removeEventListener("seeked", seekKlaar);
+    };
+  }, [active, paused, reloadKey, zetBar, herlaad]);
+
   // Waakhond: loopt de tijd door maar komt er >2,5 s geen nieuw beeld, dan de bron herladen (max 2× per minuut).
   useEffect(() => {
     const video = ref.current;
@@ -351,20 +423,15 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
       }
       if (now - lastFrame < 2500) return;
       diag.vast++;
-      reloads.current = reloads.current.filter((x) => now - x < 60e3);
-      if (reloads.current.length >= 2) return;
-      reloads.current.push(now);
-      diag.herladen++;
+      if (!herlaad(video, now)) return;
       if (DEBUG) console.log("[waakhond] beeld staat stil, herladen op", t, v.titel);
-      resumeAt.current = t;
       lastFrame = now + 5000;
-      setReloadKey((k) => k + 1);
     }, 1000);
     return () => {
       window.clearInterval(iv);
       if (rvfc && vv.cancelVideoFrameCallback) vv.cancelVideoFrameCallback(rvfc);
     };
-  }, [active, paused, reloadKey, v.titel]);
+  }, [active, paused, reloadKey, v.titel, herlaad]);
 
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
@@ -420,9 +487,9 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     const video = ref.current;
     if (!video) return;
     let last = 0;
-    const sync = () => bar.set(video.currentTime, video.duration, !video.paused && video.readyState > 2);
+    const sync = () => zetBar(video.currentTime, video.duration, !video.paused && video.readyState > 2);
     const onTime = () => {
-      if (video.currentTime + 0.4 < last) sync(); // terug naar begin (loop)
+      if (video.currentTime !== last && (!barStand.current.loopt || video.currentTime + 0.4 < last)) sync();
       last = video.currentTime;
     };
     const onPlaying = () => {
@@ -432,10 +499,11 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
     // eerste beeld staat klaar (ook gepauzeerd bij het voorladen): video al tonen, geen zwarte flits
     const onFrame = () => setShown(true);
     video.addEventListener("loadeddata", onFrame);
-    const onStop = () => bar.set(video.currentTime, video.duration, false);
+    const onStop = () => zetBar(video.currentTime, video.duration, false);
     video.addEventListener("playing", onPlaying);
     video.addEventListener("pause", onStop);
     video.addEventListener("waiting", onStop);
+    video.addEventListener("stalled", onStop);
     video.addEventListener("seeked", sync);
     video.addEventListener("ratechange", sync);
     video.addEventListener("timeupdate", onTime);
@@ -444,11 +512,12 @@ function NativePlayer({ v, kind, src, active, preload, paused, muted, bar, seek,
       video.removeEventListener("loadeddata", onFrame);
       video.removeEventListener("pause", onStop);
       video.removeEventListener("waiting", onStop);
+      video.removeEventListener("stalled", onStop);
       video.removeEventListener("seeked", sync);
       video.removeEventListener("ratechange", sync);
       video.removeEventListener("timeupdate", onTime);
     };
-  }, [bar]);
+  }, [zetBar]);
 
   return (
     <video
