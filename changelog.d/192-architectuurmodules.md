@@ -1,0 +1,1 @@
+- Documenteer feedstatus, Lees verder en de og-limiet in de architectuur (#192).
