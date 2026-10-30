@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
+
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
 
 - Diagnose (#158): mislukte Groq- en Mistral-calls loggen zo mogelijk veilige foutcodes en -typen, zonder berichttekst of sleutels.

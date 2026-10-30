@@ -35,7 +35,6 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
     <div
       role="button"
       tabIndex={0}
-      aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (speelt alleen bij ${v.bron})`}
       onClick={activate}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -46,9 +45,10 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
       className={`vcard cat-${cat} ${anim ? "enter" : ""}`}
       style={anim ? ({ "--i": i } as React.CSSProperties) : undefined}
     >
+      <span className="sr-only">{playable ? "Speel af: " : `Speelt alleen bij ${v.bron}: `}</span>
       <div className={`vthumb ${cat === "filmpjes" && soortVan(v) === "short" ? "tall" : ""}`}>
         {v.thumb && !failed ? (
-          <img src={v.thumb} alt="" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+          <img src={v.thumb} alt="" aria-hidden="true" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
         ) : (
           <span className="vthumb-name">{v.bron}</span>
         )}

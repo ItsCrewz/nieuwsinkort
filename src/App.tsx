@@ -14,8 +14,8 @@ import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
-import { neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, type TabOpt } from "./tabs";
+import { laadData, neemVroegeData } from "./vroeg";
+import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
@@ -336,8 +336,9 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
   return (
     <nav className="tabs" aria-label="Rubrieken">
       <div className="tabs-in" ref={wrapRef}>
-        <div className="seg" role="tablist" ref={listRef}>
+        <div className="seg" ref={listRef}>
           <span className="seg-ind" ref={indRef} aria-hidden="true" />
+          <div className="seg-tabs" role="tablist" aria-label="Rubrieken">
           {shown.map((o) => (
             <button
               key={o.value}
@@ -345,7 +346,17 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               className={`tab cat-${o.id}`}
               role="tab"
               aria-selected={view === o.value}
-              aria-label={o.label}
+              tabIndex={view === o.value ? 0 : -1}
+              onKeyDown={(e) => {
+                const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+                const i = tabs.indexOf(e.currentTarget);
+                const volgende = volgendeTab(i, tabs.length, e.key);
+                if (volgende === null) return;
+                e.preventDefault();
+                const next = tabs[volgende];
+                next.focus();
+                next.click();
+              }}
               onClick={(e) => {
                 place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
                 onChange(o.value);
@@ -354,6 +365,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               {label(o)}
             </button>
           ))}
+          </div>
           {rest.length ? (
             <div className="more-wrap" ref={moreRef}>
               <button type="button" className={`tab more-btn ${open ? "open" : ""}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
@@ -827,9 +839,7 @@ function useData() {
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
     try {
-      const r = await (neemVroegeData()?.catch(() => null) ?? null) ?? await fetch("/data.json", { cache: "no-cache" }); // altijd hervalideren: ETag geeft een 304 als er niets nieuws is
-      if (!r.ok) throw new Error(String(r.status));
-      const d = schoon((await r.json()) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
+      const d = schoon((await laadData(neemVroegeData())) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
       d.filmpjes ??= [];
@@ -987,6 +997,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
     <div className={`app ${feed ? "app-feed" : ""}`}>
       <IconSprite />
       <div className="shell">
+        <a className="skip" href="#top" onClick={(e) => { e.preventDefault(); document.getElementById("top")?.focus(); }}>Naar de inhoud</a>
         {top}
         {children}
       </div>
@@ -1142,7 +1153,7 @@ export default function App() {
   if (!data || !raw) {
     return (
       <Frame top={top}>
-        <main className="wrap" id="top">
+        <main className="wrap" id="top" tabIndex={-1}>
           {error ? (
             <div className="empty" style={{ marginTop: 24 }}>
               <Icon name="alert" />
@@ -1182,7 +1193,7 @@ export default function App() {
   if (selectedItem) {
     return (
       <Frame top={top}>
-        <main className="wrap page-in" id="top" key={`d-${route.selected}`}>
+        <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
           <Suspense fallback={null}>
             <DetailView
               item={selectedItem}
@@ -1229,7 +1240,7 @@ export default function App() {
   if (!isVideo) {
     return (
       <Frame top={top} feed>
-        <main className="nf-main" id="top">
+        <main className="nf-main" id="top" tabIndex={-1}>
           <div className="nf-tabs">
             <div className="wrap">
               <Tabs data={data} view={view} onChange={setView} />
@@ -1264,7 +1275,7 @@ export default function App() {
   }
   return (
     <Frame top={top}>
-      <main className="wrap" id="top">
+      <main className="wrap" id="top" tabIndex={-1}>
         <Front>
           <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
         </Front>
