@@ -1,0 +1,1 @@
+- Herstel de TypeScript-controle voor ongebruikte parameters in de Worker (#147).
