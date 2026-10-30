@@ -1,0 +1,1 @@
+- Eigen test voor `src/leesverder.ts` (`heeftLeesVerder`, `detailInhoud`) (#188).
