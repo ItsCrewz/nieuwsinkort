@@ -12,6 +12,7 @@
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
+import { llmAanroep } from "../worker/src/llm-aanroep";
 import { groq, keten, type LlmState } from "../worker/src/llm";
 
 type Usage = Meting;
@@ -19,7 +20,7 @@ const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it
 async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
   let r: any;
-  try { r = await ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }); }
+  try { r = await llmAanroep(model, () => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } })); }
   catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } // een mislukte aanroep kan toch neuronen kosten
   u.calls++;
   meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
@@ -368,7 +369,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
         if (res === "budget") return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
         if (res === "druk") return json({ ok: false, code: pre ? "budget-pre" : "druk", fout: MSG.druk });
         reserved = schat;
-        const r: any = await env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false });
+        const r: any = await llmAanroep(WHISPER, () => env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false }));
         const dur = +r?.transcription_info?.duration || estMin * 60;
         if (!(+r?.transcription_info?.duration > 0)) u.geschat = (u.geschat || 0) + 1; // Whisper meldt geen neuronen, duur is de enige meting
         u.neurons += (dur / 60) * WHISPER_PER_MIN; u.calls++;

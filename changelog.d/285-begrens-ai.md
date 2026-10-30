@@ -1,0 +1,1 @@
+- Begrens aanroepen naar Workers AI met een timeout en herhaal tijdelijke fouten eenmaal (#285).
