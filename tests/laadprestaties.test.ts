@@ -50,6 +50,10 @@ const t = (name: string, fn: () => void | Promise<void>) => {
     assert.match(css, /font-display:swap/);
     assert.match(html, /window\.__vroegData = fetch\("\/data\.json", \{ cache: "no-cache" \}\)/);
   });
+  t("YouTube-thumbnails: preconnect met crossorigin staat in de head", () => {
+    const html = readFileSync("index.html", "utf8");
+    assert.match(html.split("</head>")[0], /<link rel="preconnect" href="https:\/\/i\.ytimg\.com" crossorigin\s*\/>/);
+  });
   t("vroeg: neemVroegeData geeft de promise één keer terug", () => {
     const p = Promise.resolve(new Response("{}"));
     const w: any = { __vroegData: p };
