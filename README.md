@@ -15,7 +15,7 @@ Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronne
 Bij Nieuwste eerst staat het openingsartikel met de meeste bronnen bovenaan, gevolgd door de overige artikelen op tijd.
 Bij Oudste eerst en Meeste bronnen geldt de gekozen volgorde ook voor het openingsartikel.
 Je filters worden in localStorage onthouden.
-Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldagen. Berichttijden gebruiken de dag van `gegenereerd` met 20 minuten toekomstmarge; Laatste uur en Laatste 3 uur rekenen vanaf nu.
+Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldagen. Artikelen en video's van eerdere dagen verdwijnen dan, ook vóór de eerste uurrun; Dumpert valt niet terug op gisteren. Berichttijden gebruiken de dag van `gegenereerd` met 20 minuten toekomstmarge; Laatste uur en Laatste 3 uur rekenen vanaf nu.
 
 ## Indeling
 

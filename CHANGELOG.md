@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Alleen nieuws en video's van de huidige Amsterdamse dag; oude data verdwijnt na middernacht (#56).
+
 - Artikelprompts (#49) vragen eenvoudig Nederlands voor volwassenen (B1), korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), uitleg van moeilijke woorden en afkortingen voluit; feiten blijven uit de invoer komen. Bestaande samenvattingen blijven gecachet.
 
 - Videoherstel (#44): de voortgangsbalk volgt de werkelijke afspeeltijd; bij stilstand volgt een herstelpoging en zo nodig herladen.

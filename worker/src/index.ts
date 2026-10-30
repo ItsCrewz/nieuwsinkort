@@ -2,6 +2,7 @@
 // De Pages Function /data.json voegt dit samen met de data.json van de routine.
 // Free plan: de cron zelf doet bijna niets (10 ms CPU); het werk gebeurt in Durable Objects (30 s CPU per verzoek)
 // en het ophalen wordt verdeeld over meerdere Fetcher-DO's (elk max 50 externe verzoeken).
+import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
@@ -49,11 +50,11 @@ async function runInsta(j: Job, since: number, t0: number, kv?: KVNamespace): Pr
   const r = await igGet(igProfileUrl(user));
   if (!r.ok) return { url: j.url, ok: false, status: r.status, err: `Instagram HTTP ${r.status}`, ms: Date.now() - t0 };
   const posts = parseIgProfile(await r.text());
-  const now = Date.now() + 15 * 60e3;
+  const now = Date.now();
   const entries: Entry[] = posts.map((p) => ({ t: (p.text.split("\n")[0] || `Post van @${p.user}`).slice(0, 160), l: `https://www.instagram.com/p/${p.code}/`, d: p.t || null, s: p.text.slice(0, 600), img: p.img }));
   const videos: Video[] = [];
   let kvWrites = 0;
-  for (const p of posts.filter((p) => p.video && p.t >= since).slice(0, j.max ?? 3)) {
+  for (const p of posts.filter((p) => p.video && vanVandaag(p.t, now)).slice(0, j.max ?? 3)) {
     try {
       // MP4-adres per post 20 uur in KV (ondertekend adres is enkele dagen geldig): elk uur alleen nieuwe reels opvragen
       const key = `ig:${p.code}`;
@@ -69,7 +70,7 @@ async function runInsta(j: Job, since: number, t0: number, kv?: KVNamespace): Pr
   return {
     url: j.url, ok: true, status: 200, ms: Date.now() - t0, total: entries.length, videos, kvWrites,
     newest: entries.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null),
-    entries: entries.filter((e) => e.d != null && e.d >= since && e.d <= now),
+    entries: entries.flatMap((e) => { const d = publicatieTijd(e.d, now); return d != null && vanVandaag(d, now) ? [{ ...e, d }] : []; }),
   };
 }
 
@@ -129,13 +130,13 @@ async function runX(j: Job, since: number, t0: number): Promise<Res> {
   const user = xUser(j.url);
   if (!user) throw new Error("onbekend X-account");
   const { posts, via, err } = await xPosts(user);
-  const now = Date.now() + 15 * 60e3;
+  const now = Date.now();
   const entries = posts.filter((p) => !p.mp4).map(xEntry); // tekst/foto-posts naar het nieuws, video's naar Filmpjes
-  const videos = posts.filter((p) => p.mp4 && p.t >= since).slice(0, j.max ?? 3).map((p) => xVideo(p, j.label || user, hhmm));
+  const videos = posts.filter((p) => p.mp4 && vanVandaag(p.t, now)).slice(0, j.max ?? 3).map((p) => xVideo(p, j.label || user, hhmm));
   return {
     url: j.url, ok: true, status: 200, ms: Date.now() - t0, via, ...(err ? { err } : {}), total: entries.length, videos,
     newest: entries.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null),
-    entries: j.alleenVideo ? [] : entries.filter((e) => e.d != null && e.d >= since && e.d <= now),
+    entries: j.alleenVideo ? [] : entries.flatMap((e) => { const d = publicatieTijd(e.d, now); return d != null && vanVandaag(d, now) ? [{ ...e, d }] : []; }),
   };
 }
 
@@ -199,10 +200,10 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
     else {
       if (/^\s*<!doctype html|^\s*<html/i.test(body.slice(0, 300))) throw new Error("HTML i.p.v. feed");
       const all = parseFeed(body, j.url);
-      const now = Date.now() + 15 * 60e3;
+      const now = Date.now();
       base.total = all.length;
       base.newest = all.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null);
-      base.entries = all.filter((e) => e.d != null && e.d >= since && e.d <= now);
+      base.entries = all.flatMap((e) => { const d = publicatieTijd(e.d, now); return d != null && vanVandaag(d, now) ? [{ ...e, d }] : []; });
       if (/youtube\.com\/feeds/.test(j.url)) base.videos = parseYouTube(body, j.label || "YouTube", since, hhmm);
       if (j.kind === "reddit") base.videos = parseRedditVideos(body, j.sub || "", since, hhmm);
     }
@@ -486,11 +487,11 @@ export class Runner extends DurableObject<Env> {
     const items: any[] = [];
     for (const k of shown) {
       const s = sumOf(k);
-      const first = Math.min(...k.c.map((c) => c.d));
+      const laatst = nieuwsteTijd(k.c);
       const bron = [...new Map(k.c.map((c) => [c.site, { site: c.site, href: c.href }])).values()].slice(0, 6);
       const beelden = uniekeBeelden(k.c.flatMap((c) => [c.img, og.get(c.href)]));
       const bb = beelden.length ? { beelden } : {};
-      if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true });
+      if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true });
       else {
         const desc = (k.c[0].s || k.c[0].t.replace(/\s*(…|\.\.\.)$/, "")).replace(/\s+/g, " ").trim();
         // kop = eerste zin van de post (partijposts hebben geen aparte titel); korte tekst = wat daarna komt, nooit twee keer hetzelfde
@@ -499,8 +500,8 @@ export class Runner extends DurableObject<Env> {
         const kop = zin || (knip.length < desc.length ? knip + "…" : knip);
         const rest = desc.slice((zin || knip).length).replace(/^[\s.!?,:;…-]+/, "");
         const ai = rest ? firstSentence(rest) : "";
-        if (k.cat === "politiek") items.push({ cat: k.cat, kop, ai, samenvatting: rest.slice(0, 700), punten: [], tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true, ruw: true });
-        else items.push({ cat: k.cat, kop: k.c[0].t.slice(0, 120), ai: firstSentence(desc), samenvatting: desc.slice(0, 700), punten: [], tijd: hhmm(first), bronnen: bron, ...bb, _t: first, uur: true, ruw: true });
+        if (k.cat === "politiek") items.push({ cat: k.cat, kop, ai, samenvatting: rest.slice(0, 700), punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true });
+        else items.push({ cat: k.cat, kop: k.c[0].t.slice(0, 120), ai: firstSentence(desc), samenvatting: desc.slice(0, 700), punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true });
       }
     }
     items.sort((a, b) => b._t - a._t);
@@ -629,11 +630,10 @@ export class Runner extends DurableObject<Env> {
 
     // ---- filmpjes + dumpert
     let dumpert = (R.get(DUMPERT_URL)?.videos || []) as (Video & { _pub: number })[];
-    const dToday = dumpert.filter((v) => v._pub >= since);
-    dumpert = (dToday.length >= 8 ? dToday : dumpert.filter((v) => v._pub >= now - 24 * 3600e3)).slice(0, 25);
+    dumpert = dumpert.filter((v) => vanVandaag(v._pub, now)).slice(0, 25);
     const statD = new Map<string, any>((stat?.dumpert || []).map((v: any) => [v.href, v]));
     const kortAi = (s: string) => (s.length > 140 ? s.slice(0, 137).replace(/\s+\S*$/, "") + "…" : s);
-    const dOut = dumpert.map(({ _score, _pub, ...v }) => ({ ...v, ai: statD.get(v.href)?.ai || kortAi(v.ai) }));
+    const dOut = dumpert.map(({ _score, _pub, ...v }) => ({ ...v, t: publicatieTijd(_pub, now), tijd: hhmm(publicatieTijd(_pub, now)!), ai: statD.get(v.href)?.ai || kortAi(v.ai) }));
     const fv: Video[] = [];
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) for (const v of R.get(ytUrl(cid))?.videos || []) fv.push({ ...v, ai: kortAi(v.ai), ...({ _k: naam } as any) });
     for (const sub of REDDIT_SUBS) for (const v of R.get(redditUrl(sub))?.videos || []) fv.push(v);
@@ -646,10 +646,10 @@ export class Runner extends DurableObject<Env> {
     // Beste kopie blijft (in de site afspeelbaar, beste kwaliteit, populairst); wat al bij Dumpert staat valt hier weg.
     const dD = dedupVideos(dOut as any[]);
     dOut.splice(0, dOut.length, ...(dD.list as any[]));
-    const dF = dedupVideos(fv.sort((a, b) => (b._score || 0) - (a._score || 0)).map((v) => ({ ...v, soort: soortVan(v) })), dOut);
+    const dF = dedupVideos(fv.filter((v) => vanVandaag(v._pub, now)).map((v) => ({ ...v, _pub: publicatieTijd(v._pub, now)! })).sort((a, b) => (b._score || 0) - (a._score || 0)).map((v) => ({ ...v, soort: soortVan(v) })), dOut);
     const uniek = dF.list;
     const fOut = [...uniek.filter((v) => v.soort === "short").slice(0, 18), ...uniek.filter((v) => v.soort === "journaal").slice(0, 14)]
-      .map(({ _score, _pub, ...v }: any) => { delete v._k; return v; });
+      .map(({ _score, _pub, ...v }: any) => { delete v._k; return { ...v, t: _pub, tijd: hhmm(_pub) }; });
 
     // ---- wegschrijven
     st.neurons += usage.neurons; st.calls += usage.calls;
