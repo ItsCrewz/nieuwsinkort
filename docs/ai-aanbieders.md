@@ -11,3 +11,7 @@ Bij een Cloudflare-quotafout gaat de rest van de run direct naar Groq. Zijn alle
 ## Mistral
 
 Voorwaarde vóór het instellen van `MISTRAL_API_KEY`: zet training uit via Admin › Privacy › “Anonymous improvement data” uit.
+
+Mistral (free tier) begrenst ook per seconde. De keten houdt daarom per aanbieder een minimale tussenpoos tussen verzoeken aan, over alle modellen van die aanbieder; voor Mistral standaard 1100 ms, instelbaar met de optionele var `MISTRAL_TUSSENPOOS_MS` (geheel getal ≥ 0, `0` schakelt uit). Het slot wordt vooraf in het minuutvenster gereserveerd, zodat ook gelijktijdige aanroepen op elkaar wachten. Groq heeft geen tussenpoos.
+
+Bij HTTP 429 probeert de keten hetzelfde model eenmaal opnieuw na `Retry-After` (seconden of HTTP-datum), minstens na de tussenpoos. Is `Retry-After` langer dan 5 seconden, dan volgt geen retry maar het volgende model. Zonder header volgt alleen een retry na de tussenpoos bij een aanbieder die er een heeft. De retry telt als extra verzoek in de limieten en de wachttijd telt mee in de totale wachttijd per run. Beide aanpassingen spreiden alleen verzoeken binnen de gratis limieten en brengen geen kosten mee. Tests: `tests/tussenpoos.test.ts` (fake klok).
