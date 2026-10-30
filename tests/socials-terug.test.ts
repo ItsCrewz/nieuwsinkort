@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { igUser, YT_NIEUWS } from "../worker/src/videos";
 import { xUser, X_VIDEO } from "../worker/src/x";
-import { playerFor, viaProxy } from "../src/video";
 import { onRequest } from "../functions/media/dumpert/[[path]]";
+
+globalThis.window = { location: { href: "https://site.nl/" }, localStorage: { getItem: () => null } } as unknown as Window & typeof globalThis;
+const { playerFor, viaProxy } = await import("../src/video");
 
 assert.equal(igUser("https://kg.meowing.de/haarlem105/atom.xml"), "haarlem105");
 assert.equal(xUser("https://x.com/RTLnieuws"), "RTLnieuws");

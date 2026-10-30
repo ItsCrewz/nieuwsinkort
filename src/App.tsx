@@ -536,7 +536,7 @@ function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: {
 // en pas als het dan nog niet past mag de kaart zelf scrollen. De kop wordt nooit ingekort.
 function fitCard(el: HTMLElement) {
   const sum = el.querySelector<HTMLElement>(".nc-sum");
-  el.classList.remove("fit-imgsm", "fit-noimg", "fit-nopts", "fit-scroll");
+  el.classList.remove("fit-imgsm", "fit-imgxs", "fit-noimg", "fit-nopts", "fit-scroll");
   el.querySelectorAll<HTMLElement>(".nc-pts li").forEach((li) => (li.hidden = false));
   if (sum) {
     sum.classList.remove("clamp");
@@ -563,7 +563,12 @@ function fitCard(el: HTMLElement) {
     }
     if (!over()) return;
   }
-  if (el.querySelector(".nc-img")) { el.classList.add("fit-noimg"); if (!over()) return; }
+  if (el.querySelector(".nc-img")) {
+    el.classList.add("fit-imgxs");
+    if (!over()) return;
+    el.classList.add("fit-noimg");
+    if (!over()) return;
+  }
   el.classList.add("fit-scroll");
 }
 
@@ -654,6 +659,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
         </ul>
       ) : null}
       <div className="nc-act">
+        <div className="nc-act-row">
         {meer ? (
           <a className="btn" href={`#/bericht/${key}`} onClick={click} onTouchStart={() => prefetchMeer(item)} onMouseEnter={() => prefetchMeer(item)}>
             Lees verder
@@ -661,10 +667,11 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
         ) : null}
         {first ? (
           <a className={`btn${meer ? " ghost" : ""}`} href={veiligeUrl(first.href)} target="_blank" rel="noopener noreferrer">
-            Origineel bij {first.site}
+            <span>Origineel bij {first.site}</span>
             <Icon name="ext" />
           </a>
         ) : null}
+        </div>
         {bronnen.length > 1 ? <span className="nc-more">+{bronnen.length - 1} {bronnen.length === 2 ? "bron" : "bronnen"}</span> : null}
       </div>
       </div>

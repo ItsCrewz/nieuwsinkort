@@ -458,7 +458,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nc-body{display:flex;flex-direction:column;gap:18px;min-height:0}
 /* Nooit tekst half afsnijden: niets in de kaart mag krimpen (flex-shrink maakte de kop halve regels).
    Past het niet, dan verkleint fitCard() de foto, haalt punten weg en kort de samenvatting
-   in op hele regels (met …). Daarna kan de foto weg en de kaart zelf scrollen. De kop wordt nooit ingekort. */
+   in op hele regels (met …). Daarna wordt de foto nog kleiner en kan hij weg en de kaart zelf scrollen. De kop wordt nooit ingekort. */
 .nc-in > *, .nc-body > *{flex:none}
 .nc-in.fit-nonum .nc-num{display:none}
 .nc-in.fit-nopts .nc-pts{display:none}
@@ -483,6 +483,11 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .btn.ghost:hover{opacity:1;background:var(--hover)}
 .btn .ic{width:15px;height:15px}
 .nc-act .btn{padding-left:12px;padding-right:12px;white-space:nowrap}
+.nc-in .nc-act{display:block}
+.nc-in .nc-act-row{display:flex;align-items:center;gap:10px;min-width:0}
+.nc-in .nc-act-row .btn:last-child{min-width:0}
+.nc-in .nc-act-row .btn span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.nc-in .nc-act-row .btn .ic{flex:none}
 .nc-more{font-size:13px;color:var(--muted)}
 
 /* voortgang: dunne rail rechts + teller "3/24" */
@@ -553,6 +558,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 @media (hover:hover) and (pointer:fine){.bl.multi:hover .bl-nav{display:block}}
 .nc-img.bl{width:100%;aspect-ratio:16/9;max-height:38cqh}
 .nc-in.fit-imgsm .nc-img{max-height:24cqh}
+.nc-in.fit-imgxs .nc-img{max-height:16cqh}
 .nc-in.fit-noimg .nc-img{display:none}
 .nc-rule{display:block;width:36px;height:3px;border-radius:2px;background:var(--accent);opacity:.6}
 .lead-img.bl{width:100%;aspect-ratio:16/9;max-height:52vh;margin-bottom:16px}
