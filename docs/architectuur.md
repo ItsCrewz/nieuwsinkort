@@ -177,3 +177,7 @@ De AI-ronde kiest bij de eerste twee budgettrappen eerst hooguit één cluster p
 ## AI-aanbieders
 
 De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daarna Mistral als fallback en per model conservatieve UTC-dag- en minuutlimieten. Mistral heeft daarnaast een UTC-maandlimiet, instelbaar via `MISTRAL_MAAND_TOKENS`. Lees verder geeft Groq voorrang. De bestaande Workers AI-budgettrappen blijven gelden. Zie [AI-aanbieders en secrets](ai-aanbieders.md).
+
+### Taboverzichten (#134)
+
+De uurdata bevat optioneel `tab_samenvatting`, met per nieuwstab (`alles` en rubriekcode) `tekst`, `ai`, `bron` en `gegenereerd`. De Worker gebruikt de uur- en routineartikelen en bewaart succesvolle AI-teksten 24 uur in de bestaande KV onder `tabsam:<tab>:<sha256>`, met een volgordeonafhankelijke hash van de artikelinhoud. Bij cachemissers zonder AI ontstaat extractieve tekst; die wordt niet gecachet zodat een volgende run AI kan proberen. Filmpjes en Dumpert krijgen geen overzicht. Oude data zonder dit veld toont geen taboverzicht.

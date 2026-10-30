@@ -61,3 +61,9 @@ Geen andere gebruikers van `env.AI` (`functions/meer.ts`, `data.json.ts` en de p
 1. Vergelijk `meta.dag.neuronen + meta.neuronenVideo` met de teller in het Cloudflare-dashboard (Workers AI) op hetzelfde UTC-tijdstip.
 2. Is het verschil structureel groter dan 0%, stel dan `NEURON_FACTOR` in op (dashboard ÷ onze teller), bijvoorbeeld 1,3.
 3. Staat `meta.quotaReden` op `dagquota`, dan zit er een KV-vlag `ai-quota:<UTC-dag>`; hij verloopt vanzelf en een nieuwe UTC-dag gebruikt een nieuwe sleutel.
+
+## Samenvattingen per tab (#134)
+
+Na de gewone berichtsamenvattingen maakt de Worker bij gewijzigde inhoud per nieuwstab een overzicht. De bestaande `chat`-keten telt Workers AI-neuronen en Groq/Mistral-tokens mee in dezelfde run- en dagtellers. Alleen trap 1 en 2 gebruiken hiervoor AI, zolang ook het runbudget ruimte heeft; bij quota, tijdelijke fouten en trap 3 of 4 volgt extractieve tekst. Cachetreffers kosten geen AI.
+
+Rekenvoorbeeld: 18 runs per dag, 9 tabs, gemiddeld 800 invoer- en 120 uitvoertokens, 75% cachetreffers: circa 2,25 aanroepen per run en 40,5 per dag. Met het hoofdmodel (9.091/27.273 neuronen per miljoen in/uit) is dat circa 24 neuronen per run en 427 per dag; met het kleine model circa 9 per run en 168 per dag. Bij externe terugval zijn dat ongeveer 1.800 invoer- en 270 uitvoertokens per run, of 32.400 en 4.860 per dag. Dit zijn schattingen, geen plafond: aantal artikelen, cachetreffers en modelgebruik verschillen per run.

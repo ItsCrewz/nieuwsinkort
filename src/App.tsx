@@ -1428,7 +1428,7 @@ export default function App() {
               <div className="wrap nc-head-in">
                 {dateline}
                 <Front>
-                  <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
+                  {raw.tab_samenvatting?.[view]?.tekst && basisItems.length ? <Briefing text={raw.tab_samenvatting[view]!.tekst} bionic={bionic} sources={0} time="" /> : null}
                   <WeatherBox W={raw.weer} bionic={bionic} />
                 </Front>
               </div>

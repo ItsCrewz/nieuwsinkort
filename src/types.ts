@@ -52,6 +52,7 @@ export type Soort = "short" | "journaal";
 export type Data = {
   datum: string;
   dag_samenvatting: string;
+  tab_samenvatting?: Partial<Record<View, { tekst: string; ai: boolean; bron: string; gegenereerd: string }>>;
   weer: Weer;
   filmpjes: Video[];
   samenvattingen?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>;

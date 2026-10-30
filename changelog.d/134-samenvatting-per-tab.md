@@ -1,0 +1,1 @@
+- Elke nieuwstab krijgt een korte samenvatting, met cache en extractieve terugval bij een beperkt AI-budget (#134).
