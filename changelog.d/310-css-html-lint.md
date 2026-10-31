@@ -1,0 +1,1 @@
+- Voeg Stylelint (CSS) en html-validate (HTML) toe aan `npm run check` naast ESLint en het performancebudget; `number-max-precision` staat uit omdat de CSS bewust exacte rem-waarden gebruikt (#310).
