@@ -9,6 +9,8 @@ import { useVoorladen } from "./usevoorladen";
 import { videoSlug } from "./slug";
 import { zaaiSamenvattingen } from "./samenvattingcache";
 import { schoon } from "./schoon";
+import { valideer } from "./valideer";
+import { debug } from "./debug";
 import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
@@ -834,13 +836,16 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   );
 }
 
+let afgewezenBerichten = 0;
 // ---------------------------------------------------------------- data + thema
 function useData() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
     try {
-      const d = schoon((await laadData(neemVroegeData())) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
+      const gevalideerd = valideer(await laadData(neemVroegeData()));
+      afgewezenBerichten = gevalideerd.afgewezen;
+      const d = schoon(gevalideerd.data as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
       d.filmpjes ??= [];
@@ -998,6 +1003,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
   return (
     <div className={`app ${feed ? "app-feed" : ""}`}>
       <IconSprite />
+      {debug && <div style={{ position: "fixed", right: 4, top: 4, zIndex: 2147483647, background: "black", color: "white", padding: 4, fontSize: 10 }}>Afgewezen berichten: {afgewezenBerichten}</div>}
       <div className="shell">
         <a className="skip" href="#top" onClick={(e) => { e.preventDefault(); document.getElementById("top")?.focus(); }}>Naar de inhoud</a>
         {top}
