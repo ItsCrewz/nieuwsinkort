@@ -14,6 +14,7 @@ stap() {
   fi
 }
 
+stap "Lint" npm run lint
 stap "Tests" npm test
 stap "Build" npm run build
 if [ ! -d worker/node_modules ]; then

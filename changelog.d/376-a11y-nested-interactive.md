@@ -1,0 +1,1 @@
+- Toegankelijkheid (vervolg #307): contrast van de aantallen in tabs en chips verhoogd (opacity .75) en "Tik voor geluid" staat nu ook in de toegankelijke naam van de geluidsknop. De geneste interactieve videokaart is op main al opgelost met een overlayknop (`vcard-open`); die blijft behouden (#376).

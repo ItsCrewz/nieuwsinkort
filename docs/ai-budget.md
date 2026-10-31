@@ -68,3 +68,10 @@ Geen andere gebruikers van `env.AI` (`functions/meer.ts`, `data.json.ts` en de p
 Na de gewone berichtsamenvattingen gebruikt Home de bestaande briefing. Voor elke andere nieuwstab gebruikt de Worker maximaal tien berichten, met per bericht een korte kop en tekst. Een succesvolle AI-tekst blijft bij gewijzigde inhoud minstens zes uur staan; ongewijzigde inhoud blijft tot zeven dagen in de cache. Bij trap 3 of 4, quota of een vol runbudget gaat de keten via Groq en Mistral; zonder beschikbare aanbieder volgt extractieve tekst. Tijdelijke fouten stoppen AI voor de run. De bestaande `usage`, `state` en `meta` tellen het verbruik mee.
 
 Schatting: 24 uurruns per dag, acht rubrieken met artikelen, gemiddeld 600 invoer- en 100 uitvoertokens per aanroep en gemiddeld vier vernieuwingen per rubriek per dag (bij ongewijzigd nieuws minder). Dat zijn 32 aanroepen per dag, gemiddeld 1,33 per run. Met het hoofdmodel en de tarieven uit `RATES` (9.091 en 27.273 neuronen per miljoen invoer- en uitvoertokens) is dat circa 8,2 neuronen per run en 262 per dag. Met het kleine model (2.457 en 18.252) is dat circa 4,4 per run en 106 per dag. Als alle aanroepen via Groq of Mistral gaan, zijn dat gemiddeld 800 invoer- en 133 uitvoertokens per run, oftewel 19.200 en 3.200 per dag. Dit is een schatting, geen harde grens: cacheverval, fouten, tokengebruik en wisselende tabs kunnen de uitkomst veranderen.
+
+## Nieuwsstijl van kop en samenvatting (#427)
+
+De prompt van `summarize` in `worker/src/ai.ts` vraagt per bericht twee velden in nieuwsstijl, zonder extra aanroepen of extra neuronen:
+
+- **`kop`**: wie/wat/waar met de kern van het nieuws, concreet en feitelijk.
+- **`ai`**: één à twee zinnen met de kern, met data, plaatsen en namen uit de bron behouden. Geen opvulzinnen en geen interpretatie of duiding die niet in de bron staat. Afkortingen blijven neutraal (niet uitgeschreven of aangevuld op eigen gezag).
