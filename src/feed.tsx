@@ -1602,7 +1602,7 @@ export function Feed({
             <span className="f-count tnum">
               {label} · {active + 1}/{items.length}
             </span>
-            <button type="button" className={`f-icon f-sound ${muted ? "" : "on"}`} aria-pressed={!muted} aria-label={muted ? "Geluid aan" : "Geluid uit"} onClick={toggleMute}>
+            <button type="button" className={`f-icon f-sound ${muted ? "" : "on"}`} aria-pressed={!muted} aria-label={muted ? "Tik voor geluid" : "Geluid uit"} onClick={toggleMute}>
               <Icon name={muted ? "mute" : "volume"} />
               {muted ? <span>Tik voor geluid</span> : null}
             </button>
