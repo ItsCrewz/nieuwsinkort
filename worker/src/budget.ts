@@ -9,7 +9,10 @@ export interface BudgetEnv { NIEUWS: KVNamespace }
 
 export class Budget extends DurableObject<BudgetEnv> {
   private l = new BudgetLogica(this.ctx.storage as any, {
-    spiegel: async (datum, n) => { await this.env.NIEUWS.put(`vid-neurons:${datum}`, String(n), { expirationTtl: 3 * 86400 }).catch(() => { console.error("budget: KV-spiegel schrijven mislukt"); }); },
+    spiegel: async (datum, n) => {
+      try { await this.env.NIEUWS.put(`vid-neurons:${datum}`, String(n), { expirationTtl: 3 * 86400 }); return true; }
+      catch { console.error("budget: KV-spiegel schrijven mislukt"); return false; }
+    },
     zaad: async (datum) => { try { return +((await this.env.NIEUWS.get(`vid-neurons:${datum}`)) || 0) || 0; } catch { console.error("budget: KV-spiegel lezen mislukt"); return null; } },
   });
   // Mutex: externe I/O (KV-zaad/-spiegel) opent de input gate, dus zonder dit kunnen operaties interleaven en elkaars stand overschrijven.

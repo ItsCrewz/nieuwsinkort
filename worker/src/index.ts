@@ -1,5 +1,5 @@
 import { berekenBody, etag } from "../../functions/data.json";
-import type { LlmState } from "./llm";
+import { bewaarLlmVerschil, somStand, kopieStand, verschilStand, telOp, groqTokens, type LlmState } from "./llm";
 // nieuwsinkort-uur: elk uur (06:00–23:00 Amsterdam) feeds ophalen, samenvatten met Workers AI en in KV zetten.
 // De Pages Function /data.json voegt dit samen met de data.json van de routine.
 // Free plan: de cron zelf doet bijna niets (10 ms CPU); het werk gebeurt in Durable Objects (30 s CPU per verzoek)
@@ -12,7 +12,7 @@ import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
 import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, selecteerFilmpjes, ytEmbedGeblokkeerd, ytEmbedStatus, ytCombineer, type YtDiag, ytVideoId, ytNieuweControles, ytGeblokkeerdeShorts, ytBlokkades, ruimYtCache, type YtCache, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
-import { summarize, inHetKort, simpelWeer, isPromptEcho, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
+import { summarize, inHetKort, simpelWeer, isPromptEcho, verdiep, telAanroepFout, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
@@ -355,7 +355,16 @@ export class Runner extends DurableObject<Env> {
     if (r.nogTeDoen > 0 && r.stop !== "dagbudget" && r.stop !== "run-budget" && k.n < MAX_ALARMS_PER_UUR) await this.ctx.storage.setAlarm(Date.now() + 5 * 60e3);
   }
 
+  // Groq-verbruik van deze run (#431): wordt bij een mislukte run apart in `state.llm` bijgeschreven, anders gaat het verloren met `st`.
+  private llmBewaar: (() => Promise<void>) | null = null;
   async run(force: boolean) {
+    this.llmBewaar = null;
+    try { return await this.runBinnen(force); }
+    catch (e) { await this.bewaarLlm(); throw e; }
+    finally { this.llmBewaar = null; }
+  }
+  private async bewaarLlm() { await this.llmBewaar?.(); }
+  private async runBinnen(force: boolean) {
     const env = this.env, T0 = Date.now(), now = Date.now(), A = ams(now), U = utcDag(now), since = midnight(now);
     // BUDGET / NEURON_FACTOR: de echte Cloudflare-teller kan hoger staan dan onze schatting (docs/ai-budget.md)
     const model = env.MODEL, CAP = +(env.CAP || 40), FACTOR = neuronFactor(env.NEURON_FACTOR), BUDGET = +(env.BUDGET || 9000) / FACTOR;
@@ -501,7 +510,12 @@ export class Runner extends DurableObject<Env> {
       for (const c of k.c) { const id = st.links[normLink(c.href)]; if (id && st.sums[id]) return st.sums[id]; }
       return vindClusterSum(st.hashes!, st.sums, k.c[0].t, k.cat, now);
     };
-    const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: st.llm } };
+    // Keten-stand = Worker-stand + wat /samenvatting vandaag al via Groq gebruikte (KV groq-chat:<UTC-dag>), zodat de dagslimiet per model over beide telt.
+    const groqChatKey = `groq-chat:${U}`;
+    const groqChat = ((await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null) || {};
+    const ketenStand = somStand(st.llm!, groqChat, U), ketenVoor = kopieStand(ketenStand);
+    const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: ketenStand } };
+    this.llmBewaar = async () => { await bewaarLlmVerschil(env.NIEUWS, ketenVoor, ketenStand); };
     // Alleen-politiek (losse partijposts) nooit door de AI: die tonen we zoals de partij ze schrijft.
     const todo = clusters.filter((k) => !sumOf(k) && k.cat !== "politiek");
     // ---- AI-budget in trappen (gratis = 10.000 neuronen/dag, BUDGET = eigen plafond daaronder)
@@ -509,7 +523,8 @@ export class Runner extends DurableObject<Env> {
     // Per run hooguit 2x het eerlijke deel van wat er nog over is, zodat ook de late uren samenvattingen krijgen.
     const SMALL = env.SMALL_MODEL || "@cf/meta/llama-3.2-1b-instruct";
     // video-samenvattingen op verzoek (functions/samenvatting.ts) tellen mee in hetzelfde dagbudget
-    const vidN = +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
+    const leesVid = async () => +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
+    let vidN = await leesVid();
     const used = () => st.neurons + vidN + usage.neurons;
     const tier = () => (used() < 0.7 * BUDGET ? 1 : used() < 0.9 * BUDGET ? 2 : used() < BUDGET ? 3 : 4);
     const runsLeft = Math.max(1, 23 - A.h + 1);
@@ -559,7 +574,7 @@ export class Runner extends DurableObject<Env> {
           if (hash) st.hashes![hash] = id;
         });
       } catch (e: any) {
-        usage.fails++;
+        telAanroepFout(usage, e);
         await aiFoutAf(e);
       }
       await cfStand();
@@ -708,6 +723,7 @@ export class Runner extends DurableObject<Env> {
     const artVan = (m: MC) => artLinks(m).map((b) => ({ ...b, al: st.art![normLink(b.href)] || [] })).filter((b) => b.al.join(" ").length >= 300);
     // AI-uitleg: alleen in trap 1 en onder 65% van het dagbudget (nieuws en video-samenvattingen gaan voor),
     // per run een eerlijk deel van wat er tot die grens over is (min 120, max 700 neuronen).
+    vidN = await leesVid(); // video-samenvattingen lopen door tijdens deze run; niet met de waarde van het begin rekenen
     const diepGrens = 0.65 * BUDGET;
     const diepRun = Math.max(120, Math.min(700, ((diepGrens - used()) / runsLeft) * 2));
     const diepStart = usage.neurons;
@@ -729,7 +745,7 @@ export class Runner extends DurableObject<Env> {
         modelsUsed.add(model);
         g.forEach((m, i) => { const d = res.get(i + 1); if (d) { st.diep![m.key] = { ...d, at: now }; diepNieuw++; } });
       } catch (e: any) {
-        usage.fails++;
+        telAanroepFout(usage, e);
         await aiFoutAf(e);
       }
       await cfStand();
@@ -767,7 +783,7 @@ export class Runner extends DurableObject<Env> {
     // trap 1: elke keer als het nieuws verandert; trap 2: klein model, hooguit elke 3 uur; trap 3+: niet meer
     const kortMag = tier() === 1 || (tier() === 2 && now - (st.kortAt || 0) > 3 * 3600e3);
     if ((kh !== st.kortHash || force) && lines.length && !quotaOut && kortMag) {
-      try { const k = await inHetKort(env.AI, modelNu(), lines, usage); if (k.length > 40) st.kortAt = now; if (k.length > 40) { kort = k; st.kort = k; st.kortHash = kh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
+      try { const k = await inHetKort(env.AI, modelNu(), lines, usage); if (k.length > 40) st.kortAt = now; if (k.length > 40) { kort = k; st.kort = k; st.kortHash = kh; } } catch (e) { telAanroepFout(usage, e); await aiFoutAf(e); }
       await cfStand();
     }
 
@@ -787,7 +803,7 @@ export class Runner extends DurableObject<Env> {
           const tekst = await tabTekst(env.AI, modelNu(), berichten, usage);
           const bron = Object.keys(usage.aanbieders || {}).find((k) => (usage.aanbieders![k].inTok + usage.aanbieders![k].outTok) > (voor[k] || 0)) || "ai";
           return { tekst, bron };
-        } catch (e) { usage.fails++; await aiFoutAf(e); throw e; }
+        } catch (e) { telAanroepFout(usage, e); await aiFoutAf(e); throw e; }
         finally { await cfStand(); }
       } : undefined;
       const resultaat = await maakTabSam(env.NIEUWS, tab, berichten, now, maak);
@@ -800,7 +816,7 @@ export class Runner extends DurableObject<Env> {
     if (W.knmiTekst) {
       const wh = await hash("nl:" + W.knmiTekst); // "nl:" = landelijke prompt; ververst een oude Haarlem-tekst eenmalig
       if (wh !== st.weerHash && !quotaOut && tier() <= 2) {
-        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30 && !isPromptEcho(t)) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
+        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30 && !isPromptEcho(t)) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { telAanroepFout(usage, e); await aiFoutAf(e); }
         await cfStand();
       }
       if (st.weerTxt && isPromptEcho(st.weerTxt)) { st.weerTxt = undefined; st.weerHash = undefined; } // eerder bewaarde prompt-echo (#378) niet hergebruiken
@@ -824,22 +840,27 @@ export class Runner extends DurableObject<Env> {
       .map(({ _score, _pub, ...v }: any) => { delete v._k; return { ...v, t: _pub, tijd: hhmm(_pub) }; });
 
     // ---- wegschrijven
+    telOp(st.llm!, verschilStand(ketenVoor, ketenStand)); // alleen het eigen verschil, niet de meegenomen Function-stand
+    const groqVandaag = groqTokens(U, st.llm, (await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null);
     st.neurons += usage.neurons; st.calls += usage.calls;
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys, ytGeblokkeerd,
-      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + tabWrites + (stat ? 4 : 3), kvWritesOg, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + tabWrites + (stat ? 4 : 3), kvWritesOg, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));
     for (const id of Object.keys(st.sums)) if (!live.has(id) && now - st.sums[id].at >= 24 * 3600e3) { delete st.sums[id]; }
     for (const [l, id] of Object.entries(st.links)) if (!st.sums[id]) delete st.links[l];
     for (const [h, id] of Object.entries(st.hashes)) if (!st.sums[id] || now - st.sums[id].at >= 24 * 3600e3) delete st.hashes[h];
-    const uurGelukt = await schrijfRun(env.NIEUWS, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
+    const geschreven = new Set<string>();
+    const kvLog = { put: async (k: string, v: string) => { await env.NIEUWS.put(k, v); geschreven.add(k); } };
+    const uurGelukt = await schrijfRun(kvLog, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
       // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.
       await this.ctx.storage.put("vooraf", { uur: A.h, n: 0 });
       await this.ctx.storage.setAlarm(Date.now() + 60e3);
     });
+    if (geschreven.has("state")) this.llmBewaar = null; else await this.bewaarLlm(); // state niet weggeschreven: Groq-verbruik toch bijschrijven
     if (stat && uurGelukt && ams().iso === A.iso) {
       try {
         const sv = await env.NIEUWS.get("sv-klaar", "json");
