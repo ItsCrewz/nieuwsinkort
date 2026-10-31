@@ -32,19 +32,10 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
   const anim = enter && i < 12;
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={activate}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          activate();
-        }
-      }}
       className={`vcard cat-${cat} ${anim ? "enter" : ""}`}
       style={anim ? ({ "--i": i } as React.CSSProperties) : undefined}
     >
-      <span className="sr-only">{playable ? "Speel af: " : `Speelt alleen bij ${v.bron}: `}</span>
+      <button type="button" className="vcard-open" aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (speelt alleen bij ${v.bron})`} onClick={activate} />
       <div className={`vthumb ${cat === "filmpjes" && soortVan(v) === "short" ? "tall" : ""}`}>
         {v.thumb && !failed ? (
           <img src={v.thumb} alt="" aria-hidden="true" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
@@ -60,7 +51,7 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
           {v.bron}
           {v.tijd ? <time className="tnum">{v.tijd}</time> : null}
         </div>
-        <h3 className="v-title">{v.titel}</h3>
+        <h2 className="v-title">{v.titel}</h2>
         {v.ai ? (
           <p className="v-ai bn">
             <BionicText text={v.ai} on={bionic} />
@@ -186,6 +177,7 @@ export function VideoGrid({
               type="button"
               role="tab"
               aria-selected={soort === s.id}
+              aria-controls="video-paneel"
               onClick={() => {
                 if (soort === s.id) return;
                 setTouched(true);
@@ -199,6 +191,7 @@ export function VideoGrid({
           ))}
         </div>
       ) : null}
+      <div id="video-paneel" role="tabpanel">
       {bronFilter && bronnen.length > 1 ? (
         <div className="chips" role="group" aria-label="Filter op bron">
           {["alle", ...bronnen].map((b) => (
@@ -224,6 +217,7 @@ export function VideoGrid({
           {SOORTEN.find((s) => s.id === soort)?.leeg} Kom straks nog eens kijken.
         </div>
       )}
+      </div>
       {video && touch ? (
         <Suspense fallback={null}>
           <Feed
