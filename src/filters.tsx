@@ -24,6 +24,7 @@ export const CAT_OPT: { id: Cat; label: string }[] = [
   { id: "voetbal", label: "Voetbal" },
   { id: "f1", label: "Formule 1" },
   { id: "auto", label: "Auto" },
+  { id: "sport", label: "Sport" },
   { id: "tech", label: "Tech & AI" },
   { id: "haarlem", label: "Haarlem" },
   { id: "showbizz", label: "Showbizz" },
