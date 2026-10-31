@@ -24,8 +24,17 @@ function cssInline(): Plugin {
   };
 }
 
+// Witruimte tussen tags weg uit de productie-HTML (#305); na cssInline, het inline script blijft intact voor de CSP-hash.
+function htmlCompact(): Plugin {
+  return {
+    name: "html-compact",
+    apply: "build",
+    transformIndexHtml: { order: "post", handler: (html) => html.replace(/>\s+</g, "><").trim() },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), cssInline()],
+  plugins: [react(), cssInline(), htmlCompact()],
   build: {
     outDir: "dist",
     sourcemap: false,

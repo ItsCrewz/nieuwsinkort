@@ -110,9 +110,6 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
   }, [item, onBack]);
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
-    return () => {
-      document.title = "Nieuws in het kort";
-    };
   }, [item]);
   const { paragraphs, punten, bronnen } = detailInhoud(item);
   return (

@@ -18,7 +18,7 @@ import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
-import { parseHash, viewHash, type Route } from "./route";
+import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
@@ -1021,6 +1021,7 @@ export default function App() {
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
+  useLayoutEffect(() => { document.title = viewTitel(route.view); }, [route.view, route.selected]);
   const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
