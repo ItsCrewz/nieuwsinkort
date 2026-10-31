@@ -1,1 +1,2 @@
 - Nieuwe rubriek Sport voor darts, schaatsen, wielrennen, tennis, hockey en andere sport buiten Voetbal, Formule 1 en Auto; ingedeeld op feedtitel, -beschrijving en bronpad (#435).
+- Sport-indeling preciezer: buitenlandse topclubs altijd Voetbal, afstanden (1.500 meter) tellen mee, weer/zwemmers/turners geven geen vals positief en autobronnen gaan niet naar Sport (#435).

@@ -98,4 +98,33 @@ t("gewoon nieuws en schaatsen buiten sportcontext blijven Nederland", () => {
   for (const kop of ["Schaatsen op natuurijs: ijsmeesters waarschuwen voor dunne plekken", "Weer: dooi maakt schaatsen onmogelijk", "Code oranje: gladheid door vorst, schaatsers gewaarschuwd", "Kabinet bereikt akkoord over begroting", "Man neergeschoten in Rotterdam", "NASA Dart-missie geslaagd", "Tennisarm behandelen met fysio"]) assert.equal(check(kop, ["https://www.nu.nl/binnenland/1"]), null, kop);
   assert.equal(check("Nieuws", ["https://www.nu.nl/sporthal-opent/1"]), null);
 });
+t("buitenlandse clubs zijn voetbal, nooit Sport (#435)", () => {
+  const sp = ["https://www.nu.nl/sport/1"];
+  assert.equal(check("Atlético Madrid pakt koppositie na winst bij Levante", sp), "voetbal");
+  assert.equal(check("Chelsea wint met 2-0 van Manchester United op Stamford Bridge", sp), "voetbal");
+  assert.equal(check("Chelsea wint met 2-0", []), "voetbal");
+  assert.equal(check("Chelsea bouwt nieuwe flat in Rotterdam"), null);
+  assert.equal(check("Weekendje Barcelona of Madrid", ["https://www.nu.nl/reizen/1"]), null);
+});
+
+t("afstanden, weer en dubbelzinnige woorden", () => {
+  assert.equal(check("Nuis wint 1.500 meter na griep"), "sport");
+  assert.equal(check("Zwemmers gered uit zee bij Scheveningen"), null);
+  assert.equal(check("Tina Turner-musical in Amsterdam"), null);
+  assert.equal(check("Zwemmer wint goud op WK"), "sport");
+  assert.equal(check("Zwemmers pakken medaille op WK"), "sport");
+  assert.equal(check("Kjeld Nuis schaatst weer mee"), "sport");
+  assert.equal(check("Kan er volgende week geschaatst worden op natuurijs?"), null);
+  assert.equal(check("Schaatsen op natuurijs kan, zegt weerbericht"), null);
+  assert.equal(check("Fietser gewond bij aanrijding"), null);
+  assert.equal(check("Kabinet bereikt akkoord", ["https://www.nu.nl/politiek/1"]), null);
+  assert.equal(check("Politie arresteert twee verdachten", ["https://www.nu.nl/binnenland/1"]), null);
+});
+
+t("autobron gaat niet naar Sport", () => {
+  assert.equal(check("Nieuwe sponsor voor Tour de France", [], "auto"), null);
+  assert.equal(check("Nieuwe sponsor voor Tour de France", ["https://www.autoweek.nl/sport/x"], "auto"), null);
+  assert.equal(check("Chelsea wint met 2-0 van Manchester United", [], "auto"), "voetbal");
+  assert.equal(check("Wielrenner wint", [], "sport"), "sport");
+});
 console.log(`${n} tests ok`);

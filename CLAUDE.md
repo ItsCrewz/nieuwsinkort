@@ -73,6 +73,8 @@ Op alle verbindingen, ook mobiele data en Save-Data: 6 thumbnails per tab, hls.j
 
 Geen feedgroep: `src/regio.ts` (pure module, ook in de Worker) deelt cat `nl` achteraf in via `isBuitenland()`/`herindeel()`. Regels: per bron een signaal (`bronSignaal`: buitenlandfeed of heel padsegment `/buitenland/`, `/world/` = buiten (nooit substring van een slug); `/binnenland/`, `/regio/`, `/politiek/` = binnen; sport/entertainment = neutraal); een Nederlands anker (`NL_ANKER`) in kop of ai houdt het bij Nederland; meer buiten dan binnen = Buitenland; zonder signaal en zonder neutrale bron beslist `BUITEN_WOORD`. De Worker houdt in `index.ts` een set `buitenL` bij met links uit feeds waarvan de URL `buitenland` bevat, en herindeelt na het bouwen van de items (clusters en AI-selectie blijven `nl`). De frontend roept `herindeel` aan bij het laden (`App.tsx`); `src/sources.ts` telt Buitenland onder bronnengroep `nl`. Alleen cat `nl` wordt aangeraakt. Tests: `tests/regio.test.ts`.
 
+Rubriek Sport (#435): `worker/src/sportcat.ts` (F1 > voetbal > auto > sport); buitenlandse topclubs/competities zijn altijd Voetbal, Sport alleen voor cat nl/buitenland/tech (nooit uit autobronnen). Tests: `tests/sportcat-algemeen.test.ts`.
+
 ## Externe artikel-URL's
 
 Gebruik `worker/src/url.ts` voor og/artikel-fetches en controleer feedlinks vóór Jina en jobselectie. Alleen HTTP(S), poort 80/443 en geen IP-literals of lokale/interne hostnamen. Controleer ook de redirect-eind-URL; tests gebruiken fetch-mocks.
