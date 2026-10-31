@@ -1,0 +1,1 @@
+- www.nieuwsinkort.nl stuurt via Pages-middleware (`functions/_middleware.ts`) met een 301 door naar nieuwsinkort.nl, pad en query behouden; `public/_routes.json` houdt statische bestanden buiten de Functions (#351).

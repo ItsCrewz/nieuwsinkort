@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import type { Video } from "./types";
 import { naIdle, planVoorladen, voerUit } from "./voorladen";
-import { playerFor, soortVan, startSoort, viaProxy } from "./video";
+import { playerFor, soortVan, startSoort, viaProxy } from "./videosoort";
 
 type Lijsten = { filmpjes: Video[]; dumpert: Video[] } | null;
 let laatste = "";

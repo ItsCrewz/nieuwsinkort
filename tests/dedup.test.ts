@@ -1,5 +1,6 @@
 // Draai: npm run test  (bundelt met esbuild en draait met node)
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { dedupVideos, canonUrl, videoKeys, titleTokens } from "../src/dedup";
 
 let n = 0;
@@ -149,6 +150,76 @@ t("caption: verschillende video's over hetzelfde onderwerp blijven apart", () =>
   assert.equal(dedupVideos([live46[0], { ...live46[1], tijd: "" }]).list.length, 2);
   assert.equal(dedupVideos([{ ...live46[0], _pub: 100000000 }, { ...live46[1], _pub: 100000000 + 181 * 60000 }]).list.length, 2);
   assert.equal(dedupVideos([live46[0]], [live46[1]]).list.length, 0);
+});
+
+t("caption-cache: zelfde uitkomst bij herhaling en na wijziging van titel/ai (#404)", () => {
+  const ai = "Bekijk hier de beelden van het laatste nieuws vandaag. De politie hield een verdachte aan in de binnenstad.";
+  const a: any = { bron: "YouTube", titel: "Eerste opname", href: "https://youtu.be/aaaaaaaaaaa", tijd: "10:00", ai };
+  const b: any = { bron: "TikTok", titel: "Tweede opname", href: "https://youtu.be/bbbbbbbbbbb", tijd: "10:05", ai };
+  assert.equal(dedupVideos([a, b]).list.length, 1);
+  assert.equal(dedupVideos([a, b]).list.length, 1);
+  b.ai = "Totaal andere tekst over de brandweer die een grote brand bluste in het centrum van de stad vandaag.";
+  assert.equal(dedupVideos([a, b]).list.length, 2);
+  b.ai = ai;
+  assert.equal(dedupVideos([a, b]).list.length, 1);
+});
+
+// #429: zelfde uitgever op YouTube én Instagram, titel verschilt maar caption staat in de beschrijving. Fixture nagebouwd uit Filmpjes van 31-10 (13:00 NL).
+const P = (_: string, h: number, m: number) => Date.UTC(2025, 9, 31, h - 1, m);
+const f429: any[] = [
+  { bron: "YouTube", _kanaal: "NU.nl", titel: "Nieuw 'huisdier' in China: baksteen met mos", ai: "Een steen als 'huisdier'? Het is een trend op de socials in China.", href: "https://www.youtube.com/shorts/ZfTXBuD7OMs", embed: "https://www.youtube-nocookie.com/embed/ZfTXBuD7OMs", tijd: "09:05", _pub: P("", 9, 5) },
+  { bron: "Instagram", _k: "NU.nl", titel: "Een steen als 'huisdier'?", ai: "Het is een trend op de socials in China.", href: "https://www.instagram.com/reel/DfJsBJUv__8/", embed: "https://x.cdninstagram.com/v.mp4?oe=1", tijd: "09:07", _pub: P("", 9, 7) },
+  { bron: "YouTube", _kanaal: "NU.nl", titel: "Luke Littler wint niet van 20 'amateurs'", ai: "Darter Luke Littler verloor een exhibition van twintig amateurs.", href: "https://www.youtube.com/shorts/aaaaaaaaaaa", tijd: "08:00", _pub: P("", 8, 0) },
+  { bron: "Instagram", _k: "NU.nl", titel: "Luke Littler wint niet van 20 amateurs", ai: "", href: "https://www.instagram.com/reel/LLL111/", tijd: "08:05", _pub: P("", 8, 5) },
+  { bron: "YouTube", _kanaal: "NOS Stories", titel: "Waarom iedereen ineens kleine plantjes koopt", ai: "NOS Stories over de plantenhype.", href: "https://www.youtube.com/shorts/bbbbbbbbbbb", tijd: "07:00", _pub: P("", 7, 0) },
+  { bron: "YouTube", _kanaal: "NOS Stories", titel: "Zo werkt een wachtlijst voor een huurwoning", ai: "NOS Stories over woningzoekenden.", href: "https://www.youtube.com/shorts/ccccccccccc", tijd: "07:30", _pub: P("", 7, 30) },
+  { bron: "YouTube", _kanaal: "ESPN NL", titel: "Vanhoutte over de topper van zondag", ai: "Korte analyse.", href: "https://www.youtube.com/shorts/ddddddddddd", tijd: "10:00", _pub: P("", 10, 0), duur: 45 },
+  { bron: "YouTube", _kanaal: "ESPN NL", titel: "ESPN Journaal: kampioenschapsstrijd en blessureleed", ai: "Met Vanhoutte over de topper van zondag en meer.", href: "https://www.youtube.com/watch?v=eeeeeeeeeee", tijd: "10:30", _pub: P("", 10, 30), duur: 900 },
+  { bron: "Instagram", _k: "RTL Nieuws", titel: "Baksteen als huisdier gaat viraal", ai: "Trend in China.", href: "https://www.instagram.com/reel/RTL222/", embed: "https://x.cdninstagram.com/r.mp4?oe=1", tijd: "09:10", _pub: P("", 9, 10) },
+];
+t("platformdubbel per uitgever: NU.nl YouTube + Instagram wordt één kaart, YouTube met Instagram in ook", () => {
+  const r = dedupVideos([f429[0], f429[1]]);
+  assert.equal(r.list.length, 1);
+  assert.equal(r.list[0].bron, "YouTube");
+  assert.deepEqual((r.list[0] as any).ook, [{ bron: "Instagram", href: f429[1].href }]);
+  assert.equal(dedupVideos([f429[1], f429[0]]).list[0].bron, "YouTube");
+});
+t("platformdubbel: andere filmpjes, andere uitgever, ander tijdvenster of onbekende uitgever blijven staan", () => {
+  assert.equal(dedupVideos([f429[0], f429[2]]).list.length, 2); // NU.nl: huisdier vs Littler
+  assert.equal(dedupVideos([f429[4], f429[5]]).list.length, 2); // twee NOS Stories
+  assert.equal(dedupVideos([f429[6], f429[7]]).list.length, 2); // ESPN NL: short vs journaal
+  assert.equal(dedupVideos([f429[6], { ...f429[7], bron: "Instagram", _k: "ESPN NL", duur: 900 }]).list.length, 2); // IG-journaal: duur 900 vs 45
+  assert.equal(dedupVideos([f429[6], { ...f429[7], bron: "Instagram", _k: "ESPN NL", duur: 44 }]).list.length, 1); // zelfde duur: wél hetzelfde (beschrijving bevat de titel)
+  assert.equal(dedupVideos([f429[6], f429[7]]).list.length, 2); // zelfde platform: nooit via deze regel
+  assert.equal(dedupVideos([f429[0], f429[8]]).list.length, 2); // andere uitgever (RTL Nieuws)
+  assert.equal(dedupVideos([f429[0], { ...f429[1], _pub: f429[1]._pub + 7 * 3600000 }]).list.length, 2); // > 6 uur
+  const zonder = { ...f429[1] }; delete zonder._k;
+  assert.equal(dedupVideos([f429[0], zonder]).list.length, 2); // uitgever onbekend
+  assert.equal(dedupVideos([{ ...f429[0], duur: 20 }, { ...f429[1], duur: 60 }]).list.length, 2); // duur wijkt sterk af
+  assert.equal(dedupVideos([{ ...f429[0], duur: 20 }, { ...f429[1], duur: 21 }]).list.length, 1);
+});
+t("platformdubbel op de hele Filmpjes-fixture: alleen echte dubbelen vallen weg (9 → 7: huisdier-paar en het al bestaande Littler-paar)", () => {
+  const r = dedupVideos(f429);
+  assert.equal(r.list.length, 7);
+  assert.equal(r.removed, 2);
+  assert.deepEqual(f429.filter((v) => !r.list.some((x) => x.href === v.href)).map((v) => v.href), [f429[1].href, f429[3].href]);
+  assert.equal(r.list.find((v) => v.href === f429[0].href)!.ook!.length, 1);
+});
+
+t("platformdubbel op de echte Filmpjes van 31-10 (29): alleen het NU.nl-Instagram-item valt weg (29 → 28)", () => {
+  const live: any[] = JSON.parse(readFileSync("tests/fixtures/filmpjes-live-31-10.json", "utf8")).filmpjes;
+  assert.equal(live.length, 29);
+  // data.json bevat geen `_k` voor Instagram; in de Worker staat het account er bij het ontdubbelen wél (igVideo → `_k`).
+  const metUitgever = live.map((v) => (v.href.includes("DfJsBJUv__8") ? { ...v, _k: "NU.nl" } : v));
+  const r = dedupVideos(metUitgever);
+  assert.equal(r.list.length, 28);
+  assert.deepEqual(live.filter((v) => !r.list.some((x) => x.href === v.href)).map((v) => v.href), ["https://www.instagram.com/reel/DfJsBJUv__8/"]);
+  const yt = r.list.find((v) => v.href.endsWith("ZfTXBuD7OMs"))!;
+  assert.deepEqual(yt.ook, [{ bron: "Instagram", href: "https://www.instagram.com/reel/DfJsBJUv__8/" }]);
+  // Zonder bekende uitgever blijft het zoals voorheen: niets valt weg.
+  assert.equal(dedupVideos(live).list.length, 29);
+  // Zelfs als alle Instagram-items aan NU.nl hangen, vallen er geen andere filmpjes weg.
+  assert.equal(dedupVideos(live.map((v) => (v.bron === "Instagram" ? { ...v, _k: "NU.nl" } : v))).list.length, 28);
 });
 
 console.log(`\n${n} tests geslaagd`);

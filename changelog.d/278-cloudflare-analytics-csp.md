@@ -1,0 +1,1 @@
+- Sta het Cloudflare Web Analytics-script toe in de CSP zodat de beacon kan laden.

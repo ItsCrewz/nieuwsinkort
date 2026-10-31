@@ -18,13 +18,14 @@ export function alleenVandaag(data: any, now: number) {
   const gen = Date.parse(data.gegenereerd || "");
   const vandaag = Number.isFinite(gen) && ams(gen).iso === ams(now).iso;
   const grens = vandaag ? ams(gen).h * 60 + ams(gen).min + 20 : 0;
+  const dagBegin = vandaag ? midnight(now) : 0;
   const oud = { items: 0, filmpjes: 0, dumpert: 0 };
   const out = { ...data, oud };
   for (const key of ["items", "filmpjes", "dumpert"] as const) {
     const lijst = Array.isArray(data[key]) ? data[key] : [];
     out[key] = lijst.filter((x: any) => {
       let keep = false;
-      if (vandaag && x && Object.prototype.hasOwnProperty.call(x, "t")) keep = vanVandaag(x.t, now);
+      if (vandaag && x && Object.prototype.hasOwnProperty.call(x, "t")) { const t = publicatieTijd(x.t, now); keep = t != null && t >= dagBegin; }
       else if (vandaag) {
         const m = /^(\d{2}):(\d{2})$/.exec(x?.tijd || "");
         keep = !!m && +m[1] < 24 && +m[2] < 60 && +m[1] * 60 + +m[2] <= grens;

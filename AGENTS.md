@@ -19,12 +19,13 @@ Behoud de controle via `worker/src/url.ts` bij og/artikel/Jina-jobs: HTTP(S), po
 ## Essentials
 
 - Stack: Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js; Cloudflare Pages Functions (`functions/`); Worker `nieuwsinkort-uur` (`worker/`, Durable Objects `Runner`/`Fetcher`/`Budget`, KV `NIEUWS`, Workers AI).
-- Commando's: `npm ci`, `npm run dev`, `npm run build` (bronnen + tsc + vite), `npm test`, `npm run typecheck:tests` (typecheck van `tests/`, los script), `npm run check` (tests, build en typechecks voor Worker en Functions).
-- Indeling: `src/` frontend, `functions/` Pages Functions (`data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/`), `worker/src/` uur-Worker, `scripts/` hulpscripts, `tests/` tests, `public/` statisch (`data.json`, `bronnen.json`), `prod-frozen/` bevroren oude build.
+- Commando's: `npm ci`, `npm run dev`, `npm run build` (bronnen + tsc + vite), `npm test`, `npm run typecheck:tests` (typecheck van `tests/`, los script), `npm run lint` (ESLint, config in `eslint.config.mjs`), `npm run check` (lint, tests, build en typechecks voor Worker en Functions).
+- Indeling: `src/` frontend, `functions/` Pages Functions (`data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/`), `worker/src/` uur-Worker, `scripts/` hulpscripts, `tests/` tests, `public/` statisch (`data.json` is fallback-only en wordt niet meer ververst, zie docs/architectuur.md; `bronnen.json`), `prod-frozen/` bevroren oude build.
 - Videofeed: `src/buffer.ts` bevat pure bufferregels (volgende video begrensd, vanaf +4 niets, Save-Data/2g = alleen playlist) maar is nog niet in `feed.tsx` gekoppeld; de pool (#50) en direct starten (#51) blijven leidend. Zie CLAUDE.md.
 - Stijl: TypeScript, ES modules, 2 spaties, dubbele quotes, puntkomma's; compacte code; commentaar in het Nederlands en kort (het waarom). Gedeelde code staat in `src/`. Functions en Worker gebruiken eigen kleine interfaces (`KV`, `Env`, `Ctx`); de Worker heeft daarnaast wel `@cloudflare/workers-types` (`worker/package.json`, `worker/tsconfig.json`).
 - Worker draait op het Free plan: max 50 subrequests per aanroep, daarom batches via `Fetcher`.
 - De fallback zonder AI gebruikt `src/bronlink.ts` voor een defensieve Nederlandse-broncheck; relatieve en ongeldige feedlinks mogen de uurrun niet laten crashen.
+- Onbekende paden krijgen via `public/404.html` een echte 404 op Pages; hash-routes blijven onder `/`. Controleer een Pages-preview of productie met `node scripts/check-status.mjs <basis-url>`.
 - Caching: `/data.json` altijd hervalideren (`fetch(..., {cache:"no-cache"})` zonder `?t=`), ETag/304 in `functions/data.json.ts`; niet terug naar een lange `max-age`, anders is de uurdata niet vers. Gehashte `/assets/*` immutable; `_headers` regelt `/bronnen.json` en iconen.
 - Laden: `index.html` start `/data.json` vroeg (`src/vroeg.ts`), Inter staat self-hosted in `public/fonts/` (geen Google Fonts, CSP `font-src 'self'`), en `NewsFeed` mount kaartinhoud alleen rond de huidige kaart (`leeg`-secties houden de hoogte). Zie [architectuur](docs/architectuur.md#laadprestaties-35).
 - Weer is landelijk (`worker/src/weer.ts`, plaats "Nederland"; Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en landelijke waarschuwingsregel, bron KNMI). Geen Haarlem-focus in het weer en in de `simpelWeer`-prompt (één AI-aanroep, invoer max 1500 tekens); de rubriek Haarlem blijft ongemoeid. Test: `tests/weer.test.ts`.
@@ -70,3 +71,7 @@ De bronnenlijst gebruikt standaard `scripts/pipeline/feeds.json` en `filmpjes.py
 Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay; alternatief: zet localStorage `nieuwsinkort-debug` op `1`. De overlay toont spelers, balkstand en recente media-events.
 
 Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Dit is nog niet op een echte iPhone geverifieerd.
+
+## Browserrookproef
+
+`npm run e2e` gebruikt Playwright en axe; installatie, gemeten baseline en beperkingen staan in [docs/browser-tests.md](docs/browser-tests.md). WebKit en iPhone draaien met `PW_WEBKIT=1` wanneer de benodigde systeembibliotheken aanwezig zijn.
