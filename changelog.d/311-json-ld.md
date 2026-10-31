@@ -1,0 +1,1 @@
+- Voeg JSON-LD voor de website en nieuwsorganisatie toe (#311).
