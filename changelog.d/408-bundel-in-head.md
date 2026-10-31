@@ -1,0 +1,1 @@
+- Home: de JS-bundel wordt eerder opgehaald (module-script in de head) zodat de dagsamenvatting sneller verschijnt; geen zichtbare wijziging (#408).

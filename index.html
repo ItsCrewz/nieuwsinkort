@@ -23,6 +23,8 @@
         document.documentElement.dataset.theme = t;
       })();
     </script>
+    <!-- bundel in de head: module-scripts zijn deferred (uitvoering verandert niet), maar de download start vóór de inline CSS en de rest van de head (LCP, #408) -->
+    <script type="module" src="/src/main.tsx"></script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -45,6 +47,5 @@
   <body>
     <div id="root"></div>
     <noscript>Zet JavaScript aan om het nieuws te zien.</noscript>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
