@@ -26,5 +26,13 @@ function cssInline(): Plugin {
 
 export default defineConfig({
   plugins: [react(), cssInline()],
-  build: { outDir: "dist", sourcemap: false, chunkSizeWarningLimit: 700 },
+  build: {
+    outDir: "dist",
+    sourcemap: false,
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      // CSS krijgt een eigen naampatroon: de edge cachete de oude URL als HTML (immutable), een nieuwe URL omzeilt dat (#419).
+      output: { assetFileNames: (a) => (a.names?.some((n) => n.endsWith(".css")) ? "assets/[name]-[hash]-c.css" : "assets/[name]-[hash][extname]") },
+    },
+  },
 });
