@@ -19,8 +19,8 @@ Behoud de controle via `worker/src/url.ts` bij og/artikel/Jina-jobs: HTTP(S), po
 ## Essentials
 
 - Stack: Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js; Cloudflare Pages Functions (`functions/`); Worker `nieuwsinkort-uur` (`worker/`, Durable Objects `Runner`/`Fetcher`/`Budget`, KV `NIEUWS`, Workers AI).
-- Commando's: `npm ci`, `npm run dev`, `npm run build` (bronnen + tsc + vite), `npm test`, `npm run typecheck:tests` (typecheck van `tests/`, los script), `npm run check` (tests, build en typechecks voor Worker en Functions).
-- Indeling: `src/` frontend, `functions/` Pages Functions (`data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/`), `worker/src/` uur-Worker, `scripts/` hulpscripts, `tests/` tests, `public/` statisch (`data.json`, `bronnen.json`), `prod-frozen/` bevroren oude build.
+- Commando's: `npm ci`, `npm run dev`, `npm run build` (bronnen + tsc + vite), `npm test`, `npm run typecheck:tests` (typecheck van `tests/`, los script), `npm run lint` (ESLint, config in `eslint.config.mjs`), `npm run check` (lint, tests, build en typechecks voor Worker en Functions).
+- Indeling: `src/` frontend, `functions/` Pages Functions (`data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/`), `worker/src/` uur-Worker, `scripts/` hulpscripts, `tests/` tests, `public/` statisch (`data.json` is fallback-only en wordt niet meer ververst, zie docs/architectuur.md; `bronnen.json`), `prod-frozen/` bevroren oude build.
 - Videofeed: `src/buffer.ts` bevat pure bufferregels (volgende video begrensd, vanaf +4 niets, Save-Data/2g = alleen playlist) maar is nog niet in `feed.tsx` gekoppeld; de pool (#50) en direct starten (#51) blijven leidend. Zie CLAUDE.md.
 - Stijl: TypeScript, ES modules, 2 spaties, dubbele quotes, puntkomma's; compacte code; commentaar in het Nederlands en kort (het waarom). Gedeelde code staat in `src/`. Functions en Worker gebruiken eigen kleine interfaces (`KV`, `Env`, `Ctx`); de Worker heeft daarnaast wel `@cloudflare/workers-types` (`worker/package.json`, `worker/tsconfig.json`).
 - Worker draait op het Free plan: max 50 subrequests per aanroep, daarom batches via `Fetcher`.

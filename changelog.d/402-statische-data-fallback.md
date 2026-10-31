@@ -1,0 +1,1 @@
+- Documenteer dat `public/data.json` fallback-only is (niet ververst, canvas-flow komt niet terug) en test dat `?statisch=1` oude statische data ongefilterd teruggeeft (#402).

@@ -1,1 +1,0 @@
-- Leg de gemeten axe-baseline vast en maak WebKit en iPhone optioneel voor de browserrookproef (#314).

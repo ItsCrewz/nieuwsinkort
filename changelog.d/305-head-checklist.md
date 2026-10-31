@@ -1,0 +1,1 @@
+- Head opgeschoond (#305): kortere meta description, webappmanifest met 192/512-iconen, titel per rubriek of videoweergave, `dir="ltr"`, HTML zonder commentaar en geminificeerd (naast de inline CSS en het CSS-bestand van #403/#419).
