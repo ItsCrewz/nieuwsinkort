@@ -1,7 +1,7 @@
 // Sport uit algemene feeds (#425): samenstellingen, motorsport en de herindeling na de AI-stap.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { sportCat } from "../worker/src/sportcat";
+import { sportCat, sportCatItem } from "../worker/src/sportcat";
 
 let n = 0;
 const t = (naam: string, fn: () => void) => { fn(); n++; console.log("✓", naam); };
@@ -38,5 +38,30 @@ t("herindeling na de AI-stap: AI-kop en bestaande nl-items", () => {
   const items = [{ cat: "nl", kop: "Discussie over voetballer Owen Wijndal", bronnen: hrefs.map((href) => ({ href })) }, { cat: "politiek", kop: "Voetballer in Kamer", bronnen: [] }];
   for (const i of items) i.cat = sportCat({ cat: i.cat, kop: i.kop, hrefs: i.bronnen.map((b) => b.href) }) || i.cat;
   assert.deepEqual(items.map((i) => i.cat), ["voetbal", "politiek"]);
+});
+
+t("feedtitel i.p.v. AI-kop (#433)", () => {
+  const href = "https://www.telegraaf.nl/video/pittige-discussie-over-owen-wijndal-een-grote-pr-machine/163868873.html";
+  const AI = "Mike Verweij en Valentijn Driessen discussiëren over Owen Wijndal";
+  for (const ft of ["Pittige discussie over voetballer Owen Wijndal", "Discussie over voetballer Owen Wijndal"]) {
+    assert.equal(sportCatItem({ cat: "nl", kop: AI, bronnen: [{ href, ft }] }), "voetbal", ft);
+    // item uit een eerdere run: zelfde pad via opgeslagen bronnen
+    const eerder = JSON.parse(JSON.stringify({ cat: "nl", kop: AI, bronnen: [{ site: "Telegraaf", href, ft }] }));
+    eerder.cat = sportCatItem(eerder) || eerder.cat;
+    assert.equal(eerder.cat, "voetbal");
+  }
+  assert.equal(sportCatItem({ cat: "nl", kop: AI, bronnen: [{ href }] }), null);
+  assert.equal(sportCatItem({ cat: "nl", kop: "Sneijder verrast publiek", bronnen: [{ href: "https://www.telegraaf.nl/video/x/1", ft: "Wesley Sneijder verrast publiek bij concert" }] }), null);
+  // bestaande sportrubriek blijft staan, ook als de AI-kop geen sportwoord heeft
+  assert.equal(sportCatItem({ cat: "voetbal", kop: AI, bronnen: [{ href }] }), null);
+  const i: any = { cat: "voetbal", kop: AI, bronnen: [{ href }] };
+  i.cat = sportCatItem(i) || i.cat;
+  assert.equal(i.cat, "voetbal");
+});
+
+t("slim haalt ft uit de respons", async () => {
+  const { slim } = await import("../functions/data.json");
+  const r = slim({ items: [{ kop: "x", bronnen: [{ site: "A", href: "h", ft: "t" }] }] });
+  assert.deepEqual(r.items[0].bronnen, [{ site: "A", href: "h" }]);
 });
 console.log(`${n} tests ok`);

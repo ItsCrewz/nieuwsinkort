@@ -22,6 +22,8 @@ const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/
 export function slim(d: any) {
   if (!d || typeof d !== "object") return d;
   const { ontdubbeld, routine_gegenereerd, oud, ...rest } = d;
+  // ft = oorspronkelijke feedtitel per bron (alleen voor de sportindeling in de Worker)
+  if (Array.isArray(rest.items)) rest.items = rest.items.map((i: any) => Array.isArray(i?.bronnen) && i.bronnen.some((b: any) => b && "ft" in b) ? { ...i, bronnen: i.bronnen.map(({ ft, ...b }: any) => b) } : i);
   return rest;
 }
 

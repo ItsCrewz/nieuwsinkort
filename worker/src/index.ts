@@ -28,7 +28,7 @@ import { Budget, utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quo
 import { clusterHash, vindClusterSum } from "./clusterhash";
 import { maakTabSam, tabTekst, tabAiRoute } from "./tabsam";
 import { herindeel } from "../../src/regio";
-import { herindeelSport, sportCat } from "./sportcat";
+import { herindeelSport, sportCatItem } from "./sportcat";
 import { herindeelShow, showCat, nietAlsNieuws } from "./showcat";
 import { zonderUitleg } from "../../src/uitgebreid";
 
@@ -486,7 +486,7 @@ export class Runner extends DurableObject<Env> {
     const statToday = stat && typeof stat.gegenereerd === "string" && ams(Date.parse(stat.gegenereerd)).iso === A.iso;
     const statItems: any[] = statToday ? stat.items || [] : [];
     for (const i of statItems) {
-      i.cat = sportCat({ cat: i.cat, kop: i.kop || "", hrefs: (i.bronnen || []).map((b: any) => b.href || "") }) || i.cat;
+      i.cat = sportCatItem(i) || i.cat;
       i.cat = showCat({ cat: i.cat, items: (i.bronnen || []).map((b: any) => ({ href: b.href || "" })), kop: `${i.kop || ""} ${i.ai || ""}` }) || i.cat;
     }
     const statLinks = new Set(statItems.flatMap((i: any) => (i.bronnen || []).map((b: any) => normLink(b.href || ""))));
@@ -628,7 +628,7 @@ export class Runner extends DurableObject<Env> {
       const buitenland = k.cat === "nl" && isBuitenland({ kop: k.c.map((c) => c.t).join(" "), ai: s?.ai, bronnen: k.c.map((c) => ({ href: c.href, buitenFeed: buitenL.has(normLink(c.href)) })) });
       const laatst = nieuwsteTijd(k.c);
       if (buitenland) k.cat = "buitenland";
-      const bron = [...new Map(k.c.map((c) => [c.site, { site: c.site, href: c.href }])).values()].slice(0, 6);
+      const bron = [...new Map(k.c.map((c) => [c.site, { site: c.site, href: c.href, ft: c.t.slice(0, 200) }])).values()].slice(0, 6);
       const beelden = uniekeBeelden(k.c.flatMap((c) => [c.img, og.get(c.href)]));
       const bb = beelden.length ? { beelden } : {};
       if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true });
@@ -647,7 +647,7 @@ export class Runner extends DurableObject<Env> {
     items.sort((a, b) => b._t - a._t);
     for (const i of items) delete i._t;
     // Na de AI-stap staat de AI-kop er (bijv. "voetballer"): sport opnieuw bepalen, ook voor items uit eerdere runs; buitenland pas daarna
-    for (const i of items) i.cat = sportCat({ cat: i.cat, kop: i.kop || "", hrefs: (i.bronnen || []).map((b: any) => b.href || "") }) || i.cat;
+    for (const i of items) i.cat = sportCatItem(i) || i.cat;
     for (const i of items) if (i.cat === "nl" && isBuitenland({ kop: i.kop, ai: i.ai, bronnen: i.bronnen.map((b: any) => ({ ...b, buitenFeed: buitenL.has(normLink(b.href)) })) })) i.cat = "buitenland";
 
     // ---- "Lees verder": artikeltekst ophalen (zonder AI) en, zolang het dagbudget het toelaat, een langere uitleg

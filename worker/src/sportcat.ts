@@ -24,3 +24,8 @@ export function herindeelSport(k: { cat: string; c: { t: string; href: string }[
   // Alle titels en bronpaden tellen mee, ook als de oudste bron een algemene feed is.
   k.cat = sportCat({ cat: k.cat, kop: k.c.map((c) => c.t).join(" "), hrefs: k.c.map((c) => c.href) }) || k.cat;
 }
+// Item uit een eerdere run of na de AI-stap: oorspronkelijke feedtitels (bronnen[].ft) tellen mee naast de AI-kop, zodat herformulering de rubriek niet verandert.
+export function sportCatItem(i: { cat: string; kop?: string; bronnen?: { href?: string; ft?: string }[] }): Cat | null {
+  const b = i.bronnen || [];
+  return sportCat({ cat: i.cat, kop: [i.kop || "", ...b.map((x) => x.ft || "")].join(" "), hrefs: b.map((x) => x.href || "") });
+}
