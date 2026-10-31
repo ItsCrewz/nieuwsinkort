@@ -127,4 +127,6 @@ Nieuwsberichten krijgen een samenvatting van 2–3 korte zinnen en hooguit twee 
 
 Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Dit is nog niet op een echte iPhone geverifieerd.
 
+Browserrookproeven staan beschreven in [docs/browser-tests.md](docs/browser-tests.md).
+
 Focus lezen (#383): `src/focuslezen.ts` — standaard uit; alleen een expliciete klik wordt bewaard in localStorage-sleutel `nieuwsinkort-focus-lezen-keuze` (waarden `aan`/`uit`). De oude sleutel `dagelijks-nieuws-focus-lezen-v2` werd volgens de git-historie alleen bij een klik geschreven, maar wordt genegeerd en opgeruimd (een oude waarde kan niet van een standaard worden onderscheiden). De beginstand wordt lazy gelezen, dus geen flits. Zonder of met falende storage: uit. Tests: `tests/focuslezen.test.ts`.
