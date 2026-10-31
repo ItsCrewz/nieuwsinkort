@@ -1,0 +1,1 @@
+- Bronnen (onderhoud): 12 feed-URL's met een permanente redirect (301/308) vervangen door hun doel-URL, zodat de uurrun geen extra request per feed meer kost (#414).

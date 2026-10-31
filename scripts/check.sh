@@ -14,10 +14,12 @@ stap() {
   fi
 }
 
+stap "Lint" npm run lint
 stap "Tests" npm test
 stap "Build" npm run build
 stap "CSS-lint" npm run lint:css
 stap "HTML-lint" npm run lint:html
+stap "Performancebudget" node scripts/performance-budget.mjs
 if [ ! -d worker/node_modules ]; then
   stap "Worker-afhankelijkheden installeren" npm --prefix worker ci
 fi

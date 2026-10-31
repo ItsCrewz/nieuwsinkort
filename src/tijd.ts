@@ -1,8 +1,9 @@
 // Amsterdamse kalenderdag, gedeeld door frontend en Worker.
 const TZ = "Europe/Amsterdam";
+const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
 
 export function ams(t = Date.now()) {
-  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  const p = Object.fromEntries(formatter.formatToParts(new Date(t)).map((x) => [x.type, x.value]));
   return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour, min: +p.minute, s: +p.second, iso: `${p.year}-${p.month}-${p.day}`, hhmm: `${p.hour}:${p.minute}` };
 }
 export function midnight(t = Date.now()) {

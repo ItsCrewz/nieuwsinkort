@@ -37,7 +37,7 @@ export function IconSprite() {
 
 export function Icon({ name, className = "", label }: { name: IconName; className?: string; label?: string }) {
   return (
-    <svg className={`ic ${className}`} aria-hidden={label ? undefined : true} role={label ? "img" : undefined} aria-label={label}>
+    <svg width="19" height="19" className={`ic ${className}`} aria-hidden={label ? undefined : true} role={label ? "img" : undefined} aria-label={label}>
       <use href={`#i-${name}`} />
     </svg>
   );

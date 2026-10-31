@@ -58,6 +58,13 @@ export function ytVideoId(v: { embed?: string; href?: string }): string | null {
   return null;
 }
 
+// Deze kanalen blokkeren het insluiten van Shorts, ook als een servercontrole speelbaar meldt.
+export const YT_SHORTS_GEBLOKKEERDE_KANALEN = new Set(["FORMULA 1"]);
+export function ytGeblokkeerdeShorts(videos: (Video & { _k?: string; _kanaal?: string })[]): string[] {
+  return [...new Set(videos.filter((v) => v.bron === "YouTube" && YT_SHORTS_GEBLOKKEERDE_KANALEN.has(v._k || v._kanaal || "") && soortVan(v) === "short")
+    .map(ytVideoId).filter((id): id is string => !!id))];
+}
+
 export type YtDiag = { id: string; http: number; uitkomst: "geblokkeerd" | "speelbaar" | "onbekend"; reden?: string; status: string | null; titel: string; host: string; redirectHost: string; oembed: number };
 export function ytCombineer(id: string, embed: { status: number; json?: any; err?: string } | undefined, oembed: { status: number } | undefined): YtDiag {
   const d = embed?.json || {};
@@ -68,6 +75,11 @@ export function ytCombineer(id: string, embed: { status: number; json?: any; err
 }
 
 export type YtCache = Record<string, { geblokkeerd: boolean | null; at: number }>;
+
+export function ytBlokkades(ids: string[], kanaalBlokkades: string[], cache: YtCache): string[] {
+  const kanalen = new Set(kanaalBlokkades);
+  return ids.filter((id) => kanalen.has(id) || cache[id]?.geblokkeerd === true);
+}
 
 export function ruimYtCache(cache: YtCache | undefined, nu: number): YtCache {
   return Object.fromEntries(Object.entries(cache || {}).filter(([id, v]) =>
@@ -95,20 +107,29 @@ export function dumpertEmbed(it: any): string {
   return "";
 }
 
-/** Alle bruikbare Dumpert-toppers (gepubliceerd na `since` ms), gesorteerd op kudos vandaag. */
+/** Bruikbare Dumpert-items: toppers eerst, daarna de latest-lijst van dezelfde pagina (toppers is 's ochtends bijna alleen van gisteren), gesorteerd op kudos vandaag. */
 export function parseDumpert(html: string, hhmm: (t: number) => string): (Video & { _pub: number })[] {
   const m = /window\.__DUMPERT_CONTEXT__ = JSON\.parse\(\s*("(?:[^"\\]|\\.)*")\s*\)/.exec(html);
   if (!m) throw new Error("geen __DUMPERT_CONTEXT__");
   const st = JSON.parse(JSON.parse(m[1])).state;
-  const key = Object.keys(st).find((k) => k.includes("list=toppers"));
-  if (!key) throw new Error("geen toppers-lijst");
+  const lijst = (naam: string): any[] | null => {
+    const key = Object.keys(st).find((k) => k.includes(`list=${naam}`));
+    const items = key && st[key]?.data?.result?.data?.items;
+    return Array.isArray(items) ? items : null;
+  };
+  const toppers = lijst("toppers"), latest = lijst("latest");
+  if (!toppers && !latest) throw new Error("geen toppers-lijst");
   const out: (Video & { _pub: number })[] = [];
-  for (const it of st[key].data.result.data.items) {
+  const gezien = new Set<string>();
+  for (const it of [...(toppers || []), ...(latest || [])]) {
     if (it.nsfw || it.partner_content || it.secret) continue;
     const s = it.stats || {};
     if (!s.views_today) continue;
     const embed = dumpertEmbed(it);
     if (!embed) continue;
+    const id = String(it.id);
+    if (gezien.has(id)) continue;
+    gezien.add(id);
     const pub = Date.parse(it.published_at);
     out.push({
       titel: String(it.title).trim(), ai: stripHtml(it.description || ""), bron: "Dumpert", href: `https://www.dumpert.nl/item/${it.id}`, embed,

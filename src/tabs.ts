@@ -28,3 +28,8 @@ export function tabOpties(items: { cat: Cat }[], view: View): TabOpt[] {
     { value: "dumpert", id: "dumpert", label: "Dumpert", short: "Dumpert" },
   ];
 }
+
+export function volgendeTab(index: number, aantal: number, toets: string): number | null {
+  if (!aantal || index < 0 || (toets !== "ArrowLeft" && toets !== "ArrowRight")) return null;
+  return (index + (toets === "ArrowRight" ? 1 : -1) + aantal) % aantal;
+}
