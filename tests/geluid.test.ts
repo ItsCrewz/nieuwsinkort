@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { soundOn, saveSound } from "../src/geluid";
+import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "../src/geluid";
 
 function opslag() {
   const data = new Map<string, string>();
@@ -26,4 +26,10 @@ saveSound(false);
 assert.equal(soundOn(), false);
 saveSound(true);
 assert.equal(soundOn(), true);
+// Getikt per document (#437): een oude sessionStorage-vlag telt niet mee.
+sessie.setItem("nieuwsinkort-geluid-tik", "1");
+Object.assign(globalThis, { window: { sessionStorage: sessie, localStorage: lokaal }, sessionStorage: sessie });
+assert.equal(geluidTik(), false);
+onthoudGeluidTik();
+assert.equal(geluidTik(), true);
 console.log("geluid: opslagtests geslaagd");

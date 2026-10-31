@@ -22,12 +22,7 @@ export function saveSound(aan: boolean): void {
   }
 }
 
-const TIK_SLEUTEL = "nieuwsinkort-geluid-tik";
+// "Getikt" geldt per document: een herladen tab start gedempt (verse, vergrendelde elementen) tot de eerste tik.
 let tikGeheugen = false;
-export function geluidTik(): boolean {
-  try { return tikGeheugen || sessionStorage.getItem(TIK_SLEUTEL) === "1"; } catch { return tikGeheugen; }
-}
-export function onthoudGeluidTik(): void {
-  tikGeheugen = true;
-  try { sessionStorage.setItem(TIK_SLEUTEL, "1"); } catch { /* opslag geblokkeerd */ }
-}
+export function geluidTik(): boolean { return tikGeheugen; }
+export function onthoudGeluidTik(): void { tikGeheugen = true; }
