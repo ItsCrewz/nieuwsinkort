@@ -1,15 +1,13 @@
 <!doctype html>
-<html lang="nl">
+<html lang="nl" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Nieuws in het kort</title>
-    <!-- geen referrer: X/Twitter-video weigert anders af te spelen; de YouTube-iframe zet zelf strict-origin-when-cross-origin -->
     <meta name="referrer" content="no-referrer" />
-    <meta name="description" content="Het nieuws van vandaag in het kort: Nederland, Tech en AI, Haarlem en omgeving en Showbizz. Met het weer, nieuwsfilmpjes en de toppers van Dumpert. Twee keer per dag bijgewerkt." />
+    <meta name="description" content="Het nieuws van vandaag in het kort: Nederland, buitenland, sport, Tech en AI, Haarlem en Showbizz. Met weer en filmpjes." />
     <link rel="canonical" href="https://nieuwsinkort.nl/" />
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
-    <!-- Inter staat self-hosted (public/fonts, OFL): geen render-blokkerende Google Fonts-keten meer -->
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       // data.json meteen ophalen, parallel aan het JS-bundel; useData (src/vroeg.ts) hergebruikt de promise
@@ -23,8 +21,11 @@
         document.documentElement.dataset.theme = t;
       })();
     </script>
+    <script type="module" src="/src/main.tsx"></script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Nieuws kort" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)" />
@@ -45,6 +46,5 @@
   <body>
     <div id="root"></div>
     <noscript>Zet JavaScript aan om het nieuws te zien.</noscript>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
