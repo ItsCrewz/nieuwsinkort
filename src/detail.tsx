@@ -88,12 +88,12 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
         </section>
       ) : null}
       {uit.map((b, n) => (
-        <section className="d-sec d-meer" key={b.href + n} aria-label={`Bron: ${b.site}`}>
+        <div className="d-sec d-meer" key={b.href + n} role="group" aria-label={`Bron: ${b.site}`}>
           <a className="btn ghost d-more" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
             Lees het hele artikel bij {b.site}
             <Icon name="ext" />
           </a>
-        </section>
+        </div>
       ))}
     </>
   );
@@ -110,9 +110,6 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
   }, [item, onBack]);
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
-    return () => {
-      document.title = "Nieuws in het kort";
-    };
   }, [item]);
   const { paragraphs, punten, bronnen } = detailInhoud(item);
   return (

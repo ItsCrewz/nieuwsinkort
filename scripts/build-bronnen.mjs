@@ -123,6 +123,8 @@ for (const f of feeds) {
   if (xh) s.alias.add(norm(`X (@${xh[1]})`));
   const h = hostOf(f.url);
   if (h && !GENERIC_HOSTS.test(h)) s.hosts.add(h);
+  // HN-links wijzen naar news.ycombinator.com; de feed zelf staat op hnrss.org (generiek), dus host expliciet houden
+  if (/^https:\/\/hnrss\.org\//.test(f.url || "")) s.hosts.add("ycombinator.com");
   const so = soort(f);
   if (so) s.soort.add(so);
   g.set(id, s);

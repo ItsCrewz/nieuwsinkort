@@ -1,0 +1,1 @@
+- Verbeter de HTML-structuur (#306): één h1 per weergave (visueel verborgen op de overzichten), rubriek- en videotabs verwijzen naar hun tabpaneel, nieuwskaarten en videokoppen gebruiken `div role="group"`/h2 in plaats van losse secties/h3, en videokaarten hebben een zelfstandige afspeelknop naast de aparte bronlink (geen interactief element in een interactief element).
