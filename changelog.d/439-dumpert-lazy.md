@@ -1,0 +1,1 @@
+- Home laadt bij de eerste lading geen hls-chunk, playlists, segmenten of mp4 meer vooraf: dat start pas bij aanraken, aanwijzen of focussen van de tab Filmpjes/Dumpert; Dumpert-posters lopen via de eigen proxy `/media/dumpert` (geen consolefouten van media.dumpert.nl meer) (#439).

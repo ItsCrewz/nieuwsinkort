@@ -347,6 +347,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               type="button"
               className={`tab cat-${o.id}`}
               role="tab"
+              data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
               aria-controls="rubriek-paneel"
               aria-selected={view === o.value}
               tabIndex={view === o.value ? 0 : -1}
@@ -382,6 +383,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
                       type="button"
                       role="menuitem"
                       className="menu-item"
+                      data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
                       onClick={() => {
                         setOpen(false);
                         onChange(o.value);
@@ -1037,7 +1039,7 @@ export default function App() {
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
     [data, flt.f, flt.vorig]
   );
-  useVoorladen(vids, data?.gegenereerd, !!route.video); // Filmpjes/Dumpert vooraf warm, na load en in idle-tijd
+  useVoorladen(vids, data?.gegenereerd, !!route.video); // thumbs vooraf in idle-tijd; video pas bij intentie (tab aanraken/focus)
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const routeRef = useRef(route);
   routeRef.current = route;

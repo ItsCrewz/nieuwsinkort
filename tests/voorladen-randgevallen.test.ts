@@ -11,7 +11,7 @@ const video = (embed: string, thumb = "https://img.example/gelijk.jpg"): Video =
   ({ titel: "test", ai: "", bron: "x", href: "https://x.nl", embed, thumb, populariteit: "", tijd: "" });
 const hulp: Hulp = {
   playerFor: (v) => v.embed?.endsWith(".mp4") ? { kind: "mp4", src: v.embed } : v.embed?.endsWith(".m3u8") ? { kind: "hls", src: v.embed } : null,
-  viaProxy: (src) => `/proxy?url=${encodeURIComponent(src)}`,
+  viaProxy: (src) => (src.startsWith("https://media.example") ? `/proxy?url=${encodeURIComponent(src)}` : src),
 };
 
 await test("lege lijsten en dubbele items over beide tabs", () => {

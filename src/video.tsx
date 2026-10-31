@@ -3,7 +3,7 @@ import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
 import { videoSlug } from "./slug";
-import { SOORTEN, playerFor, soortVan, startSoort } from "./videosoort";
+import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort";
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
@@ -38,7 +38,7 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
       <button type="button" className="vcard-open" aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (speelt alleen bij ${v.bron})`} onClick={activate} />
       <div className={`vthumb ${cat === "filmpjes" && soortVan(v) === "short" ? "tall" : ""}`}>
         {v.thumb && !failed ? (
-          <img src={v.thumb} alt="" aria-hidden="true" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+          <img src={viaProxy(v.thumb)} alt="" aria-hidden="true" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
         ) : (
           <span className="vthumb-name">{v.bron}</span>
         )}
