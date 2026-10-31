@@ -29,6 +29,7 @@ import { clusterHash, vindClusterSum } from "./clusterhash";
 import { maakTabSam, tabTekst, tabAiRoute } from "./tabsam";
 import { herindeel } from "../../src/regio";
 import { herindeelSport, sportCatItem } from "./sportcat";
+import { ontdubbelSport } from "./sportdubbel";
 import { herindeelShow, showCat, nietAlsNieuws } from "./showcat";
 import { zonderUitleg } from "../../src/uitgebreid";
 
@@ -649,6 +650,8 @@ export class Runner extends DurableObject<Env> {
     // Na de AI-stap staat de AI-kop er (bijv. "voetballer"): sport opnieuw bepalen, ook voor items uit eerdere runs; buitenland pas daarna
     for (const i of items) i.cat = sportCatItem(i) || i.cat;
     for (const i of items) if (i.cat === "nl" && isBuitenland({ kop: i.kop, ai: i.ai, bronnen: i.bronnen.map((b: any) => ({ ...b, buitenFeed: buitenL.has(normLink(b.href)) })) })) i.cat = "buitenland";
+    // Sport kan pas hier samenkomen (heringedeeld na de AI-stap): dezelfde race in meerdere clusters samenvoegen (#440)
+    { const sd = ontdubbelSport(items); if (sd.samengevoegd) { items.length = 0; items.push(...sd.items); } }
 
     // ---- "Lees verder": artikeltekst ophalen (zonder AI) en, zolang het dagbudget het toelaat, een langere uitleg
     // + kernpunten per bron (Workers AI). Ook voor de berichten van de routine (08:00). Resultaat in KV "meer"
