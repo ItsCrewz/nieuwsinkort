@@ -1,7 +1,7 @@
 // Sport uit algemene feeds (#425): samenstellingen, motorsport en de herindeling na de AI-stap.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { sportCat } from "../worker/src/sportcat";
+import { herindeelSport, sportCat, sportCatItem } from "../worker/src/sportcat";
 
 let n = 0;
 const t = (naam: string, fn: () => void) => { fn(); n++; console.log("✓", naam); };
@@ -38,5 +38,42 @@ t("herindeling na de AI-stap: AI-kop en bestaande nl-items", () => {
   const items = [{ cat: "nl", kop: "Discussie over voetballer Owen Wijndal", bronnen: hrefs.map((href) => ({ href })) }, { cat: "politiek", kop: "Voetballer in Kamer", bronnen: [] }];
   for (const i of items) i.cat = sportCat({ cat: i.cat, kop: i.kop, hrefs: i.bronnen.map((b) => b.href) }) || i.cat;
   assert.deepEqual(items.map((i) => i.cat), ["voetbal", "politiek"]);
+});
+
+t("feedtitel en -beschrijving i.p.v. AI-kop (#433)", () => {
+  // Echt Telegraaf-item van 31-10 (RSS /rss/, categorie Video): de titel bevat geen voetbalwoord, de beschrijving wel
+  const xml = readFileSync("tests/fixtures/tg-wijndal-item.xml", "utf8");
+  const ft = /<title><!\[CDATA\[(.*?)\]\]>/.exec(xml)![1];
+  const fd = /<description><!\[CDATA\[(.*?)\]\]>/.exec(xml)![1];
+  const href = /<link>(.*?)<\/link>/.exec(xml)![1];
+  assert.equal(ft, "Pittige discussie over Owen Wijndal: 'Een grote PR-machine!'");
+  const AI = "Mike Verweij en Valentijn Driessen discussiëren over Owen Wijndal";
+  assert.equal(sportCatItem({ cat: "nl", kop: AI, bronnen: [{ href, ft }] }), null);
+  assert.equal(sportCatItem({ cat: "nl", kop: AI, bronnen: [{ href, ft, fd }] }), "voetbal");
+  // item uit een eerdere run: zelfde pad via opgeslagen bronnen
+  const eerder = JSON.parse(JSON.stringify({ cat: "nl", kop: AI, bronnen: [{ site: "Telegraaf", href, ft, fd: fd.slice(0, 300) }] }));
+  eerder.cat = sportCatItem(eerder) || eerder.cat;
+  assert.equal(eerder.cat, "voetbal");
+  // vers uit de feed (herindeelSport, beschrijving = c.s)
+  const k = { cat: "nl", c: [{ t: ft, href, s: fd }] };
+  herindeelSport(k);
+  assert.equal(k.cat, "voetbal");
+  assert.equal(sportCatItem({ cat: "nl", kop: AI, bronnen: [{ href }] }), null);
+  const nl = (ft: string, fd: string) => sportCatItem({ cat: "nl", kop: ft, bronnen: [{ href: "https://www.telegraaf.nl/video/x/1", ft, fd }] });
+  assert.equal(nl("Wesley Sneijder verrast publiek bij concert", "Sneijder trad op in Ahoy voor een uitverkocht huis."), null);
+  assert.equal(nl("Interview met trainer", "Het gesprek ging over Ajax."), null);
+  assert.equal(nl("Interview met trainer", "Oranje staat voor een zware opgave."), null);
+  assert.equal(nl("Interview met trainer", "Na de wedstrijd was er veel te doen."), null);
+  assert.equal(nl("Sneijder verrast publiek", "De oud-voetballer trad op in Ahoy."), null);
+  assert.equal(nl("Nieuws", "Max Verstappen won de Grand Prix."), null);
+  assert.equal(nl("Nieuws", "De Eredivisie-wedstrijd werd uitgesteld."), "voetbal");
+  // bestaande sportrubriek blijft staan, ook als de AI-kop geen sportwoord heeft
+  assert.equal(sportCatItem({ cat: "voetbal", kop: AI, bronnen: [{ href }] }), null);
+});
+
+t("slim haalt ft uit de respons", async () => {
+  const { slim } = await import("../functions/data.json");
+  const r = slim({ items: [{ kop: "x", bronnen: [{ site: "A", href: "h", ft: "t", fd: "d" }] }] });
+  assert.deepEqual(r.items[0].bronnen, [{ site: "A", href: "h" }]);
 });
 console.log(`${n} tests ok`);
