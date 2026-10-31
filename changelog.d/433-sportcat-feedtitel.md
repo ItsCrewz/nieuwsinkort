@@ -1,1 +1,1 @@
-- Sportindeling gebruikt de oorspronkelijke feedtitel naast de AI-kop, zodat een herformulering (bijv. Owen Wijndal) een voetbalitem niet terugzet naar Nederland (#433).
+- Sportindeling gebruikt de oorspronkelijke feedtitel en sterke voetbalsignalen uit de feedbeschrijving (bijv. voetbalpodcast) naast de AI-kop, zodat een herformulering (bijv. Owen Wijndal) een voetbalitem niet terugzet naar Nederland (#433).

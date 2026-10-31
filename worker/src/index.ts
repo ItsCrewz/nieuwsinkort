@@ -628,7 +628,7 @@ export class Runner extends DurableObject<Env> {
       const buitenland = k.cat === "nl" && isBuitenland({ kop: k.c.map((c) => c.t).join(" "), ai: s?.ai, bronnen: k.c.map((c) => ({ href: c.href, buitenFeed: buitenL.has(normLink(c.href)) })) });
       const laatst = nieuwsteTijd(k.c);
       if (buitenland) k.cat = "buitenland";
-      const bron = [...new Map(k.c.map((c) => [c.site, { site: c.site, href: c.href, ft: c.t.slice(0, 200) }])).values()].slice(0, 6);
+      const bron = [...new Map(k.c.map((c) => [c.site, { site: c.site, href: c.href, ft: c.t.slice(0, 200), fd: (c.s || "").slice(0, 300) }])).values()].slice(0, 6);
       const beelden = uniekeBeelden(k.c.flatMap((c) => [c.img, og.get(c.href)]));
       const bb = beelden.length ? { beelden } : {};
       if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true });

@@ -1,6 +1,8 @@
 // Deel algemeen nieuws conservatief in op basis van bronpad en titel.
 type Cat = "f1" | "voetbal" | "auto";
-export function sportCat({ cat, kop, hrefs }: { cat: string; kop: string; hrefs: string[] }): Cat | null {
+// Feedbeschrijving: alleen sterke, eenduidige voetbalsignalen (geen clubnamen, Oranje of losse woorden; "oud-voetballer" niet).
+const VOETBAL_BESCHRIJVING = /(?<!oud-)\b(?!oud-)(?:[a-z]+-?)?voetbal(?:l?ers?|sters?|clubs?|bond|trainers?|podcasts?)(?![a-z])|\b(?:eredivisie|champions league|europa league|knvb)\b/i;
+export function sportCat({ cat, kop, hrefs, besch = "" }: { cat: string; kop: string; hrefs: string[]; besch?: string }): Cat | null {
   // Autobronnen publiceren ook F1/voetbal: die cat mag omhoog (F1 > voetbal > auto).
   if (!["nl", "buitenland", "tech", "auto"].includes(cat)) return null;
   const paden = hrefs.map((href) => { try { return new URL(href).pathname.toLowerCase(); } catch { return ""; } });
@@ -9,8 +11,8 @@ export function sportCat({ cat, kop, hrefs }: { cat: string; kop: string; hrefs:
   const club = /\b(?:ajax|psv|feyenoord|az|fc twente)\b/i.test(kop);
   // Samenstellingen (amateurvoetballer, voetbalclub) tellen; "oud-voetballer" niet, want die komt ook in showbizz voor. Losse woorden als club, wedstrijd, race of finale zijn geen signaal.
   const sportpad = pad(/\/(?:nieuws\/)?sport(?:\/|$)/);
-  const voetbalWoord = /(?<!oud-)\b(?!oud-)(?:[a-z]+-?)?voetbal(?:l?ers?|sters?|clubs?|bond|stadion|wedstrijd|fans?|supporters?|trainer|competitie|seizoen)?\b/i.test(kop);
-  const voetbal = club || voetbalWoord || (sportpad && /\b(?:spits|doelman|aanvaller|middenvelder|scheidsrechter|bondscoach)\b/i.test(kop)) || /\b(?:eredivisie|champions league|europa league|knvb|doelpunt)\b/i.test(kop) || (/\boranje\b/i.test(kop) && /\b(?:voetbal|bondscoach|koeman|wk|ek)\b/i.test(kop));
+  const voetbalWoord = /(?<!oud-)\b(?!oud-)(?:[a-z]+-?)?voetbal(?:l?ers?|sters?|clubs?|bond|stadion|wedstrijd|fans?|supporters?|trainer|competitie|seizoen|podcasts?)?(?![a-z])/i.test(kop);
+  const voetbal = club || VOETBAL_BESCHRIJVING.test(besch) || voetbalWoord || (sportpad && /\b(?:spits|doelman|aanvaller|middenvelder|scheidsrechter|bondscoach)\b/i.test(kop)) || /\b(?:eredivisie|champions league|europa league|knvb|doelpunt)\b/i.test(kop) || (/\boranje\b/i.test(kop) && /\b(?:voetbal|bondscoach|koeman|wk|ek)\b/i.test(kop));
   if (pad(/(?:\/formule-?1(?:\/|$)|\/formula1(?:\/|$)|\/f1(?:\/|$)|nossportformule1)/) || f1) return "f1";
   if (pad(/\/(?:voetbal|eredivisie|champions-league|football|soccer)(?:\/|$)/) || voetbal) return "voetbal";
   // Motorsport zonder F1 (MotoGP, motorcoureurs) hoort bij Auto.
@@ -20,12 +22,12 @@ export function sportCat({ cat, kop, hrefs }: { cat: string; kop: string; hrefs:
   const woorden = kop.match(/\b(?:automerk|autofabrikant|auto(?:'s)?|ev|rijtest|tesla|volkswagen|bmw|toyota|kia|hyundai|renault|peugeot|volvo|byd|laadpaal|apk)\b/gi) || [];
   return woorden.length >= 2 ? "auto" : null;
 }
-export function herindeelSport(k: { cat: string; c: { t: string; href: string }[] }): void {
+export function herindeelSport(k: { cat: string; c: { t: string; href: string; s?: string }[] }): void {
   // Alle titels en bronpaden tellen mee, ook als de oudste bron een algemene feed is.
-  k.cat = sportCat({ cat: k.cat, kop: k.c.map((c) => c.t).join(" "), hrefs: k.c.map((c) => c.href) }) || k.cat;
+  k.cat = sportCat({ cat: k.cat, kop: k.c.map((c) => c.t).join(" "), hrefs: k.c.map((c) => c.href), besch: k.c.map((c) => c.s || "").join(" ") }) || k.cat;
 }
-// Item uit een eerdere run of na de AI-stap: oorspronkelijke feedtitels (bronnen[].ft) tellen mee naast de AI-kop, zodat herformulering de rubriek niet verandert.
-export function sportCatItem(i: { cat: string; kop?: string; bronnen?: { href?: string; ft?: string }[] }): Cat | null {
+// Item uit een eerdere run of na de AI-stap: oorspronkelijke feedtitels (bronnen[].ft) en een ingekorte beschrijving (bronnen[].fd, alleen sterke voetbalsignalen) tellen mee naast de AI-kop, zodat herformulering de rubriek niet verandert.
+export function sportCatItem(i: { cat: string; kop?: string; bronnen?: { href?: string; ft?: string; fd?: string }[] }): Cat | null {
   const b = i.bronnen || [];
-  return sportCat({ cat: i.cat, kop: [i.kop || "", ...b.map((x) => x.ft || "")].join(" "), hrefs: b.map((x) => x.href || "") });
+  return sportCat({ cat: i.cat, kop: [i.kop || "", ...b.map((x) => x.ft || "")].join(" "), hrefs: b.map((x) => x.href || ""), besch: b.map((x) => x.fd || "").join(" ") });
 }
