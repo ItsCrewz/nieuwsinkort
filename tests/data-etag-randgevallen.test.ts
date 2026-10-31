@@ -129,6 +129,21 @@ try {
     assert.deepEqual(await r.json(), statisch);
   });
 
+  await t("?statisch=1 geeft oude statische data ongefilterd terug (geen vandaag-filter, vaste klok)", async () => {
+    const oud = {
+      gegenereerd: "2026-10-28T07:00:00Z",
+      items: [{ titel: "Oud bericht", t: Date.parse("2026-10-28T06:30:00Z"), bronnen: [{ href: "https://nos.nl/oud" }] }],
+      filmpjes: [{ href: "https://example.com/v", titel: "Oud filmpje" }],
+      dumpert: [],
+      ontdubbeld: 2,
+    };
+    const { env } = maakEnv({});
+    env.ASSETS.fetch = async () => Response.json(oud);
+    const r = await data({ request: req("/data.json?statisch=1"), env });
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), oud);
+  });
+
   await t("?statisch zonder waarde slaat de KV ook over", async () => {
     const { env, kvLeest } = maakEnv({});
     await data({ request: req("/data.json?statisch"), env });

@@ -23,7 +23,9 @@ Alles draait op Cloudflare (Free plan). Geen eigen server.
  Frontend (React, hls.js) op nieuwsinkort.pages.dev
 ```
 
-Oude flow (nog aanwezig): routine → Grok-canvas → `export_from_canvas.mjs` → `public/data.json` → `deploy.sh` → statisch `dist/data.json`. De Worker vult die data elk uur aan.
+Oude flow (verlaten): routine → Grok-canvas → `export_from_canvas.mjs` → `public/data.json` → `deploy.sh` → statisch `dist/data.json`. Die flow is sinds 28-10 stilgelegd en komt bewust niet terug (CEO-besluit 31-10).
+
+**`public/data.json` is fallback-only.** Het bestand wordt niet meer automatisch ververst en kan dus oud zijn. `functions/data.json.ts` serveert het alleen (1) bij `?statisch=1` (de clientfallback in `src/vroeg.ts` na een laadfout), (2) zonder KV-binding `NIEUWS`, of (3) als merge met KV `uur` en `data-vooraf` ontbreekt of niet van vandaag is (dan is de statische data de basis). Bij `?statisch=1` gaat de inhoud ongefilterd door: geen merge en geen vandaag-filter (#56), ook niet als de datum in het bestand oud is. Een test met vaste klok bewaakt dat (`tests/data-etag-randgevallen.test.ts`). Normaal komt de data uit de uur-Worker via KV.
 
 ## Frontend (`src/`)
 
