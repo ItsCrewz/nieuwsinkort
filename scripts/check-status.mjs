@@ -31,6 +31,6 @@ await controleer("/samenvatting", 415, /JSON/, { method: "POST" });
 await controleer("/meer", 400, /geen sleutel/);
 await controleer("/media/dumpert/ongeldig", 404, /^Not found$/);
 for (const pad of ["/bestaatniet-xyz", "/404", "/feed", "/manifest.json", "/onbekend/diep"]) {
-  await controleer(pad, 404, /Pagina niet gevonden/);
+  await controleer(pad, 404, /Deze pagina bestaat niet/);
 }
 process.exitCode = fouten ? 1 : 0;
