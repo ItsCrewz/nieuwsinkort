@@ -26,7 +26,7 @@
  {
   "cat": "nl",
   "naam": "RTL Nieuws",
-  "url": "https://www.rtlnieuws.nl/rss.xml",
+  "url": "https://www.rtl.nl/rss.xml",
   "werkt": true,
   "http": 200,
   "size": 628573
@@ -98,7 +98,7 @@
  {
   "cat": "nl",
   "naam": "Telegraaf",
-  "url": "https://www.telegraaf.nl/rss",
+  "url": "https://www.telegraaf.nl/rss/",
   "werkt": true,
   "http": 200,
   "size": 77482
@@ -398,7 +398,7 @@
  {
   "cat": "tech",
   "naam": "Bright",
-  "url": "https://www.bright.nl/rss.xml",
+  "url": "https://www.bright.nl/feed/news.xml",
   "werkt": true,
   "http": 200,
   "size": 38076

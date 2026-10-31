@@ -20,7 +20,7 @@
  {
   "cat": "nl",
   "naam": "RTL Nieuws",
-  "url": "https://www.rtlnieuws.nl/rss.xml",
+  "url": "https://www.rtl.nl/rss.xml",
   "werkt": true
  },
  {
@@ -74,7 +74,7 @@
  {
   "cat": "nl",
   "naam": "Telegraaf",
-  "url": "https://www.telegraaf.nl/rss",
+  "url": "https://www.telegraaf.nl/rss/",
   "werkt": true
  },
  {
@@ -300,7 +300,7 @@
  {
   "cat": "tech",
   "naam": "Bright",
-  "url": "https://www.bright.nl/rss.xml",
+  "url": "https://www.bright.nl/feed/news.xml",
   "werkt": true
  },
  {
@@ -655,7 +655,7 @@
  {
   "cat": "tech",
   "naam": "Google DeepMind",
-  "url": "https://blog.google/technology/google-deepmind/rss/",
+  "url": "https://blog.google/innovation-and-ai/models-and-research/google-deepmind/rss/",
   "werkt": true
  },
  {
@@ -723,7 +723,7 @@
  {
   "cat": "showbizz",
   "naam": "Telegraaf Entertainment",
-  "url": "https://www.telegraaf.nl/entertainment/sterren/rss",
+  "url": "https://www.telegraaf.nl/entertainment/sterren/rss/",
   "werkt": true,
   "notitie": "showbizz; sterrennieuws"
  },
@@ -758,7 +758,7 @@
  {
   "cat": "showbizz",
   "naam": "Linda.nl",
-  "url": "https://www.linda.nl/rss",
+  "url": "https://www.linda.nl/rss/",
   "werkt": true,
   "notitie": "showbizz; gemengd met lifestyle, dus begrensd",
   "max": 5
@@ -788,7 +788,7 @@
  {
   "cat": "nl",
   "naam": "Follow the Money",
-  "url": "https://www.ftm.nl/feed",
+  "url": "https://www.ftm.nl/feed/",
   "werkt": true
  },
  {
@@ -800,7 +800,7 @@
  {
   "cat": "nl",
   "naam": "Zembla",
-  "url": "https://www.bnnvara.nl/zembla/rss",
+  "url": "https://www.bnnvara.nl/api/rss/zembla",
   "werkt": true
  },
  {
@@ -1504,14 +1504,14 @@
  {
   "cat": "voetbal",
   "naam": "Telegraaf Voetbal",
-  "url": "https://www.telegraaf.nl/sport/voetbal/rss",
+  "url": "https://www.telegraaf.nl/sport/voetbal/rss/",
   "werkt": true,
   "max": 3
  },
  {
   "cat": "voetbal",
   "naam": "VI",
-  "url": "https://www.vi.nl/rss",
+  "url": "https://www.vi.nl/feed/news.xml",
   "werkt": true,
   "max": 3
  },
@@ -1545,14 +1545,14 @@
  {
   "cat": "auto",
   "naam": "Autoblog.nl",
-  "url": "https://www.autoblog.nl/rss",
+  "url": "https://www.autoblog.nl/feed/news.xml",
   "werkt": true,
   "max": 3
  },
  {
   "cat": "auto",
   "naam": "Autovisie",
-  "url": "https://www.autovisie.nl/rss",
+  "url": "https://www.autovisie.nl/rss/",
   "werkt": true
  },
  {
