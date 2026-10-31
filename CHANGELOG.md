@@ -2,7 +2,7 @@
 
 ## Onuitgebracht
 
-- JSON-LD voor de website en nieuwsorganisatie toegevoegd (#311); zie ook het changelogfragment voor de release.
+- Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
 

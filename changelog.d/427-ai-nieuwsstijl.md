@@ -1,0 +1,1 @@
+- AI-koppen (`kop`) en samenvattingen (`ai`) in nieuwsstijl gedocumenteerd: wie/wat/waar, kern in 1-2 zinnen met data en plaatsen, geen opvulling of interpretatie (#427)

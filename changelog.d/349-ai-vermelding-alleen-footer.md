@@ -1,0 +1,1 @@
+- De AI-vermelding staat alleen nog in de footer onderaan de pagina; de regel „Samenvatting gemaakt met AI” bij losse samenvattingen is weer verwijderd.

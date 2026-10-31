@@ -1,0 +1,1 @@
+- Hoofdbundle 89,0 → 69,2 kB gzip (−22%): bronnenblad, filterblad, detailscherm, videogrid en videofeed laden lui als eigen chunks (#296).
