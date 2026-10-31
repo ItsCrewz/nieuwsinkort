@@ -103,8 +103,14 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
       }
     } catch { console.error("data.json: KV vooraf lezen mislukt"); }
   }
-  const stat = await env.ASSETS.fetch(new Request(new URL("/data.json", u.origin).toString()));
-  if (u.searchParams.has("statisch") || !env.NIEUWS || !stat.ok) {
+  const assetUrl = new URL("/data.json", u.origin).toString();
+  let stat: Response | undefined;
+  for (let poging = 0; poging < 2; poging++) {
+    try { stat = await env.ASSETS.fetch(new Request(assetUrl)); } catch { stat = undefined; }
+    if (stat?.ok) break;
+  }
+  if (!stat?.ok) return new Response(JSON.stringify({ fout: "Data tijdelijk niet beschikbaar" }), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  if (u.searchParams.has("statisch") || !env.NIEUWS) {
     return new Response(stat.body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
   }
   const S: any = await stat.json();

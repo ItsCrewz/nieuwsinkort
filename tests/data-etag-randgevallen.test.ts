@@ -148,10 +148,11 @@ try {
     assert.deepEqual(kvLeest, ["data-vooraf", "uur", "sv-klaar"]);
   });
 
-  await t("mislukte ASSETS-fetch geeft de status door na de data-vooraf-read", async () => {
+  await t("mislukte ASSETS-fetch geeft een tijdelijke 503 na de data-vooraf-read", async () => {
     const { env, kvLeest } = maakEnv({}, { assetStatus: 404 });
     const r = await data({ request: req("/data.json"), env });
-    assert.equal(r.status, 404);
+    assert.equal(r.status, 503);
+    assert.equal(r.headers.get("retry-after"), "60");
     assert.deepEqual(kvLeest, ["data-vooraf"]);
     assert.equal(r.headers.get("etag"), null);
   });

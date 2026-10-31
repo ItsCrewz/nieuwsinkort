@@ -54,4 +54,23 @@ try {
 } finally {
   Date.now = origineleTijd;
 }
+// ASSETS-fouten: twee pogingen, daarna 503 met no-store en Retry-After (vaste klok)
+Date.now = () => Date.parse("2026-10-28T10:00:00Z");
+try {
+  let a = 0;
+  const fouten = { ASSETS: { fetch: async () => { a++; return new Response(null, { status: 503 }); } }, NIEUWS: { get: async () => null } };
+  r = await onRequestGet({ request: new Request("https://site.test/data.json"), env: fouten });
+  assert.equal(r.status, 503); assert.equal(r.headers.get("retry-after"), "60"); assert.equal(r.headers.get("cache-control"), "no-store"); assert.equal(a, 2);
+  assert.ok((await r.json()).fout);
+  a = 0;
+  const gooit = { ...fouten, ASSETS: { fetch: async () => { a++; throw new Error("stuk"); } } };
+  r = await onRequestGet({ request: new Request("https://site.test/data.json"), env: gooit });
+  assert.equal(r.status, 503); assert.equal(a, 2);
+  a = 0;
+  const herstel = { ...fouten, ASSETS: { fetch: async () => { a++; return a === 1 ? new Response(null, { status: 503 }) : Response.json(S); } } };
+  r = await onRequestGet({ request: new Request("https://site.test/data.json"), env: herstel });
+  assert.equal(r.status, 200); assert.equal(a, 2);
+} finally {
+  Date.now = origineleTijd;
+}
 console.log("✓ vooraf berekenen, snel pad, 304 en terugval");
