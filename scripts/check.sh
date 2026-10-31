@@ -14,6 +14,7 @@ stap() {
   fi
 }
 
+stap "Lint" npm run lint
 stap "Tests" npm test
 stap "Build" npm run build
 stap "Performancebudget" node scripts/performance-budget.mjs

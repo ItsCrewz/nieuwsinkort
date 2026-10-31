@@ -1,0 +1,1 @@
+- Pages-CPU: `/data.json` zonder `data-vooraf` is ~40% goedkoper doordat het video-ontdubbelen zijn tekstnormalisatie per video onthoudt; identieke respons (#404).

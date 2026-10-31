@@ -1,0 +1,1 @@
+- Sport uit algemene feeds hoort niet meer in Nederland: voetbalsamenstellingen (voetballer, amateurvoetballer) gaan naar Voetbal, MotoGP en motorcoureurs naar Auto; de indeling wordt ook na de AI-stap herhaald op de AI-kop (#425).

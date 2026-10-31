@@ -1,0 +1,1 @@
+- Focus lezen staat standaard uit; alleen een expliciete keuze van de gebruiker wordt onthouden, een oude opgeslagen standaard telt niet meer (#383).

@@ -12,3 +12,6 @@ export function detailInhoud(item: Item) {
     bronnen: item.bronnen ?? [],
   };
 }
+
+export const fotos = (it: Item): string[] => (it.beelden?.length ? it.beelden : it.beeld ? [it.beeld] : []);
+export const bronnenTekst = (n: number) => `${n} ${n === 1 ? "bron" : "bronnen"}`;

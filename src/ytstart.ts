@@ -39,3 +39,11 @@ export function ytStatusNaam(status: number | null): string {
 export function ytSkipBesluit(code: unknown, actief: boolean, alOvergeslagen: boolean, volgende: boolean): boolean {
   return actief && ytEchteFout(code) && !alOvergeslagen && volgende;
 }
+
+// Bij teruggaan blijft de eerste geblokkeerde video als vangnet staan.
+export function ytVerwijderBesluit(code: unknown, i: number, actief: number, aantal: number, richting: -1 | 1): { verwijder: boolean; actief: number } {
+  if (!ytEchteFout(code) || i < 0 || i >= aantal || aantal <= 1 || (i === actief && richting === -1 && i === 0)) return { verwijder: false, actief };
+  if (i < actief) return { verwijder: true, actief: actief - 1 };
+  if (i > actief) return { verwijder: true, actief };
+  return { verwijder: true, actief: richting === -1 ? i - 1 : Math.min(i, aantal - 2) };
+}

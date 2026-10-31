@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import "./sportcat.test";
 import "./showcat.test";
+import { valideer } from "../src/valideer";
 import { Runner } from "../worker/src/index";
 import { nietAlsNieuws } from "../worker/src/showcat";
 
@@ -40,6 +41,10 @@ await t("showbizz: RTL Boulevard-site telt als nieuws, YouTube niet; algemene fe
     await new Runner(ctx, runEnv).run(true);
   } finally { globalThis.fetch = echte; }
   const uur = JSON.parse(kv.get("uur") || "{}");
+  const contract = valideer(uur);
+  assert.ok(uur.items.length > 0);
+  assert.equal(contract.afgewezen, 0);
+  assert.deepEqual(contract.data.items, uur.items);
   const cat = (frag: string) => uur.items.find((i: any) => (i.bronnen || []).some((b: any) => b.href.includes(frag)))?.cat;
   assert.equal(cat("halle-berry"), "showbizz");
   assert.equal(cat("wilfred-genee"), "showbizz");

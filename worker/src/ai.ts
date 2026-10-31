@@ -76,8 +76,9 @@ export type Sum = { kop: string; ai: string; samenvatting: string; punten: strin
 export async function summarize(ai: Ai, model: string, items: In[], u: Usage): Promise<Map<number, Sum>> {
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
   const user =
-    `Vat elk bericht samen. Geef per bericht:\n- "kop": korte Nederlandse kop, max 8 woorden\n- "ai": één korte zin (liefst max 20 woorden) wat er gebeurde\n` +
+    `Vat elk bericht samen in nieuwsstijl. Geef per bericht:\n- "kop": nieuwskop, liefst 6 tot 10 woorden: wie of wat (waar) plus de kern of uitkomst, niet alleen wie praat. Staat er een citaat in de titel, dan mag de kern ervan in de kop (X noemt Y 'grote PR-machine'). Fout: "Discussie over voetballer X". Goed: "Trainer X: speler Y mag vertrekken", "Premier Z stapt op na verlies stemming" (alleen als het zo in de tekst staat). Geen vraag, uitroepteken of lokkertje\n- "ai": 1 of 2 korte zinnen met de kern en de data, plaatsen, adressen en namen uit de tekst. Waarom het ertoe doet alleen als de bron dat zegt, anders een tweede concreet feit. Nooit "Dit is belangrijk" of "Dit gaat over". Herhaal de kop niet\n` +
     `- "samenvatting": 2 tot 3 korte zinnen met de belangrijkste feiten\n- "punten": hooguit 2 korte kernpunten (elk max 12 woorden), alleen feiten die nog niet in de samenvatting staan; anders een lege lijst\n` +
+    `Alleen wat letterlijk in titel of tekst staat: geen interpretatie, gevolgen of oorzaken. Onduidelijke afkortingen (zoals GCC) neutraal overnemen, niet uitleggen. Liever tegenwoordige tijd en actieve vorm ("is", niet "wordt"). Te dunne tekst: schrijf kort wat er staat; gok niet.\n` +
     `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
     JSON.stringify(items.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
   const out = new Map<number, Sum>();
@@ -108,10 +109,16 @@ export async function inHetKort(ai: Ai, model: string, lines: string[], u: Usage
   return t.replace(/^["'\s]*(In het kort:?)?\s*/i, "").replace(/\s+/g, " ").trim();
 }
 
+// Prompt-echo (#378): het model herhaalt soms de instructie i.p.v. het bericht te schrijven; zo'n tekst nooit tonen of bewaren.
+export function isPromptEcho(t: string): boolean {
+  return /^\W*herschrijf\b/i.test(t) || /nieuws in het kort'|eenvoudig nederlands \(b1\)|geef alleen de tekst zelf|alleen feiten uit de aangeleverde tekst/i.test(t);
+}
+
 export async function simpelWeer(ai: Ai, model: string, knmi: string, u: Usage): Promise<string> {
   const sys = STIJL + " Geef alleen de tekst zelf.";
   const user = `Herschrijf dit weerbericht voor heel Nederland in 2 of 3 korte, simpele zinnen (max 60 woorden). Noem vanmiddag/vanavond/morgen en verschillen tussen noord, midden en zuid alleen als dat erin staat. Getallen precies overnemen.\n\n${knmi.slice(0, 1500)}`;
-  return (await chat(ai, model, sys, user, 160, u)).replace(/\s+/g, " ").trim();
+  const t = (await chat(ai, model, sys, user, 160, u)).replace(/\s+/g, " ").trim();
+  return isPromptEcho(t) ? "" : t;
 }
 
 // "Lees verder": per bericht een langere uitleg (3–5 alinea's) en per bron de kernpunten, uit de artikeltekst zelf.
