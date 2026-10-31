@@ -17,8 +17,8 @@ try {
   for (const p of genoemd) assert.ok(existsSync(join(dir, p)), `${p} wordt genoemd maar ontbreekt in de build`);
   const css = readdirSync(join(dir, "assets")).filter((f) => f.endsWith(".css"));
   assert.ok(css.length > 0, "er moet een CSS-bestand in dist/assets staan");
-  assert.ok(!css.includes("index-D0ggz26B.css"), "oude CSS-naam is door de edge als HTML gecachet (#419)");
-  assert.ok(css.every((f) => /-c\.css$/.test(f)), "CSS volgt het naampatroon -[hash]-c.css");
+  assert.ok(!css.includes("index-D0ggz26B.css") && !css.includes("index-D0ggz26B-c.css"), "oude CSS-namen zijn door de edge als HTML gecachet (#419)");
+  assert.ok(css.every((f) => /-s419\.css$/.test(f)), "CSS volgt het naampatroon -[hash]-s419.css");
   assert.ok(!/<link[^>]+rel="stylesheet"/.test(html), "index.html mag geen render-blokkerende stylesheet-link hebben");
   assert.match(html, /<style>/);
   console.log("✓ build: genoemde assets bestaan, CSS inline zonder stylesheet-link");
