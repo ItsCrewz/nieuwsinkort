@@ -76,8 +76,10 @@ export type Sum = { kop: string; ai: string; samenvatting: string; punten: strin
 export async function summarize(ai: Ai, model: string, items: In[], u: Usage): Promise<Map<number, Sum>> {
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
   const user =
-    `Vat elk bericht samen. Geef per bericht:\n- "kop": korte Nederlandse kop, max 8 woorden\n- "ai": één korte zin (liefst max 20 woorden) wat er gebeurde\n` +
+    `Vat elk bericht samen in nieuwsstijl. Geef per bericht:\n- "kop": nieuwskop, max 10 woorden en max 85 tekens: wie of wat, waar, plus het concrete feit of de uitkomst (wat is er gezegd, besloten of gebeurd, door wie). Bijvoorbeeld "Burgemeester sluit café na vechtpartij" in plaats van "Ophef in stad" (voorbeeld van de vorm, niet van de inhoud). Geen vraag, geen uitroepteken, geen "dit moet je zien" of andere lokkertjes, geen vage woorden als "ophef", "discussie" of "ophef over" zonder te zeggen waarom\n` +
+    `- "ai": 1 of 2 korte zinnen (samen liefst max 35 woorden): de kern van wat er gebeurde en waarom het ertoe doet. Herhaal de kop niet letterlijk\n` +
     `- "samenvatting": 2 tot 3 korte zinnen met de belangrijkste feiten\n- "punten": hooguit 2 korte kernpunten (elk max 12 woorden), alleen feiten die nog niet in de samenvatting staan; anders een lege lijst\n` +
+    `Is de brontekst te kort voor kop of kern, schrijf dan alleen de feiten die er staan, kort en feitelijk; vul niets aan en gok niet.\n` +
     `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
     JSON.stringify(items.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
   const out = new Map<number, Sum>();

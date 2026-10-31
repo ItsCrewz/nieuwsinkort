@@ -1,0 +1,1 @@
+- AI-koppen en korte beschrijvingen in nieuwsstijl: de kop noemt wie/wat/waar plus een concreet feit (max 10 woorden), `ai` is 1–2 zinnen met kern en belang; geen clickbait, bij dunne brontekst kort en feitelijk (#427). Alleen de prompt in `summarize` is aangepast; geen extra AI-aanroepen.
