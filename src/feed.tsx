@@ -192,7 +192,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
     video.playsInline = true;
     video.setAttribute("webkit-playsinline", "");
     video.setAttribute("aria-label", v.titel);
-    if (v.thumb) video.poster = v.thumb;
+    if (v.thumb) video.poster = viaProxy(v.thumb);
     video.preload = active || preload ? "auto" : "metadata";
     if (DEBUG) { video.dataset.debugKind = kind; video.dataset.gen = String(g); }
     delete video.dataset.mse;
@@ -1061,7 +1061,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
         {v.thumb && posterOk && !(p?.kind === "youtube" && playable && mount) ? (
           <img
             className={`f-poster${posterVerborgen(p?.kind, beeld, playable, mount, ytVangnet) ? " weg" : ""}`}
-            src={v.thumb}
+            src={viaProxy(v.thumb)}
             alt=""
             loading={Math.abs(i) < 2 || mount ? "eager" : "lazy"}
             decoding="async"

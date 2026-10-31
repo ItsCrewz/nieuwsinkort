@@ -1,14 +1,14 @@
 // Cloudflare Pages Function: doorgeefluik voor Dumpert-video's (HLS).
 // media.dumpert.nl staat alleen dumpert.nl toe (CORS), dus Chrome/Firefox (hls.js) halen
 // de playlist en stukjes via /media/dumpert/... op ons eigen domein. Alleen GET/HEAD,
-// alleen media.dumpert.nl, alleen video-bestanden.
+// alleen media.dumpert.nl, alleen video-bestanden en hun posters.
 interface Ctx {
   request: Request;
   params: { path?: string | string[] };
 }
 
 const HDR = { "X-Content-Type-Options": "nosniff" };
-const ALLOWED = /^dmp\/media\/video\/[0-9a-f/-]+\/(?:\d+\/)?[\w.-]+\.(m3u8|ts|m4s|mp4|aac|key)$/i;
+const ALLOWED = /^dmp\/media\/video\/[0-9a-f/-]+\/(?:\d+\/)?[\w.-]+\.(m3u8|ts|m4s|mp4|aac|key|jpg|jpeg|png|webp)$/i; // beelden = posters onder hetzelfde prefix
 
 export const onRequest = async ({ request, params }: Ctx): Promise<Response> => {
   if (request.method !== "GET" && request.method !== "HEAD") {

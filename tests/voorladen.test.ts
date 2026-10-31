@@ -46,6 +46,23 @@ t("youtube: alleen preconnect; mp4 buiten de eerste drie telt niet", () => {
   assert.deepEqual(p.preconnect, ["https://www.youtube-nocookie.com"]);
   assert.equal(p.mp4, null);
 });
+t("Dumpert-thumb loopt via de proxy, andere thumbs blijven", () => {
+  const d = vid("d", "https://media.dumpert.nl/dmp/media/video/ab/index.m3u8", "https://media.dumpert.nl/dmp/media/video/ab/poster-small.jpg");
+  const f = vid("f", "x", "https://img.example/f.jpg");
+  const p = planVoorladen([f], [d], false, h);
+  assert.deepEqual(p.thumbs, ["https://img.example/f.jpg", "/media/dumpert/dmp/media/video/ab/poster-small.jpg"]);
+});
+t("zonder video (Home): alleen thumbs, geen chunk/hls/mp4/preconnect; met video hetzelfde als voorheen", () => {
+  const zonder = planVoorladen(flm(8), dmp(8), false, h, false);
+  assert.equal(zonder.thumbs.length, 12);
+  assert.deepEqual({ ...zonder, thumbs: [] }, { thumbs: [], preconnect: [], hlsChunk: false, hls: [], mp4: null });
+  const met = planVoorladen(flm(8), dmp(8), false, h, true);
+  assert.deepEqual(met, planVoorladen(flm(8), dmp(8), false, h));
+  assert.equal(met.hlsChunk, true);
+  assert.equal(met.hls.length, 2);
+  assert.ok(met.mp4);
+  assert.deepEqual(met.thumbs, zonder.thumbs);
+});
 t("lege lijsten", () => {
   assert.deepEqual(planVoorladen([], [], false, h), { thumbs: [], preconnect: [], hlsChunk: false, hls: [], mp4: null });
 });

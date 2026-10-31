@@ -76,10 +76,16 @@ const lijsten = (p: string) => ({
 });
 const reset = () => { links.length = plaatjes.length = fetches.length = 0; idleAanroepen = 0; zichtbaar = "visible"; klaarState = "complete"; navVendor = "Google Inc."; navUa = "Mozilla/5.0 (X11; Linux x86_64)"; for (const k in abonnees) delete abonnees[k]; };
 
+const opTab = { closest: (q: string) => (q === "[data-video-tab]" ? {} : null) };
+const intentie = (type = "pointerdown", target: unknown = opTab) => (abonnees[type] || []).slice().forEach((f) => (f as any)({ target }));
+const alsVideo = (u: string) => /\/media\/dumpert\//.test(u);
+
 t("laadt vooraf: thumbs van de startsoort (short) en Dumpert, en preconnect", async () => {
   reset();
   const h = maakHook();
   h.render(lijsten("a"), "2026-01-01T10:00", false);
+  await wacht();
+  intentie();
   await wacht();
   assert.ok(plaatjes.includes("https://img.example/af0.jpg"));
   assert.ok(plaatjes.includes("https://img.example/ad0.jpg"));
@@ -183,6 +189,8 @@ t("mobiele data en Save-Data veranderen niets (sinds #142)", async () => {
   const h = maakHook();
   h.render(lijsten("i"), "2026-01-09T10:00", false);
   await wacht();
+  intentie();
+  await wacht();
   assert.ok(plaatjes.includes("https://img.example/if0.jpg"));
   assert.ok(plaatjes.includes("https://img.example/id0.jpg"));
   assert.ok(fetches.some((u) => u.includes("/media/dumpert/")), "HLS via de proxy ook op mobiele data");
@@ -195,8 +203,70 @@ t("Safari/iOS: preconnect rechtstreeks naar de videobron", async () => {
   const h = maakHook();
   h.render(lijsten("j"), "2026-01-10T10:00", false);
   await wacht();
+  intentie();
+  await wacht();
   assert.ok(links.some((l) => l.href === "https://media.dumpert.nl"));
   h.unmount();
+});
+
+t("Home: zonder intentie alleen thumbs, geen hls-chunk, fetch of preconnect", async () => {
+  reset();
+  const h = maakHook();
+  h.render(lijsten("n"), "2026-02-01T10:00", false);
+  await wacht();
+  assert.ok(plaatjes.includes("https://img.example/nf0.jpg"));
+  assert.equal(fetches.length, 0);
+  assert.equal(links.length, 0);
+  h.unmount();
+});
+t("Dumpert-thumb gaat via /media/dumpert; niet-Dumpert onveranderd", async () => {
+  reset();
+  const h = maakHook();
+  const l = lijsten("o");
+  l.dumpert[0].thumb = "https://media.dumpert.nl/dmp/media/video/ab/poster-small.jpg";
+  h.render(l, "2026-02-02T10:00", false);
+  await wacht();
+  assert.ok(plaatjes.includes("/media/dumpert/dmp/media/video/ab/poster-small.jpg"));
+  assert.ok(plaatjes.includes("https://img.example/of0.jpg"));
+  assert.ok(!plaatjes.some((u) => u.includes("media.dumpert.nl")));
+  h.unmount();
+});
+t("intentie op een andere plek dan de video-tab doet niets; op de tab wel (eenmalig)", async () => {
+  reset();
+  const h = maakHook();
+  h.render(lijsten("p"), "2026-02-03T10:00", false);
+  await wacht();
+  intentie("pointerdown", { closest: () => null });
+  await wacht();
+  assert.equal(fetches.length, 0);
+  intentie("touchstart");
+  await wacht();
+  assert.ok(fetches.some(alsVideo), "hls via de proxy na intentie");
+  const n = fetches.length;
+  intentie("pointerdown");
+  await wacht();
+  assert.equal(fetches.length, n, "listeners zijn na de eerste intentie weg");
+  h.unmount();
+});
+t("intentie vóór idle: ook dan video-plan, daarna geen dubbel werk", async () => {
+  reset();
+  klaarState = "loading";
+  const h = maakHook();
+  h.render(lijsten("q"), "2026-02-04T10:00", false);
+  intentie("focusin");
+  await wacht();
+  assert.ok(fetches.some(alsVideo));
+  h.unmount();
+});
+t("intentie op een video-route start niets; unmount ruimt listeners op", async () => {
+  reset();
+  const h = maakHook();
+  h.render(lijsten("r"), "2026-02-05T10:00", true);
+  intentie();
+  await wacht();
+  assert.equal(fetches.length, 0);
+  h.unmount();
+  assert.equal((abonnees.pointerdown || []).length, 0);
 });
 
 for (const [naam, f] of tests) {
