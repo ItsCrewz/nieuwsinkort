@@ -151,9 +151,11 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
                 alt=""
                 aria-hidden="true"
                 draggable={false}
-                loading={k === 0 ? "eager" : "lazy"}
+                loading={k === 0 && eager ? "eager" : "lazy"} /* buiten beeld nooit eager: alleen de bovenste kaarten */
                 fetchPriority={voorrang && k === 0 ? "high" : undefined}
                 className={klaar.has(u) ? "in" : undefined}
+                width={640}
+                height={360}
                 decoding="async"
                 referrerPolicy="no-referrer"
                 onError={() => drop(u)}
