@@ -35,7 +35,7 @@ import { zonderUitleg } from "../../src/uitgebreid";
 export { Budget };
 
 export function kiesVoorAI<T>(byCat: Record<string, T[]>, tier: number, capN: number): T[] {
-  const ronde = tier >= 3 ? ["nl", "nl", "haarlem"] : ["nl", "nl", "tech", "haarlem", "showbizz"];
+  const ronde = tier >= 3 ? ["nl", "nl", "haarlem"] : ["nl", "nl", "tech", "haarlem", "showbizz", "sport"];
   const pick: T[] = [];
   if (tier < 3) {
     for (const c of ["f1", "voetbal", "auto"]) {
@@ -477,7 +477,7 @@ export class Runner extends DurableObject<Env> {
     let clusters = cluster(cands);
     // Een politieke post over hetzelfde verhaal hoort bij dat nieuwsbericht (rubriek van het nieuws, partij als extra bron)
     for (const k of clusters) {
-      if (!k.c.some((c) => ["f1", "voetbal", "auto"].includes(c.cat))) k.cat = k.c.find((c) => c.cat !== "politiek")?.cat || "politiek";
+      if (!k.c.some((c) => ["f1", "voetbal", "auto", "sport"].includes(c.cat))) k.cat = k.c.find((c) => c.cat !== "politiek")?.cat || "politiek";
       herindeelSport(k);
       herindeelShow(k);
     }
@@ -757,7 +757,7 @@ export class Runner extends DurableObject<Env> {
 
     // ---- In het kort (één keer per run, alleen als de berichten veranderd zijn)
     const lijst = [...items.filter((i) => !i.ruw), ...statItems].slice(0, 70);
-    const order = ["nl", "buitenland", "voetbal", "f1", "auto", "tech", "haarlem", "showbizz"];
+    const order = ["nl", "buitenland", "voetbal", "f1", "auto", "sport", "tech", "haarlem", "showbizz"];
     const lines = order.flatMap((c) => lijst.filter((i) => i.cat === c).slice(0, c === "nl" ? 22 : 10)).map((i) => `${i.cat}: ${i.kop} — ${i.ai}`);
     const kh = await hash(lines.join("\n"));
     let kort = st.kort || "";
