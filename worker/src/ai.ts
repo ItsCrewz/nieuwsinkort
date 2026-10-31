@@ -1,5 +1,5 @@
 import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
-import { groq, mistral, keten, type LlmState, type Wacht } from "./llm";
+import { groq, mistral, keten, ruimteVoor, type LlmState, type Verzoek, type Wacht } from "./llm";
 // Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq- en Mistral-terugval tellen tokens, geen neuronen.
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
   "@cf/google/gemma-4-26b-a4b-it": [9091, 27273],
@@ -10,25 +10,53 @@ export const RATES: Record<string, [number, number]> = { // neuronen per 1M toke
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [26668, 204805],
   "@cf/mistralai/mistral-small-3.1-24b-instruct": [31876, 50488],
 };
-export type Usage = Meting & { aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
+// Laatste AI-fout van een run (#431): alleen een korte, opgeschoonde melding; nooit prompt, artikeltekst, sleutels of headers.
+export type AiBron = "cloudflare" | "groq" | "mistral";
+export type AiLaatsteFout = { soort: "aanroep" | "output"; bericht: string; tijd: string; bron?: AiBron };
+// fails = fAanroep + fOutput (aiFouten in de run-meta); terugval = pogingen via de externe keten, terugvalGroq = daarvan geslaagd via Groq
+export type Usage = Meting & { fAanroep?: number; fOutput?: number; laatsteFout?: AiLaatsteFout; laatsteBron?: string; terugval?: number; terugvalGroq?: number; aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
 
 // Alleen een echte Cloudflare-dagquota-fout (zelfde regel als #79) telt als "Cloudflare op"; geen brede regex.
 export const ketenQuota = (e: unknown) => e instanceof KetenFout && !!e.cloudflare && isDagQuota(e.cloudflare);
 export class KetenFout extends Error {
-  constructor(public cloudflare?: string) { super(`AI-keten uitgeput${cloudflare ? `; cloudflare: ${cloudflare}` : ""}`); }
+  constructor(public cloudflare?: string, public laatste?: { bron?: AiBron; bericht: string }) { super(`AI-keten uitgeput${cloudflare ? `; cloudflare: ${cloudflare}` : ""}`); }
 }
+const LEEG = "Leeg AI-antwoord";
+
+/** Korte, veilige foutmelding: zonder URL's/querystrings, sleutels en lange tokens, op één regel, max 160 tekens. */
+export function schoonBericht(m: unknown): string {
+  const s = String(m instanceof Error ? m.message : m ?? "")
+    .replace(/https?:\/\/\S*/gi, "").replace(/\bBearer\s+\S+/gi, "").replace(/[?&][\w%-]+=\S*/g, "")
+    .replace(/\b(?:api[_-]?key|key|token|secret|authorization)\b\s*[:=]?\s*\S+/gi, "")
+    .replace(/[A-Za-z0-9_\-.]{24,}/g, "…").replace(/\s+/g, " ").trim();
+  return s.slice(0, 160) || "onbekende fout";
+}
+const zetFout = (u: Usage, soort: AiLaatsteFout["soort"], bericht: unknown, bron?: string) => {
+  u.fails++;
+  if (soort === "aanroep") u.fAanroep = (u.fAanroep || 0) + 1; else u.fOutput = (u.fOutput || 0) + 1;
+  u.laatsteFout = { soort, bericht: schoonBericht(bericht), tijd: new Date().toISOString(), ...(bron === "cloudflare" || bron === "groq" || bron === "mistral" ? { bron } : {}) };
+};
+/** Aanroep of keten mislukt (exception, HTTP-fout, keten uitgeput). */
+export const telAanroepFout = (u: Usage, e: unknown) => zetFout(u, "aanroep", e instanceof KetenFout && e.laatste ? e.laatste.bericht : e, e instanceof KetenFout ? e.laatste?.bron : undefined);
+/** Antwoord ontvangen, maar leeg, geen geldige JSON of nul bruikbare items. */
+export const telOutputFout = (u: Usage, bericht: string, bron?: string) => zetFout(u, "output", bericht, bron);
 
 const STIJL =
   "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf voor volwassenen in eenvoudig Nederlands (B1): korte zinnen (liefst hooguit 15 woorden, nooit meer dan 20), gewone woorden; leg jargon en moeilijke woorden kort uit. Schrijf afkortingen bij eerste gebruik voluit. " +
   "Gebruik ALLEEN feiten uit de aangeleverde tekst; verzin niets, geen eigen mening. Is de bron Engels, schrijf dan toch in het Nederlands. Namen en getallen precies overnemen.";
 
-export async function chat(ai: Ai, model: string, sys: string, user: string, maxTokens: number, u: Usage, json = false): Promise<string> {
+const externe = (u: Usage) => [groq(u.llm?.sleutel), mistral(u.llm?.mistralSleutel, u.llm?.mistralMaandTokens, u.llm?.mistralTussenpoos)].filter((a): a is NonNullable<typeof a> => !!a);
+
+export async function chat(ai: Ai, model: string, sys: string, user: string, maxTokens: number, u: Usage, json = false, alleenExtern = false): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
   const v = { sys, user, maxTokens, json };
-  const extern = async () => keten([groq(u.llm?.sleutel), mistral(u.llm?.mistralSleutel, u.llm?.mistralMaandTokens, u.llm?.mistralTussenpoos)].filter((a): a is NonNullable<typeof a> => !!a), u.llm?.state || {}, v, (naam, _model, antwoord) => {
+  let laatsteExtern: { bron?: AiBron; bericht: string } | undefined;
+  u.laatsteBron = undefined;
+  const extern = async () => keten(externe(u), u.llm?.state || {}, v, (naam, _model, antwoord) => {
+    u.laatsteBron = naam;
     u.calls++; u.inTok += antwoord.inTok; u.outTok += antwoord.outTok;
     const t = (u.aanbieders ||= {})[naam] ||= { inTok: 0, outTok: 0 }; t.inTok += antwoord.inTok; t.outTok += antwoord.outTok;
-  }, u.llm ? (u.llm.wacht ||= { totaal: 0 }) : undefined);
+  }, u.llm ? (u.llm.wacht ||= { totaal: 0 }) : undefined, (naam, e) => { laatsteExtern = { bron: naam as AiBron, bericht: schoonBericht(e) }; });
   const cf = async () => {
     if (!ai || u.llm?.cloudflare === false) throw new Error("Cloudflare niet beschikbaar");
     let r: any;
@@ -46,21 +74,25 @@ export async function chat(ai: Ai, model: string, sys: string, user: string, max
     meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
     tokensCf(i0, o0);
     const txt = typeof r?.response === "string" ? r.response : r?.response ? JSON.stringify(r.response) : r?.choices?.[0]?.message?.content || "";
-    if (!txt) throw new Error("Leeg AI-antwoord");
+    if (!txt) throw new Error(LEEG);
+    u.laatsteBron = "cloudflare";
     return String(txt);
   };
   let txt: string;
   let cloudflareFout = u.llm?.cloudflareFout;
   try {
-    if (u.llm?.groqEerst && u.llm.sleutel || u.llm?.cloudflare === false) txt = await extern();
+    if (alleenExtern || u.llm?.groqEerst && u.llm.sleutel || u.llm?.cloudflare === false) txt = await extern();
     else {
       try { txt = await cf(); } catch (e) {
         cloudflareFout = e instanceof Error ? e.message : String(e);
         if (u.llm && isDagQuota(cloudflareFout)) { u.llm.cloudflare = false; u.llm.cloudflareFout = cloudflareFout; }
+        const leeg = cloudflareFout === LEEG;
+        if (leeg) u.terugval = (u.terugval || 0) + 1; // leeg Cloudflare-antwoord: de externe keten is de terugval
         txt = await extern();
+        if (leeg && u.laatsteBron === "groq") u.terugvalGroq = (u.terugvalGroq || 0) + 1;
       }
     }
-  } catch { throw new KetenFout(cloudflareFout); }
+  } catch { throw new KetenFout(cloudflareFout, laatsteExtern || (cloudflareFout ? { bron: "cloudflare", bericht: schoonBericht(cloudflareFout) } : undefined)); }
   return txt.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 function jsonFrom(s: string): any {
@@ -68,6 +100,25 @@ function jsonFrom(s: string): any {
   const a2 = s.indexOf("["), b2 = s.lastIndexOf("]");
   const tryP = (x: string) => { try { return JSON.parse(x); } catch { return undefined; } };
   return (a >= 0 && b > a && tryP(s.slice(a, b + 1))) ?? (a2 >= 0 && b2 > a2 ? tryP(s.slice(a2, b2 + 1)) : undefined);
+}
+
+// JSON-stap met één terugval (#431): geeft Cloudflare een leeg of onbruikbaar antwoord, dan precies één keer opnieuw via de externe keten
+// (Groq eerst, binnen de bestaande limieten). Geen extra Cloudflare-aanroep en geen lus; blijft het leeg, dan telt dat als fout en gaat de run door.
+async function jsonStap<T>(ai: Ai, model: string, sys: string, user: string, maxTokens: number, u: Usage, json: boolean, lees: (txt: string) => Map<number, T>): Promise<Map<number, T>> {
+  const txt = await chat(ai, model, sys, user, maxTokens, u, json);
+  const out = lees(txt);
+  if (out.size) return out;
+  const bron = u.laatsteBron;
+  const reden = !txt ? LEEG : !jsonFrom(txt) ? "Geen geldige JSON" : "Geen bruikbare items";
+  const v: Verzoek = { sys, user, maxTokens, json };
+  if (bron !== "cloudflare" || !u.llm || !ruimteVoor(externe(u), u.llm.state, v)) { telOutputFout(u, reden, bron); return out; }
+  u.terugval = (u.terugval || 0) + 1;
+  try {
+    const opnieuw = lees(await chat(ai, model, sys, user, maxTokens, u, json, true));
+    if (opnieuw.size) { if (u.laatsteBron === "groq") u.terugvalGroq = (u.terugvalGroq || 0) + 1; return opnieuw; }
+    telOutputFout(u, reden, u.laatsteBron);
+  } catch (e) { telAanroepFout(u, e); }
+  return out;
 }
 
 export type In = { id: number; cat: string; bronnen: string[]; titels: string[]; tekst: string };
@@ -81,11 +132,11 @@ export async function summarize(ai: Ai, model: string, items: In[], u: Usage): P
     `Alleen wat letterlijk in titel of tekst staat: geen interpretatie, gevolgen of oorzaken. Onduidelijke afkortingen (zoals GCC) neutraal overnemen, niet uitleggen. Liever tegenwoordige tijd en actieve vorm ("is", niet "wordt"). Te dunne tekst: schrijf kort wat er staat; gok niet.\n` +
     `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
     JSON.stringify(items.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
-  const out = new Map<number, Sum>();
   // kleine modellen: geen JSON-modus (niet overal ondersteund), wel JSON vragen en eruit vissen
   const small = /llama-3\.2-[13]b/.test(model);
   // Minder uitvoer per bericht, met vaste ruimte voor de JSON-structuur.
-  const txt = await chat(ai, model, sys, user, (small ? 150 : 180) * items.length + 80, u, !small);
+  return jsonStap(ai, model, sys, user, (small ? 150 : 180) * items.length + 80, u, !small, (txt) => {
+  const out = new Map<number, Sum>();
   const j = jsonFrom(txt);
   const arr = Array.isArray(j) ? j : j?.items;
   for (const x of Array.isArray(arr) ? arr : []) {
@@ -94,8 +145,8 @@ export async function summarize(ai: Ai, model: string, items: In[], u: Usage): P
     const s: Sum = { kop: str(x.kop, 90), ai: str(x.ai, 240), samenvatting: str(x.samenvatting, 900), punten: (Array.isArray(x.punten) ? x.punten : []).map((p: any) => str(p, 140)).filter(Boolean).slice(0, 2) };
     if (s.kop && s.ai) out.set(id, s);
   }
-  if (!out.size) u.fails++;
   return out;
+  });
 }
 const str = (x: any, n: number) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
@@ -132,8 +183,8 @@ export async function verdiep(ai: Ai, model: string, items: DiepIn[], u: Usage):
     `- "perBron": per bron 2 tot 4 korte kernpunten (elk max 15 woorden) met wat díe bron meldt; "site" precies zoals aangeleverd.\n` +
     `Antwoord als {"items":[{"id":1,"uitleg":["alinea","..."],"perBron":[{"site":"...","punten":["..."]}]}]}\n\nBerichten:\n` +
     JSON.stringify(items);
+  return jsonStap(ai, model, sys, user, 750 * items.length + 100, u, true, (txt) => {
   const out = new Map<number, Diep>();
-  const txt = await chat(ai, model, sys, user, 750 * items.length + 100, u, true);
   const j = jsonFrom(txt);
   const arr = Array.isArray(j) ? j : j?.items;
   for (const x of Array.isArray(arr) ? arr : []) {
@@ -146,6 +197,6 @@ export async function verdiep(ai: Ai, model: string, items: DiepIn[], u: Usage):
       .filter((b: any) => b.punten.length && src.bronnen.some((s) => s.site === b.site));
     if (uitleg.join(" ").length >= 250) out.set(id, { uitleg, perBron });
   }
-  if (!out.size) u.fails++;
   return out;
+  });
 }

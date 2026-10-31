@@ -61,9 +61,71 @@ export function mistral(sleutel?: string, maandTokens?: string, tussenpoos?: str
     } };
 }
 
+// Geschatte tokens voor één verzoek (invoer + gereserveerde uitvoer); keten en ruimteVoor gebruiken dezelfde schatting.
+const schatVerzoek = (a: Aanbieder, model: string, v: Verzoek) => Math.ceil((v.sys.length + v.user.length) / 3.5) + (a.naam === "groq" && groqJson(model, v) ? v.maxTokens * 2 : v.maxTokens);
+
+// Past er nog een verzoek binnen de dag-, maand- en minuutlimieten van minstens één model? Zonder iets te reserveren of te wachten (voor de ene terugval, #431).
+export function ruimteVoor(aanbieders: Aanbieder[], state: LlmState, v: Verzoek, nu = Date.now()): boolean {
+  const dag = new Date(nu).toISOString().slice(0, 10);
+  return aanbieders.some((a) => a.modellen.some((model) => {
+    const s = schatVerzoek(a, model, v), t = state[`${a.naam}:${model}`], vandaag = !!t && t.dag === dag;
+    const maand = t?.maand === dag.slice(0, 7) ? t.maandTokens || 0 : 0;
+    return s <= a.limieten.tpm && (!vandaag || (t.calls < a.limieten.rpd && t.tokens + s <= a.limieten.tpd)) && (a.limieten.maandTokens === undefined || maand + s <= a.limieten.maandTokens);
+  }));
+}
+
+// ---- dagstanden samenvoegen (#431): Worker (`state.llm`) en Pages Function (`groq-chat:<dag>`) houden elk een stand bij.
+// Een keten krijgt de som als beginstand, daarna wordt alleen het verschil bij een verse stand opgeteld; zo verliest geen van beide de ander.
+export const kopieStand = (s: LlmState): LlmState => JSON.parse(JSON.stringify(s || {}));
+/** Beginstand voor een keten: `eigen` plus wat `ander` vandaag al gebruikte (alleen aanbieder-sleutels met `voorvoegsel`). */
+export function somStand(eigen: LlmState, ander: LlmState | null | undefined, dag: string, voorvoegsel = "groq:"): LlmState {
+  const uit = kopieStand(eigen);
+  for (const [k, o] of Object.entries(ander || {})) {
+    if (!k.startsWith(voorvoegsel) || !o || o.dag !== dag) continue;
+    const t = uit[k] && uit[k].dag === dag ? uit[k] : (uit[k] = { dag, calls: 0, tokens: 0, venster: [] });
+    t.calls += +o.calls || 0; t.tokens += +o.tokens || 0; t.venster = [...t.venster, ...(o.venster || [])];
+  }
+  return uit;
+}
+/** Wat een keten aan de stand toevoegde (na - voor); een nieuwe dag begint opnieuw. */
+export function verschilStand(voor: LlmState, na: LlmState): LlmState {
+  const d: LlmState = {};
+  for (const [k, n] of Object.entries(na)) {
+    const v = voor[k], zelfde = v && v.dag === n.dag;
+    const laatste = zelfde ? Math.max(-Infinity, ...v.venster.map((x) => x.tijd)) : -Infinity;
+    d[k] = { dag: n.dag, calls: Math.max(0, n.calls - (zelfde ? v.calls : 0)), tokens: Math.max(0, n.tokens - (zelfde ? v.tokens : 0)), venster: n.venster.filter((x) => x.tijd > laatste),
+      ...(n.maand ? { maand: n.maand, maandTokens: Math.max(0, (n.maandTokens || 0) - (zelfde && v.maand === n.maand ? v.maandTokens || 0 : 0)) } : {}) };
+  }
+  return d;
+}
+/** Telt een verschil op bij een verse stand (muteert `basis`); een andere dag in `basis` wordt vervangen. */
+export function telOp(basis: LlmState, verschil: LlmState): LlmState {
+  for (const [k, d] of Object.entries(verschil)) {
+    if (!d.calls && !d.tokens && !d.maandTokens) continue;
+    let t = basis[k];
+    if (!t || t.dag !== d.dag) t = basis[k] = { dag: d.dag, calls: 0, tokens: 0, venster: [], ...(t?.maand && t.maand === d.maand ? { maand: t.maand, maandTokens: t.maandTokens } : {}) };
+    t.calls += d.calls; t.tokens += d.tokens; t.venster = [...t.venster, ...d.venster].filter((x) => x.tijd > Date.now() - 60000);
+    if (d.maand) { if (t.maand !== d.maand) { t.maand = d.maand; t.maandTokens = 0; } t.maandTokens = (t.maandTokens || 0) + (d.maandTokens || 0); }
+  }
+  return basis;
+}
+/** Schrijft het verbruik van een run bij in de bestaande `state` (voor als de run halverwege faalt of `state` niet weggeschreven werd); fouten worden gelogd, niet gegooid. */
+export async function bewaarLlmVerschil(kv: { get(k: string, t: "json"): Promise<any>; put(k: string, v: string): Promise<unknown> }, voor: LlmState, na: LlmState): Promise<boolean> {
+  try {
+    const vers = await kv.get("state", "json");
+    if (!vers) return false;
+    telOp(vers.llm ||= {}, verschilStand(voor, na));
+    await kv.put("state", JSON.stringify(vers));
+    return true;
+  } catch (x) { console.error("KV-schrijffout state (llm)", x); return false; }
+}
+/** Groq-tokens van één dag, opgeteld over alle modellen en alle gegeven standen. */
+export const groqTokens = (dag: string, ...standen: (LlmState | null | undefined)[]) =>
+  standen.reduce((n, s) => n + Object.entries(s || {}).reduce((m, [k, t]) => m + (k.startsWith("groq:") && t?.dag === dag ? +t.tokens || 0 : 0), 0), 0);
+
 export type Wacht = { totaal: number; nu?: () => number; slaap?: (ms: number) => Promise<void> };
 
-export async function keten(aanbieders: Aanbieder[], state: LlmState, v: Verzoek, gebruik: (naam: string, model: string, antwoord: Antwoord) => void, wacht: Wacht = { totaal: 0 }): Promise<string> {
+export async function keten(aanbieders: Aanbieder[], state: LlmState, v: Verzoek, gebruik: (naam: string, model: string, antwoord: Antwoord) => void, wacht: Wacht = { totaal: 0 }, bijFout?: (naam: string, e: unknown) => void): Promise<string> {
   const klok = wacht.nu || Date.now;
   const slaap = async (ms: number) => { if (ms <= 0) return; wacht.totaal += ms; await (wacht.slaap || ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))))(ms); };
   // Eerstvolgende vrije tijd voor de aanbieder; het venster bevat ook nog lopende reserveringen.
@@ -76,7 +138,7 @@ export async function keten(aanbieders: Aanbieder[], state: LlmState, v: Verzoek
   let alleenVenster = true, modellen = 0, eerste = Infinity;
   for (const a of aanbieders) for (const model of a.modellen) {
     modellen++;
-    const schatting = Math.ceil((v.sys.length + v.user.length) / 3.5) + (a.naam === "groq" && groqJson(model, v) ? v.maxTokens * 2 : v.maxTokens);
+    const schatting = schatVerzoek(a, model, v);
     const nu = klok(), dag = new Date(nu).toISOString().slice(0, 10), sleutel = `${a.naam}:${model}`;
     let t = state[sleutel];
     const maand = dag.slice(0, 7);
@@ -101,6 +163,7 @@ export async function keten(aanbieders: Aanbieder[], state: LlmState, v: Verzoek
       await slaap(tijd - klok());
       try { const antwoord = await a.call(model, v); gebruik(a.naam, model, antwoord); return antwoord.tekst; } catch (e) {
         const melding = e instanceof Error ? e.message : "";
+        bijFout?.(a.naam, e);
         const http = /^AI-aanbieder HTTP (\d{3})$/.exec(melding);
         const details = e instanceof HttpFout && Object.keys(e.details).length ? [e.details] : [];
         console.error("AI-aanbieder mislukt", a.naam, model, http ? `HTTP ${http[1]}` : melding === "Leeg AI-antwoord" ? melding : "overige fout", ...details);
