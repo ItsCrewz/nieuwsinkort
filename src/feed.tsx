@@ -26,7 +26,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
 import { svCache, type Sv } from "./samenvattingcache";
-import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
+import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -841,15 +841,14 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       if (besluit === "probeer") { start.current.pogingen++; apply(); diagnose(); }
       else if (besluit === "vangnet") {
         if (blokkade.current === "-") {
-          blokkade.current = "timeout";
-          if (!s.muted) { onAutoplayBlocked(); post("mute"); if (!s.paused) post("playVideo"); }
+          blokkade.current = "timeout"; // alleen de hint; geen echte weigering, dus niet dempen
           diagnose();
         }
         setVangnet(true);
       }
     }, 250);
     return () => window.clearInterval(timer);
-  }, [apply, diagnose, listening, onAutoplayBlocked, post, setVangnet]);
+  }, [apply, diagnose, listening, post, setVangnet]);
 
   const isShort = /\/shorts\//.test(v.href);
   return (
@@ -991,14 +990,18 @@ type SlideProps = {
   mount: boolean;
   preload: number;
   paused: boolean;
-  muted: boolean;
+  want: boolean;
+  getikt: boolean;
+  nativeBlocked: boolean;
+  ytBlocked: boolean;
   onTap: () => void;
   onClose: () => void;
   onAutoplayBlocked: () => void;
+  onYtBlok: (i: number) => void;
   onYtFout: (i: number, code: unknown) => void;
   onYtSpeelt: () => void;
 };
-const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, preload, paused, muted, onTap, onClose, onAutoplayBlocked, onYtFout, onYtSpeelt }: SlideProps) {
+const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, preload, paused, want, getikt, nativeBlocked, ytBlocked, onTap, onClose, onAutoplayBlocked, onYtBlok, onYtFout, onYtSpeelt }: SlideProps) {
   const p = playerFor(v);
   const ytFout = useCallback((code: unknown) => onYtFout(i, code), [i, onYtFout]);
   const [failed, setFailed] = useState(false);
@@ -1011,7 +1014,10 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
   const [vangnet, setVangnet] = useState(false);
   const playable = !!p && !failed;
   const ytVangnet = p?.kind === "youtube" && active && playable && mount && vangnet;
-  const props: PlayerProps = { v, active, preload, paused, muted, bar, seek, onFail: fail, onAutoplayBlocked, onBeeld: setBeeld };
+  // Geluid per bron: een YouTube-blokkade geldt alleen voor deze slide, nooit voor de poolvideo's.
+  const ytBlokkeer = useCallback(() => onYtBlok(i), [i, onYtBlok]);
+  const muted = !geluidVoorSlide(p?.kind ?? "", want, getikt, nativeBlocked, ytBlocked);
+  const props: PlayerProps = { v, active, preload, paused, muted, bar, seek, onFail: fail, onAutoplayBlocked: p?.kind === "youtube" ? ytBlokkeer : onAutoplayBlocked, onBeeld: setBeeld };
   // Dubbel tikken links/rechts = 5 s terug/vooruit. De eerste tik pauzeert meteen (geen vertraging);
   // blijkt het een dubbele tik, dan draaien we die pauze terug en springen we.
   const lastTap = useRef({ t: 0, side: 0 });
@@ -1238,11 +1244,16 @@ export function Feed({
     [gs, gi, onGroup]
   );
   const [paused, setPaused] = useState(false);
-  // want = jouw keuze (onthouden); blocked = de browser weigerde geluid zonder tik. Te horen = want && !blocked.
+  // want = jouw keuze (onthouden); nativeBlocked = de browser weigerde geluid op een poolvideo (Dumpert, Instagram);
+  // ytBlok = YouTube-slides die geluid weigerden (per slide, dempt nooit een native slide).
   const [want, setWant] = useState(soundOn);
-  const [blocked, setBlocked] = useState(false);
+  const [nativeBlocked, setBlocked] = useState(false);
   const [getikt, setGetikt] = useState(geluidTik);
-  const muted = !geluidMag(want, getikt, blocked);
+  const [ytBlok, setYtBlok] = useState<ReadonlySet<number>>(() => new Set());
+  const ytBlokAan = useCallback((i: number) => setYtBlok((s) => (s.has(i) ? s : new Set(s).add(i))), []);
+  const ytBlokWis = useCallback(() => setYtBlok((s) => (s.size ? new Set() : s)), []);
+  const activeKind = playerFor(items[active])?.kind ?? "";
+  const muted = !geluidVoorSlide(activeKind, want, getikt, nativeBlocked, ytBlok.has(active));
   const unmutedAt = useRef(0);
   const [closing, setClosing] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
@@ -1304,7 +1315,7 @@ export function Feed({
     const uitSlide = uit?.closest<HTMLElement>(".fslide") ?? null;
     const uitSpeelde = !!uit && !uit.paused && Number(uitSlide?.dataset.i) === vorige;
     if (uitSpeelde) uit!.pause();
-    video.muted = !geluidMag(soundRef.current.want, geluidTik(), soundRef.current.blocked);
+    video.muted = !geluidMag(soundRef.current.want, geluidTik(), soundRef.current.nativeBlocked);
     if (lopendeMeting.current?.slide === i && lopendeMeting.current.play === undefined) lopendeMeting.current.play = performance.now();
     video.play().catch((err: DOMException) => {
       if (err?.name === "NotAllowedError") {
@@ -1453,26 +1464,30 @@ export function Feed({
       f.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "unMute", args: [] }), "https://www.youtube-nocookie.com")
     );
   }, [pool]);
-  const soundRef = useRef({ want, blocked });
-  soundRef.current = { want, blocked };
+  const soundRef = useRef({ want, nativeBlocked, ytBlokAan: ytBlok.size > 0 });
+  soundRef.current = { want, nativeBlocked, ytBlokAan: ytBlok.size > 0 };
+  // Een YouTube-blokkade hoort bij de slide waarop ze viel; op een andere slide opnieuw proberen.
+  useEffect(() => { ytBlokWis(); }, [active, ytBlokWis]);
   useEffect(() => {
     const r = root.current;
     if (!r) return;
     const onGesture = (e: Event) => {
       if (!e.isTrusted) return;
+      const eerste = !geluidTik();
       onthoudGeluidTik();
       setGetikt(true);
-      const { want: w, blocked: b } = soundRef.current;
+      const { want: w, nativeBlocked: b } = soundRef.current;
       if ((e.target as HTMLElement)?.closest?.(".f-sound")) return; // die knop regelt het zelf
       if (e.type === "keydown" && /^m$/i.test((e as KeyboardEvent).key)) return; // M = geluid aan/uit
       if (w) {
-        if (b) {
-          // Geluid werd geweigerd: alle elementen opnieuw vrijgeven.
-          vrijgegeven.current = new WeakSet();
+        if (b || eerste) {
+          // Geluid werd geweigerd of staat door deze tik pas aan: alle elementen (opnieuw) vrijgeven, tik pauzeert niet.
+          if (b) vrijgegeven.current = new WeakSet();
           unmuteNow();
           unmutedAt.current = Date.now();
           setBlocked(false);
         } else unmuteNow(); // volgende video's blijven vrijgegeven
+        ytBlokWis();
       }
     };
     let startY = 0;
@@ -1535,22 +1550,25 @@ export function Feed({
       types.forEach((t) => r.removeEventListener(t, onGesture, { capture: true }));
       window.removeEventListener("keydown", onGesture, { capture: true });
     };
-  }, [unmuteNow, startDirect]);
+  }, [unmuteNow, startDirect, ytBlokWis]);
   const toggleMute = useCallback(() => {
+    const eerste = !geluidTik();
     onthoudGeluidTik();
     setGetikt(true);
-    const { want: w, blocked: b } = soundRef.current;
-    if (!w || b) {
+    const { want: w, nativeBlocked: b, ytBlokAan: yb } = soundRef.current;
+    // Een tik voor de eerste gebaar-tik of op een geblokkeerde bron zet geluid aan, nooit uit.
+    if (!w || b || yb || eerste) {
       saveSound(true);
       setWant(true);
       setBlocked(false);
+      ytBlokWis();
       vrijgegeven.current = new WeakSet();
       unmuteNow();
     } else {
       saveSound(false);
       setWant(false);
     }
-  }, [unmuteNow, startDirect]);
+  }, [unmuteNow, ytBlokWis]);
   // De tik die het geluid aanzette pauzeert het filmpje niet.
   const onTap = useCallback(() => {
     if (Date.now() - unmutedAt.current < 700) return;
@@ -1558,6 +1576,7 @@ export function Feed({
   }, []);
   const onBlocked = useCallback(() => setBlocked(true), []);
 
+  const geluidHint = activeKind === "youtube" && ytBlok.has(active) ? "Tik in de video voor geluid" : "Tik voor geluid";
   const label = cat === "dumpert" ? "Dumpert" : gs ? gs[gi].label : "Filmpjes";
   return createPortal(
     <div className="app modal-root">
@@ -1585,10 +1604,14 @@ export function Feed({
               mount={mounted.has(i)}
               preload={i === active + 1 ? 1 : 0}
               paused={i === active && paused}
-              muted={muted}
+              want={want}
+              getikt={getikt}
+              nativeBlocked={nativeBlocked}
+              ytBlocked={ytBlok.has(i)}
               onTap={onTap}
               onClose={close}
               onAutoplayBlocked={onBlocked}
+              onYtBlok={ytBlokAan}
               onYtFout={ytFout}
               onYtSpeelt={ytSpeelt}
             />
@@ -1602,9 +1625,9 @@ export function Feed({
             <span className="f-count tnum">
               {label} · {active + 1}/{items.length}
             </span>
-            <button type="button" className={`f-icon f-sound ${muted ? "" : "on"}`} aria-pressed={!muted} aria-label={muted ? "Tik voor geluid" : "Geluid uit"} onClick={toggleMute}>
+            <button type="button" className={`f-icon f-sound ${muted ? "" : "on"}`} aria-pressed={!muted} aria-label={muted ? geluidHint : "Geluid uit"} onClick={toggleMute}>
               <Icon name={muted ? "mute" : "volume"} />
-              {muted ? <span>Tik voor geluid</span> : null}
+              {muted ? <span>{geluidHint}</span> : null}
             </button>
             {gs ? (
               <div className="f-tabs" role="tablist" aria-label="Soort filmpjes">

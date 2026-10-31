@@ -19,8 +19,13 @@ export function ytStartBesluit(s: YtStart): "wacht" | "probeer" | "vangnet" {
 
 export function ytEchteFout(code: unknown): boolean { return typeof code === "number" && [100, 101, 150, 152].includes(code); }
 export function geluidMag(wens: boolean, tik: boolean, geblokkeerd: boolean): boolean { return wens && tik && !geblokkeerd; }
-export function autoplayGeblokkeerd(soort: string, code?: unknown): boolean {
-  return soort === "onAutoplayBlocked" || (soort === "onError" && !ytEchteFout(code)) || soort === "NotAllowedError" || soort === "timeout";
+// Geluid per bron: een YouTube-blokkade geldt alleen voor YouTube, een native blokkade alleen voor poolvideo's.
+export function geluidVoorSlide(kind: string, wens: boolean, tik: boolean, nativeBlocked: boolean, ytBlocked: boolean): boolean {
+  return geluidMag(wens, tik, kind === "youtube" ? ytBlocked : nativeBlocked);
+}
+// Alleen een echte weigering telt; de 1,5 s-timeout en onError tonen hooguit de hint (ytToonHint).
+export function autoplayGeblokkeerd(soort: string, _code?: unknown): boolean {
+  return soort === "onAutoplayBlocked" || soort === "NotAllowedError";
 }
 
 export function ytStatusNaam(status: number | null): string {

@@ -1,0 +1,1 @@
+- Filmpjes/Dumpert: geluid blijft aan bij doorscrollen. De autoplay-blokkade geldt per bron (een geblokkeerde YouTube-slide dempt Dumpert en Instagram niet meer), de 1,5 s-timeout telt niet als weigering, de eerste geluidstik pauzeert niet en de knop zet geluid voor de eerste tik niet uit; „getikt” geldt per document zodat een herladen tab gedempt start (#437).
