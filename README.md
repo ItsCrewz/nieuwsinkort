@@ -33,7 +33,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | `prod-frozen/` | Bevroren oude productiebuild (zie deploy) |
 | `tests/` | Alle `*.test.ts` draaien met `npm test`, waaronder `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `cluster-randgevallen.test.ts`, `worker-hulpmodules.test.ts`, `x-artikel-foutpaden.test.ts`, `stall.test.ts`, `videopool.test.ts`, `sources.test.ts`, `sources-hooks.test.ts`, `ui-host.test.ts` en `preload-beeld.test.ts`; Pages Functions worden getest met lokale nep-KV en nep-AI; X-foutpaden gebruiken een lokale fetch-mock en de beeldpreloadtest een nep-`Image` zonder netwerk. De `*-randgevallen.test.ts`-bestanden testen onder meer randgevallen bij parsing, filters, tijd en URL's. `live-dedup.ts` en `live-cluster.ts` zijn handmatige checks op echte data |
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
-| `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
+| `export_from_canvas.mjs` | Oude flow (verlaten, komt niet terug): canvas-bron naar `public/data.json`, dat nu alleen nog fallback is |
 
 Met `scripts/feedtitels.mts` zijn nieuwsfeeds voor het lokaal naspelen van clustering op te halen, inclusief Voetbal, Formule 1 en Auto. Buitenland wordt per bericht herkend uit Nederlandse feeds; YouTube, Instagram, Reddit en podcasts blijven uitgesloten. Het script schrijft alleen een lokaal JSON-bestand.
 
