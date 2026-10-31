@@ -8,6 +8,8 @@ interface Ctx {
 }
 
 const HDR = { "X-Content-Type-Options": "nosniff" };
+// Harde grens op het wachten op de upstream-headers: een hangende media.dumpert.nl mag de speler niet eindeloos laten draaien.
+const UPSTREAM_MS = 8000;
 const ALLOWED = /^dmp\/media\/video\/[0-9a-f/-]+\/(?:\d+\/)?[\w.-]+\.(m3u8|ts|m4s|mp4|aac|key)$/i;
 
 export const onRequest = async ({ request, params }: Ctx): Promise<Response> => {
@@ -23,13 +25,24 @@ export const onRequest = async ({ request, params }: Ctx): Promise<Response> => 
   const range = request.headers.get("Range");
   if (range) headers["Range"] = range;
 
-  const r = await fetch(upstream, {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), UPSTREAM_MS);
+  let r: Response;
+  try {
+    r = await fetch(upstream, {
+    signal: ac.signal,
     method: request.method,
     headers,
     // @ts-ignore - Cloudflare-specifieke cache-optie
     // Playlists kort (5 min), stukjes video veranderen nooit: een jaar aan de rand van Cloudflare.
     cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": isList ? 300 : 31536000, "404": 30, "500-599": 0 } },
-  });
+    });
+  } catch {
+    // Time-out of netwerkfout: 504 zonder cache, zodat hls.js snel faalt en de feed een poster/foutmelding toont.
+    return new Response("Upstream time-out", { status: 504, headers: { ...HDR, "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" } });
+  } finally {
+    clearTimeout(timer);
+  }
   const out = new Headers(HDR);
   for (const h of ["content-type", "content-length", "content-range", "accept-ranges", "last-modified", "etag"]) {
     const v = r.headers.get(h);

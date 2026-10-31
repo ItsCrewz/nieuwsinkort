@@ -1,0 +1,1 @@
+- Dumpert-proxy en hls.js krijgen harde time-outs: een hangende upstream geeft een fout (poster met melding) in plaats van een eindeloze spinner (#394).

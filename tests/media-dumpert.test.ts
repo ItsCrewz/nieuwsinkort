@@ -94,6 +94,20 @@ try {
       assert.equal(r.headers.get("Access-Control-Allow-Origin"), "*");
     }
   });
+
+  await t("hangende upstream: harde time-out geeft 504 no-store (nep-klok, geen netwerk)", async () => {
+    const echteTimeout = globalThis.setTimeout;
+    let ms = 0;
+    globalThis.setTimeout = ((f: () => void, m: number) => { ms = m; queueMicrotask(f); return 0; }) as any;
+    globalThis.fetch = ((_u: any, init: any) => new Promise((_ok, fout) => init.signal.addEventListener("abort", () => fout(new Error("abort"))))) as any;
+    try {
+      const r = await vraag(LIJST);
+      assert.equal(r.status, 504);
+      assert.equal(r.headers.get("Cache-Control"), "no-store");
+      assert.equal(r.headers.get("X-Content-Type-Options"), "nosniff");
+      assert.ok(ms > 0 && ms <= 10000);
+    } finally { globalThis.setTimeout = echteTimeout; }
+  });
 } finally {
   globalThis.fetch = echteFetch;
 }

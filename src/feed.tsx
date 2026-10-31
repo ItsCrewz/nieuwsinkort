@@ -633,6 +633,9 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         maxMaxBufferLength: on ? 60 : plan.secs,
         maxBufferSize: plan.bytes,
         backBufferLength: 10,
+        // Harde time-outs: een hangende proxy/upstream geeft een fatale fout (poster + melding), geen eindeloze spinner.
+        manifestLoadingTimeOut: 8000, manifestLoadingMaxRetry: 1, levelLoadingTimeOut: 8000, levelLoadingMaxRetry: 1,
+        fragLoadingTimeOut: 12000, fragLoadingMaxRetry: 2,
         startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
       });
       // Niet hoger dan 720p, en H.264 (avc1) als die er is: soepel decoderen op telefoons.
