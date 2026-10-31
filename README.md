@@ -96,7 +96,7 @@ Elke PR voegt een fragment `changelog.d/<issue>-<slug>.md` toe (onderdeel van "k
 
 ## Beveiligingsheaders
 
-Statische bestanden krijgen via `public/_headers` een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, altijd hervalideren); `/assets/*` is immutable, `/bronnen.json` en de iconen hebben in `_headers` een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
+Statische bestanden krijgen via `public/_headers` HSTS met `max-age=86400`, een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De HTML verwijdert de CORS-header; `/data.json` gebruikt dezelfde origin en de Function behoudt haar eigen CORS-header. Pages Functions krijgen de headers uit `_headers` niet automatisch; de vier Functions zetten zelf `X-Content-Type-Options: nosniff`. Cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, altijd hervalideren); `/assets/*` is immutable, `/bronnen.json` en de iconen hebben in `_headers` een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
 
 De CSP staat het Cloudflare Web Analytics-script van `static.cloudflareinsights.com` toe, zodat de door Cloudflare ingevoegde beacon kan werken. `cloudflareinsights.com` staat expliciet bij `connect-src`; HTTPS-verbindingen waren daar al toegestaan. Deze aanpassing vereist beoordeling door Joey.
 
