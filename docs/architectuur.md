@@ -263,6 +263,8 @@ De uur-Worker gebruikt de al opgehaalde statische data en `uur` om dezelfde merg
 
 CPU-limiet (#404): de resterende zware pad (geen `data-vooraf`: ASSETS-parse, `merge`, `schoon`, stringify, ETag) werd gedomineerd door `sameCaption` in `src/dedup.ts`, dat per videopaar opnieuw regex-normaliseerde. `caption()` cachet nu per video (WeakMap, geldig zolang `titel`/`ai` gelijk blijven). Lokale Node-meting, 100 verzoeken na opwarming, 335 KB-data, 30 uuritems, KV-doubles: 24,0 → 15,1 ms CPU per verzoek; body en ETag byte-identiek (vergeleken met de oude code). Lokale indicatie, geen Cloudflare-CPU. Het `data-vooraf`-pad (geen parse/merge) blijft de snelle route.
 
+CPU-limiet, vervolg (#409): de meting geeft alleen een totaal (171 `exceededResources` op 5369 verzoeken), geen telling per route; dit is dus een afleiding uit de code, niet bevestigd. Naast `data.json` parsen twee routes per verzoek een grote KV-blob: `/meer` (blob `meer`, honderden KB; ook voor 404's) en `/samenvatting` bij een cache-miss (`uur` ±330 KB plus ASSETS-`data.json` ±120 KB in `vindVideo`). Beide houden het geparste resultaat nu 60 s vast per isolate en per KV-binding (WeakMap; dezelfde 60 s als de bestaande KV-`cacheTtl`); fouten en een ontbrekende blob worden niet bewaard. Antwoorden zijn ongewijzigd. Test: `tests/meer-randgevallen.test.ts`. Of de 171 hiermee verdwijnen blijkt pas uit een volgende meting.
+
 Lokale Node-meting met de incidentkopieën `/tmp/kv-uur.json` (331.623 bytes) en `/tmp/st-bb662877.json` (117.318 bytes), 20 verzoeken na opwarming: oud 60,672 ms CPU per verzoek, nieuw 1,566 ms. Dit is een lokale indicatie, geen meting van Cloudflare-CPU; de oude meting gebruikt lokale KV-doubles.
 
 ## Toegankelijkheid: slider en focus (#328)

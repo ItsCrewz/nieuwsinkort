@@ -269,12 +269,21 @@ function kvPoort(env: Env): Poort {
 }
 
 // ---------------- welke filmpjes staan er nu op de site
+// Elke cache-miss parste uur (±330 KB) en data.json (±120 KB) opnieuw: CPU-zwaar (#409). De videolijst
+// blijft per isolate en per KV-binding 60 s staan; alleen gelukte lezingen worden bewaard.
+const lijstCache = new WeakMap<object, { at: number; lists: any[] }>();
 async function vindVideo(env: Env, req: Request, id: string): Promise<any | null> {
-  const lists: any[] = [];
-  try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch { console.error("samenvatting: fout bij fallback"); }
-  try { const S: any = await (await env.ASSETS.fetch(new URL("/data.json", req.url).toString())).json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { console.error("samenvatting: fout bij fallback"); }
+  let c = lijstCache.get(env.NIEUWS);
+  if (!c || Date.now() - c.at >= 60e3) {
+    const lists: any[] = [];
+    let ok = true;
+    try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
+    try { const S: any = await (await env.ASSETS.fetch(new URL("/data.json", req.url).toString())).json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
+    c = { at: Date.now(), lists };
+    if (ok) lijstCache.set(env.NIEUWS, c);
+  }
   const { videoSlug } = await import("../src/slug");
-  return lists.find((v) => v?.href && videoSlug(v) === id) || null;
+  return c.lists.find((v) => v?.href && videoSlug(v) === id) || null;
 }
 
 export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> => {

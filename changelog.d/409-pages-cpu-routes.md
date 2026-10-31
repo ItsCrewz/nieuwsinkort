@@ -1,0 +1,1 @@
+- Onderhoud: de Pages Functions `/meer` en `/samenvatting` parsen de grote KV-blob (`meer`, `uur`) en `data.json` niet meer bij elk verzoek, maar hergebruiken die 60 s per isolate; antwoorden ongewijzigd (#409).
