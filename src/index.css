@@ -659,3 +659,25 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .v-ext{position:relative;z-index:2}
 
 .nf-panel{display:flex;flex:1;min-height:0}
+
+/* Artikelen leesbaar afdrukken zonder bediening of media. */
+@media print{
+  @page{size:A4;margin:15mm}
+  html,body,#root,.app,.shell{min-height:0;height:auto;overflow:visible;background:#fff;color:#000}
+  .app *{color:#000!important;box-shadow:none!important;text-shadow:none!important}
+  .topbar,.dateline,.foot,nav,button,video,iframe,.feed,[data-testid="video-debug"],.d-img,.d-meer-laden{display:none!important}
+  .wrap,.detail{width:auto;max-width:none;margin:0;padding:0}
+  .page-in{animation:none!important}
+  .d-head{margin:0;gap:8px}
+  .d-title{font-size:24pt;line-height:1.15}
+  .d-lead,.d-body,.points li,.pb li{font-size:11pt;line-height:1.4}
+  .d-body{margin-top:14px;gap:10px}
+  .d-sec{margin-top:18px}
+  .d-h{margin-bottom:6px}
+  .points,.perbron{gap:6px}
+  .srclist,.pb{background:#fff;border:0;border-radius:0}
+  .srcrow{display:block;padding:4px 0;border:0}
+  .srcrow .mono,.srcrow .s-out,.srcrow .ic,.pb-site .ic{display:none}
+  .srcrow::after,.pb-site::after{content:" (" attr(href) ")";font-size:10pt;font-weight:400;overflow-wrap:anywhere}
+  .pb{padding:0}
+}

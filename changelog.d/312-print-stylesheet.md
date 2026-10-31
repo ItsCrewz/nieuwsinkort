@@ -1,0 +1,1 @@
+- Berichten krijgen een rustige afdrukopmaak met zichtbare bron-URL's (#312).
