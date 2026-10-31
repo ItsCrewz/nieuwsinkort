@@ -1,0 +1,1 @@
+- ESLint ingevoerd (`npm run lint`, typescript-eslint + react-hooks, 0 errors, 372 warnings) en opgenomen in `npm run check` (#300).

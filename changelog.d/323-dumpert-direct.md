@@ -1,0 +1,1 @@
+- Dumpert probeert op native HLS bij een fout of uitblijvende metadata eenmaal de proxy; de debug-overlay toont de route (#323).

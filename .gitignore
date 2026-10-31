@@ -26,3 +26,6 @@ __pycache__/
 *.bak*
 .DS_Store
 npm-debug.log*
+
+# coverage-uitvoer
+coverage/

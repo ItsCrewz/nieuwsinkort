@@ -5,7 +5,9 @@
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { alleenVandaag } from "../src/vandaag";
 import { schoon } from "../src/schoon";
-interface KV { get(key: string, type: "json"): Promise<any> }
+import { youtubeId } from "../src/slug";
+import { ams } from "../src/tijd";
+interface KV { get(key: string, type: "json" | "text"): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env }
 
@@ -24,7 +26,7 @@ export function slim(d: any) {
 }
 
 /** Zwakke ETag over de body: de 15-minuten-verversing krijgt dan een 304 zonder body zolang er niets nieuws is. */
-async function etag(body: string) {
+export async function etag(body: string) {
   const h = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(body));
   return `W/"${[...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("")}"`;
 }
@@ -34,8 +36,19 @@ export function merge(S: any, H: any) {
   if (!H || dag(H.gegenereerd) !== vandaag) return S; // uur-data van gisteren: niet gebruiken
   const sOk = S && dag(S.gegenereerd) === vandaag;
   const base = sOk ? S : { items: [], filmpjes: [], dumpert: [] };
+  const geblokkeerd = new Set<string>(Array.isArray(H.ytGeblokkeerd) ? H.ytGeblokkeerd : []);
+  const toegestaan = (v: any) => {
+    const id = youtubeId(v.embed || "") || youtubeId(v.href || "");
+    return !id || !geblokkeerd.has(id);
+  };
   const sLinks = new Set<string>((base.items || []).flatMap((i: any) => (i.bronnen || []).map((b: any) => norm(b.href))));
-  const nieuw = (H.items || []).filter((i: any) => !(i.bronnen || []).some((b: any) => sLinks.has(norm(b.href))));
+  // Eerst dagfilteren en op tijd ordenen, zodat oude berichten geen plek innemen.
+  const uurItems = (H.items || []).length > 150 ? alleenVandaag(H, Date.now()).items : (H.items || []);
+  const nieuw = uurItems.filter((i: any) => !(i.bronnen || []).some((b: any) => sLinks.has(norm(b.href))));
+  if (nieuw.length > 150) {
+    nieuw.sort((a: any, b: any) => (b.t ?? 0) - (a.t ?? 0) || (b.tijd || "").localeCompare(a.tijd || ""));
+    nieuw.length = 150;
+  }
   const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
   const sV = new Set<string>((base.filmpjes || []).map((v: any) => v.href));
   const sTijd = sOk ? new Date(S.gegenereerd).toLocaleTimeString("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }) : "00:00";
@@ -58,8 +71,8 @@ export function merge(S: any, H: any) {
     tab_samenvatting: H.tab_samenvatting,
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
     items: [...nieuw, ...(base.items || [])].map(metMeer),
-    filmpjes: sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || [],
-    dumpert: (H.dumpert || []).length >= 5 ? H.dumpert : base.dumpert || H.dumpert || [],
+    filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
+    dumpert: ((H.dumpert || []).length >= 5 ? H.dumpert : base.dumpert || H.dumpert || []).filter(toegestaan),
     bronstats: h.bronstats || base.bronstats,
     gegenereerd: hNieuwer ? H.gegenereerd : S.gegenereerd,
     routine_gegenereerd: sOk ? S.gegenereerd : null,
@@ -67,10 +80,37 @@ export function merge(S: any, H: any) {
   };
 }
 
+export async function berekenBody(S: any, H: any, sv: any, nu = Date.now()) {
+  let out = merge(S, H);
+  out = alleenVandaag(out, nu);
+  out = schoon(out);
+  if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
+  return JSON.stringify(slim(out));
+}
+
 export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => {
   const u = new URL(request.url);
-  const stat = await env.ASSETS.fetch(new Request(new URL("/data.json", u.origin).toString()));
-  if (u.searchParams.has("statisch") || !env.NIEUWS || !stat.ok) {
+  if (!u.searchParams.has("statisch") && env.NIEUWS) {
+    try {
+      const vooraf = await env.NIEUWS.get("data-vooraf", "text");
+      if (vooraf && (vooraf.slice(0, 10) === dag() || (ams().h < 6 && vooraf.slice(0, 10) === dag(new Date(Date.now() - 24 * 3600e3).toISOString()))) && vooraf[10] === "\n") {
+        const einde = vooraf.indexOf("\n", 11);
+        if (einde > 11) {
+          const tag = vooraf.slice(11, einde);
+          if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
+          return new Response(vooraf.slice(einde + 1), { headers: { ...HDR, ETag: tag } });
+        }
+      }
+    } catch { console.error("data.json: KV vooraf lezen mislukt"); }
+  }
+  const assetUrl = new URL("/data.json", u.origin).toString();
+  let stat: Response | undefined;
+  for (let poging = 0; poging < 2; poging++) {
+    try { stat = await env.ASSETS.fetch(new Request(assetUrl)); } catch { stat = undefined; }
+    if (stat?.ok) break;
+  }
+  if (!stat?.ok) return new Response(JSON.stringify({ fout: "Data tijdelijk niet beschikbaar" }), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  if (u.searchParams.has("statisch") || !env.NIEUWS) {
     return new Response(stat.body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
   }
   const S: any = await stat.json();

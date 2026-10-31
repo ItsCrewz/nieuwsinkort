@@ -151,4 +151,16 @@ t("caption: verschillende video's over hetzelfde onderwerp blijven apart", () =>
   assert.equal(dedupVideos([live46[0]], [live46[1]]).list.length, 0);
 });
 
+t("caption-cache: zelfde uitkomst bij herhaling en na wijziging van titel/ai (#404)", () => {
+  const ai = "Bekijk hier de beelden van het laatste nieuws vandaag. De politie hield een verdachte aan in de binnenstad.";
+  const a: any = { bron: "YouTube", titel: "Eerste opname", href: "https://youtu.be/aaaaaaaaaaa", tijd: "10:00", ai };
+  const b: any = { bron: "TikTok", titel: "Tweede opname", href: "https://youtu.be/bbbbbbbbbbb", tijd: "10:05", ai };
+  assert.equal(dedupVideos([a, b]).list.length, 1);
+  assert.equal(dedupVideos([a, b]).list.length, 1);
+  b.ai = "Totaal andere tekst over de brandweer die een grote brand bluste in het centrum van de stad vandaag.";
+  assert.equal(dedupVideos([a, b]).list.length, 2);
+  b.ai = ai;
+  assert.equal(dedupVideos([a, b]).list.length, 1);
+});
+
 console.log(`\n${n} tests geslaagd`);

@@ -1,0 +1,1 @@
+- `tests/data-merge.test.ts` gebruikt een vaste klok (middag Amsterdam) en test expliciet de daggrens 23:59/00:30, zodat de test niet meer rond middernacht faalt (#400).

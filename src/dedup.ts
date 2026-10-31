@@ -65,7 +65,16 @@ function sameTitle(a: string[], b: string[]): boolean {
   return n / (a.length + b.length - n) >= 0.8;
 }
 
+// sameCaption vergelijkt elk paar: genormaliseerde tekst per video één keer maken (O(n) i.p.v. O(n²) regex-werk).
+const captionCache = new WeakMap<DVideo, { titel?: string; ai?: string; res: string[] }>();
 function caption(v: DVideo): string[] {
+  const c = captionCache.get(v);
+  if (c && c.titel === v.titel && c.ai === v.ai) return c.res;
+  const res = captionBereken(v);
+  captionCache.set(v, { titel: v.titel, ai: v.ai, res });
+  return res;
+}
+function captionBereken(v: DVideo): string[] {
   const norm = (s: string) => s.replace(/#[\p{L}\d_]+/gu, " ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const titel = norm(v.titel || ""), ai = norm(v.ai || "");
   return [...new Set([ai, ai.startsWith(titel) ? ai : `${titel} ${ai}`.trim()].filter(Boolean))];
