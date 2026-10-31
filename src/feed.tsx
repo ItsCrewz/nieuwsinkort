@@ -8,7 +8,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
-import { playerFor, viaProxy, youtubeId } from "./video";
+import { playerFor, viaProxy, youtubeId } from "./videosoort";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -25,6 +25,7 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
+import { svCache, type Sv } from "./samenvattingcache";
 import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
@@ -860,7 +861,6 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       src={src}
       title={v.titel}
       data-yt-vangnet={vangnet ? "ja" : "nee"}
-      tabIndex={-1}
       allow="autoplay; encrypted-media; picture-in-picture"
       referrerPolicy="strict-origin-when-cross-origin"
       onLoad={() => {
@@ -889,6 +889,13 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
   const hit = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ p: number; d: number } | null>(null);
   const st = useRef<{ id: number; p: number } | null>(null);
+  // aria-valuenow/-text: de balk zelf beweegt buiten React om, dus lees de stand bij focus en na toetsen/slepen
+  const [pos, setPos] = useState({ t: 0, d: 0 });
+  const lees = (t?: number) => {
+    const api = seek.current;
+    const d = api?.dur() ?? 0;
+    setPos(d > 0 && isFinite(d) ? { t: Math.min(d, Math.max(0, t ?? api!.cur())), d } : { t: 0, d: 0 });
+  };
   const ratio = (x: number) => {
     const r = hit.current!.getBoundingClientRect();
     return Math.min(1, Math.max(0, (x - r.left) / (r.width || 1)));
@@ -929,6 +936,7 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
     const d = api?.dur() ?? 0;
     if (e.type !== "pointercancel" && api && d > 0) api.seek(s.p * d);
     setDrag(null);
+    lees(e.type !== "pointercancel" ? s.p * d : undefined);
   };
   const key = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const api = seek.current;
@@ -936,7 +944,9 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       e.stopPropagation();
-      api.seek(api.cur() + (e.key === "ArrowRight" ? 5 : -5));
+      const t = api.cur() + (e.key === "ArrowRight" ? 5 : -5);
+      api.seek(t);
+      lees(t);
     }
   };
   return (
@@ -947,7 +957,9 @@ function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.Re
       aria-label={`Doorspoelen: ${title}`}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={drag ? Math.round(drag.p * 100) : undefined}
+      aria-valuenow={drag ? Math.round(drag.p * 100) : pos.d > 0 ? Math.round((pos.t / pos.d) * 100) : 0}
+      aria-valuetext={drag ? `${fmt(drag.p * drag.d)} van ${fmt(drag.d)}` : `${fmt(pos.t)} van ${fmt(pos.d)}`}
+      onFocus={() => lees()}
       tabIndex={enabled ? 0 : -1}
       onPointerDown={enabled ? down : undefined}
       onPointerMove={enabled ? move : undefined}
@@ -1100,12 +1112,6 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
 // ------------------------------------------------------------- samenvatting op verzoek
 // Knop + onderblad. De server (functions/samenvatting.ts) haalt ondertiteling of luistert de eerste minuten,
 // vat samen in simpele punten en bewaart dat per filmpje, dus de tweede keer is het meteen klaar.
-type Sv = { ok: true; punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number; model?: string; neuronen?: number; cached?: boolean } | { ok: false; code: string; fout: string };
-const svCache = new Map<string, Sv>();
-/** Vooraf gemaakte samenvattingen uit /data.json in de cache zetten (knop toont dan "klaar"). */
-export function zaaiSamenvattingen(m?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>) {
-  for (const [id, x] of Object.entries(m || {})) if (Array.isArray(x?.punten) && x.punten.length && !svCache.has(id)) svCache.set(id, { ok: true, punten: x.punten, bron: x.bron, sec: x.sec, cached: true });
-}
 async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
   const hit = svCache.get(id);
   if (hit) return hit;
@@ -1566,7 +1572,7 @@ export function Feed({
           if (e.target === root.current && closing) onClose();
         }}
       >
-        <div className={`feed-scroll ${gi ? "g1" : "g0"}`} key={gi} ref={scroller} tabIndex={-1}>
+        <div className={`feed-scroll ${gi ? "g1" : "g0"}`} id="feed-paneel" role={gs ? "tabpanel" : undefined} key={gi} ref={scroller} tabIndex={-1}>
           {items.map((v, i) => (
             <Slide
               pool={pool}
@@ -1603,7 +1609,7 @@ export function Feed({
             {gs ? (
               <div className="f-tabs" role="tablist" aria-label="Soort filmpjes">
                 {gs.map((g, k) => (
-                  <button key={g.id} type="button" role="tab" className="f-tab" aria-selected={k === gi} onClick={() => pickGroup(k)}>
+                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} onClick={() => pickGroup(k)}>
                     {g.label}
                     <span className="tnum">{g.list.length}</span>
                   </button>

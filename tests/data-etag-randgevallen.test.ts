@@ -129,6 +129,21 @@ try {
     assert.deepEqual(await r.json(), statisch);
   });
 
+  await t("?statisch=1 geeft oude statische data ongefilterd terug (geen vandaag-filter, vaste klok)", async () => {
+    const oud = {
+      gegenereerd: "2026-10-28T07:00:00Z",
+      items: [{ titel: "Oud bericht", t: Date.parse("2026-10-28T06:30:00Z"), bronnen: [{ href: "https://nos.nl/oud" }] }],
+      filmpjes: [{ href: "https://example.com/v", titel: "Oud filmpje" }],
+      dumpert: [],
+      ontdubbeld: 2,
+    };
+    const { env } = maakEnv({});
+    env.ASSETS.fetch = async () => Response.json(oud);
+    const r = await data({ request: req("/data.json?statisch=1"), env });
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), oud);
+  });
+
   await t("?statisch zonder waarde slaat de KV ook over", async () => {
     const { env, kvLeest } = maakEnv({});
     await data({ request: req("/data.json?statisch"), env });
@@ -148,10 +163,11 @@ try {
     assert.deepEqual(kvLeest, ["data-vooraf", "uur", "sv-klaar"]);
   });
 
-  await t("mislukte ASSETS-fetch geeft de status door na de data-vooraf-read", async () => {
+  await t("mislukte ASSETS-fetch geeft een tijdelijke 503 na de data-vooraf-read", async () => {
     const { env, kvLeest } = maakEnv({}, { assetStatus: 404 });
     const r = await data({ request: req("/data.json"), env });
-    assert.equal(r.status, 404);
+    assert.equal(r.status, 503);
+    assert.equal(r.headers.get("retry-after"), "60");
     assert.deepEqual(kvLeest, ["data-vooraf"]);
     assert.equal(r.headers.get("etag"), null);
   });

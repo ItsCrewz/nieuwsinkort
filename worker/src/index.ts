@@ -12,7 +12,7 @@ import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
 import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, selecteerFilmpjes, ytEmbedGeblokkeerd, ytEmbedStatus, ytCombineer, type YtDiag, ytVideoId, ytNieuweControles, ytGeblokkeerdeShorts, ytBlokkades, ruimYtCache, type YtCache, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
-import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
+import { summarize, inHetKort, simpelWeer, isPromptEcho, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
@@ -367,7 +367,7 @@ export class Runner extends DurableObject<Env> {
     const bronnen: any = await bronnenR.json();
     const stat: any = staticR.ok ? await staticR.json().catch(() => null) : null;
     // cache per Amsterdamse dag, neuronenteller per UTC-dag: de teller loopt door over de Amsterdamse datumgrens
-    let st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: stateRaw?.neurons || 0, calls: stateRaw?.calls || 0, inTok: stateRaw?.inTok, outTok: stateRaw?.outTok, geschat: stateRaw?.geschat, foutN: stateRaw?.foutN, neuronDag: stateRaw?.neuronDag ?? stateRaw?.datum, sums: stateRaw?.sums || {}, links: {}, hashes: stateRaw?.hashes || {}, runs: 0, okAt: stateRaw?.okAt || {} };
+    const st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: stateRaw?.neurons || 0, calls: stateRaw?.calls || 0, inTok: stateRaw?.inTok, outTok: stateRaw?.outTok, geschat: stateRaw?.geschat, foutN: stateRaw?.foutN, neuronDag: stateRaw?.neuronDag ?? stateRaw?.datum, sums: stateRaw?.sums || {}, links: {}, hashes: stateRaw?.hashes || {}, runs: 0, okAt: stateRaw?.okAt || {} };
     st.ytEmbed = ruimYtCache(stateRaw?.ytEmbed, now);
     zetDagTeller(st, U);
     st.llm ||= stateRaw?.llm || {};
@@ -646,6 +646,8 @@ export class Runner extends DurableObject<Env> {
     }
     items.sort((a, b) => b._t - a._t);
     for (const i of items) delete i._t;
+    // Na de AI-stap staat de AI-kop er (bijv. "voetballer"): sport opnieuw bepalen, ook voor items uit eerdere runs; buitenland pas daarna
+    for (const i of items) i.cat = sportCat({ cat: i.cat, kop: i.kop || "", hrefs: (i.bronnen || []).map((b: any) => b.href || "") }) || i.cat;
     for (const i of items) if (i.cat === "nl" && isBuitenland({ kop: i.kop, ai: i.ai, bronnen: i.bronnen.map((b: any) => ({ ...b, buitenFeed: buitenL.has(normLink(b.href)) })) })) i.cat = "buitenland";
 
     // ---- "Lees verder": artikeltekst ophalen (zonder AI) en, zolang het dagbudget het toelaat, een langere uitleg
@@ -795,9 +797,10 @@ export class Runner extends DurableObject<Env> {
     if (W.knmiTekst) {
       const wh = await hash("nl:" + W.knmiTekst); // "nl:" = landelijke prompt; ververst een oude Haarlem-tekst eenmalig
       if (wh !== st.weerHash && !quotaOut && tier() <= 2) {
-        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
+        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30 && !isPromptEcho(t)) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
         await cfStand();
       }
+      if (st.weerTxt && isPromptEcho(st.weerTxt)) { st.weerTxt = undefined; st.weerHash = undefined; } // eerder bewaarde prompt-echo (#378) niet hergebruiken
       if (st.weerHash === wh && st.weerTxt) W.weer.verwachting = st.weerTxt;
     }
 

@@ -6,6 +6,7 @@
 import { alleenVandaag } from "../src/vandaag";
 import { schoon } from "../src/schoon";
 import { youtubeId } from "../src/slug";
+import { ams } from "../src/tijd";
 interface KV { get(key: string, type: "json" | "text"): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env }
@@ -92,7 +93,7 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
   if (!u.searchParams.has("statisch") && env.NIEUWS) {
     try {
       const vooraf = await env.NIEUWS.get("data-vooraf", "text");
-      if (vooraf && vooraf.slice(0, 10) === dag() && vooraf[10] === "\n") {
+      if (vooraf && (vooraf.slice(0, 10) === dag() || (ams().h < 6 && vooraf.slice(0, 10) === dag(new Date(Date.now() - 24 * 3600e3).toISOString()))) && vooraf[10] === "\n") {
         const einde = vooraf.indexOf("\n", 11);
         if (einde > 11) {
           const tag = vooraf.slice(11, einde);
@@ -102,8 +103,14 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
       }
     } catch { console.error("data.json: KV vooraf lezen mislukt"); }
   }
-  const stat = await env.ASSETS.fetch(new Request(new URL("/data.json", u.origin).toString()));
-  if (u.searchParams.has("statisch") || !env.NIEUWS || !stat.ok) {
+  const assetUrl = new URL("/data.json", u.origin).toString();
+  let stat: Response | undefined;
+  for (let poging = 0; poging < 2; poging++) {
+    try { stat = await env.ASSETS.fetch(new Request(assetUrl)); } catch { stat = undefined; }
+    if (stat?.ok) break;
+  }
+  if (!stat?.ok) return new Response(JSON.stringify({ fout: "Data tijdelijk niet beschikbaar" }), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  if (u.searchParams.has("statisch") || !env.NIEUWS) {
     return new Response(stat.body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
   }
   const S: any = await stat.json();
