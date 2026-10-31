@@ -1,0 +1,1 @@
+- Videofeed wit na tik: CSS-bestand heet nu `-s419.css` omdat de edge ook de `-c.css`-URL als HTML had gecachet (vervolg #419).
