@@ -126,6 +126,15 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       <div
         className="bl-track"
         ref={track}
+        tabIndex={0}
+        role="group"
+        aria-label="Foto's"
+        onKeyDown={multi ? (e) => {
+          if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+            e.preventDefault();
+            go(e.key === "ArrowRight" ? i + 1 : i - 1);
+          }
+        } : undefined}
         onScroll={multi ? onScroll : undefined}
         onClick={multi ? (e) => {
           const r = e.currentTarget.getBoundingClientRect();
@@ -140,6 +149,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
               <img
                 src={u}
                 alt=""
+                aria-hidden="true"
                 draggable={false}
                 loading={k === 0 ? "eager" : "lazy"}
                 fetchPriority={voorrang && k === 0 ? "high" : undefined}

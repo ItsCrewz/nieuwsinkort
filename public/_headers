@@ -1,6 +1,12 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+/
+  ! Access-Control-Allow-Origin
+
+/index.html
+  ! Access-Control-Allow-Origin
+
 # Catalogus: kort vers houden; de client hervalideert toch (cache: no-cache)
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
@@ -24,8 +30,9 @@
   Content-Type: application/manifest+json
 
 /*
+  Strict-Transport-Security: max-age=86400
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-yjjAw6JoJAyhdDNQMnetTCO5zrng/tvs4JEwf1zz5Io='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; media-src 'self' https: blob:; connect-src 'self' https:; frame-src https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-yjjAw6JoJAyhdDNQMnetTCO5zrng/tvs4JEwf1zz5Io=' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; media-src 'self' https: blob:; connect-src 'self' https: https://cloudflareinsights.com; frame-src https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()

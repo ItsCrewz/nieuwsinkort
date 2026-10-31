@@ -1,0 +1,1 @@
+- Bereken de nieuwsrespons vooraf, zodat het ophalen van `/data.json` minder CPU kost (#363).

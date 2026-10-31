@@ -1,3 +1,4 @@
+import { berekenBody, etag } from "../../functions/data.json";
 import type { LlmState } from "./llm";
 // nieuwsinkort-uur: elk uur (06:00–23:00 Amsterdam) feeds ophalen, samenvatten met Workers AI en in KV zetten.
 // De Pages Function /data.json voegt dit samen met de data.json van de routine.
@@ -10,8 +11,8 @@ import { bewaakteRun } from "./run-status";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
-import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, selecteerFilmpjes, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
-import { summarize, inHetKort, simpelWeer, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
+import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, parseYouTube, parseRedditVideos, soortVan, selecteerFilmpjes, ytEmbedGeblokkeerd, ytEmbedStatus, ytCombineer, type YtDiag, ytVideoId, ytNieuweControles, ytGeblokkeerdeShorts, ytBlokkades, ruimYtCache, type YtCache, igUser, igProfileUrl, igPostEmbed, parseIgProfile, igVideoUrl, igVideo, type Video } from "./videos";
+import { summarize, inHetKort, simpelWeer, isPromptEcho, verdiep, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
@@ -65,7 +66,7 @@ const hhmm = (t: number) => ams(t).hhmm;
 const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(t));
 
 // ---------------------------------------------------------------- fetcher-DO
-type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj"; label?: string; sub?: string; max?: number; alleenVideo?: boolean };
+type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; alleenVideo?: boolean };
 type Res = { kvWrites?: number; url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
@@ -199,6 +200,29 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
   const t0 = Date.now();
   let status = 0;
   try {
+    if (j.kind === "ytembed" || j.kind === "ytoembed") {
+      const host = (url: string, basis: string) => { try { return new URL(url, basis).hostname; } catch { return ""; } };
+      let r: Response;
+      let redirectHost = "";
+      try {
+        const ophalen = (cookie = false) => fetch(j.url, { headers: cookie ? { Referer: "https://nieuwsinkort.nl/", Cookie: "CONSENT=YES+; SOCS=CAI" } : { Referer: "https://nieuwsinkort.nl/" }, signal: AbortSignal.timeout(5000), redirect: "manual" });
+        r = await ophalen();
+        if (j.kind === "ytoembed") return { url: j.url, ok: r.ok, status: r.status, ms: Date.now() - t0 };
+        let html = r.ok ? await r.text() : "";
+        if (r.status >= 300 && r.status < 400) redirectHost = host(r.headers.get("Location") || "", j.url);
+        const consent = redirectHost === "consent.youtube.com" || /<title[^>]*>[^<]*consent/i.test(html) || /consent\.youtube\.com/i.test(html);
+        if (consent) {
+          r = await ophalen(true);
+          html = r.ok ? await r.text() : "";
+          if (r.status >= 300 && r.status < 400) redirectHost = host(r.headers.get("Location") || "", j.url);
+        }
+        const gevonden = ytEmbedStatus(html);
+        const reden = r.status >= 300 && r.status < 400 ? "redirect" : gevonden ? `status:${gevonden}` : "geen-status";
+        return { url: j.url, ok: r.ok, status: r.status, ms: Date.now() - t0, json: { geblokkeerd: r.ok ? ytEmbedGeblokkeerd(html) : null, status: gevonden, titel: (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] || "").trim().slice(0, 100), host: r.url ? host(r.url, j.url) : "", redirectHost, reden } };
+      } catch (e: any) {
+        return { url: j.url, ok: false, status: 0, ms: Date.now() - t0, json: { redirectHost, reden: e?.name === "TimeoutError" || e?.name === "AbortError" ? "timeout" : "fout" } };
+      }
+    }
     if (j.kind === "insta") return await runInsta(j, since, t0, kv);
     if (j.kind === "og") return await runOg(j, t0, kv);
     if (j.kind === "art") return await runArt(j, t0);
@@ -274,6 +298,7 @@ const BEKENDMAKING_HINTS = /raadsbesluit|collegebesluit|verordening|verkeersbesl
 const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz", "politiek", "voetbal", "f1", "auto"];
 
 type State ={ llm?: LlmState; okAt?: Record<string, string>; kortAt?: number; datum: string; /** UTC-dag van de neuronenteller (Cloudflare reset 00:00 UTC) */ neuronDag?: string; neurons: number; calls: number; inTok?: number; outTok?: number; geschat?: number; foutN?: number; sums: Record<string, Sum & { at: number }>; links: Record<string, string>; hashes?: Record<string, string>; kortHash?: string; kort?: string; weerHash?: string; weerTxt?: string; runs: number;
+  ytEmbed?: YtCache;
   /** artikeltekst per link (normLink); [] = niets bruikbaars/geweigerd */ art?: Record<string, string[]>;
   /** al via r.jina.ai geprobeerd */ artJ?: Record<string, 1>;
   /** uitgebreide uitleg per bericht (sleutel = normLink van de eerste bron) */ diep?: Record<string, Diep & { at: number }> };
@@ -310,6 +335,18 @@ export class Runner extends DurableObject<Env> {
     if (perAlarm >= 40) {
       try { r = await vooraf(env, perAlarm); } catch (e: any) { r = { fout: String(e?.message || e).slice(0, 200) }; }
     }
+    if (r.klaar !== undefined) {
+      try {
+        const [statR, uur, sv] = await Promise.all([
+          fetch(`${env.SITE.replace(/\/$/, "")}/data.json?statisch=1`, { headers: { "User-Agent": UA } }),
+          env.NIEUWS.get("uur", "json"), env.NIEUWS.get("sv-klaar", "json"),
+        ]);
+        if (statR.ok && uur) {
+          const body = await berekenBody(await statR.json(), uur, sv);
+          await env.NIEUWS.put("data-vooraf", `${ams().iso}\n${await etag(body)}\n${body}`);
+        }
+      } catch { console.error("KV-schrijffout data-vooraf na video-alarm"); }
+    }
     k.n++; k.laatst = { ...r, perAlarm: Math.round(perAlarm), used: Math.round(used), at: new Date().toISOString() };
     await this.ctx.storage.put("vooraf", k);
     await this.env.NIEUWS.put("vooraf-log", JSON.stringify(k.laatst), { expirationTtl: 2 * 86400 }).catch((e) => console.error("KV-schrijffout vooraf-log", e));
@@ -330,7 +367,8 @@ export class Runner extends DurableObject<Env> {
     const bronnen: any = await bronnenR.json();
     const stat: any = staticR.ok ? await staticR.json().catch(() => null) : null;
     // cache per Amsterdamse dag, neuronenteller per UTC-dag: de teller loopt door over de Amsterdamse datumgrens
-    let st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: stateRaw?.neurons || 0, calls: stateRaw?.calls || 0, inTok: stateRaw?.inTok, outTok: stateRaw?.outTok, geschat: stateRaw?.geschat, foutN: stateRaw?.foutN, neuronDag: stateRaw?.neuronDag ?? stateRaw?.datum, sums: stateRaw?.sums || {}, links: {}, hashes: stateRaw?.hashes || {}, runs: 0, okAt: stateRaw?.okAt || {} };
+    const st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: stateRaw?.neurons || 0, calls: stateRaw?.calls || 0, inTok: stateRaw?.inTok, outTok: stateRaw?.outTok, geschat: stateRaw?.geschat, foutN: stateRaw?.foutN, neuronDag: stateRaw?.neuronDag ?? stateRaw?.datum, sums: stateRaw?.sums || {}, links: {}, hashes: stateRaw?.hashes || {}, runs: 0, okAt: stateRaw?.okAt || {} };
+    st.ytEmbed = ruimYtCache(stateRaw?.ytEmbed, now);
     zetDagTeller(st, U);
     st.llm ||= stateRaw?.llm || {};
     st.okAt ||= {};
@@ -532,14 +570,55 @@ export class Runner extends DurableObject<Env> {
     const noAI = quotaOut || runCapped || tijdelijk > 0 || !env.AI;
     const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
     const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : noAI && extractief(k.c[0], isNL(k))));
+    // ---- filmpjes + dumpert
+    let dumpert = (R.get(DUMPERT_URL)?.videos || []) as (Video & { _pub: number })[];
+    dumpert = dumpert.filter((v) => vanVandaag(v._pub, now)).slice(0, 25);
+    const statD = new Map<string, any>((stat?.dumpert || []).map((v: any) => [v.href, v]));
+    const kortAi = (s: string) => (s.length > 140 ? s.slice(0, 137).replace(/\s+\S*$/, "") + "…" : s);
+    const dOut = dumpert.map(({ _score, _pub, ...v }) => ({ ...v, t: publicatieTijd(_pub, now), tijd: hhmm(publicatieTijd(_pub, now)!), ai: statD.get(v.href)?.ai || kortAi(v.ai) }));
+    const fv: Video[] = [];
+    for (const [naam, cid] of Object.entries(YT_NIEUWS)) for (const v of R.get(ytUrl(cid))?.videos || []) fv.push({ ...v, ai: kortAi(v.ai), ...({ _k: naam } as any) });
+    for (const sub of REDDIT_SUBS) for (const v of R.get(redditUrl(sub))?.videos || []) fv.push(v);
+    for (const j of insta) for (const v of R.get(j.url)?.videos || []) fv.push(v);
+    for (const j of xj) for (const v of R.get(j.url)?.videos || []) if (v.embed) fv.push({ ...v, ai: kortAi(v.ai) });
+    // YouTube-kanalen van partijen/overheid (bronnen.json, Politiek): max 2 per kanaal
+    for (const f of srcFeeds) if (f.g === "politiek") for (const u of f.urls) if (/youtube\.com\/feeds/.test(u)) for (const v of (R.get(u)?.videos || []).slice(0, 2)) fv.push({ ...v, ai: kortAi(v.ai) });
+    const ytIds = [...new Set([...dOut, ...fv, ...(stat?.filmpjes || []), ...(stat?.dumpert || [])].map(ytVideoId).filter((id): id is string => !!id))];
+    const ytKanaalBlokkades = ytGeblokkeerdeShorts(fv);
+    const ytNieuw = ytNieuweControles(ytIds.filter((id) => !ytKanaalBlokkades.includes(id)), st.ytEmbed);
+    let ytControles = 0;
+    const ytDiag: YtDiag[] = [];
+    const voegYtToe = (batches: Job[][]) => {
+      for (const b of batches) {
+        // Reserveer per controle ook ruimte voor een eventuele consent-herpoging.
+        const aantal = Math.min(ytNieuw.length - ytControles, Math.floor((50 - b.length) / 3));
+        for (const id of ytNieuw.slice(ytControles, ytControles + aantal)) {
+          b.push({ url: `https://www.youtube-nocookie.com/embed/${id}`, kind: "ytembed" }, { url: `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`, kind: "ytoembed" });
+        }
+        ytControles += aantal;
+      }
+    };
+    const verwerkYt = (rs: Res[]) => {
+      for (const id of ytNieuw.slice(0, ytControles)) {
+        const embed = rs.find((r) => r.url === `https://www.youtube-nocookie.com/embed/${id}`);
+        const oembed = rs.find((r) => r.url === `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`);
+        if (!embed && !oembed) continue;
+        const diag = ytCombineer(id, embed, oembed);
+        ytDiag.push(diag);
+        st.ytEmbed![id] = { geblokkeerd: diag.uitkomst === "onbekend" ? null : diag.uitkomst === "geblokkeerd", at: now };
+      }
+      st.ytEmbed = ruimYtCache(st.ytEmbed, now);
+    };
     // ---- foto's: uit de feeds; ontbreekt die bij een bron, dan og:image van het artikel (gecachet in KV)
     const ogLinks = begrensOg(shown.flatMap((k) => k.c.filter((c) => !c.img && !/instagram\.com|youtube\.com|youtu\.be|reddit\.com|x\.com|twitter\.com/.test(c.href)).slice(0, 3).map((c) => c.href).filter((h) => externeUrl(h) !== null)));
     let kvWritesOg = 0;
     const og = new Map<string, string>();
     const ogB: Job[][] = [];
     for (let i = 0; i < ogLinks.length; i += 30) ogB.push(ogLinks.slice(i, i + 30).map((url) => ({ url, kind: "og" as const })));
+    voegYtToe(ogB);
     try {
       const rs = (await Promise.all(ogB.map(async (b, i) => (await env.FETCHER.get(env.FETCHER.idFromName(`og${i}`)).fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) })).json() as Promise<Res[]>))).flat();
+      verwerkYt(rs);
       kvWritesOg += rs.reduce((n, r) => n + (r.kvWrites || 0), 0);
       for (const r of rs) if (r?.text) og.set(r.url, r.text);
     } catch { /* zonder og-foto's verder */ }
@@ -587,19 +666,22 @@ export class Runner extends DurableObject<Env> {
     const nodig = [...new Set(mOrde.flatMap((m) => artLinks(m).map((b) => b.href)).filter((h) => !(normLink(h) in st.art!)))].slice(0, 120);
     const artB: Job[][] = [];
     for (let i = 0; i < nodig.length; i += 30) artB.push(nodig.slice(i, i + 30).map((url) => ({ url, kind: "art" as const })));
+    if (!ytControles) voegYtToe(artB);
     let artOk = 0, artFout = 0, artJina = 0;
     const artErr: Record<string, string> = {};
     try {
       const rs = (await Promise.all(artB.map(async (b, i) => (await env.FETCHER.get(env.FETCHER.idFromName(`art${i}`)).fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) })).json() as Promise<Res[]>))).flat();
+      verwerkYt(rs);
+      const artRs = rs.filter((r) => !r.url.startsWith("https://www.youtube-nocookie.com/embed/") && !r.url.startsWith("https://www.youtube.com/oembed?"));
       const mis: string[] = [];
-      for (const r of rs) {
+      for (const r of artRs) {
         if (!r) continue;
         const al: string[] = Array.isArray(r.json) ? r.json : [];
         st.art[normLink(r.url)] = al;
         if (al.join(" ").length >= 300) artOk++;
         else { mis.push(r.url); const h = hp(r.url).split("/")[0].replace(/^www\./, ""); artErr[h] = r.ok ? "geen tekst (betaalmuur?)" : r.err || `HTTP ${r.status}`; }
       }
-      artFout = rs.length - artOk;
+      artFout = artRs.length - artOk;
     } catch (e: any) { artErr._run = String(e?.message || e).slice(0, 80); }
     // tweede poging via r.jina.ai voor links zonder tekst (geweigerd/betaalmuur), elk maar één keer;
     // max 15 per run (gratis limiet 20/min), nieuwste/meeste bronnen eerst
@@ -713,25 +795,19 @@ export class Runner extends DurableObject<Env> {
     if (W.knmiTekst) {
       const wh = await hash("nl:" + W.knmiTekst); // "nl:" = landelijke prompt; ververst een oude Haarlem-tekst eenmalig
       if (wh !== st.weerHash && !quotaOut && tier() <= 2) {
-        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
+        try { const t = await simpelWeer(env.AI, modelNu(), W.knmiTekst, usage); if (t.length > 30 && !isPromptEcho(t)) { st.weerTxt = t; st.weerHash = wh; } } catch (e) { usage.fails++; await aiFoutAf(e); }
         await cfStand();
       }
+      if (st.weerTxt && isPromptEcho(st.weerTxt)) { st.weerTxt = undefined; st.weerHash = undefined; } // eerder bewaarde prompt-echo (#378) niet hergebruiken
       if (st.weerHash === wh && st.weerTxt) W.weer.verwachting = st.weerTxt;
     }
 
-    // ---- filmpjes + dumpert
-    let dumpert = (R.get(DUMPERT_URL)?.videos || []) as (Video & { _pub: number })[];
-    dumpert = dumpert.filter((v) => vanVandaag(v._pub, now)).slice(0, 25);
-    const statD = new Map<string, any>((stat?.dumpert || []).map((v: any) => [v.href, v]));
-    const kortAi = (s: string) => (s.length > 140 ? s.slice(0, 137).replace(/\s+\S*$/, "") + "…" : s);
-    const dOut = dumpert.map(({ _score, _pub, ...v }) => ({ ...v, t: publicatieTijd(_pub, now), tijd: hhmm(publicatieTijd(_pub, now)!), ai: statD.get(v.href)?.ai || kortAi(v.ai) }));
-    const fv: Video[] = [];
-    for (const [naam, cid] of Object.entries(YT_NIEUWS)) for (const v of R.get(ytUrl(cid))?.videos || []) fv.push({ ...v, ai: kortAi(v.ai), ...({ _k: naam } as any) });
-    for (const sub of REDDIT_SUBS) for (const v of R.get(redditUrl(sub))?.videos || []) fv.push(v);
-    for (const j of insta) for (const v of R.get(j.url)?.videos || []) fv.push(v);
-    for (const j of xj) for (const v of R.get(j.url)?.videos || []) if (v.embed) fv.push({ ...v, ai: kortAi(v.ai) });
-    // YouTube-kanalen van partijen/overheid (bronnen.json, Politiek): max 2 per kanaal
-    for (const f of srcFeeds) if (f.g === "politiek") for (const u of f.urls) if (/youtube\.com\/feeds/.test(u)) for (const v of (R.get(u)?.videos || []).slice(0, 2)) fv.push({ ...v, ai: kortAi(v.ai) });
+    const ytGeblokkeerd = ytBlokkades(ytIds, ytKanaalBlokkades, st.ytEmbed);
+    const ytGeblokkeerdSet = new Set(ytGeblokkeerd);
+    const ytToegestaan = (v: Video) => { const id = ytVideoId(v); return !id || !ytGeblokkeerdSet.has(id); };
+    const ytWeggelaten = dOut.filter((v) => !ytToegestaan(v)).length + fv.filter((v) => !ytToegestaan(v)).length;
+    dOut.splice(0, dOut.length, ...dOut.filter(ytToegestaan));
+    fv.splice(0, fv.length, ...fv.filter(ytToegestaan));
     // Shorts en Journaals apart, elk met een eigen plafond (anders drukken de Shorts de journaals weg)
     // Geen dubbele filmpjes: zelfde video-id/clip op meerdere platforms, tracking-parameters, bijna-gelijke titels.
     // Beste kopie blijft (in de site afspeelbaar, beste kwaliteit, populairst); wat al bij Dumpert staat valt hier weg.
@@ -746,19 +822,27 @@ export class Runner extends DurableObject<Env> {
     st.neurons += usage.neurons; st.calls += usage.calls;
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
-      datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys,
-      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + tabWrites + 3, kvWritesOg, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys, ytGeblokkeerd,
+      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + tabWrites + (stat ? 4 : 3), kvWritesOg, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));
     for (const id of Object.keys(st.sums)) if (!live.has(id) && now - st.sums[id].at >= 24 * 3600e3) { delete st.sums[id]; }
     for (const [l, id] of Object.entries(st.links)) if (!st.sums[id]) delete st.links[l];
     for (const [h, id] of Object.entries(st.hashes)) if (!st.sums[id] || now - st.sums[id].at >= 24 * 3600e3) delete st.hashes[h];
-    await schrijfRun(env.NIEUWS, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
+    const uurGelukt = await schrijfRun(env.NIEUWS, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
       // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.
       await this.ctx.storage.put("vooraf", { uur: A.h, n: 0 });
       await this.ctx.storage.setAlarm(Date.now() + 60e3);
     });
+    if (stat && uurGelukt && ams().iso === A.iso) {
+      try {
+        const sv = await env.NIEUWS.get("sv-klaar", "json");
+        const body = await berekenBody(stat, out, sv, Date.now());
+        const tag = await etag(body);
+        await env.NIEUWS.put("data-vooraf", `${A.iso}\n${tag}\n${body}`);
+      } catch { console.error("KV-schrijffout data-vooraf"); }
+    }
     return { ok: true, ...out.meta, gegenereerd: out.gegenereerd };
   }
 }

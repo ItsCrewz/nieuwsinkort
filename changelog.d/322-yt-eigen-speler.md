@@ -1,0 +1,2 @@
+- YouTube-filmpjes gebruiken hun eigen bediening en tonen een thumbnail en een subtiele starthint als automatisch afspelen uitblijft (#322).
+- De thumbnail blijft tijdens het laden boven de YouTube-speler zichtbaar en laat tikken door (#322).
