@@ -155,7 +155,7 @@ Meting (#79, details en bevindingen in [ai-budget.md](ai-budget.md)): de dagtell
 Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, behalve waar de code een browser-UA nodig heeft (bijv. artikelpagina's, AD) of een feedlezer-UA (Reddit).
 
 - **RSS**: lijst in `public/bronnen.json` (gebouwd uit `scripts/pipeline/feeds.json`, zie `scripts/build-bronnen.mjs`).
-- **Hacker News**: `hnrss.org/best` (news.ycombinator.com/rss geeft 419 aan Cloudflare).
+- **Hacker News**: `hnrss.org/frontpage` en `hnrss.org/best` in `scripts/pipeline/feeds.json` (news.ycombinator.com/rss geeft 419 aan Cloudflare-IP's en telde in de bronmeting als „1 van 2 feeds niet bereikbaar”). De Worker (`HN_RSS` in `index.ts`) vervangt een oude URL in state nog steeds door `hnrss.org/best`. Host `ycombinator.com` blijft via `build-bronnen.mjs` aan de bron gekoppeld.
 - **X**: fxtwitter-API, terugval syndication. Tekstposts en video's van politieke accounts en Politie Haarlem.
 - **YouTube**: officiële gratis kanaal-RSS voor Filmpjes van NOS, RTL Nieuws, NU.nl, Hart van Nederland, NH Nieuws, PowNews, WNL, EenVandaag, RTL Z, BNR, NOS Stories, Nieuwsuur, Omroep PowNed, Radar, NOS Sport, Ziggo Sport, ESPN NL, OnsOranje, FORMULA 1, AutoWeek en Autovisie, inclusief Shorts. Ondertiteling geeft vanaf Cloudflare vaak LOGIN_REQUIRED; `functions/samenvatting.ts` onthoudt een mislukte samenvatting dan 3 uur per video; de kanaalfeeds blijven gewoon opgehaald worden.
 - **TikTok en Facebook**: geen kanaalfeed voor Filmpjes, omdat daarvoor geen gratis feed beschikbaar is die aan de voorwaarden voldoet.

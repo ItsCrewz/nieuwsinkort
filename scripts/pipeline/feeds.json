@@ -312,7 +312,7 @@
  {
   "cat": "tech",
   "naam": "Hacker News alt",
-  "url": "https://news.ycombinator.com/rss",
+  "url": "https://hnrss.org/best",
   "werkt": true
  },
  {
