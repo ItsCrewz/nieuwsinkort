@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 // Zet de gebouwde CSS inline in index.html: geen render-blokkerend stylesheet-verzoek meer (LCP, #403).
+// Het .css-bestand blijft naast de inline CSS in dist/assets staan: lazy chunks (videofeed) hebben het als preload-dependency en zonder bestand faalt de import (#419).
 // De CSS-url()'s zijn absoluut (/fonts/...), dus inline verandert niets aan de weergave; CSP staat style-src 'unsafe-inline' toe.
 function cssInline(): Plugin {
   return {
@@ -15,7 +16,7 @@ function cssInline(): Plugin {
         return html.replace(/<link rel="stylesheet"[^>]*href="\/([^"]+\.css)"[^>]*>/g, (m, f) => {
           const a = b[f];
           if (!a || a.type !== "asset") return m;
-          delete b[f];
+          // Bestand blijft in de output: Vite's __vitePreload van lazy chunks noemt het nog (#419).
           return `<style>${String(a.source).replace(/<\/style/gi, "<\\/style")}</style>`;
         });
       },

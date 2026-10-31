@@ -1,0 +1,1 @@
+- Videofeed (Dumpert/Filmpjes) niet meer wit na een tik: het CSS-bestand blijft naast de inline CSS in `dist/assets` staan, zodat de preload van de lazy chunk slaagt (#419).
