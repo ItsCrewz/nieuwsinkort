@@ -5,6 +5,7 @@ import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp 
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
+import { sorteerOpGroep } from "./filmgroep";
 import { useVoorladen } from "./usevoorladen";
 import { videoSlug } from "./slug";
 import { zaaiSamenvattingen } from "./samenvattingcache";
@@ -854,7 +855,7 @@ function useData() {
       zaaiSamenvattingen(d.samenvattingen);
       d.dumpert ??= [];
       d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
-      d.filmpjes = d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) })); // Shorts of Journaals
+      d.filmpjes = sorteerOpGroep(d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }))); // Shorts of Journaals; op onderwerpgroep (#459): Sport onderaan, ook voor de volgorde van doorlopend kijken
       setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
       setError(false);
     } catch {

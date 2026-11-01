@@ -3,6 +3,7 @@ import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
 import { videoSlug } from "./slug";
+import { groepeer, heeftGroepen } from "./filmgroep";
 import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort";
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
@@ -206,11 +207,29 @@ export function VideoGrid({
         </div>
       ) : null}
       {shown.length ? (
+        split && heeftGroepen(shown) ? (
+          <div key={`${soort}-${bron}`}>
+            {groepeer(shown).map((g, k, alle) => {
+              const vanaf = alle.slice(0, k).reduce((n, x) => n + x.list.length, 0);
+              return (
+                <section className="vgroep" key={g.groep} aria-labelledby={`vgroep-${g.groep}`}>
+                  <h2 className="kicker" id={`vgroep-${g.groep}`}>{g.groep}</h2>
+                  <div className={`vgrid ${enter ? "" : "swap"}`}>
+                    {g.list.map((v, i) => (
+                      <VideoCard key={v.href + (vanaf + i)} v={v} i={vanaf + i} cat={cat} bionic={bionic} enter={enter} onPlay={(x) => (touch ? onOpen(videoSlug(x)) : window.open(veiligeUrl(x.href), "_blank", "noopener,noreferrer"))} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        ) : (
         <div className={`vgrid ${enter ? "" : "swap"}`} key={`${soort}-${bron}`}>
           {shown.map((v, i) => (
             <VideoCard key={v.href + i} v={v} i={i} cat={cat} bionic={bionic} enter={enter} onPlay={(x) => (touch ? onOpen(videoSlug(x)) : window.open(veiligeUrl(x.href), "_blank", "noopener,noreferrer"))} />
           ))}
         </div>
+        )
       ) : (
         <div className="empty" key={soort}>
           <Icon name="film" />

@@ -47,7 +47,7 @@ Alleen `env.AI.run` telt; vier onderdelen praten er rechtstreeks mee.
 | `functions/samenvatting.ts` Whisper (`whisper-large-v3-turbo`) | Whisper | duur × 46,64 neuronen/min; vooraf gereserveerd, achteraf verrekend | geen `usage` in de respons; duur uit `transcription_info`, anders schatting (`geschat`) |
 | `worker/src/vooraf.ts` | geen eigen AI | roept `/samenvatting` met `pre:true` aan; neuronen komen uit het antwoord (`neuronen`) en dit is alleen een lokale rem per alarm | telt dus via de Function, niet dubbel |
 
-Geen andere gebruikers van `env.AI` (`functions/meer.ts`, `data.json.ts` en de proxy gebruiken geen AI).
+`worker/src/filmgroep.ts` (#459) gebruikt `chat()` voor de indeling van Filmpjes in onderwerpgroepen; zie hieronder. Geen andere gebruikers van `env.AI` (`functions/meer.ts`, `data.json.ts` en de proxy gebruiken geen AI).
 
 ## Wat de teller nog steeds mist of onderschat (bevindingen)
 
@@ -99,3 +99,11 @@ Bij een cron van elke 5 minuten (`runInterval` = 5, #451) mag de AI niet elke ru
 - **Taboverzichten en "diep"** doen al alleen werk bij wijziging (taboverzicht: gecachet tot 6 uur of zolang de berichten gelijk zijn; uitleg: alleen berichten zonder `st.diep`, begrensd door `diepRun`) en zijn niet aangepast.
 - **Grenzen blijven gelden**: de bundeling beslist alleen óf de bestaande AI-stap loopt. Run-budget (`runBudget`, #451), dagbudget en quota, de trappen (`capN`), `PRE_MAX` = 0,85 in `functions/samenvatting.ts` en de 85%-grens van de vooraf-alarmen in `Runner.alarm` zijn ongewijzigd (`tests/ai-bundel.test.ts`).
 - **Meta in `uur`**: `aiWachtend` (aantal clusters dat deze run bewust wacht) en `aiGebundeld` (true als de AI deze run is uitgesteld).
+
+## Filmpjes in onderwerpgroepen (#459)
+
+- **Eén call per run, alleen voor nieuwe filmpjes**: `groepeerFilmpjes` (`worker/src/filmgroep.ts`) stuurt alleen filmpjes zonder bewaarde groep, maximaal 40 per call (`GROEP_MAX`; de rest volgt in de volgende run). Zonder nieuwe filmpjes geen call. Prompt per filmpje: titel, korte tekst, kanaal en kanaalbeschrijving; antwoord strikt JSON `{"items":[{"id":1,"groep":"Sport"}]}`, geen JSON-modus-terugval en geen herhaalpoging (`chat()` zelf valt wel terug op Groq/Mistral als Cloudflare faalt).
+- **Budget**: dezelfde poort als de taboverzichten (`tabAiRoute` met `tier()`, `quotaOut`, `runCapped`/`runBudget`, `tijdelijk`); de call staat ná het nieuws, de "In het kort" en de taboverzichten, dus hij gebruikt alleen wat die overlaten. Neuronen gaan via `usage` mee in `meta.neuronenRun` en de dagteller.
+- **Kosten**: ongeveer 4 tot 8 neuronen bij een paar nieuwe filmpjes (±350 tokens vaste instructie, ±70 tokens per filmpje, ±15 tokens uitvoer per filmpje); een volle call van 40 filmpjes ongeveer 40 neuronen. In een gewone dag ligt het totaal ruim onder 100 neuronen (<1% van `BUDGET`).
+- **Terugval**: geen budget, AI-fout, time-out (25 s) of ongeldige JSON geeft de deterministische kanaalregel (`terugvalGroep`: sportkanalen Sport, RTL Boulevard/Shownieuws Showbizz, PowNews/AutoWeek e.d. Opvallend, Politiek-kanalen uit `bronnen.json` Politiek, de rest Nieuws). Die terugval wordt niet bewaard, een volgende run probeert opnieuw. Een geldig antwoord waarin één filmpje ontbreekt of een onbekende groep krijgt, telt als poging; na 3 pogingen (`GROEP_POGINGEN`) wordt de terugval bewaard, zodat één onbruikbaar filmpje niet elke run een call kost.
+- **Meta in `uur`**: `filmGroepNieuw` (aantal nieuw en definitief ingedeeld) en `filmGroepAi` (true als er deze run een call was).

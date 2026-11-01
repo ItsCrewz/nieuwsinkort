@@ -214,6 +214,9 @@ body { margin:0; background:var(--paper); color:var(--ink); overflow-x:clip; ove
 .linkbtn{text-decoration:underline;text-underline-offset:3px;color:var(--ink);font-weight:500}
 
 /* ---------- Video ---------- */
+.vgroep{margin-top:32px}
+.vgroep > .kicker{color:var(--ink);font-size:0.875rem}
+.vgroep .vgrid{margin-top:12px}
 .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr));gap:40px 28px;margin-top:28px}
 .vcard{position:relative;display:flex;flex-direction:column;gap:12px;cursor:pointer;min-width:0}
 .vthumb{position:relative;aspect-ratio:16/9;border-radius:var(--r);overflow:hidden;background:var(--rule-2);display:flex;align-items:center;justify-content:center;transform:translateZ(0)}

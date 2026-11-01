@@ -35,6 +35,7 @@ import { herindeelSport, sportCatItem } from "./sportcat";
 import { ontdubbelSport } from "./sportdubbel";
 import { herindeelShow, showCat, nietAlsNieuws } from "./showcat";
 import { zonderUitleg } from "../../src/uitgebreid";
+import { deelIn, groepeerFilmpjes, groepSleutel, leesOpslag, type FilmIn } from "./filmgroep";
 
 export { Budget };
 
@@ -661,7 +662,8 @@ export class Runner extends DurableObject<Env> {
     for (const j of insta) for (const v of R.get(j.url)?.videos || []) fv.push(v);
     for (const j of xj) for (const v of R.get(j.url)?.videos || []) if (v.embed) fv.push({ ...v, ai: kortAi(v.ai) });
     // YouTube-kanalen van partijen/overheid (bronnen.json, Politiek): max 2 per kanaal
-    for (const f of srcFeeds) if (f.g === "politiek") for (const u of f.urls) if (/youtube\.com\/feeds/.test(u)) for (const v of (R.get(u)?.videos || []).slice(0, 2)) fv.push({ ...v, ai: kortAi(v.ai) });
+    const polHref = new Set<string>(); // kanalen uit de rubriek Politiek: terugvalgroep van de filmpje-indeling (#459)
+    for (const f of srcFeeds) if (f.g === "politiek") for (const u of f.urls) if (/youtube\.com\/feeds/.test(u)) for (const v of (R.get(u)?.videos || []).slice(0, 2)) { polHref.add(v.href); fv.push({ ...v, ai: kortAi(v.ai) }); }
     const ytIds = [...new Set([...dOut, ...fv, ...(stat?.filmpjes || []), ...(stat?.dumpert || [])].map(ytVideoId).filter((id): id is string => !!id))];
     const ytKanaalBlokkades = ytGeblokkeerdeShorts(fv);
     const ytNieuw = ytNieuweControles(ytIds.filter((id) => !ytKanaalBlokkades.includes(id)), st.ytEmbed);
@@ -905,8 +907,16 @@ export class Runner extends DurableObject<Env> {
     dOut.splice(0, dOut.length, ...(dD.list as any[]));
     const dF = dedupVideos(fv.filter((v) => vanVandaag(v._pub, now)).map((v) => ({ ...v, _pub: publicatieTijd(v._pub, now)! })).sort((a, b) => (b._score || 0) - (a._score || 0)).map((v) => ({ ...v, soort: soortVan(v) })), dOut);
     const uniek = dF.list;
-    const fOut = selecteerFilmpjes(uniek)
-      .map(({ _score, _pub, ...v }: any) => { delete v._k; return { ...v, t: _pub, tijd: hhmm(_pub) }; });
+    const fKeuze = selecteerFilmpjes(uniek);
+    // Onderwerpgroep per filmpje (#459): alleen nieuwe filmpjes naar de AI, één call per run, bewaard in DO-opslag (geen KV); zonder budget geldt de kanaalregel (niet bewaard)
+    const fgRoute = tabAiRoute(tier(), quotaOut || runCapped || usage.neurons >= runBudget, !!tijdelijk, !!env.AI, !!(env.GROQ_API_KEY || env.MISTRAL_API_KEY));
+    const fg = await groepeerFilmpjes(fKeuze as FilmIn[], leesOpslag(await opslag.get("filmgroep").catch(() => { console.error("filmgroep lezen mislukt"); return undefined; })), now, fgRoute !== "geen", async (nieuw) => {
+      if (fgRoute === "extern") usage.llm!.cloudflare = false;
+      try { return await deelIn(env.AI, modelNu(), nieuw, usage); } catch (e) { telAanroepFout(usage, e); await aiFoutAf(e); throw e; } finally { await cfStand(); }
+    }, (v) => (polHref.has(v.href) ? "Politiek" : undefined));
+    if (fg.gewijzigd) await opslag.put("filmgroep", fg.opslag).catch(() => console.error("filmgroep schrijven mislukt"));
+    const fOut = fKeuze
+      .map(({ _score, _pub, ...v }: any) => { const groep = fg.groepen.get(groepSleutel(v.href)); delete v._k; return { ...v, groep, t: _pub, tijd: hhmm(_pub) }; });
 
     // ---- wegschrijven
     st.stAt = now;
@@ -916,7 +926,7 @@ export class Runner extends DurableObject<Env> {
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys, ytGeblokkeerd,
-      meta: { kvWrites: 0, kvWritesRun: 0, kvSleutels: [] as string[], kvWritesOg: 0, ogTreffers: ogLinks.length - ogOnbekend.length, ogNieuw: ogOnbekend.length, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runInterval: interval, runsLeft: Math.round(runsLeft * 100) / 100, runVol: runCapped, aiWachtend: bundel.uitgesteld ? bundel.wachtend : 0, aiGebundeld: bundel.uitgesteld, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { kvWrites: 0, kvWritesRun: 0, kvSleutels: [] as string[], kvWritesOg: 0, ogTreffers: ogLinks.length - ogOnbekend.length, ogNieuw: ogOnbekend.length, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runInterval: interval, runsLeft: Math.round(runsLeft * 100) / 100, runVol: runCapped, aiWachtend: bundel.uitgesteld ? bundel.wachtend : 0, aiGebundeld: bundel.uitgesteld, dubbeleFilmpjes: dF.removed + dD.removed, filmGroepNieuw: fg.nieuw, filmGroepAi: fg.aiCall, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));

@@ -44,6 +44,8 @@ export type Video = {
   tijd: string;
   /** "short" = kort clipje (YouTube Shorts, Reels, Reddit, X); "journaal" = uitzending/reportage. */
   soort?: Soort;
+  /** Onderwerpgroep (#459): Nieuws, Politiek, Showbizz, Opvallend of Sport; ontbreekt in oude data (dan Nieuws). */
+  groep?: "Nieuws" | "Politiek" | "Showbizz" | "Opvallend" | "Sport";
   /** Zelfde filmpje bij andere bronnen (na ontdubbelen). */
   ook?: Bron2[];
 };

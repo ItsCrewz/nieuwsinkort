@@ -229,6 +229,10 @@ Sinds #452 (zie hieronder) schrijft een run alleen naar KV bij gewijzigde inhoud
 
 `uur` wordt eerst apart geschreven. KV-eindschrijffouten worden gelogd via `console.error`; ook bij fouten op `state` of `meer` wordt het video-alarm gezet. Bij een fout op `uur` blijft de eerder opgeslagen versie staan.
 
+### Filmpjes in onderwerpgroepen (#459)
+
+De Filmpjes-tab (niet Dumpert) is ingedeeld in Nieuws (binnen- en buitenland samen), Politiek, Showbizz, Opvallend en Sport, in die vaste volgorde met Sport altijd onderaan; lege groepen worden niet getoond. `src/filmgroep.ts` (gedeeld) bevat de volgorde, `groepeer` en `sorteerOpGroep`; `worker/src/filmgroep.ts` de indeling. De Worker deelt alleen nieuwe filmpjes in, in één gebundelde AI-call per run (zie [ai-budget](ai-budget.md#filmpjes-in-onderwerpgroepen-459)), en bewaart de groep per link (`groepSleutel`: link zonder protocol, `www` en `#`, met query) in DO-opslag onder `filmgroep` (`{g, p}`); er komen geen KV-writes bij. De map wordt elke run gesnoeid tot links in de huidige set die jonger zijn dan 3 dagen, dus klein. Elk filmpje in `uur` krijgt het veld `groep`; zonder nieuwe filmpjes verandert `uur` daardoor niet en blijft de KV-write achterwege. Zonder budget of AI geldt de kanaalregel, niet bewaard. Frontend: `App.tsx` sorteert `data.filmpjes` stabiel op groep (items zonder `groep`, ook oude data, vallen onder Nieuws), dus ook de volgorde van de swipe-feed, het voorladen en doorlopend kijken volgt de getoonde volgorde; `VideoGrid` toont per groep een kopje (`.kicker`-stijl) binnen Shorts en Journaals, alleen als de data groepen kent. Videopool van 3 en voorladen zijn ongewijzigd.
+
 ### Opslag: KV alleen bij wijziging (#452)
 
 Reden: KV-schrijfacties zijn de krapste gratis limiet (1.000 per dag) en de cron kan naar elke 5 minuten. Een run zonder nieuwe inhoud doet daarom (vrijwel) geen KV-write; bij uurlijks draaien blijven gedrag en inhoud gelijk. Bestanden: `worker/src/opslag.ts` (pure logica), `worker/src/index.ts`, `worker/src/vooraf.ts`, `worker/src/run-status.ts`; tests in `tests/kv-opslag.test.ts`.
