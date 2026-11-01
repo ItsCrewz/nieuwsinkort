@@ -14,9 +14,13 @@ const klaar = new Set<string>(); // url's die al gedecodeerd zijn
 // Vangnet: faalt de proxy (bijv. botbescherming van de uitgever), dan één keer rechtstreeks (oude gedrag) voor het wegvallen.
 const rechtstreeks = new Set<string>();
 export const bronUrl = (u: string): string => (rechtstreeks.has(u) ? u : beeldViaProxy(u));
-/** Proxy gefaald: true als er nog een rechtstreekse poging is (nu ingepland), false als dat al geprobeerd is of niet kan. */
-export function naarRechtstreeks(u: string): boolean {
-  if (rechtstreeks.has(u) || beeldViaProxy(u) === u) return false;
+/** Proxy gefaald: true als er nog een rechtstreekse poging is (nu ingepland), false als dat al geprobeerd is of niet kan.
+ *  `huidig` = src-attribuut van de falende <img>: had die nog de proxy-URL, dan altijd één poging, ook als de preload
+ *  de URL al in `rechtstreeks` zette (race). Na die poging is huidig === u, dus geen lus. */
+export function naarRechtstreeks(u: string, huidig?: string | null): boolean {
+  if (beeldViaProxy(u) === u) return false;
+  if (huidig != null && huidig !== u) { rechtstreeks.add(u); return true; }
+  if (rechtstreeks.has(u)) return false;
   rechtstreeks.add(u);
   return true;
 }
@@ -171,7 +175,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
                 className={klaar.has(u) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"
-                onError={() => (naarRechtstreeks(u) ? herlaad((n) => n + 1) : drop(u))}
+                onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : drop(u))}
                 onLoad={(e) => {
                   const im = e.currentTarget;
                   const w = im.naturalWidth, h = im.naturalHeight;
@@ -206,7 +210,7 @@ export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
   return (
     <span className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
       <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
-        onError={() => (naarRechtstreeks(u) ? herlaad((n) => n + 1) : setK(k + 1))}
+        onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : setK(k + 1))}
         onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />
     </span>
   );

@@ -80,11 +80,24 @@ try {
   assert.equal(NepImage.beelden.length, aantal + 4, "niet vaker dan één keer rechtstreeks");
   assert.equal(naarRechtstreeks(ook), false, "tweede poging niet meer");
 
+  // race: preload faalt eerst (URL in rechtstreeks), daarna onError van een <img> die nog de proxy-URL had
+  const race = "https://prod-img.telegraaf.nl/public/race.jpg";
+  const proxySrc = "/media/beeld/prod-img.telegraaf.nl/public/race.jpg";
+  const raceP = preloadBeeld(race);
+  NepImage.beelden[aantal + 4].fout(new Error("403"));
+  await new Promise((r) => setTimeout(r, 0));
+  NepImage.beelden[aantal + 5].klaar();
+  await raceP;
+  assert.equal(bronUrl(race), race);
+  assert.equal(naarRechtstreeks(race, proxySrc), true, "img met proxy-src: herlaad rechtstreeks, geen drop");
+  assert.equal(naarRechtstreeks(race, race), false, "img die al rechtstreeks faalde: drop");
+  assert.equal(naarRechtstreeks(race), false);
+
   // normaal pad: geen extra download; niet-proxybare url krijgt geen rechtstreekse herhaling
   const normaal = preloadBeeld("https://images.nu.nl/m/goed.jpg");
-  NepImage.beelden[aantal + 4].klaar();
+  NepImage.beelden[aantal + 6].klaar();
   await normaal;
-  assert.equal(NepImage.beelden.length, aantal + 5);
+  assert.equal(NepImage.beelden.length, aantal + 7);
   assert.equal(bronUrl("https://images.nu.nl/m/goed.jpg"), "/media/beeld/images.nu.nl/m/goed.jpg");
   assert.equal(naarRechtstreeks("https://voorbeeld.nl/x.jpg"), false);
 } finally {

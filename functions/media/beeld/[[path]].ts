@@ -58,6 +58,7 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
   if (cache) {
     let hit: Response | undefined;
     try { hit = await cache.match(sleutel); } catch { /* cachefout: gewoon upstream */ }
+    if (hit && request.method === "HEAD") hit.body?.cancel().catch(() => {});
     if (hit) return new Response(request.method === "HEAD" ? null : hit.body, { status: 200, headers: metVary(new Headers(hit.headers)) });
   }
 
