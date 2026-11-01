@@ -4,7 +4,7 @@
 export type SomIn = { kop: string; ai: string; samenvatting: string; punten: string[] };
 export type SomUitslag = { ok: true; som: SomIn } | { ok: false; reden: string };
 
-const MIN_WOORDEN_SAMENVATTING = 6, MIN_WOORDEN_PUNT = 2, GELIJK = 0.8;
+const MIN_WOORDEN_SAMENVATTING = 6, MIN_WOORDEN_PUNT = 2, GELIJK = 0.8, MIN_NIEUW = 3, MAX_KORTE_KERN = 10;
 
 /** Kleine letters, accenten en leestekens weg; losse woorden. */
 const woorden = (s: string) => (s || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
@@ -18,12 +18,18 @@ export function bijnaGelijk(a: string, b: string, deelvan = true): boolean {
   return (deelvan && gedeeld === x.size) || gedeeld / (x.size + y.size - gedeeld) >= GELIJK;
 }
 
-export function controleerSom(som: SomIn, titels: string[] = []): SomUitslag {
+// Woorden zonder inhoud (lidwoorden, voorzetsels, hulpwerkwoorden); woorden korter dan 3 tekens tellen niet (getallen wel: leeftijd, aantal).
+const STOP = new Set("een het van voor met bij naar door over uit aan ook dat die dit deze zijn was waren wordt worden werd heeft hebben had hij zij haar hun niet maar als dan nog wel per zal zou kan kunnen moet wil gaat".split(" "));
+/** Aantal inhoudswoorden van `a` dat niet in `b` staat: een kern die bijna niets aan de kop toevoegt is geen kern. */
+const nieuweWoorden = (a: string, b: string) => { const y = new Set(woorden(b)); return new Set(woorden(a).filter((w) => (w.length >= 3 || /\d/.test(w)) && !STOP.has(w) && !y.has(w))).size; };
+
+export function controleerSom(som: SomIn): SomUitslag {
   const kop = som.kop || "", ai = som.ai || "", sam = som.samenvatting || "";
   if (!woorden(kop).length) return { ok: false, reden: "kop leeg" };
   if (!woorden(ai).length) return { ok: false, reden: "kern leeg" };
   if (bijnaGelijk(ai, kop)) return { ok: false, reden: "kern gelijk aan kop" };
-  if (titels.some((t) => bijnaGelijk(ai, t, false))) return { ok: false, reden: "kern gelijk aan brontitel" };
+  // Een korte kern die niets aan de kop toevoegt is het Florida-defect (kern = kop + een woord). Lange kernen en de bewust lege samenvatting (dunne bron, bijv. NRC-puzzels) blijven ongemoeid.
+  if (woorden(ai).length <= MAX_KORTE_KERN && woorden(sam).length && nieuweWoorden(ai, kop) < MIN_NIEUW) return { ok: false, reden: "kern voegt niets toe aan kop" };
   // Leeg bij een inhoudelijke kern (≥ 6 woorden) is het eerlijke antwoord op een te dunne bron (bijv. NRC-puzzels); kort maar niet leeg is verdacht.
   const nSam = woorden(sam).length;
   if (nSam < MIN_WOORDEN_SAMENVATTING && !(nSam === 0 && woorden(ai).length >= MIN_WOORDEN_SAMENVATTING)) return { ok: false, reden: "samenvatting leeg of te kort" };
@@ -37,11 +43,11 @@ export function controleerSom(som: SomIn, titels: string[] = []): SomUitslag {
   return { ok: true, som: { ...som, punten } };
 }
 
-export const samenvattingOk = (som: SomIn, titels: string[] = []) => controleerSom(som, titels).ok;
+export const samenvattingOk = (som: SomIn) => controleerSom(som).ok;
 
 /** Gecachete som hergebruiken (#476): slecht = null (wordt opnieuw gemaakt), anders de som met opgeschoonde punten. */
-export function zuiverSom<T extends SomIn>(som: T | null | undefined, titels: string[] = []): T | null {
+export function zuiverSom<T extends SomIn>(som: T | null | undefined): T | null {
   if (!som) return null;
-  const c = controleerSom(som, titels);
+  const c = controleerSom(som);
   return c.ok ? { ...som, punten: c.som.punten } : null;
 }

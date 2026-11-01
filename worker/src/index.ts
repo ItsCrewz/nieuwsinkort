@@ -606,13 +606,16 @@ export class Runner extends DurableObject<Env> {
 
     // ---- samenvattingen: eerst per link, daarna per titel en rubriek
     // Ook een gecachete som wordt gecontroleerd (#476): een slechte telt als afwezig (en wordt binnen de normale caps opnieuw gemaakt), slechte punten vallen weg.
-    const zuiver = (k: Cluster, som: (Sum & { at: number }) | null | undefined) => zuiverSom(som, k.c.map((x) => x.t));
+    const zuiver = (som: (Sum & { at: number }) | null | undefined) => zuiverSom(som);
     st.somAfgekeurd ||= {};
     const opgegeven = (k: Cluster) => !!st.somAfgekeurd![k.key];
-    const sumOf = (k: Cluster) => {
-      for (const c of k.c) { const id = st.links[normLink(c.href)]; if (id && st.sums[id]) return zuiver(k, st.sums[id]); }
-      return zuiver(k, vindClusterSum(st.hashes!, st.sums, k.c[0].t, k.cat, now));
+    const ruweSumOf = (k: Cluster) => {
+      for (const c of k.c) { const id = st.links[normLink(c.href)]; if (id && st.sums[id]) return st.sums[id]; }
+      return vindClusterSum(st.hashes!, st.sums, k.c[0].t, k.cat, now);
     };
+    const sumOf = (k: Cluster) => zuiver(ruweSumOf(k));
+    // Afgekeurde gecachete som die deze run niet opnieuw gemaakt wordt: niet verdwijnen maar extractief tonen
+    const slechtGecachet = (k: Cluster) => !sumOf(k) && !!ruweSumOf(k);
     // Keten-stand = Worker-stand + wat /samenvatting vandaag al via Groq gebruikte (KV groq-chat:<UTC-dag>), zodat de dagslimiet per model over beide telt.
     const groqChatKey = `groq-chat:${U}`;
     const groqChat = ((await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null) || {};
@@ -698,7 +701,7 @@ export class Runner extends DurableObject<Env> {
     const noAI = quotaOut || runCapped || bundel.uitgesteld || tijdelijk > 0 || !env.AI; // uitgesteld = zelfde terugval als een volle run
     const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
     // afgekeurde AI-som (#476): dezelfde extractieve route (ruw: true) als zonder AI
-    const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : (noAI || opgegeven(k)) && extractief(k.c[0], isNL(k))));
+    const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : (noAI || opgegeven(k) || slechtGecachet(k)) && extractief(k.c[0], isNL(k))));
     // ---- filmpjes + dumpert
     let dumpert = (R.get(DUMPERT_URL)?.videos || []) as (Video & { _pub: number })[];
     dumpert = dumpert.filter((v) => vanVandaag(v._pub, now)).slice(0, 25);

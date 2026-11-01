@@ -140,9 +140,9 @@ function leesSommen(txt: string, items: In[]): Map<number, Sum> {
 }
 
 /** Controle (#476): goede sommen (met opgeschoonde punten) naar `goed`, de rest naar `slecht`. */
-function keurSommen(res: Map<number, Sum>, items: In[], goed: Map<number, Sum>, slecht: Set<number>) {
+function keurSommen(res: Map<number, Sum>, goed: Map<number, Sum>, slecht: Set<number>) {
   for (const [id, s] of res) {
-    const c = controleerSom(s, items.find((i) => i.id === id)?.titels);
+    const c = controleerSom(s);
     if (c.ok) goed.set(id, c.som); else slecht.add(id);
   }
 }
@@ -164,17 +164,16 @@ export async function summarize(ai: Ai, model: string, items: In[], u: Usage, af
   const tokens = (n: number) => (small ? 150 : 180) * n + 80;
   const res = await jsonStap(ai, model, sys, prompt(items), tokens(items.length), u, !small, (txt) => leesSommen(txt, items));
   const goed = new Map<number, Sum>(), slecht = new Set<number>();
-  keurSommen(res, items, goed, slecht);
+  keurSommen(res, goed, slecht);
   if (!slecht.size) return goed;
   u.somAfgekeurd = (u.somAfgekeurd || 0) + slecht.size;
   const opnieuw = items.filter((i) => slecht.has(i.id));
   const v: Verzoek = { sys, user: prompt(opnieuw), maxTokens: tokens(opnieuw.length), json: !small };
   if (u.llm && ruimteVoor(externe(u), u.llm.state, v)) {
     u.somHerpoging = (u.somHerpoging || 0) + opnieuw.length;
-    u.terugval = (u.terugval || 0) + 1;
     try {
       const tweede = leesSommen(await chat(ai, model, sys, v.user, v.maxTokens, u, v.json, true), opnieuw);
-      keurSommen(tweede, opnieuw, goed, new Set());
+      keurSommen(tweede, goed, new Set());
     } catch (e) { telAanroepFout(u, e); }
   }
   for (const id of slecht) if (!goed.has(id)) { afgekeurd?.add(id); u.somOpgegeven = (u.somOpgegeven || 0) + 1; }

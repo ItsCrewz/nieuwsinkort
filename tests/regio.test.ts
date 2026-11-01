@@ -122,6 +122,20 @@ t("omschrijving telt niet bij een binnenland-, sport- of entertainmentsignaal", 
   assert.equal(isBuitenland({ kop: "Bedrijf gekocht", omschrijving: FL_OMS, bronnen: [b("https://x.nl/binnenland/1")] }), false);
   assert.equal(isBuitenland({ kop: "Wedstrijd afgelast", omschrijving: "Het duel zou in Miami zijn.", bronnen: [b("https://x.nl/sport/1")] }), false);
 });
+t("Gaza, Kyiv en andere steden in de omschrijving alleen: Nederlands nieuws blijft nl (review #477)", () => {
+  const h = [b("https://x.nl/nieuws/1")];
+  assert.equal(isBuitenland({ kop: "Studenten bezetten universiteitsgebouw in Leiden", ai: "", omschrijving: "Ze protesteren tegen de oorlog in Gaza.", bronnen: h }), false);
+  assert.equal(isBuitenland({ kop: "Vluchtelingen vinden onderdak in sporthal Zwolle", ai: "", omschrijving: "De meeste komen uit Kyiv.", bronnen: h }), false);
+  for (const stad of ["Moskou", "Jeruzalem", "Teheran", "Beiroet", "Bagdad", "Kaboel", "Parijs", "Berlijn", "Peking", "Tokio"]) assert.equal(isBuitenland({ kop: "Kamerlid reageert", ai: "", omschrijving: `Het nieuws komt uit ${stad}.`, bronnen: h }), false, stad);
+});
+t("dubbelzinnige stadsnamen in de kop: Chicago, Parijs, Berlijn en Las Vegas zijn geen buitenlandsignaal", () => {
+  const h = [b("https://x.nl/nieuws/1")];
+  assert.equal(isBuitenland({ kop: "Musical Chicago keert terug in Carré", bronnen: h }), false);
+  assert.equal(isBuitenland({ kop: "Café Berlijn in Den Bosch dicht", bronnen: h }), false);
+  assert.equal(isBuitenland({ kop: "Tilburgse kunstenaar exposeert in Parijs", bronnen: h }), false);
+  assert.equal(isBuitenland({ kop: "Show Las Vegas in Efteling", bronnen: h }), false);
+  assert.equal(isBuitenland({ kop: "Minderjarige opgepakt voor terreurdreiging in Moskou", bronnen: h }), true);
+});
 t("Texel is geen Texas", () => {
   assert.equal(isBuitenland({ kop: "Veerdienst naar Texel valt uit", bronnen: [b("https://x.nl/nieuws/1")] }), false);
   assert.equal(isBuitenland({ kop: "Texas wil strengere wapenwet", bronnen: [b("https://x.nl/nieuws/1")] }), true);

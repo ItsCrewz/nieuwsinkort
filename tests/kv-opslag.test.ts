@@ -32,10 +32,10 @@ const e = (slug: string, titel: string, min: number) => ({ t: titel, l: `https:/
 const bronnen = { groepen: [{ id: "nl", bronnen: [{ id: "nu", naam: "NU.nl", feeds: [{ url: "https://nu.test/rss" }] }] }] };
 
 /** Eén Runner met nep-KV, nep-opslag en nep-Fetchers; `feed` bepaalt wat de feed op dit moment levert. */
-function harnas(opties: { kvStart?: Record<string, string> } = {}) {
+function harnas(opties: { kvStart?: Record<string, string>; groepen?: any[] } = {}) {
   const kv = nepKv(), opslag = nepOpslag();
   for (const [k, v] of Object.entries(opties.kvStart || {})) kv.m.set(k, v);
-  const feed: { entries: any[]; br: any; knmi: string | null } = { entries: [], br: null, knmi: null };
+  const feed: { entries: any[]; br: any; knmi: string | null; extra: Record<string, any[]> } = { entries: [], br: null, knmi: null, extra: {} };
   const ogJobs: string[] = [];
   const env: any = {
     SITE: "https://lokaal", MODEL: "m", NIEUWS: kv,
@@ -44,7 +44,7 @@ function harnas(opties: { kvStart?: Record<string, string> } = {}) {
       if (j.url === BR_URL && feed.br) return { url: j.url, ok: true, status: 200, ms: 1, json: feed.br };
       if (j.url === KNMI_VERW && feed.knmi) return { url: j.url, ok: true, status: 200, ms: 1, text: feed.knmi };
       if (j.url === "https://nu.test/rss") return { url: j.url, ok: true, status: 200, ms: 1, entries: feed.entries, videos: [] };
-      return { url: j.url, ok: true, status: 200, ms: 1, entries: [], videos: [] };
+      return { url: j.url, ok: true, status: 200, ms: 1, entries: feed.extra[j.url] || [], videos: [] };
     })) }) },
   };
   const ctx: any = { storage: opslag, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() };
@@ -52,7 +52,7 @@ function harnas(opties: { kvStart?: Record<string, string> } = {}) {
   const statisch = { gegenereerd: iso(-240), items: [], filmpjes: [], dumpert: [] };
   globalThis.fetch = (async (u: any) => {
     const url = String(u);
-    if (url.includes("/bronnen.json")) return Response.json(bronnen);
+    if (url.includes("/bronnen.json")) return Response.json(opties.groepen ? { groepen: opties.groepen } : bronnen);
     if (url.includes("/data.json?statisch=1")) return Response.json(statisch);
     return new Response("nee", { status: 404 });
   }) as any;
@@ -236,7 +236,8 @@ try {
     await hS.run(0);
     const uurS = JSON.parse(hS.kv.m.get("uur")!);
     assert.equal(uurS.items[0].ruw, true, "slechte cache telt als afwezig: extractief");
-    assert.ok(uurS.items[0].kop !== titel || !uurS.items[0].punten.length);
+    assert.match(uurS.items[0].ai, /Het kabinet praat vandaag over de begroting/, "extractief: de feedtekst, niet de kapotte cache");
+    assert.deepEqual(uurS.items[0].punten, [], "extractief: geen punten uit de slechte som");
     const goed = { kop: "Kabinet bespreekt de begroting", ai: "Ministers overleggen vandaag over geld voor scholen en zorg.", samenvatting: "Het kabinet praat vandaag over de begroting. Er komt een besluit voor volgend jaar.", punten: ["Besluit volgt later", "Besluit volgt later"], at: T0 - MIN };
     const hG = harnas({ kvStart: { state: JSON.stringify(kvState(goed)) } });
     hG.feed.entries = hS.feed.entries;
@@ -267,6 +268,36 @@ try {
     await h.run(22);
     await h.run(33);
     assert.equal(aiCalls, na1, "afgekeurd cluster kost geen AI meer");
+  });
+
+  await t("#476 review: cluster van 5 bronnen waarvan de 5e titel ≈ kern kost bij een tweede run geen tweede AI-aanroep", async () => {
+    const titels = ["Grote brand verwoest café in centrum Zwolle", "Brand verwoest café centrum Zwolle", "Zwols café verwoest door grote brand", "Café in Zwolle verwoest door brand in centrum", "Uitslaande brand verwoest oud café aan de Diezerstraat in Zwolle"];
+    const feeds = titels.map((_, i) => ({ id: "b" + i, naam: "Bron" + i, feeds: [{ url: `https://b${i}.test/rss` }] }));
+    const h = harnas({ groepen: [{ id: "nl", bronnen: feeds }] });
+    let aiCalls = 0;
+    h.env.AI = { run: async () => { aiCalls++; return { response: JSON.stringify({ items: [{ id: 1, kop: "Café in centrum Zwolle verwoest", ai: titels[4] + ".", samenvatting: "Een grote brand heeft vanochtend een oud café in het centrum van Zwolle verwoest. De brandweer was lang bezig met blussen.", punten: [] }] }) }; } };
+    titels.forEach((t, i) => { h.feed.extra[`https://b${i}.test/rss`] = [{ t, l: `https://b${i}.test/nieuws/${i}`, s: "", d: T0 - 20 * MIN }]; });
+    await h.run(0);
+    const na1 = aiCalls;
+    assert.ok(na1 >= 1);
+    assert.equal(JSON.parse(h.kv.m.get("uur")!).items.filter((i: any) => !i.ruw).length, 1, "cluster met som");
+    await h.run(11); await h.run(22);
+    assert.equal(aiCalls, na1, "geen tweede aanroep voor hetzelfde cluster");
+  });
+
+  await t("#476 review: afgekeurde gecachete som buiten de AI-keuze (tier 3, showbizz) valt terug op extractief in plaats van te verdwijnen", async () => {
+    const titel = "Loiza Lamers verkleedt zich als haar spirit animal bij Halloween";
+    const slecht = { kop: titel, ai: titel, samenvatting: "Kort antwoord", punten: [], at: T0 - MIN };
+    const state = { datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 8500, calls: 0, runs: 1, okAt: {}, hashes: {}, links: { "sb.test/nieuws/loiza": "x1" }, sums: { x1: slecht } };
+    const h = harnas({ kvStart: { state: JSON.stringify(state) }, groepen: [{ id: "showbizz", bronnen: [{ id: "sb", naam: "Showbytes", feeds: [{ url: "https://sb.test/rss" }] }] }] });
+    let aiCalls = 0;
+    h.env.AI = { run: async () => { aiCalls++; return { response: JSON.stringify({ items: [] }) }; } };
+    h.feed.extra["https://sb.test/rss"] = [{ t: titel, l: "https://sb.test/nieuws/loiza", s: "De sterren delen hun Halloween-looks op sociale media. Loiza kiest voor een dierenpak.", d: T0 - 20 * MIN }];
+    await h.run(0);
+    const items = JSON.parse(h.kv.m.get("uur")!).items;
+    assert.equal(items.length, 1, "item verdwijnt niet");
+    assert.equal(items[0].ruw, true);
+    assert.equal(aiCalls, 0, "tier 3 kiest geen showbizz voor AI");
   });
 
   await t("state-KV: bij uurlijks elke run, daarna pas weer na 50 minuten; DO-state is altijd actueel", async () => {

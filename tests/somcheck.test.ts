@@ -17,16 +17,30 @@ const goed = {
 };
 
 await t("Florida-antwoord wordt afgekeurd (kern gelijk aan kop)", () => {
-  const r = controleerSom(florida, [FL_TITEL]);
+  const r = controleerSom(florida);
   assert.equal(r.ok, false);
-  assert.equal(samenvattingOk(florida, [FL_TITEL]), false);
+  assert.equal(samenvattingOk(florida), false);
 });
 await t("kern leeg, ai ⊂ kop, bijna gelijk aan kop of aan een brontitel: af", () => {
   assert.equal(controleerSom({ ...goed, ai: "" }).ok, false);
   assert.equal(controleerSom({ ...goed, ai: "Crash in Florida" }).ok, false);
   assert.equal(controleerSom({ ...goed, kop: "Privéjet crasht in Florida!", ai: "privejet crasht in florida" }).ok, false);
-  assert.equal(controleerSom({ ...goed, ai: FL_TITEL + "." }, [FL_TITEL]).ok, false);
-  assert.equal(controleerSom({ ...goed, ai: "Hoofdletters, leestekens én accenten tellen niet mee: PRIVÉJET crash in Florida" }, []).ok, true);
+  assert.equal(controleerSom({ ...goed, ai: "Hoofdletters, leestekens én accenten tellen niet mee: PRIVÉJET crash in Florida" }).ok, true);
+});
+await t("kern voegt < 3 inhoudswoorden toe aan de kop: af (Florida-varianten uit de review)", () => {
+  const kop = "Privéjet crash in Florida";
+  assert.equal(controleerSom({ ...goed, kop, ai: "Privéjet stort neer in Florida" }).ok, false);
+  assert.equal(controleerSom({ ...goed, kop, ai: kop + ". Negen doden." }).ok, false);
+  assert.equal(controleerSom({ ...goed, kop, ai: "Privéjet in Florida neergestort" }).ok, false);
+  assert.equal(controleerSom({ ...goed, kop, ai: "Een privéjet crasht in een woonwijk in Florida; negen doden." }).ok, true);
+});
+await t("een kern die op de brontitel lijkt maar iets toevoegt blijft goed (Gielegou Rige met lege fd, Loiza Lamers/Showbytes)", () => {
+  const sommen = JSON.parse(readFileSync("tests/fixtures/sommen-goed.json", "utf8"));
+  for (const naam of ["Gielegou", "Loiza"]) {
+    const { titels, ...s } = sommen.find((x: any) => JSON.stringify(x).includes(naam)) || {};
+    assert.ok(s.kop, naam + " staat in de fixture");
+    assert.ok(controleerSom(s).ok, naam);
+  }
 });
 await t("samenvatting leeg of te kort, of gelijk aan kop/kern: af; leeg bij een inhoudelijke kern mag (dunne bron)", () => {
   assert.equal(controleerSom({ ...goed, samenvatting: "Negen inzittenden om het leven" }).ok, false);
@@ -47,13 +61,13 @@ await t("goede sommen uit de uurdata (fixture) blijven ongewijzigd goedgekeurd",
   const sommen = JSON.parse(readFileSync("tests/fixtures/sommen-goed.json", "utf8"));
   assert.ok(sommen.length >= 5);
   for (const { titels, ...s } of sommen) {
-    const r = controleerSom(s, titels);
+    const r = controleerSom(s);
     assert.ok(r.ok, s.kop);
     if (r.ok) assert.deepEqual(r.som, s);
   }
 });
 await t("gecachete slechte som wordt genegeerd, een som met slechte punten opgeschoond", () => {
-  assert.equal(zuiverSom({ ...florida, at: 1 }, [FL_TITEL]), null);
+  assert.equal(zuiverSom({ ...florida, at: 1 }), null);
   assert.equal(zuiverSom(null), null);
   const z = zuiverSom({ ...goed, punten: ["Florida", "Florida"], at: 5 });
   assert.deepEqual(z, { ...goed, punten: [], at: 5 });
@@ -77,6 +91,7 @@ try {
     assert.deepEqual(res.get(1), goed);
     assert.equal(af.size, 0);
     assert.deepEqual([u.somAfgekeurd, u.somHerpoging, u.somOpgegeven || 0], [1, 1, 0]);
+    assert.equal(u.terugval || 0, 0, "herpoging telt alleen als somHerpoging");
   });
   await t("ook de herpoging afgekeurd: geen som, id in afgekeurd, nooit een tweede herpoging", async () => {
     groq(antwoord(florida));
@@ -95,6 +110,16 @@ try {
     assert.equal(ai.n, 1);
     assert.equal(groqCalls, 0);
     assert.deepEqual([...af], [1]);
+  });
+  await t("keten vol (ruimteVoor false): geen herpoging, wel afgekeurd, niets telt als terugval", async () => {
+    groq(antwoord(goed));
+    const u = usage(), ai = cf(antwoord(florida)), af = new Set<number>();
+    const vol = { dag: new Date().toISOString().slice(0, 10), calls: 1e9, tokens: 1e12 };
+    for (const m of ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]) u.llm!.state[`groq:${m}`] = vol as any;
+    assert.equal((await summarize(ai as any, "m", items, u, af)).size, 0);
+    assert.equal(groqCalls, 0);
+    assert.deepEqual([...af], [1]);
+    assert.equal(u.terugval || 0, 0);
   });
   await t("goed antwoord: geen herpoging", async () => {
     groq(antwoord(florida));

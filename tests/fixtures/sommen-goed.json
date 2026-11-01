@@ -1,78 +1,96 @@
 [
- {
-  "kop": "Twee gewonden bij ongeluk in Haarlem",
-  "ai": "Twee mensen zijn gewond geraakt bij een ongeluk op de Boerhaavelaan in Haarlem. Het ongeluk gebeurde rond 20.30 uur ter hoogte van de Amerikaweg.",
-  "samenvatting": "Er zijn twee gewonden bij een ongeluk met twee voertuigen in Haarlem. De gewonden zijn naar het ziekenhuis gebracht. De politie doet onderzoek naar de oorzaak.",
-  "punten": [
-   "Eén auto is total loss",
-   "De weg ligt vol met brokstukken"
-  ],
-  "titels": [
-   "Twee gewonden bij ongeluk in Haarlem"
-  ]
- },
- {
-  "kop": "NOS Journaal krijgt nieuw decor en vernieuwde studio",
-  "ai": "De NOS presenteert vanavond een nieuw vormgegeven Journaal vanuit een vernieuwde studio. Deze studio in Hilversum wordt ook gebruikt voor het NOS Jeugdjournaal en Nieuwsuur.",
-  "samenvatting": "Het NOS Journaal van 20 uur heeft een nieuw decor. De studio in Hilversum is volledig vernieuwd. Ook de online vormgeving van de NOS verandert de komende tijd.",
-  "punten": [
-   "De studio is ook voor Nieuwsuur en NOS Weer.",
-   "De NOS wil de herkenbaarheid van verhalen vergroten."
-  ],
-  "titels": [
-   "NOS Journaal in nieuw decor: waarom we blijven werken aan herkenbare journalistiek"
-  ]
- },
- {
-  "kop": "NOC*NSF vraagt 50 miljoen euro voor sportcapaciteit",
-  "ai": "Sportkoepel NOC*NSF vraagt het kabinet om 50 miljoen euro. Dit gebeurt voor een sportdebat in de Tweede Kamer.",
-  "samenvatting": "Een miljoen Nederlanders kunnen niet terecht bij hun sportvereniging. Verenigingen hebben te weinig ruimte en te weinig geld.",
-  "punten": [
-   "Er zijn lange wachtlijsten bij sportverenigingen",
-   "Leden stoppen bij sportverenigingen"
-  ],
-  "titels": [
-   "Wachtlijsten en ledenstops: miljoen Nederlanders kunnen niet terecht bij sportvereniging naar keuze"
-  ]
- },
- {
-  "kop": "Telstar wint met 4-2 van FC Utrecht",
-  "ai": "Telstar verslaat FC Utrecht met 4-2 in Velsen-Zuid. Trainer Anthony Correia verliest de wedstrijd tegen zijn oude club.",
-  "samenvatting": "FC Utrecht verliest zondagmiddag met 4-2 van Telstar. Telstar pakt hiermee drie punten voor de strijd tegen degradatie. De club heeft nu zeven punten voorsprong op hekkensluiter Willem II.",
-  "punten": [
-   "Correia promoveerde twee seizoenen geleden met Telstar naar de eredivisie.",
-   "FC Utrecht is momenteel nummer elf van de eredivisie."
-  ],
-  "titels": [
-   "FC Utrecht-coach Correia heeft pijnlijk weerzien met Telstar na blunder Padt",
-   "Sterk Telstar doet oud-trainer Correia pijn met overwinning op Utrecht",
-   "Telstar wint met 4-2 van het Utrecht van oud-trainer Correia",
-   "Anthony Correia grijpt hard in bij FC Utrecht na pijnlijke terugkeer in Velsen-Zuid: ’De zweep erover halen’"
-  ]
- },
- {
-  "kop": "Arsenal pakt koppositie in de Premier League",
-  "ai": "Arsenal won zondag met 0-1 bij Liverpool op Anfield. Door deze winst neemt Arsenal de eerste plek over van Manchester City.",
-  "samenvatting": "Arsenal is de nieuwe koploper in de Engelse Premier League. Kai Havertz scoorde het enige doelpunt tegen Liverpool. Manchester City verloor zaterdag voor de tweede keer op rij.",
-  "punten": [
-   "Arsenal won voor het eerst sinds 2012 op Anfield",
-   "Een fout van Alisson Becker leidde tot de treffer"
-  ],
-  "titels": [
-   "Arsenal pakt koppositie in Premier League met langverwachte zege bij Liverpool",
-   "Arsenal neemt koppositie Premier League over door zeldzame zege op Anfield"
-  ]
- },
- {
-  "kop": "Droogte veroorzaakt mogelijk schade aan kerken in Groningen",
-  "ai": "Deskundigen onderzoeken de invloed van droogte op kerken in Oostum en Den Ham. Dit onderzoek is in opdracht van de provincie Groningen en Stichting Oude Groninger Kerken.",
-  "samenvatting": "Middeleeuwse kerken in Groningen hebben mogelijk last van droogte. Dit onderzoek kijkt naar de wierden in Oostum en Den Ham. In 2018 ontstond er ook schade in de kerk van Oostum.",
-  "punten": [
-   "Kerken hebben naast aardbevingsschade ook last van droogte",
-   "De schade in Oostum kwam na herstel van aardbevingsschade"
-  ],
-  "titels": [
-   "800 jaar oude kerken in Groningen kraken onder zomerse droogte"
-  ]
- }
+  {
+    "kop": "Twee gewonden bij ongeluk in Haarlem",
+    "ai": "Twee mensen zijn gewond geraakt bij een ongeluk op de Boerhaavelaan in Haarlem. Het ongeluk gebeurde rond 20.30 uur ter hoogte van de Amerikaweg.",
+    "samenvatting": "Er zijn twee gewonden bij een ongeluk met twee voertuigen in Haarlem. De gewonden zijn naar het ziekenhuis gebracht. De politie doet onderzoek naar de oorzaak.",
+    "punten": [
+      "Eén auto is total loss",
+      "De weg ligt vol met brokstukken"
+    ],
+    "titels": [
+      "Twee gewonden bij ongeluk in Haarlem"
+    ]
+  },
+  {
+    "kop": "NOS Journaal krijgt nieuw decor en vernieuwde studio",
+    "ai": "De NOS presenteert vanavond een nieuw vormgegeven Journaal vanuit een vernieuwde studio. Deze studio in Hilversum wordt ook gebruikt voor het NOS Jeugdjournaal en Nieuwsuur.",
+    "samenvatting": "Het NOS Journaal van 20 uur heeft een nieuw decor. De studio in Hilversum is volledig vernieuwd. Ook de online vormgeving van de NOS verandert de komende tijd.",
+    "punten": [
+      "De studio is ook voor Nieuwsuur en NOS Weer.",
+      "De NOS wil de herkenbaarheid van verhalen vergroten."
+    ],
+    "titels": [
+      "NOS Journaal in nieuw decor: waarom we blijven werken aan herkenbare journalistiek"
+    ]
+  },
+  {
+    "kop": "NOC*NSF vraagt 50 miljoen euro voor sportcapaciteit",
+    "ai": "Sportkoepel NOC*NSF vraagt het kabinet om 50 miljoen euro. Dit gebeurt voor een sportdebat in de Tweede Kamer.",
+    "samenvatting": "Een miljoen Nederlanders kunnen niet terecht bij hun sportvereniging. Verenigingen hebben te weinig ruimte en te weinig geld.",
+    "punten": [
+      "Er zijn lange wachtlijsten bij sportverenigingen",
+      "Leden stoppen bij sportverenigingen"
+    ],
+    "titels": [
+      "Wachtlijsten en ledenstops: miljoen Nederlanders kunnen niet terecht bij sportvereniging naar keuze"
+    ]
+  },
+  {
+    "kop": "Telstar wint met 4-2 van FC Utrecht",
+    "ai": "Telstar verslaat FC Utrecht met 4-2 in Velsen-Zuid. Trainer Anthony Correia verliest de wedstrijd tegen zijn oude club.",
+    "samenvatting": "FC Utrecht verliest zondagmiddag met 4-2 van Telstar. Telstar pakt hiermee drie punten voor de strijd tegen degradatie. De club heeft nu zeven punten voorsprong op hekkensluiter Willem II.",
+    "punten": [
+      "Correia promoveerde twee seizoenen geleden met Telstar naar de eredivisie.",
+      "FC Utrecht is momenteel nummer elf van de eredivisie."
+    ],
+    "titels": [
+      "FC Utrecht-coach Correia heeft pijnlijk weerzien met Telstar na blunder Padt",
+      "Sterk Telstar doet oud-trainer Correia pijn met overwinning op Utrecht",
+      "Telstar wint met 4-2 van het Utrecht van oud-trainer Correia",
+      "Anthony Correia grijpt hard in bij FC Utrecht na pijnlijke terugkeer in Velsen-Zuid: ’De zweep erover halen’"
+    ]
+  },
+  {
+    "kop": "Arsenal pakt koppositie in de Premier League",
+    "ai": "Arsenal won zondag met 0-1 bij Liverpool op Anfield. Door deze winst neemt Arsenal de eerste plek over van Manchester City.",
+    "samenvatting": "Arsenal is de nieuwe koploper in de Engelse Premier League. Kai Havertz scoorde het enige doelpunt tegen Liverpool. Manchester City verloor zaterdag voor de tweede keer op rij.",
+    "punten": [
+      "Arsenal won voor het eerst sinds 2012 op Anfield",
+      "Een fout van Alisson Becker leidde tot de treffer"
+    ],
+    "titels": [
+      "Arsenal pakt koppositie in Premier League met langverwachte zege bij Liverpool",
+      "Arsenal neemt koppositie Premier League over door zeldzame zege op Anfield"
+    ]
+  },
+  {
+    "kop": "Droogte veroorzaakt mogelijk schade aan kerken in Groningen",
+    "ai": "Deskundigen onderzoeken de invloed van droogte op kerken in Oostum en Den Ham. Dit onderzoek is in opdracht van de provincie Groningen en Stichting Oude Groninger Kerken.",
+    "samenvatting": "Middeleeuwse kerken in Groningen hebben mogelijk last van droogte. Dit onderzoek kijkt naar de wierden in Oostum en Den Ham. In 2018 ontstond er ook schade in de kerk van Oostum.",
+    "punten": [
+      "Kerken hebben naast aardbevingsschade ook last van droogte",
+      "De schade in Oostum kwam na herstel van aardbevingsschade"
+    ],
+    "titels": [
+      "800 jaar oude kerken in Groningen kraken onder zomerse droogte"
+    ]
+  },
+  {
+    "kop": "Zes beginnende schrijvers winnen de Gielegou Rige",
+    "ai": "Zes nieuwe schrijvers winnen de prijs Gielegou Rige. Dit geeft hoop voor de Friese literatuur.",
+    "samenvatting": "Zes beginnende schrijvers winnen de prijs Gielegou Rige. Volgens de tekst geeft dit hoop voor de Friese literatuur.",
+    "punten": [],
+    "titels": [
+      "Zes beginnende schrijvers winnen de Gielegou Rige: ‘Dit geeft hoop voor de Friese literatuur’"
+    ]
+  },
+  {
+    "kop": "Bekende Nederlanders delen Halloween-updates op sociale media",
+    "ai": "Loiza Lamers verkleedt zich als haar spirit animal. Mart Hoogkamer en Robert van Hemert shoppen bij dezelfde winkel.",
+    "samenvatting": "De rubriek Showbytes bekijkt opvallende berichten van beroemdheden. De focus ligt vandaag op Halloween.",
+    "punten": [],
+    "titels": [
+      "Loiza Lamers verkleedt zich als haar spirit animal, Mart Hoogkamer en Robert van Hemert shoppen bij dezelfde winkel"
+    ]
+  }
 ]
