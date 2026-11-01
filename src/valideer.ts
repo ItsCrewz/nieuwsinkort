@@ -10,7 +10,7 @@ const item = (v: unknown): v is Item => obj(v) && ["nl", "buitenland", "tech", "
   [v.kop, v.ai, v.samenvatting, v.tijd].every(tekst) && teksten(v.punten) && lijst(v.bronnen, bron) &&
   opt(v.beeld, tekst) && opt(v.beelden, teksten) && opt(v.meer, tekst) && opt(v.ruw, (x) => typeof x === "boolean");
 const video = (v: unknown): v is Video => obj(v) && [v.titel, v.ai, v.bron, v.href, v.thumb, v.populariteit, v.tijd].every(tekst) &&
-  opt(v.embed, tekst) && opt(v.soort, (x) => x === "short" || x === "journaal") && opt(v.ook, (x) => lijst(x, (b) => obj(b) && tekst(b.bron) && tekst(b.href)));
+  opt(v.embed, tekst) && opt(v.soort, (x) => x === "short" || x === "journaal") && opt(v.groep, tekst) && opt(v.ook, (x) => lijst(x, (b) => obj(b) && tekst(b.bron) && tekst(b.href)));
 
 /** Ongeldige berichten overslaan; een onbruikbare hoofdstructuur geeft een laadfout. */
 export function valideer(v: unknown): { data: Data; afgewezen: number } {

@@ -1,0 +1,1 @@
+- Filmpjes zijn ingedeeld in de groepen Nieuws, Politiek, Showbizz, Opvallend en Sport (onderaan); de indeling door de AI gebeurt alleen voor nieuwe filmpjes, in één call per run (#459).
