@@ -97,13 +97,46 @@ export async function leesState(opslag: Opslag): Promise<{ st: any; json: Record
   return { st, json };
 }
 
-/** Alleen de gewijzigde delen schrijven; de puts volgen zonder await op elkaar en worden dus als één transactie weggeschreven. Geeft het aantal writes. */
+/** Een DO-waarde mag 2 MB zijn; daaronder blijven we ruim (bytes van de JSON-tekst). */
+export const DEEL_MAX = 1.8e6;
+const bytes = (s: string) => new TextEncoder().encode(s).length;
+/** Deze delen zijn caches per sleutel: te groot = de eerste (oudste) sleutels laten vallen tot het past. */
+const KRIMPBAAR = ["st:art", "st:artJ", "st:diep"];
+
+function krimp(naam: string, tekst: string): string {
+  if (!KRIMPBAAR.includes(naam)) return tekst;
+  const e = Object.entries(JSON.parse(tekst));
+  while (e.length && bytes(tekst) > DEEL_MAX) { e.splice(0, Math.ceil(e.length / 10)); tekst = JSON.stringify(Object.fromEntries(e)); }
+  return tekst;
+}
+
+/** Alleen de gewijzigde delen schrijven. `st:rest` (neuronenteller, llm-stand) eerst en apart, zodat die nooit mee faalt met een groot deel; `st:llm` als laatste, zodat een mislukking halverwege het llm-verbruik niet half bijschrijft (bewaarLlmDo telt het dan één keer bij).
+ *  Een te groot deel wordt (bij art/artJ/diep: na inkorten) niet of verkleind geschreven en gelogd; de vorige DO-versie blijft dan staan. Geeft het aantal writes. */
 export async function schrijfState(opslag: Opslag, st: Record<string, any>, vorige: Record<string, string>): Promise<number> {
-  const nieuw = splitState(st), taken: Promise<unknown>[] = [];
-  for (const [k, v] of Object.entries(nieuw)) if (vorige[k] !== v) taken.push(opslag.put(k, v));
-  for (const k of Object.keys(vorige)) if (!(k in nieuw)) taken.push(opslag.delete(k));
-  await Promise.all(taken);
-  return taken.length;
+  const nieuw = splitState(st), w: [string, string][] = [];
+  for (const [k, v] of Object.entries(nieuw)) {
+    if (vorige[k] === v) continue;
+    const s = k === "st:rest" || bytes(v) <= DEEL_MAX ? v : krimp(k, v);
+    if (k !== "st:rest" && bytes(s) > DEEL_MAX) { console.error(`state-deel ${k} te groot (${bytes(s)} bytes), niet geschreven`); continue; }
+    if (s !== v) console.error(`state-deel ${k} te groot (${bytes(v)} bytes), ingekort`);
+    w.push([k, s]);
+  }
+  const volg = (k: string) => (k === "st:rest" ? 0 : k === "st:llm" ? 2 : 1);
+  w.sort((a, b) => volg(a[0]) - volg(b[0]));
+  let n = 0;
+  const weg = Object.keys(vorige).filter((k) => !(k in nieuw));
+  for (const [k, s] of w) { if (k === "st:llm") { for (const d of weg) { await opslag.delete(d); n++; } weg.length = 0; } await opslag.put(k, s); n++; }
+  for (const d of weg) { await opslag.delete(d); n++; }
+  return n;
+}
+
+/** Bij een terugrol + weer uitrollen heeft de KV-kopie soms nieuwere state dan de DO-opslag: zelfde neuronendag met meer neuronen, een latere neuronendag, of een nieuwer `stAt`. Normaal is KV gelijk of ouder. */
+export function kvStateWint(doSt: any, kvSt: any): boolean {
+  if (!kvSt || typeof kvSt !== "object" || !doSt) return false;
+  const dd = doSt.neuronDag ?? doSt.datum, kd = kvSt.neuronDag ?? kvSt.datum;
+  if (typeof kd !== "string" || typeof dd !== "string") return false;
+  if (kd !== dd) return kd > dd;
+  return (kvSt.neurons || 0) > (doSt.neurons || 0) || (kvSt.stAt || 0) > (doSt.stAt || 0);
 }
 
 /** Wat de alarm nodig heeft (neuronenteller) zonder de grote delen te lezen; null = geen DO-state. */

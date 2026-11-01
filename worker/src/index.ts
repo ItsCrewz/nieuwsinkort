@@ -8,7 +8,7 @@ import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
-import { maakTel, voegTellerToe, moetSchrijven, bewaarKvStand, uurInhoud, leesState, schrijfState, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
+import { maakTel, voegTellerToe, moetSchrijven, bewaarKvStand, uurInhoud, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
@@ -300,7 +300,7 @@ const NIET_ALS_NIEUWS = new Set(["burgernet", "gemeenteraadhaarlem"]);
 const BEKENDMAKING_HINTS = /raadsbesluit|collegebesluit|verordening|verkeersbesluit|omgevingsplan|bestemmingsplan|apv|referendum|parkeer|evenement|sluiting|aanwijzing|exploitatie/i;
 const NEWS_CATS = ["nl", "tech", "haarlem", "showbizz", "politiek", "voetbal", "f1", "auto"];
 
-type State ={ llm?: LlmState; okAt?: Record<string, string>; kortAt?: number; datum: string; /** UTC-dag van de neuronenteller (Cloudflare reset 00:00 UTC) */ neuronDag?: string; neurons: number; calls: number; inTok?: number; outTok?: number; geschat?: number; foutN?: number; sums: Record<string, Sum & { at: number }>; links: Record<string, string>; hashes?: Record<string, string>; kortHash?: string; kort?: string; weerHash?: string; weerTxt?: string; runs: number;
+type State ={ llm?: LlmState; okAt?: Record<string, string>; kortAt?: number; datum: string; /** UTC-dag van de neuronenteller (Cloudflare reset 00:00 UTC) */ neuronDag?: string; /** tijdstip (ms) van deze state; KV-kopie met nieuwer stAt wint van DO-opslag */ stAt?: number; neurons: number; calls: number; inTok?: number; outTok?: number; geschat?: number; foutN?: number; sums: Record<string, Sum & { at: number }>; links: Record<string, string>; hashes?: Record<string, string>; kortHash?: string; kort?: string; weerHash?: string; weerTxt?: string; runs: number;
   ytEmbed?: YtCache;
   /** artikeltekst per link (normLink); [] = niets bruikbaars/geweigerd */ art?: Record<string, string[]>;
   /** al via r.jina.ai geprobeerd */ artJ?: Record<string, 1>;
@@ -423,9 +423,12 @@ export class Runner extends DurableObject<Env> {
       fetch(`${site}/data.json?statisch=1&t=${now}`, { headers: { "User-Agent": UA } }),
       leesState(opslag),
     ]);
-    // state staat primair in DO-opslag; is die leeg (eerste run na de overstap), dan eenmalig de KV-kopie
-    const stateRaw: State | null = geladen ? geladen.st : (await env.NIEUWS.get("state", "json")) as State | null;
-    const vorigeDelen = geladen?.json || {};
+    // state staat primair in DO-opslag; de KV-kopie wordt alleen gelezen en wint bij nieuwere inhoud (terugrollen naar de vorige Worker, of een mislukte DO-write), zie kvStateWint
+    const kvState = (await env.NIEUWS.get("state", "json").catch(() => null)) as State | null;
+    const kvWint = !geladen || kvStateWint(geladen.st, kvState);
+    const stateRaw: State | null = kvWint ? kvState ?? geladen?.st ?? null : geladen!.st;
+    // KV-state gebruikt: alle delen opnieuw schrijven (lege vorige tekst = verschilt altijd) en DO-delen die KV niet kent wissen
+    const vorigeDelen = kvWint ? Object.fromEntries(Object.keys(geladen?.json || {}).map((k) => [k, ""])) : geladen!.json;
     const bronnen: any = await bronnenR.json();
     const stat: any = staticR.ok ? await staticR.json().catch(() => null) : null;
     // cache per Amsterdamse dag, neuronenteller per UTC-dag: de teller loopt door over de Amsterdamse datumgrens
@@ -900,6 +903,7 @@ export class Runner extends DurableObject<Env> {
       .map(({ _score, _pub, ...v }: any) => { delete v._k; return { ...v, t: _pub, tijd: hhmm(_pub) }; });
 
     // ---- wegschrijven
+    st.stAt = now;
     telOp(st.llm!, verschilStand(ketenVoor, ketenStand)); // alleen het eigen verschil, niet de meegenomen Function-stand
     const groqVandaag = groqTokens(U, st.llm, (await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null);
     st.neurons += usage.neurons; st.calls += usage.calls;
@@ -940,9 +944,10 @@ export class Runner extends DurableObject<Env> {
       if (k === "uur") { if (schrijfUur) await kvPut("uur", v, uurH); }
       else if (k === "meer") { if (schrijfMeer) await kvPut("meer", v, meerH); }
       else {
-        await schrijfState(opslag, st, vorigeDelen);
-        stateOpgeslagen = true;
-        if (schrijfStateKv) await kvPut("state", v, undefined); // KV-kopie voor /samenvatting en terugdraaien: hooguit ±50 minuten oud
+        try { await schrijfState(opslag, st, vorigeDelen); stateOpgeslagen = true; }
+        catch (x) { console.error("opslagfout state (DO)", x); }
+        // KV-kopie voor /samenvatting en terugdraaien: hooguit ±50 minuten oud; mislukte DO-write = altijd schrijven (de volgende run en /samenvatting hebben de neuronenstand nodig)
+        if (schrijfStateKv || !stateOpgeslagen) { await kvPut("state", v, undefined); if (!stateOpgeslagen) stateOpgeslagen = true; /* KV-kopie bevat de llm-stand van deze run al */ }
       }
     } }, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
       // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.

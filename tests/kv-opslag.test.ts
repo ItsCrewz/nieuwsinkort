@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import worker, { Runner, Fetcher } from "../worker/src/index";
-import { moetSchrijven, uurInhoud, splitState, schrijfState, ruimOg, HARTSLAG_MS, OG_MAX } from "../worker/src/opslag";
+import { moetSchrijven, uurInhoud, splitState, schrijfState, kvStateWint, ruimOg, HARTSLAG_MS, OG_MAX, DEEL_MAX } from "../worker/src/opslag";
 import type { LlmState } from "../worker/src/llm";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
@@ -169,12 +169,9 @@ try {
     assert.equal(rest.runs, 5);
     assert.ok(h.opslag.m.has("st:sums") && JSON.parse(h.opslag.m.get("st:sums") as string).x1);
     assert.ok(r1.kvPuts.includes("state"), "KV-kopie wordt de eerste keer geschreven");
-    // tweede run leest uit DO-opslag, niet meer uit KV
-    let kvStateGelezen = 0;
-    const get = h.kv.get;
-    h.kv.get = async (k: string, ty?: string) => { if (k === "state") kvStateGelezen++; return get(k, ty); };
+    // tweede run: de KV-kopie wordt alleen gelezen en is niet nieuwer, dus DO-opslag blijft leidend
     await h.run(5);
-    assert.equal(kvStateGelezen, 0);
+    assert.equal(JSON.parse(h.opslag.m.get("st:rest") as string).runs, 6);
   });
 
   await t("state-KV: bij uurlijks elke run, daarna pas weer na 50 minuten; DO-state is altijd actueel", async () => {
@@ -208,6 +205,90 @@ try {
     assert.equal(kvState.sums && typeof kvState.sums, "object", "volledige state in de KV-kopie");
     const leeg = harnas();
     assert.equal(await (leeg.r as any).bewaarLlmDo({ opslag: leeg.opslag, kv: leeg.kv }, {}, {}), false, "zonder state niets schrijven");
+  });
+
+  await t("schrijfState: te groot deel wordt niet geschreven (vorige blijft, gelogd); art/diep/artJ worden ingekort; st:rest eerst, st:llm laatst", async () => {
+    const fouten: string[] = [], echt = console.error;
+    console.error = (...a: unknown[]) => { fouten.push(a.join(" ")); };
+    try {
+      const o = nepOpslag();
+      const groot = "x".repeat(DEEL_MAX + 10);
+      const st: any = { datum: "d", neurons: 1, sums: { a: 1 }, links: { l: 1 }, art: {}, llm: { g: 1 }, ytEmbed: { v: groot } };
+      st.art = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`k${i}`, ["y".repeat(150000)]]));
+      await schrijfState(o, st, {});
+      assert.equal(o.puts[0], "st:rest");
+      assert.equal(o.puts[o.puts.length - 1], "st:llm");
+      assert.ok(!o.m.has("st:ytEmbed"), "te groot deel niet geschreven");
+      assert.ok(fouten.some((f) => f.includes("st:ytEmbed") && f.includes("te groot")));
+      const art = JSON.parse(o.m.get("st:art") as string);
+      assert.ok(Object.keys(art).length > 0 && Object.keys(art).length < 20 && !art.k0 && art.k19, "oudste regels vallen af");
+      assert.ok((o.m.get("st:art") as string).length <= DEEL_MAX);
+      // vorige DO-versie van een te groot deel blijft staan
+      const vorige = Object.fromEntries([...o.m].map(([k, v]) => [k, v as string]));
+      await o.put("st:ytEmbed", "\"oud\""); vorige["st:ytEmbed"] = "\"oud\"";
+      await schrijfState(o, { ...st, neurons: 2 }, vorige);
+      assert.equal(o.m.get("st:ytEmbed"), "\"oud\"");
+      assert.equal(JSON.parse(o.m.get("st:rest") as string).neurons, 2);
+    } finally { console.error = echt; }
+  });
+
+  await t("run met art > 1,8 MB: run slaagt, st:rest en andere delen geschreven, art ingekort, geen throw", async () => {
+    const fouten: string[] = [], echt = console.error;
+    console.error = (...a: unknown[]) => { fouten.push(a.join(" ")); };
+    try {
+      const h = harnas();
+      h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
+      await h.run(0);
+      await h.opslag.put("st:art", JSON.stringify({ "nu.test/binnenland/een": ["x".repeat(DEEL_MAX + 100)] }, null, 1)); // andere opmaak: de run ziet het als gewijzigd
+      const r = await h.run(5);
+      assert.equal(r.res.status, 200);
+      assert.equal(JSON.parse(h.opslag.m.get("st:rest") as string).runs, 2);
+      assert.ok(h.opslag.m.has("st:sums") && h.opslag.m.has("st:links"));
+      assert.ok(((h.opslag.m.get("st:art") as string) || "").length <= DEEL_MAX);
+      assert.ok(fouten.some((f) => f.includes("st:art") && f.includes("te groot")));
+    } finally { console.error = echt; }
+  });
+
+  await t("mislukte DO-state-write: run gaat door en de KV-kopie van state wordt toch geschreven (ook binnen 50 minuten)", async () => {
+    const fouten: string[] = [], echt = console.error;
+    console.error = (...a: unknown[]) => { fouten.push(a.join(" ")); };
+    try {
+      const h = harnas();
+      h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
+      await h.run(0);
+      const put = h.opslag.put;
+      h.opslag.put = async (k: string, v: unknown) => { if (k.startsWith("st:")) throw new Error("DO kapot"); return put(k, v); };
+      const r = await h.run(5);
+      h.opslag.put = put;
+      assert.equal(r.res.status, 200);
+      assert.ok(r.kvPuts.includes("state"), "KV-state toch geschreven");
+      assert.equal(JSON.parse(h.kv.m.get("state")!).runs, 2);
+      assert.ok(fouten.some((f) => f.includes("opslagfout state (DO)")));
+      // de volgende run: KV-state is nieuwer (stAt) dan de verouderde DO-state en wint, dus runs loopt door
+      await h.run(10);
+      assert.equal(JSON.parse(h.opslag.m.get("st:rest") as string).runs, 3);
+    } finally { console.error = echt; }
+  });
+
+  await t("terugrollen: KV-state zonder stAt met meer neuronen dan DO-state wint (sums en neuronen behouden, geen nieuwe AI-calls)", async () => {
+    const dag = "2026-11-02", link = "https://nu.test/binnenland/een";
+    const doRest = { datum: dag, neuronDag: dag, neurons: 100, calls: 1, runs: 1, okAt: {}, stAt: T0 - 60 * MIN };
+    const kvState = { datum: dag, neuronDag: dag, neurons: 400, calls: 9, runs: 5, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit de oude Worker", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst.", punten: ["a"], at: T0 - MIN } } };
+    const h = harnas({ kvStart: { state: JSON.stringify(kvState) } });
+    await h.opslag.put("st:rest", JSON.stringify(doRest));
+    h.feed.entries = [{ ...e("een", "Kabinet praat over de begroting van volgend jaar", -20), l: link }];
+    await h.run(0);
+    const uur = JSON.parse(h.kv.m.get("uur")!);
+    assert.equal(uur.items[0].kop, "Samenvatting uit de oude Worker");
+    const rest = JSON.parse(h.opslag.m.get("st:rest") as string);
+    assert.ok(rest.neurons >= 400 && rest.runs === 6);
+    assert.ok(JSON.parse(h.opslag.m.get("st:sums") as string).x1, "KV-sums naar DO-opslag overgenomen");
+    // normaal bedrijf: KV gelijk of ouder = DO leidend
+    assert.equal(kvStateWint({ neuronDag: dag, neurons: 400, stAt: 5 }, { neuronDag: dag, neurons: 400, stAt: 5 }), false);
+    assert.equal(kvStateWint({ neuronDag: dag, neurons: 400, stAt: 5 }, { neuronDag: dag, neurons: 300, stAt: 4 }), false);
+    assert.equal(kvStateWint({ neuronDag: dag, neurons: 400 }, { neuronDag: "2026-11-03", neurons: 0 }), true);
+    assert.equal(kvStateWint({ neuronDag: "2026-11-03", neurons: 0 }, { neuronDag: dag, neurons: 900 }), false);
+    assert.equal(kvStateWint({ neuronDag: dag, neurons: 400, stAt: 5 }, { neuronDag: dag, neurons: 400, stAt: 6 }), true);
   });
 
   await t("og-cache: tweede run stuurt geen og-jobs, 0 og-KV-writes; regel ouder dan 3 dagen verloopt", async () => {
