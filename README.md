@@ -105,7 +105,11 @@ Elke PR voegt een fragment `changelog.d/<issue>-<slug>.md` toe (onderdeel van "k
 
 Statische bestanden krijgen via `public/_headers` HSTS met `max-age=86400`, een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De HTML verwijdert de CORS-header; `/data.json` gebruikt dezelfde origin en de Function behoudt haar eigen CORS-header. Pages Functions krijgen de headers uit `_headers` niet automatisch; de vier Functions zetten zelf `X-Content-Type-Options: nosniff`. Cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, altijd hervalideren); `/assets/*` is immutable, `/bronnen.json` en de iconen hebben in `_headers` een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
 
-De CSP staat het Cloudflare Web Analytics-script van `static.cloudflareinsights.com` toe, zodat de door Cloudflare ingevoegde beacon kan werken. `cloudflareinsights.com` staat expliciet bij `connect-src`; HTTPS-verbindingen waren daar al toegestaan. Deze aanpassing vereist beoordeling door Joey.
+De CSP staat het Cloudflare Web Analytics-script van `static.cloudflareinsights.com` toe, zodat de door Cloudflare ingevoegde beacon kan werken. `cloudflareinsights.com` staat expliciet bij `connect-src`; HTTPS-verbindingen waren daar al toegestaan. De beacon zelf staat niet in `index.html`: Cloudflare voegt hem bij een deploy in zodra Web Analytics aan staat (zie [Bezoekersstatistieken](#bezoekersstatistieken-cloudflare-web-analytics)).
+
+## Bezoekersstatistieken (Cloudflare Web Analytics)
+
+Web Analytics staat aan via de Pages-instelling (Workers & Pages → nieuwsinkort → Metrics → Web Analytics); in de code is niets ingebouwd. Gemeten worden visits, paginaweergaven, laadtijd en Core Web Vitals (LCP, INP, CLS), met filters op onder meer land, pad, verwijzer en apparaat. Kosten: €0. Er zijn geen cookies, geen localStorage en geen fingerprinting; volgens Cloudflare worden geen persoonsgegevens van bezoekers verzameld (niet juridisch getoetst). Adblockers blokkeren de beacon, dus de cijfers zijn een ondergrens. Hash-routes (`#/filmpjes`, `#/sport`) worden niet apart geteld: alle bezoeken verschijnen als `/`. Bekijken: Cloudflare-dashboard → Web Analytics → de site. Uitzetten: dezelfde instelling uitschakelen en daarna één gewone deploy. Details: [architectuur](docs/architectuur.md#bezoekersstatistieken).
 
 ### KV-schrijflimiet uur-Worker
 

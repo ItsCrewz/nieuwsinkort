@@ -1,0 +1,1 @@
+- Cloudflare Web Analytics gedocumenteerd: aangezet via de Pages-instelling, zonder code of CSP-wijziging; hash-routes worden niet apart geteld (#470).
