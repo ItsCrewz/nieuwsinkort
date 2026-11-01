@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import worker, { Runner, Fetcher } from "../worker/src/index";
+import { BR_URL, KNMI_VERW } from "../worker/src/weer";
 import { moetSchrijven, uurInhoud, splitState, schrijfState, kvStateWint, ruimOg, HARTSLAG_MS, OG_MAX, DEEL_MAX } from "../worker/src/opslag";
 import type { LlmState } from "../worker/src/llm";
 
@@ -34,12 +35,14 @@ const bronnen = { groepen: [{ id: "nl", bronnen: [{ id: "nu", naam: "NU.nl", fee
 function harnas(opties: { kvStart?: Record<string, string> } = {}) {
   const kv = nepKv(), opslag = nepOpslag();
   for (const [k, v] of Object.entries(opties.kvStart || {})) kv.m.set(k, v);
-  const feed: { entries: any[] } = { entries: [] };
+  const feed: { entries: any[]; br: any; knmi: string | null } = { entries: [], br: null, knmi: null };
   const ogJobs: string[] = [];
   const env: any = {
     SITE: "https://lokaal", MODEL: "m", NIEUWS: kv,
     FETCHER: { idFromName: (x: string) => x, get: () => ({ fetch: async (_u: string, init: any) => Response.json(JSON.parse(init.body).jobs.map((j: any) => {
       if (j.kind === "og") { ogJobs.push(j.url); return { url: j.url, ok: true, status: 200, ms: 1, text: `https://img.test/${encodeURIComponent(j.url)}.jpg` }; }
+      if (j.url === BR_URL && feed.br) return { url: j.url, ok: true, status: 200, ms: 1, json: feed.br };
+      if (j.url === KNMI_VERW && feed.knmi) return { url: j.url, ok: true, status: 200, ms: 1, text: feed.knmi };
       if (j.url === "https://nu.test/rss") return { url: j.url, ok: true, status: 200, ms: 1, entries: feed.entries, videos: [] };
       return { url: j.url, ok: true, status: 200, ms: 1, entries: [], videos: [] };
     })) }) },
@@ -77,7 +80,13 @@ try {
     const basis = (g: string, ok: string, bij: string, extra = {}) => ({ datum: "d", gegenereerd: g, meta: { x: g }, tab_samenvatting: { nl: { tekst: "t", ai: false, bron: "extractief", gegenereerd: g } }, weer: { bijgewerkt: bij, nu: { temp: 9 } }, items: [{ kop: "a" }], bronstats: { "nl|nu": { vandaag: 3, ok, laatste: "l" } }, ...extra });
     assert.equal(uurInhoud(basis("1", "o1", "10:00")), uurInhoud(basis("2", "o2", "10:05")));
     assert.notEqual(uurInhoud(basis("1", "o1", "10:00")), uurInhoud(basis("1", "o1", "10:00", { items: [{ kop: "b" }] })));
-    assert.notEqual(uurInhoud(basis("1", "o1", "10:00")), uurInhoud({ ...basis("1", "o1", "10:00"), weer: { bijgewerkt: "10:00", nu: { temp: 10 } } }));
+    // #461: de snel wisselende weervelden (nu, vandaag) tellen niet mee; verwachting, dagen en waarschuwing wel
+    const metWeer = (weer: any) => ({ ...basis("1", "o1", "10:00"), weer });
+    const w = { bijgewerkt: "10:00", nu: { temp: 9 }, vandaag: { max: 12, neerslagkans: 20 }, dagen: [{ dag: "ma", min: 3, max: 9 }], verwachting: "Droog.", waarschuwing: "" };
+    assert.equal(uurInhoud(metWeer(w)), uurInhoud(metWeer({ ...w, bijgewerkt: "10:10", nu: { temp: 10 }, vandaag: { max: 12, neerslagkans: 60 } })));
+    assert.notEqual(uurInhoud(metWeer(w)), uurInhoud(metWeer({ ...w, waarschuwing: "Code oranje: onweer" })));
+    assert.notEqual(uurInhoud(metWeer(w)), uurInhoud(metWeer({ ...w, verwachting: "Regen." })));
+    assert.notEqual(uurInhoud(metWeer(w)), uurInhoud(metWeer({ ...w, dagen: [{ dag: "ma", min: 3, max: 10 }] })));
   });
 
   await t("state splitsen: alleen gewijzigde delen worden geschreven, verdwenen delen gewist", async () => {
@@ -153,6 +162,50 @@ try {
     const { meta: _m1, ...a } = uur2, { meta: _m2, ...b } = JSON.parse(vers.kv.m.get("uur")!);
     assert.deepEqual(a, b);
     assert.equal(h.kv.m.get("data-vooraf")!.split("\n")[0], "2026-11-02");
+  });
+
+  const brFeed = (temp: number, kans = 20) => ({ actual: { stationmeasurements: [{ regio: "De Bilt", temperature: temp, feeltemperature: temp - 1, weatherdescription: "Zonnig" }] }, forecast: { fivedayforecast: [{ day: "2026-11-02T00:00:00", mintemperatureMin: 3, maxtemperatureMax: 11, rainChance: kans, wind: 3, windDirection: "zw", weatherdescription: "Zonnig" }] } });
+  const knmiTekst = (waarschuwing: string) => `Vandaag & morgen Het blijft droog met zon.\nWaarschuwingen\n${waarschuwing}\n\n(Bron: KNMI)`;
+
+  await t("#461 weer: runs om de 5 minuten waarbij alleen weer.nu wisselt = 0 KV-writes; hartslag schrijft het nieuwe weer; waarschuwing direct", async () => {
+    const h = harnas();
+    h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
+    h.feed.br = brFeed(9);
+    h.feed.knmi = knmiTekst("Er zijn geen waarschuwingen.");
+    const r1 = await h.run(0);
+    for (const k of ["uur", "data-vooraf"]) assert.ok(r1.kvPuts.includes(k));
+    assert.equal(JSON.parse(h.kv.m.get("uur")!).weer.nu.temp, 9);
+    h.feed.br = brFeed(10, 70); // nu én vandaag.neerslagkans wisselen
+    const r2 = await h.run(5);
+    assert.deepEqual(r2.kvPuts, [], "alleen weer.nu/vandaag anders: geen uur- of data-vooraf-write");
+    h.feed.br = brFeed(11, 30);
+    assert.deepEqual((await h.run(10)).kvPuts, []);
+    assert.equal(JSON.parse(h.kv.m.get("uur")!).weer.nu.temp, 9, "KV houdt het weer van de laatste write");
+    h.feed.knmi = knmiTekst("Onweer in het zuiden (code oranje)");
+    const r4 = await h.run(15);
+    assert.deepEqual([...r4.kvPuts].sort(), ["data-vooraf", "uur"], "waarschuwing gaat direct live");
+    const uur4 = JSON.parse(h.kv.m.get("uur")!);
+    assert.match(uur4.weer.waarschuwing, /oranje/i);
+    assert.equal(uur4.weer.nu.temp, 11, "het weer gaat dan mee met de write");
+    h.feed.br = brFeed(12);
+    assert.deepEqual((await h.run(20)).kvPuts, []);
+    const r6 = await h.run(66);
+    assert.ok(r6.kvPuts.includes("uur") && r6.kvPuts.includes("data-vooraf"), "hartslag na ≥ 50 minuten");
+    assert.equal(JSON.parse(h.kv.m.get("uur")!).weer.nu.temp, 12, "hartslag schrijft het nieuwe weer");
+  });
+
+  await t("#461 weer: uurlijks (59:59 uit elkaar) schrijven beide runs uur en data-vooraf, ook als alleen weer.nu wisselt", async () => {
+    const h = harnas();
+    h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
+    h.feed.br = brFeed(9);
+    await h.run(0);
+    h.feed.br = brFeed(14);
+    klok = T0 + 59 * MIN + 59e3;
+    const voor = h.kv.puts.length;
+    await h.r.fetch(new Request("https://do/run"));
+    const r2 = h.kv.puts.slice(voor);
+    assert.ok(r2.includes("uur") && r2.includes("data-vooraf"));
+    assert.equal(JSON.parse(h.kv.m.get("uur")!).weer.nu.temp, 14);
   });
 
   await t("migratie: lege DO-opslag + KV state → de KV-state wordt gebruikt en daarna in DO-opslag bewaard", async () => {
