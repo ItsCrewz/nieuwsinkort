@@ -52,9 +52,9 @@ De Durable Object `Budget` (`worker/src/budget.ts`, logica in `src/budget.ts`, b
 
 ### KV-schrijflimiet uur-Worker
 
-Per run worden maximaal 30 unieke og-links opgehaald (dus hooguit 30 `og:`-schrijfpogingen). `meta.kvWritesOg` telt deze pogingen; `meta.kvWrites` telt daarnaast de door Fetcher gemelde Instagram-cachepogingen en de drie eindschrijfpogingen (`uur`, `state`, `meer`), ook bij fouten. De drie eindpogingen zijn vooraf meegeteld zodat de opgeslagen `uur`-metadata ze bevat. Losse video-alarmen en Pages Functions vallen buiten deze runteller; dit is geen accountbreed dagbudget.
+KV-writes zijn de krapste gratis limiet (1.000/dag), dus (#452): `uur`, `data-vooraf` en `meer` alleen bij gewijzigde inhoud of na 50 minuten (hartslag, `worker/src/opslag.ts`); `state`, de og-/ig-caches, `vooraf-log` en de tellerregels staan in DO-opslag (KV-kopie van `state` hooguit elke 50 minuten); de Runner kent alleen de paden `/run` en `/info`. `meta.kvWritesRun` en `meta.kvSleutels` zijn de echte telling van de run (tellende proxy om `env.NIEUWS`). Voeg geen nieuwe periodieke KV-schrijver toe zonder deze regels; zie [architectuur](docs/architectuur.md#opslag-kv-alleen-bij-wijziging-452).
 
-`uur` wordt eerst apart geschreven. KV-eindschrijffouten worden gelogd via `console.error`; ook bij fouten op `state` of `meer` wordt het video-alarm gezet. Een mislukte `vooraf-log`-schrijfactie houdt het volgende alarm evenmin tegen. Bij een fout op `uur` blijft de eerder opgeslagen versie staan.
+`uur` wordt eerst apart geschreven. KV-eindschrijffouten worden gelogd via `console.error`; ook bij fouten op `state` of `meer` wordt het video-alarm gezet. Bij een fout op `uur` blijft de eerder opgeslagen versie staan.
 
 Deploy-integriteit: `deploy.sh` weigert een vuile werkboom en een na de build van HEAD
  afwijkende `public/bronnen.json`, tenzij bewust `ALLOW_DIRTY=1` is ingesteld.
