@@ -100,4 +100,31 @@ t("herindeel raakt alleen nl aan", () => {
   assert.equal(nl.cat, "nl");
 });
 
+// Florida-privéjet (#476): RTL-pad zonder sectie, de landaanduiding staat in kop én omschrijving
+const FL_HREF = "https://www.rtl.nl/nieuws/artikel/5662394/negen-doden-bij-crash-privejet-woonwijk-florida-ontploft-verenigde-staten";
+const FL_OMS = "Bij een vliegtuigcrash in een woonwijk in de Amerikaanse staat Florida zijn vandaag alle negen inzittenden om het leven gekomen.";
+t("Florida-item (kop, ai en omschrijving) is buitenland", () => {
+  assert.equal(isBuitenland({ kop: "Privéjet crash in Florida", ai: "Privéjet crash in Florida", omschrijving: FL_OMS, bronnen: [b(FL_HREF)] }), true);
+  assert.equal(herindeel({ cat: "nl", kop: "Privéjet crash in Florida", ai: "", omschrijving: FL_OMS, bronnen: [b(FL_HREF)] }).cat, "buitenland");
+});
+t("alleen de omschrijving noemt de Amerikaanse staat: buitenland", () => {
+  assert.equal(isBuitenland({ kop: "Negen doden bij crash privéjet", ai: "Toestel ontploft naast drukke weg.", omschrijving: FL_OMS, bronnen: [b(FL_HREF)] }), true);
+  assert.equal(isBuitenland({ kop: "Grote brand in woonwijk", ai: "", omschrijving: "De brand woedt in Texas en in Californië.", bronnen: [b("https://x.nl/nieuws/1")] }), true);
+});
+t("NL-bericht met terloopse buitenlandse vermelding in de omschrijving blijft nl", () => {
+  const h = [b("https://x.nl/nieuws/1")];
+  assert.equal(isBuitenland({ kop: "Bedrijf gekocht", ai: "", omschrijving: "Een Amerikaanse investeerder koopt het Nederlandse bedrijf.", bronnen: h }), false);
+  assert.equal(isBuitenland({ kop: "Fabriek sluit", ai: "", omschrijving: "De fabriek exporteert naar Duitsland en Florida; het hoofdkantoor staat in Utrecht.", bronnen: h }), false);
+  assert.equal(isBuitenland({ kop: "Fabriek sluit", ai: "", omschrijving: "De fabriek exporteert veel naar Duitsland en China.", bronnen: h }), false);
+  assert.equal(isBuitenland({ kop: "Jetten bezoekt Florida", ai: "", omschrijving: "In Miami spreekt hij met investeerders.", bronnen: h }), false);
+});
+t("omschrijving telt niet bij een binnenland-, sport- of entertainmentsignaal", () => {
+  assert.equal(isBuitenland({ kop: "Bedrijf gekocht", omschrijving: FL_OMS, bronnen: [b("https://x.nl/binnenland/1")] }), false);
+  assert.equal(isBuitenland({ kop: "Wedstrijd afgelast", omschrijving: "Het duel zou in Miami zijn.", bronnen: [b("https://x.nl/sport/1")] }), false);
+});
+t("Texel is geen Texas", () => {
+  assert.equal(isBuitenland({ kop: "Veerdienst naar Texel valt uit", bronnen: [b("https://x.nl/nieuws/1")] }), false);
+  assert.equal(isBuitenland({ kop: "Texas wil strengere wapenwet", bronnen: [b("https://x.nl/nieuws/1")] }), true);
+});
+
 console.log(`\n${n} tests geslaagd`);

@@ -1,0 +1,2 @@
+- Rubriek Nederland/Buitenland kijkt ook naar plaats en land in de feedomschrijving (alleen sterke aanduidingen en alleen zonder Nederlands anker) en kent Florida, de Verenigde Staten, Amerikaanse staten en grote buitenlandse steden (#476).
+- AI-samenvattingen worden gecontroleerd (kern gelijk aan kop of brontitel, te korte of dubbele samenvatting, dubbele punten of punten van één woord): één herpoging via de externe keten, daarna de bestaande extractieve route (`ruw: true`); gecachete slechte sommen worden genegeerd en opnieuw gemaakt, zonder extra KV-writes (#476).

@@ -210,7 +210,7 @@ try {
 
   await t("migratie: lege DO-opslag + KV state → de KV-state wordt gebruikt en daarna in DO-opslag bewaard", async () => {
     const link = "https://nu.test/binnenland/een";
-    const kvState = { datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 77, calls: 3, runs: 4, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit KV-state", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst.", punten: ["a"], at: T0 - MIN } } };
+    const kvState = { datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 77, calls: 3, runs: 4, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit KV-state", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst over het nieuws van vandaag in het hele land.", punten: ["Een tweede feit"], at: T0 - MIN } } };
     const h = harnas({ kvStart: { state: JSON.stringify(kvState) } });
     h.feed.entries = [{ ...e("een", "Kabinet praat over de begroting van volgend jaar", -20), l: link }];
     const r1 = await h.run(0);
@@ -225,6 +225,48 @@ try {
     // tweede run: de KV-kopie wordt alleen gelezen en is niet nieuwer, dus DO-opslag blijft leidend
     await h.run(5);
     assert.equal(JSON.parse(h.opslag.m.get("st:rest") as string).runs, 6);
+  });
+
+  await t("#476 gecachete slechte som wordt genegeerd (ruw, geen AI zonder binding); een goede som blijft en extra KV-writes zijn er niet", async () => {
+    const link = "https://nu.test/binnenland/een", titel = "Kabinet praat over de begroting van volgend jaar";
+    const slecht = { kop: titel, ai: titel, samenvatting: "Kort antwoord", punten: ["Kabinet", "Kabinet"], at: T0 - MIN };
+    const kvState = (som: object) => ({ datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 0, calls: 0, runs: 1, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: som } });
+    const hS = harnas({ kvStart: { state: JSON.stringify(kvState(slecht)) } });
+    hS.feed.entries = [{ ...e("een", titel, -20), l: link, s: "Het kabinet praat vandaag over de begroting. Er komt een besluit." }];
+    await hS.run(0);
+    const uurS = JSON.parse(hS.kv.m.get("uur")!);
+    assert.equal(uurS.items[0].ruw, true, "slechte cache telt als afwezig: extractief");
+    assert.ok(uurS.items[0].kop !== titel || !uurS.items[0].punten.length);
+    const goed = { kop: "Kabinet bespreekt de begroting", ai: "Ministers overleggen vandaag over geld voor scholen en zorg.", samenvatting: "Het kabinet praat vandaag over de begroting. Er komt een besluit voor volgend jaar.", punten: ["Besluit volgt later", "Besluit volgt later"], at: T0 - MIN };
+    const hG = harnas({ kvStart: { state: JSON.stringify(kvState(goed)) } });
+    hG.feed.entries = hS.feed.entries;
+    await hG.run(0);
+    const it = JSON.parse(hG.kv.m.get("uur")!).items[0];
+    assert.equal(it.kop, goed.kop);
+    assert.ok(!it.ruw);
+    assert.deepEqual(it.punten, ["Besluit volgt later"], "dubbel punt weggelaten");
+    assert.ok(hG.kv.puts.every((k) => !/afgekeurd/i.test(k)), "geen nieuwe KV-sleutel");
+  });
+
+  await t("#476 afgekeurde AI-som (geen externe keten): extractief ruw, markering in DO-opslag, volgende runs geen AI meer voor dat cluster", async () => {
+    const titel = "Privéjet crash in Florida";
+    const h = harnas();
+    let aiCalls = 0;
+    h.env.AI = { run: async () => { aiCalls++; return { response: JSON.stringify({ items: [{ id: 1, kop: titel, ai: titel, samenvatting: "Negen inzittenden om het leven", punten: ["Florida", "Florida"] }] }) }; } };
+    h.feed.entries = [{ ...e("een", titel, -20), l: "https://nu.test/nieuws/artikel/5662394/privejet", s: "Bij een vliegtuigcrash in een woonwijk in de Amerikaanse staat Florida zijn vandaag alle negen inzittenden om het leven gekomen." }];
+    await h.run(0);
+    await h.run(11);
+    const uur = JSON.parse(h.kv.m.get("uur")!);
+    const na1 = aiCalls;
+    assert.ok(na1 >= 1, "AI is gebruikt");
+    assert.equal(uur.items[0].ruw, true, "geen kapotte som getoond: extractief");
+    assert.equal(uur.items[0].cat, "buitenland", "Florida in kop/omschrijving: Buitenland");
+    assert.deepEqual(JSON.parse(h.opslag.m.get("st:sums") as string), {}, "geen som bewaard");
+    assert.equal(Object.keys(JSON.parse(h.opslag.m.get("st:rest") as string).somAfgekeurd).length, 1);
+    assert.equal(uur.meta.somOpgegeven, 1);
+    await h.run(22);
+    await h.run(33);
+    assert.equal(aiCalls, na1, "afgekeurd cluster kost geen AI meer");
   });
 
   await t("state-KV: bij uurlijks elke run, daarna pas weer na 50 minuten; DO-state is altijd actueel", async () => {
@@ -362,7 +404,7 @@ try {
   await t("terugrollen: KV-state zonder stAt met meer neuronen dan DO-state wint (sums en neuronen behouden, geen nieuwe AI-calls)", async () => {
     const dag = "2026-11-02", link = "https://nu.test/binnenland/een";
     const doRest = { datum: dag, neuronDag: dag, neurons: 100, calls: 1, runs: 1, okAt: {}, stAt: T0 - 60 * MIN };
-    const kvState = { datum: dag, neuronDag: dag, neurons: 400, calls: 9, runs: 5, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit de oude Worker", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst.", punten: ["a"], at: T0 - MIN } } };
+    const kvState = { datum: dag, neuronDag: dag, neurons: 400, calls: 9, runs: 5, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit de oude Worker", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst over het nieuws van vandaag in het hele land.", punten: ["Een tweede feit"], at: T0 - MIN } } };
     const h = harnas({ kvStart: { state: JSON.stringify(kvState) } });
     await h.opslag.put("st:rest", JSON.stringify(doRest));
     h.feed.entries = [{ ...e("een", "Kabinet praat over de begroting van volgend jaar", -20), l: link }];
@@ -380,7 +422,7 @@ try {
     assert.equal(kvStateWint({ neuronDag: dag, neurons: 400, stAt: 5 }, { neuronDag: dag, neurons: 400, stAt: 6 }), true);
   });
 
-  const sumsVan = (kop: string, at: number) => ({ x1: { kop, ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst.", punten: ["a"], at } });
+  const sumsVan = (kop: string, at: number) => ({ x1: { kop, ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst over het nieuws van vandaag in het hele land.", punten: ["Een tweede feit"], at } });
 
   await t("halve DO-write (st:rest ja, st:sums faalt): volgende run kiest de KV-state, behoudt sums en llm, geen dubbele AI-calls; DO daarna compleet met st:at", async () => {
     const dag = "2026-11-02", link = "https://nu.test/binnenland/een", echt = console.error, fouten: string[] = [];
