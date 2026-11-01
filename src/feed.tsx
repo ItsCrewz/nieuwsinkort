@@ -1464,6 +1464,7 @@ export function Feed({
       f.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "unMute", args: [] }), "https://www.youtube-nocookie.com")
     );
   }, [pool]);
+  const knopEersteOp = useRef(0);
   const soundRef = useRef({ want, nativeBlocked, ytBlokAan: ytBlok.size > 0 });
   soundRef.current = { want, nativeBlocked, ytBlokAan: ytBlok.size > 0 };
   // Een YouTube-blokkade hoort bij de slide waarop ze viel; op een andere slide opnieuw proberen.
@@ -1477,7 +1478,11 @@ export function Feed({
       onthoudGeluidTik();
       setGetikt(true);
       const { want: w, nativeBlocked: b } = soundRef.current;
-      if ((e.target as HTMLElement)?.closest?.(".f-sound")) return; // die knop regelt het zelf
+      if ((e.target as HTMLElement)?.closest?.(".f-sound")) { // die knop regelt het zelf
+        // touchend/pointerup zetten de tikvlag vóór de click; onthoud dat dit de eerste tik was (niet overschrijven met false).
+        if (eerste) knopEersteOp.current = Date.now();
+        return;
+      }
       if (e.type === "keydown" && /^m$/i.test((e as KeyboardEvent).key)) return; // M = geluid aan/uit
       if (w) {
         if (b || eerste) {
@@ -1552,7 +1557,8 @@ export function Feed({
     };
   }, [unmuteNow, startDirect, ytBlokWis]);
   const toggleMute = useCallback(() => {
-    const eerste = !geluidTik();
+    const eerste = !geluidTik() || Date.now() - knopEersteOp.current < 1000;
+    knopEersteOp.current = 0;
     onthoudGeluidTik();
     setGetikt(true);
     const { want: w, nativeBlocked: b, ytBlokAan: yb } = soundRef.current;

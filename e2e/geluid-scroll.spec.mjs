@@ -139,6 +139,26 @@ test("de knop zet het geluid vóór de eerste tik niet uit", async ({ page }) =>
   expect(await page.evaluate(() => localStorage.getItem("nieuwsinkort-geluid"))).not.toBe("0");
 });
 
+test("een echte muisklik op de knop zet het geluid aan, de tweede klik uit (#446)", async ({ page }) => {
+  await start(page, "dumpert");
+  expect((await actief(page)).knop).toBe("Tik voor geluid");
+  const klik = async () => {
+    const b = await page.locator(".f-sound svg").boundingBox();
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(500);
+  };
+  await klik();
+  let s = await actief(page);
+  expect(s.muted).toBe(false);
+  expect(s.knop).toBe("Geluid uit");
+  expect(await page.evaluate(() => localStorage.getItem("nieuwsinkort-geluid"))).not.toBe("0");
+  await page.waitForTimeout(700);
+  await klik();
+  s = await actief(page);
+  expect(s.knop).toBe("Tik voor geluid");
+  expect(await page.evaluate(() => localStorage.getItem("nieuwsinkort-geluid"))).toBe("0");
+});
+
 test("herladen met een oude tikvlag: gedempt start zonder NotAllowedError", async ({ page }) => {
   const fouten = await start(page, "dumpert", { oudeTik: true });
   await page.waitForTimeout(1500);
