@@ -44,11 +44,39 @@ t("negatief: dezelfde uitgever twee keer is geen dubbeling (#443)", () => {
   assert.equal(aantal(c("RTL", kopA, s), c("NU", kopB, s)), 1, "andere uitgever: samen");
   assert.equal(aantal(c("RTL", kopA, s), c("RTL", kopB, s)), 2, "zelfde uitgever: los");
 });
-t("negatief: een brug tussen twee losse verhalen verbindt ze niet", () => {
-  const malen = c("RTL", "Aanvaller Malen scoort opnieuw voor winnend AS Roma", "Donyell Malen scoorde bij de 5-2 zege van AS Roma op Udinese in de Serie A.");
-  const inter = c("AD", "Slechte generale voor Inter richting Feyenoord-uit: AC Milan te sterk in Milanese derby", "Inter verloor de Milanese derby van AC Milan voor het Champions League-duel met Feyenoord.");
-  const brug = c("NU", "Inter verliest Milanese derby vlak voor duel met Feyenoord, Malen scoort weer", "Inter verloor de Milanese derby van AC Milan; Donyell Malen scoorde voor AS Roma tegen Udinese.");
-  assert.ok(aantal(malen, inter, brug) >= 2);
+const perm = <T>(a: T[]): T[][] => (a.length < 2 ? [a] : a.flatMap((x, i) => perm([...a.slice(0, i), ...a.slice(i + 1)]).map((p) => [x, ...p])));
+const brugSet = () => ({
+  malen: c("RTL", "Aanvaller Malen scoort opnieuw voor winnend AS Roma", "Donyell Malen scoorde bij de 5-2 zege van AS Roma op Udinese in de Serie A."),
+  inter: c("AD", "Slechte generale voor Inter richting Feyenoord-uit: AC Milan te sterk in Milanese derby", "Inter verloor de Milanese derby van AC Milan voor het Champions League-duel met Feyenoord."),
+  brug: c("NU", "Inter verliest Milanese derby vlak voor duel met Feyenoord, Malen scoort weer", "Inter verloor de Milanese derby van AC Milan; Donyell Malen scoorde voor AS Roma tegen Udinese."),
+});
+t("negatief: een brug tussen twee losse verhalen verbindt ze niet, in alle 6 volgordes", () => {
+  for (const p of perm(["malen", "inter", "brug"])) {
+    const b = brugSet() as Record<string, Cand>;
+    const k = cluster(p.map((x, i) => ({ ...b[x], d: i * 60000 })));
+    const van = (x: string) => k.findIndex((cl) => cl.c.some((y) => y.href === b[x].href));
+    assert.notEqual(van("malen"), van("inter"), p.join("-"));
+  }
+});
+t("Malen/Inter in echte feedvolgorde: AD een minuut na de NU-brug voegt RTL-Malen en AD-Inter niet samen", () => {
+  const b = brugSet();
+  const k = cluster([{ ...b.malen, d: 0 }, { ...b.brug, d: 60000 * 5 }, { ...b.inter, d: 60000 * 6 }]);
+  assert.ok(!k.some((cl) => cl.c.some((x) => x.href === b.malen.href) && cl.c.some((x) => x.href === b.inter.href)));
+});
+t("kern: een cluster dat via namen groeide neemt alleen nog berichten over dezelfde namen op", () => {
+  for (const p of perm([0, 1, 2, 3, 4])) { const k = cluster(wolf(p)); assert.equal(k.length, 1); assert.ok(k[0].kern!.has("bram")); }
+});
+t("negatief: dezelfde uitgever onder een andere naam (NU.nl Voetbal = NU.nl, AD Voetbal = AD) blijft los", () => {
+  const kopA = "Publiek ziet probleemwolf Bram in museum Naturalis", kopB = "Demonstranten bij opgezette wolf Bram";
+  const s = "Bram is opgezet in Naturalis in Leiden en bezoekers kwamen kijken naar de doodgeschoten probleemwolf.";
+  assert.equal(aantal(c("NU.nl", kopA, s), c("NU.nl Voetbal", kopB, s)), 2);
+  assert.equal(aantal(c("AD", kopA, s), c("AD Voetbal", kopB, s)), 2);
+  assert.equal(aantal(c("AD", kopA, s), c("NU.nl Voetbal", kopB, s)), 1);
+});
+t("namen: NFD en NFC geven dezelfde namen", () => {
+  const nfc = "Spits Martínez scoort twee keer bij Manchester United";
+  assert.deepEqual([...namen(nfc.normalize("NFD"))], [...namen(nfc.normalize("NFC"))]);
+  assert.ok(namen(nfc.normalize("NFD")).has("martinez"));
 });
 t("negatief: namen die in veel kandidaten voorkomen zijn een onderwerp, geen kenmerk van één verhaal", () => {
   const ruis = Array.from({ length: 7 }, (_, i) => c(`Ruis${i}`, `Museumbezoek ${i} druk dit weekend`, `Bram en Naturalis kwamen ook ter sprake bij onderwerp ${i}.`));

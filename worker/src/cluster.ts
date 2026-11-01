@@ -46,12 +46,15 @@ export type Cand = { cat: string; site: string; href: string; t: string; s: stri
 /** tok/tokS: titeltokens resp. titel + begin van de beschrijving (alleen extra bewijs); nmT/nm: eigennamen (hoofdletter midden in de zin) in de titel resp. titel + beschrijving */
 export type Lid = { tok: Set<string>; tokS: Set<string>; nmT?: Set<string>; nm?: Set<string>; site?: string };
 /** tok/tokS hier zijn de unie van de leden (voor covered() in index.ts); vergelijken gebeurt per lid in `leden` */
-export type Cluster = { key: string; cat: string; c: Cand[]; tok: Set<string>; tokS: Set<string>; leden: Lid[] };
+export type Cluster = { key: string; cat: string; c: Cand[]; tok: Set<string>; tokS: Set<string>; leden: Lid[]; kern?: Set<string> };
+/** uitgever zonder rubriek- of .nl-staart: "NU.nl Voetbal" = "NU.nl", "AD Voetbal" = "AD" */
+export const uitgever = (site: string) => site.trim().toLowerCase().split(/\s+/)[0].replace(/\.nl$/, "");
 
 const norm = (w: string) => stam(w.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, ""));
 /** eigennamen: woorden van ≥4 letters met hoofdletter die niet aan het begin van een zin staan ("Wolf Bram opgezet in Naturalis" → bram, naturalis); niet in een tekst helemaal in kapitalen */
 export function namen(s: string): Set<string> {
   const out = new Set<string>();
+  s = s.normalize("NFC"); // NFD-accenten ("Martínez" als i + teken) zouden de naam anders afkappen
   if (!/[a-z]/.test(s)) return out;
   for (const m of s.matchAll(/(?<![\p{L}\p{N}])\p{Lu}[\p{L}]{3,}(?![\p{L}])/gu)) {
     const voor = s.slice(0, m.index).replace(/\s+$/, "");
@@ -112,6 +115,20 @@ function hangtSamen(ks: Cluster[]): boolean {
   return !rest.length;
 }
 
+/** de eigennamen die twee leden delen */
+const deelNamen = (a: Lid, b: Lid) => [...(a.nm || [])].filter((w) => b.nm?.has(w));
+
+/** clusters die de kandidaat via de eigennamen-regel raakt. Een cluster dat zelf via die regel is gegroeid heeft een `kern` (de gedeelde namen); een nieuwe naam-samenvoeging moet daar minstens één naam mee delen, anders kan een overzichtsbericht dat al bij het ene verhaal zat (de brug) er ook een tweede verhaal aan hangen, ongeacht de binnenkomstvolgorde. */
+function naamClusters(lid: Lid, out: Cluster[]): { k: Cluster; gedeeld: string[] }[] {
+  const res: { k: Cluster; gedeeld: string[] }[] = [];
+  for (const k of out) {
+    const gedeeld = new Set<string>();
+    for (const l of k.leden) if (gelijk(lid, l) > 0) { const g = deelNamen(lid, l); if (!k.kern || g.some((w) => k.kern!.has(w))) g.forEach((w) => gedeeld.add(w)); }
+    if (gedeeld.size) res.push({ k, gedeeld: [...gedeeld] });
+  }
+  return res;
+}
+
 export function cluster(cands: Cand[]): Cluster[] {
   let out: Cluster[] = [];
   const sorted = cands.sort((a, b) => a.d - b.d);
@@ -120,16 +137,22 @@ export function cluster(cands: Cand[]): Cluster[] {
   const zeldzaam = (x: Set<string>) => new Set([...x].filter((w) => (df.get(w) || 0) <= NAAM_MAX));
   for (const [i, c] of sorted.entries()) {
     const tk = toks(c.t), ts = new Set([...tk, ...toks((c.s || "").slice(0, 300))]);
-    const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: c.site };
+    const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: uitgever(c.site) };
     // per lid vergelijken (max), niet met de unie: een groot cluster mag geen lagere Jaccard geven
     // de eigennamen-regel mag geen twee losse verhalen verbinden (een overzichtsbericht over twee wedstrijden is een brug): alleen als de geraakte clusters ook onderling bij elkaar horen
     let raak = out.filter((k) => k.leden.some((l) => gelijk(lid, l, false) > 0));
-    if (!raak.length) { const naamRaak = out.filter((k) => k.leden.some((l) => gelijk(lid, l) > 0)); if (naamRaak.length && hangtSamen(naamRaak)) raak = naamRaak; }
+    let nieuweKern: string[] = [];
+    // goedkope voorcheck: de naamregel eist ≥2 eigennamen en ≥1 naam in de titel
+    if (!raak.length && lid.nm!.size >= 2 && lid.nmT!.size > 0) {
+      const nr = naamClusters(lid, out);
+      if (nr.length && hangtSamen(nr.map((x) => x.k))) { raak = nr.map((x) => x.k); nieuweKern = nr.flatMap((x) => x.gedeeld); }
+    }
     if (!raak.length) { out.push({ key: normLink(c.href), cat: c.cat, c: [c], tok: new Set(tk), tokS: new Set(ts), leden: [lid] }); continue; }
     // past de kandidaat bij meer clusters, dan horen die bij hetzelfde verhaal: samenvoegen in het oudste
     const [k, ...rest] = raak;
-    for (const r of rest) { k.c.push(...r.c); k.leden.push(...r.leden); for (const x of r.tok) k.tok.add(x); for (const x of r.tokS) k.tokS.add(x); }
+    for (const r of rest) { k.c.push(...r.c); k.leden.push(...r.leden); for (const x of r.tok) k.tok.add(x); for (const x of r.tokS) k.tokS.add(x); for (const x of r.kern || []) (k.kern ||= new Set()).add(x); }
     if (rest.length) out = out.filter((x) => !rest.includes(x));
+    if (nieuweKern.length) { k.kern ||= new Set(); for (const x of nieuweKern) k.kern.add(x); }
     k.c.push(c); k.leden.push(lid); for (const x of tk) k.tok.add(x); for (const x of ts) k.tokS.add(x);
   }
   const prioriteit = ["f1", "voetbal", "auto", "sport"];
