@@ -1,5 +1,6 @@
 // Randgevallen van de feed-parser (worker/src/parse.ts): entiteiten, dubbel-geëscapete HTML, datums, igTime en Atom/CDATA.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { absUrl, decode, igTime, parseFeed, stripHtml } from "../worker/src/parse";
 
 const base = "https://voorbeeld.nl/feed";
@@ -58,3 +59,22 @@ assert.equal(atom('<link href="/eerste"/><link href="/tweede"/>').l, "https://vo
 assert.equal(atom('<link rel="alternate" href="javascript:alert(1)"/>').l, "");
 
 console.log("✓ parse-randgevallen: entiteiten, HTML, datums, igTime, Atom en CDATA");
+
+// Google-news-sitemap (Alarmeringen): titel/tijd uit <news:...>, padfilter, RSS blijft ongemoeid
+{
+  const xml = readFileSync("tests/fixtures/alarmeringen-sitemap-news.xml", "utf8");
+  const url = "https://alarmeringen.nl/sitemap-news.xml";
+  const alle = parseFeed(xml, url);
+  const kenn = parseFeed(xml, url, "/noord-holland/kennemerland/");
+  assert.equal(alle.length, 4);
+  assert.equal(kenn.length, 2);
+  assert.ok(kenn.every((e) => e.l.includes("/noord-holland/kennemerland/") && e.t && e.d));
+  assert.equal(kenn[0].d, Date.parse(/<news:publication_date>([^<]+)</.exec(xml.slice(xml.indexOf("/noord-holland/kennemerland/")))![1]));
+  assert.equal(parseFeed(xml, url, "/bestaat-niet/").length, 0);
+  // zonder news:publication_date valt het terug op lastmod; zonder titel geen item
+  const kaal = parseFeed('<urlset xmlns="x"><url><loc>/a/1</loc><lastmod>2026-10-31T10:00:00+01:00</lastmod><news:news><news:title>Kop &amp; staart</news:title></news:news></url><url><loc>/a/2</loc></url></urlset>', url);
+  assert.deepEqual(kaal.map((e) => [e.t, e.l, e.d]), [["Kop & staart", "https://alarmeringen.nl/a/1", Date.parse("2026-10-31T10:00:00+01:00")]]);
+  // RSS negeert het padfilter
+  assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/a</link></item></channel></rss>', base, "/zzz/").length, 1);
+}
+console.log("✓ parse-randgevallen: Google-news-sitemap met padfilter");

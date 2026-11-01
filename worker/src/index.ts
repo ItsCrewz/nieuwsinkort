@@ -67,7 +67,7 @@ const hhmm = (t: number) => ams(t).hhmm;
 const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(t));
 
 // ---------------------------------------------------------------- fetcher-DO
-type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; alleenVideo?: boolean };
+type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; pad?: string; alleenVideo?: boolean };
 type Res = { kvWrites?: number; url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
@@ -252,7 +252,7 @@ async function runJob(j: Job, since: number, kv?: KVNamespace): Promise<Res> {
     else if (j.kind === "dumpert") base.videos = parseDumpert(body, hhmm);
     else {
       if (/^\s*<!doctype html|^\s*<html/i.test(body.slice(0, 300))) throw new Error("HTML i.p.v. feed");
-      const all = parseFeed(body, j.url);
+      const all = parseFeed(body, j.url, j.pad);
       const now = Date.now();
       base.total = all.length;
       base.newest = all.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null);
@@ -396,7 +396,8 @@ export class Runner extends DurableObject<Env> {
       for (const url of urls) {
         const sub = /reddit\.com\/r\/([^/]+)/.exec(url)?.[1];
         const max = s.feeds.find((f: any) => f.url === url)?.max ?? (g.id === "politiek" ? 2 : undefined);
-        add({ url, kind: sub ? "reddit" : igUser(url) ? "insta" : xUser(url) ? "x" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(max != null ? { max } : {}) });
+        const pad = s.feeds.find((f: any) => f.url === url)?.pad;
+        add({ url, kind: sub ? "reddit" : igUser(url) ? "insta" : xUser(url) ? "x" : "feed", sub, label: s.naam.replace(/^Instagram\s+|\s*\(Kittygram\)$/g, ""), ...(max != null ? { max } : {}), ...(typeof pad === "string" && pad ? { pad } : {}) });
       }
     }
     for (const [naam, cid] of Object.entries(YT_NIEUWS)) add({ url: ytUrl(cid), kind: "feed", label: naam });
