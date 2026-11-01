@@ -213,7 +213,7 @@ nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project
 
 ## Bezoekersstatistieken
 
-Cloudflare Web Analytics is op 1-11-2026 aangezet via de Pages-instelling (Workers & Pages → nieuwsinkort → Metrics → Web Analytics). Cloudflare voegt de beacon (`https://static.cloudflareinsights.com/beacon.min.js`, met `integrity`/SRI) bij de volgende deploy zelf in de HTML in. Er staat dus bewust geen snippet in `index.html`, en er komt er ook geen. Dit vraagt geen codewijziging, geen nieuwe dependency en geen service worker; `dist/` verandert niet (het script komt van een derde domein), dus de performancebudget-check blijft ongemoeid.
+Cloudflare Web Analytics is op 1-11-2026 aangezet via de Pages-instelling (Workers & Pages → nieuwsinkort → Metrics → Web Analytics). Cloudflare voegt de beacon (`https://static.cloudflareinsights.com/beacon.min.js`, zonder `integrity`/SRI en zonder `type=module`) bij de volgende deploy zelf in de HTML in. Er staat dus bewust geen snippet in `index.html`, en er komt er ook geen. Dit vraagt geen codewijziging, geen nieuwe dependency en geen service worker; `dist/` verandert niet (het script komt van een derde domein), dus de performancebudget-check blijft ongemoeid.
 
 **Wat gemeten wordt** (volgens de Cloudflare-docs): visits, paginaweergaven, laadtijd en Core Web Vitals (LCP, INP en CLS; CLS alleen in Chromium-browsers), met filters op land, host, pad, verwijzer, apparaattype, browser en besturingssysteem. Er zijn geen UTM-parameters (querystrings worden niet gelogd) en geen custom events. Adblockers blokkeren de beacon, dus de cijfers zijn een ondergrens. Data is 7 dagen ongesampled, daarna geaggregeerd; er kan 6 maanden terug worden gekeken.
 
