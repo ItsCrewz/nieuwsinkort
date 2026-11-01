@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { onRequest, wwwDoel } from "../functions/_middleware";
 
 const t = async (naam: string, f: () => void | Promise<void>) => { await f(); console.log(`✓ ${naam}`); };
@@ -36,5 +36,13 @@ await t("_routes.json: geldig, binnen 100 regels, functieroutes niet uitgesloten
   const naarRegex = (p: string) => new RegExp("^" + p.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
   const uitgesloten = (pad: string) => j.exclude.some((p: string) => naarRegex(p).test(pad));
   for (const pad of ["/", "/data.json", "/meer", "/samenvatting", "/media/dumpert/a/b.m3u8", "/dumpert", "/test"]) assert.ok(!uitgesloten(pad), pad);
+  // #473: geen brede /*.png-regel; die sloot ook /media/beeld/.../x.png uit, zodat de Function nooit draaide
+  for (const pad of ["/media/beeld/webp.vi.cdn.pxr.nl/news/a/x.png", "/media/beeld/images.nu.nl/a.png", "/media/beeld/x/y.svg"]) assert.ok(!uitgesloten(pad), pad);
+  // elk statisch bestand dat vroeger door de wildcards (*.png/svg/ico/woff2) werd uitgesloten, blijft uitgesloten
+  const statisch = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? statisch(d + "/" + e.name) : [d + "/" + e.name]);
+  for (const dir of ["public", "dist"]) {
+    if (!existsSync(dir)) continue;
+    for (const f of statisch(dir).filter((f) => /\.(png|svg|ico|woff2)$/.test(f))) assert.ok(uitgesloten(f.slice(dir.length)), f);
+  }
   for (const pad of ["/assets/index-abc.js", "/fonts/inter-latin.woff2", "/favicon.svg", "/robots.txt"]) assert.ok(uitgesloten(pad), pad);
 });

@@ -1,5 +1,19 @@
 {
   "version": 1,
-  "include": ["/*"],
-  "exclude": ["/assets/*", "/fonts/*", "/*.png", "/*.svg", "/*.ico", "/*.woff2", "/bronnen.json", "/robots.txt", "/sitemap.xml"]
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/fonts/*",
+    "/apple-touch-icon.png",
+    "/favicon-32.png",
+    "/favicon.svg",
+    "/icon-192.png",
+    "/icon-512.png",
+    "/og-image.png",
+    "/bronnen.json",
+    "/robots.txt",
+    "/sitemap.xml"
+  ]
 }
