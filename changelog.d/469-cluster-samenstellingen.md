@@ -1,0 +1,2 @@
+- Berichten over hetzelfde verhaal komen weer samen in één item, ook bij lange titels en samenstellingen (bijv. "probleemwolf" en "wolf"): de clustering herkent nu gedeelde eigennamen met steun uit de beschrijving, zonder verschillende verhalen of dezelfde uitgever samen te voegen (#469).
+- Clusteren: een cluster dat via eigennamen is gegroeid neemt alleen nog berichten op die minstens twee kernnamen delen, zodat overzichtsberichten (bruggen) nooit twee wedstrijden samenvoegen, ongeacht de volgorde (#469).
