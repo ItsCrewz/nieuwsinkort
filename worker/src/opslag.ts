@@ -5,6 +5,12 @@
 /** Hartslag: bij uurlijks draaien (±60 min tussen runs) is een schrijfactie altijd "aan de beurt"; 50, niet 60, vangt jitter op. */
 export const HARTSLAG_MS = 50 * 60e3;
 export const DAG_MS = 24 * 3600e3;
+/** Inhoud naar KV (uur, data-vooraf) hooguit zo vaak, ook als de hash verandert (#465: runs elke 5 minuten); `meer` hooguit elke 30 minuten. */
+export const PUBLICEER_MIN_MS = 10 * 60e3;
+export const MEER_MIN_MS = 30 * 60e3;
+/** Dagrem op KV-writes (limiet 1.000/dag): boven REM_LANGZAAM publiceren hooguit elke 30 minuten, boven REM_HARTSLAG alleen nog de hartslag. */
+export const REM_LANGZAAM = 650;
+export const REM_HARTSLAG = 850;
 export const OG_MAX = 3000;
 export const OG_TTL_MS = 3 * DAG_MS;
 export const IG_TTL_MS = 20 * 3600e3;
@@ -52,6 +58,31 @@ export function moetSchrijven(vorig: { at: number; h?: string } | undefined, h: 
   return !vorig || vorig.at > nu || nu - vorig.at >= max || (h !== undefined && vorig.h !== h);
 }
 
+/** Minimale tussenpoos tussen inhoudsschrijfacties, afhankelijk van de KV-writes van vandaag; Infinity = alleen de hartslag. */
+export function publiceerInterval(kvWritesDag: number): number {
+  return kvWritesDag > REM_HARTSLAG ? Infinity : kvWritesDag > REM_LANGZAAM ? 30 * 60e3 : PUBLICEER_MIN_MS;
+}
+
+/** Als moetSchrijven, maar een gewijzigde hash telt pas na `interval` sinds de laatste write; de hartslag (50 min) blijft altijd gelden.
+ *  Een run in de tussentijd slaat niets over: de volgende toegestane run bouwt de dan actuele stand en publiceert die. */
+export function moetPubliceren(vorig: { at: number; h?: string } | undefined, h: string | undefined, nu: number, interval: number): boolean {
+  if (!vorig || vorig.at > nu || nu - vorig.at >= HARTSLAG_MS) return true;
+  return h !== undefined && vorig.h !== h && nu - vorig.at >= interval;
+}
+
+/** Dagteller van KV-writes (UTC-dag, zoals de Cloudflare-limiet) in Runner-opslag. */
+export async function leesKvDag(opslag: Opslag, dag: string): Promise<number> {
+  const v = (await opslag.get("kvDag")) as { dag: string; n: number } | undefined;
+  return v && v.dag === dag ? v.n : 0;
+}
+/** Telt `n` writes bij (lezen en schrijven direct na elkaar, zodat run en alarm elkaar niet overschrijven). */
+export async function telKvDag(opslag: Opslag, dag: string, n: number): Promise<number> {
+  if (!n) return leesKvDag(opslag, dag);
+  const tot = (await leesKvDag(opslag, dag)) + n;
+  await opslag.put("kvDag", { dag, n: tot });
+  return tot;
+}
+
 /** Voegt wijzigingen samen in de bewaarde stand (lezen en schrijven direct na elkaar; gelijktijdige run en alarm raken elkaars namen niet kwijt). */
 export async function bewaarKvStand(opslag: Opslag, wijz: KvStand) {
   if (!Object.keys(wijz).length) return;
@@ -59,7 +90,7 @@ export async function bewaarKvStand(opslag: Opslag, wijz: KvStand) {
   await opslag.put("kvstand", { ...ks, ...wijz });
 }
 
-/** Inhoud van `uur` zonder vluchtige velden: gegenereerd, meta, tijdstempels `ok` in bronstats, gegenereerd per taboverzicht (de extractieve tekst krijgt elke run een nieuwe tijd; de UI toont die niet)
+/** Inhoud van `uur` zonder vluchtige velden: gegenereerd, meta, tijdstempels `ok` en `laatsteFout` (fetchfout met terugval op tc:) in bronstats, gegenereerd per taboverzicht (de extractieve tekst krijgt elke run een nieuwe tijd; de UI toont die niet)
  *  en de weervelden die bij elke Buienradar-update (±10 min) wisselen: weer.bijgewerkt, weer.nu (actuele meting) en weer.vandaag (neerslagkans, wind). Die gaan mee met de hartslag of een andere wijziging (#461).
  *  Verwachting, dagen en vooral waarschuwing (KNMI-code) tellen wel mee, zodat een waarschuwing direct live gaat. */
 export function uurInhoud(out: any): string {
@@ -67,7 +98,7 @@ export function uurInhoud(out: any): string {
   const tabs: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(tab_samenvatting || {})) { const { gegenereerd: _t, ...r } = (v || {}) as any; tabs[k] = r; }
   const bs: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(bronstats || {})) { const { ok: _ok, ...r } = v as any; bs[k] = r; }
+  for (const [k, v] of Object.entries(bronstats || {})) { const { ok: _ok, laatsteFout: _lf, ...r } = v as any; bs[k] = r; }
   let w = weer;
   if (weer && typeof weer === "object") { const { bijgewerkt: _b, nu: _n, vandaag: _v, ...r } = weer; w = r; }
   return JSON.stringify({ ...rest, tab_samenvatting: tabs, bronstats: bs, weer: w });

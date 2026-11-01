@@ -1,5 +1,5 @@
 // Cloudflare Pages Function: /data.json = data.json van de routine (08:00, statisch in dist/)
-// samengevoegd met de uur-update uit KV (Worker "nieuwsinkort-uur", elk uur 06–23).
+// samengevoegd met de uur-update uit KV (Worker "nieuwsinkort-uur", elke 5 minuten 06–23).
 // - samenvattingen, "In het kort" en kernpunten van de routine blijven staan;
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.

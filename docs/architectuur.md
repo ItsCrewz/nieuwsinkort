@@ -7,7 +7,7 @@ Alles draait op Cloudflare (Free plan). Geen eigen server.
 
 ```
  bronnen (RSS, hnrss, X, YouTube, Instagram, Dumpert, Reddit/Redlib, weer)
-        │  elk uur 06–23 (Amsterdam)
+        │  elke 5 minuten 06–23 (Amsterdam)
         ▼
  Worker nieuwsinkort-uur ── DO Fetcher (ophalen in batches)
    DO Runner (run, budget, state) ── Workers AI → Groq → Mistral (tekst-AI)
@@ -123,7 +123,7 @@ Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 
 ## Worker `nieuwsinkort-uur` (`worker/`)
 
-- Cron `0 4-22 * * *` (UTC). `scheduled()` slaat uren buiten 06–23 Amsterdam over (zomer- en wintertijd). `workers_dev = false`.
+- Cron `*/5 4-22 * * *` (UTC, #465); bronnen in tiers: `worker/src/tier.ts` bepaalt uit de geplande minuut wat meedraait. core (gewone feeds, Dumpert, weer, og/artikelen voor nieuwe links): elke run; zwaar (YouTube-feeds, Reddit, YouTube-embedcontroles): minuut % 15 = 0; social (X, Instagram): minuut % 30 = 0. Overgeslagen bronnen komen uit `tc:<url>` in de Runner-opslag (laatste gelukte resultaat; zonder verse cache draait de bron toch), dus er verdwijnt niets uit de feed; `okAt`/`ok` in bronstats behoudt de tijd van de laatste echte ophaalactie. Een handmatige `/run` (zonder `gepland`) draait alle tiers. `meta.tier` ("5"/"15"/"30"/"alles"), `meta.bronnenOvergeslagen`, `meta.fetcherHoofd` (Fetcher-aanroepen voor de hoofdbatches) en `meta.kvWritesRun` laten per run zien wat er gebeurde. Met de huidige bronnenlijst (126 core-jobs, 19 YouTube-feeds, 2 Reddit, 18 X) doet een 5-minutenrun 5 hoofdbatches naar Fetcher-DO's, een 15-minutenrun 7 (+ Reddit en YouTube) en een 30-minutenrun 9 (+ 2 X-batches); og/artikel-batches komen er alleen bij voor nieuwe links. `scheduled()` slaat uren buiten 06–23 Amsterdam over (zomer- en wintertijd). `workers_dev = false`.
 - Durable Object `Budget` (sqlite, `worker/src/budget.ts`, logica in `src/budget.ts`, binding `BUDGET_DO`, migratie `v2`): enige eigenaar van (a) het slot per video-id (verloopt na 90 s, expliciet vrijgeven met token), (b) de video-neuronen per dag (atomair reserveren van de schatting tegen nieuws + video + reserve + marge, daarna verrekenen) en (c) de Whisper-rem `MAX_WHISPER_UUR` = 30 per uur. De DO spiegelt het dagtotaal naar KV `vid-neurons:<datum>`; de uur-Worker leest dat voor het gedeelde dagbudget. De shell voert alle operaties via een interne promise-keten (mutex) strikt na elkaar uit, omdat de KV-read/-write (zaad, spiegel) de input gate opent en operaties anders zouden interleaven. Pages Functions gebruiken dezelfde klasse via `script_name = "nieuwsinkort-uur"` in de root-`wrangler.toml`, via de fetch-API van de stub (`/claim`, `/vrij`, `/stand`, `/reserveer`, `/verreken`).
 - Durable Objects (sqlite): `RUNNER` (klasse `Runner`: de uurrun, budget, state, alarm voor video-samenvattingen vooraf) en `FETCHER` (klasse `Fetcher`: ophalen in batches, eigen limiet van 50 subrequests per instantie).
 - KV `NIEUWS`. Resultaat van de run staat onder `uur` (items, filmpjes, dumpert, weer, bronstats, meta). Verder o.a. `meer`, `sv-klaar`, `data-vooraf`, `vs:<id>`, `vid-neurons:<datum>` (spiegel van de video-neuronen van vandaag; bron is de DO `Budget`, de uur-Worker leest dit) en de KV-kopie van state. `vs-bezig:<id>` en `vs-uur:<datum>T<uur>` worden alleen nog gebruikt zonder DO-binding (fallback).

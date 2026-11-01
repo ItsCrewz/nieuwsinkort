@@ -1,6 +1,6 @@
 import { berekenBody, etag } from "../../functions/data.json";
 import { somStand, kopieStand, verschilStand, telOp, groqTokens, type LlmState } from "./llm";
-// nieuwsinkort-uur: elk uur (06:00–23:00 Amsterdam) feeds ophalen, samenvatten met Workers AI en in KV zetten.
+// nieuwsinkort-uur: elke 5 minuten (06:00–23:00 Amsterdam; zwaardere bronnen elke 15 of 30 minuten, zie tier.ts) feeds ophalen, samenvatten met Workers AI en in KV zetten.
 // De Pages Function /data.json voegt dit samen met de data.json van de routine.
 // Free plan: de cron zelf doet bijna niets (10 ms CPU); het werk gebeurt in Durable Objects (30 s CPU per verzoek)
 // en het ophalen wordt verdeeld over meerdere Fetcher-DO's (elk max 50 externe verzoeken).
@@ -8,7 +8,7 @@ import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
-import { maakTel, voegTellerToe, moetSchrijven, bewaarKvStand, uurInhoud, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
+import { maakTel, voegTellerToe, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoud, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
@@ -18,6 +18,7 @@ import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
 import { vooraf, MAX_ALARMS_PER_UUR } from "./vooraf";
+import { tierVan, jobGroep, verdeelJobs, ytControleMag, type TierCache } from "./tier";
 import { neemSlot, geefSlot, meetInterval, runsOver, runPlafonds, voorafTeller } from "./runslot";
 import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
@@ -72,7 +73,7 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 
 // ---------------------------------------------------------------- fetcher-DO
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; pad?: string; alleenVideo?: boolean };
-type Res = { url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
+type Res = { url: string; ok: boolean; status: number; err?: string; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
@@ -314,7 +315,7 @@ export class Runner extends DurableObject<Env> {
     // Alleen /run start een run; /info leest (vooraf-log en tellers uit DO-opslag), al het andere is 404 zonder run.
     if (u.pathname === "/info") return Response.json({ vooraf: (await this.ctx.storage.get<any>("vooraf"))?.laatst ?? null, tellers: (await this.ctx.storage.get<unknown[]>("tellers")) || [] });
     if (u.pathname !== "/run") return new Response("onbekend", { status: 404 });
-    const force = u.searchParams.get("force") === "1";
+    const force = u.searchParams.get("force") === "1", geplandP = u.searchParams.get("gepland"), geplandTijd = geplandP && /^\d{10,15}$/.test(geplandP) ? +geplandP : undefined;
     // Reserveer vóór de run; gelijktijdige force-verzoeken mogen niet door de limiet glippen.
     const nu = Date.now();
     const tel = maakTel(this.env.NIEUWS, this.ctx.storage);
@@ -342,8 +343,9 @@ export class Runner extends DurableObject<Env> {
       mag: async (s: { faalReeks: number; laatsteFout: string | null }, oud: { faalReeks: number; laatsteFout: string | null }) => s.faalReeks !== oud.faalReeks || s.laatsteFout !== oud.laatsteFout || moetSchrijven(((await opslag.get<KvStand>("kvstand")) || {})["run-status"], undefined, Date.now()),
       gedaan: () => bewaarKvStand(opslag, { "run-status": { at: Date.now() } }),
     };
-    try { res = await bewaakteRun(() => this.run(force, slot, tel), opslag, tel.kv, kvBeleid); }
+    try { res = await bewaakteRun(() => this.run(force, slot, tel, geplandTijd), opslag, tel.kv, kvBeleid); }
     finally { await geefSlot(opslag, nu).catch(() => console.error("run-slot vrijgeven mislukt")); }
+    await telKvDag(this.ctx.storage, utcDag(Date.now()), tel.kvN()).catch(() => console.error("kv-dagteller opslaan mislukt"));
     await voegTellerToe(this.ctx.storage, { at: new Date().toISOString(), soort: "run", kv: tel.kvN(), doWrites: tel.doN() }).catch(() => console.error("tellers opslaan mislukt"));
     return res;
   }
@@ -389,14 +391,15 @@ export class Runner extends DurableObject<Env> {
     await bewaarKvStand(opslag, wijz).catch(() => console.error("kvstand opslaan mislukt"));
     console.log("vooraf", JSON.stringify(k.laatst));
     if (r.nogTeDoen > 0 && r.stop !== "dagbudget" && r.stop !== "run-budget" && k.n < MAX_ALARMS_PER_UUR) await this.ctx.storage.setAlarm(Date.now() + 5 * 60e3);
+    await telKvDag(this.ctx.storage, utcDag(Date.now()), tel.kvN()).catch(() => console.error("kv-dagteller opslaan mislukt"));
     await voegTellerToe(this.ctx.storage, { at: new Date().toISOString(), soort: "alarm", kv: tel.kvN(), doWrites: tel.doN() }).catch(() => console.error("tellers opslaan mislukt"));
   }
 
   // Groq-verbruik van deze run (#431): wordt bij een mislukte run apart in `state.llm` bijgeschreven, anders gaat het verloren met `st`.
   private llmBewaar: (() => Promise<void>) | null = null;
-  async run(force: boolean, interval = 60, tel: Tel = maakTel(this.env.NIEUWS, this.ctx.storage)) {
+  async run(force: boolean, interval = 60, tel: Tel = maakTel(this.env.NIEUWS, this.ctx.storage), geplandTijd?: number) {
     this.llmBewaar = null;
-    try { return await this.runBinnen(force, interval, tel); }
+    try { return await this.runBinnen(force, interval, tel, geplandTijd); }
     catch (e) { await this.bewaarLlm(); throw e; }
     finally { this.llmBewaar = null; }
   }
@@ -420,7 +423,7 @@ export class Runner extends DurableObject<Env> {
       return true;
     } catch (x) { console.error("opslagfout state (llm)", x); return false; }
   }
-  private async runBinnen(force: boolean, interval: number, tel: Tel) {
+  private async runBinnen(force: boolean, interval: number, tel: Tel, geplandTijd?: number) {
     // KV en DO-opslag lopen via de tellende proxy's van deze run (meta.kvWritesRun, tellerregel)
     const env = { ...this.env, NIEUWS: tel.kv } as Env, opslag = tel.opslag as DurableObjectStorage, T0 = Date.now(), now = Date.now(), A = ams(now), U = utcDag(now), since = midnight(now);
     // BUDGET / NEURON_FACTOR: de echte Cloudflare-teller kan hoger staan dan onze schatting (docs/ai-budget.md)
@@ -474,40 +477,69 @@ export class Runner extends DurableObject<Env> {
 
     const all = [...jobs.values()];
     const reddit = all.filter((j) => j.kind === "reddit"), insta = all.filter((j) => j.kind === "insta"), xj = all.filter((j) => j.kind === "x");
-    const rest = all.filter((j) => !["reddit", "insta", "x"].includes(j.kind));
+    const rest = all.filter((j) => !["reddit", "insta", "x"].includes(j.kind) && jobGroep(j) === "core"), restYt = all.filter((j) => !["reddit", "insta", "x"].includes(j.kind) && jobGroep(j) !== "core");
     const batches: Job[][] = [reddit];
     // X apart en vast verdeeld (zelfde DO = zelfde 'laatst gelukt'-geheugen): 1 verzoek per account, terugval 1 extra
     for (let i = 0; i < xj.length; i += 15) batches.push(xj.slice(i, i + 15));
     // Instagram apart: per account 1 profiel + max 3 video-embeds = max 4 verzoeken (DO-limiet 50)
     for (let i = 0; i < insta.length; i += 10) batches.push(insta.slice(i, i + 10));
     for (let i = 0; i < rest.length; i += 30) batches.push(rest.slice(i, i + 30));
-    const results = (await Promise.all(batches.map(async (b, i) => {
+    for (let i = 0; i < restYt.length; i += 30) batches.push(restYt.slice(i, i + 30));
+    // tiers (#465): core elke run, zwaar (Reddit, YouTube-feeds) elke 15 minuten, social (X, Instagram) elke 30; de rest komt uit de laatst gelukte run (tc:<url> in Runner-opslag)
+    const bronTier = tierVan(geplandTijd);
+    const tcCache = new Map<string, TierCache<Res>>();
+    // altijd laden: ook een mislukte fetch in een 15/30-run valt terug op het tc:-resultaat van vandaag
+    await Promise.all(all.filter((j) => jobGroep(j) !== "core").map(async (j) => {
+      const c = await opslag.get<TierCache<Res>>(`tc:${j.url}`).catch(() => undefined);
+      if (c && c.r && typeof c.at === "number") tcCache.set(j.url, c);
+    }));
+    const vd = verdeelJobs(all, bronTier, tcCache, since), uitvoeren = new Set(vd.uitvoeren.map((j) => j.url));
+    let fetcherHoofd = 0;
+    const gehaald = (await Promise.all(batches.map(async (b0, i) => {
+      const b = b0.filter((j) => uitvoeren.has(j.url));
       if (!b.length) return [] as Res[];
+      fetcherHoofd++;
       const naam = b[0].kind === "reddit" ? "reddit" : b[0].kind === "x" ? `x${i}` : b[0].kind === "insta" ? `ig${i}` : `f${i}`;
       const stub = env.FETCHER.get(env.FETCHER.idFromName(naam));
       const r = await stub.fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) });
       return (await r.json()) as Res[];
     }))).flat();
+    // laatste gelukte resultaat van niet-core bronnen bewaren voor de runs waarin ze overgeslagen worden (alleen DO-opslag, geen KV)
+    const tcNieuw: Record<string, TierCache<Res>> = {};
+    for (const r of gehaald) if (r.ok && !(r.url in tcNieuw)) { const j = all.find((x) => x.url === r.url); if (j && jobGroep(j) !== "core") tcNieuw[`tc:${r.url}`] = { at: now, r }; }
+    const tcSleutels = Object.keys(tcNieuw);
+    for (let i = 0; i < tcSleutels.length; i += 100) await opslag.put(Object.fromEntries(tcSleutels.slice(i, i + 100).map((k) => [k, tcNieuw[k]]))).catch(() => console.error("tier-cache schrijven mislukt"));
+    // mislukte niet-core fetch: tc:-resultaat van vandaag gebruiken (items, video's en bronstats blijven gelijk, de inhoudshash springt niet); de fout alleen in `laatsteFout` (buiten de hash)
+    const terugval = gehaald.map((r) => {
+      if (r.ok) return r;
+      const j = all.find((x) => x.url === r.url), c = tcCache.get(r.url);
+      return j && jobGroep(j) !== "core" && c && c.at >= since ? { ...c.r, cachedAt: c.at, terugvalFout: r.err || "geen antwoord" } as Res : r;
+    });
+    const results = [...terugval, ...vd.uitCache];
     const R = new Map(results.map((r) => [r.url, r]));
     const T1 = Date.now();
 
     // ---- bronstats
-    const bronstats: Record<string, { vandaag: number | null; laatste?: string; fout?: string; ok?: string }> = {};
+    const bronstats: Record<string, { vandaag: number | null; laatste?: string; fout?: string; ok?: string; laatsteFout?: string }> = {};
     const nowIso = new Date(now).toISOString();
+    // uit de tier-cache: tijdstip van de laatste echte ophaalactie, niet "nu"
+    const okVan = (ok: Res[]) => (ok.every((r) => r.cachedAt) ? new Date(Math.min(...ok.map((r) => r.cachedAt!))).toISOString() : nowIso);
     for (const f of srcFeeds) {
       const rs = f.urls.map((u) => R.get(u)).filter(Boolean) as Res[];
       const ok = rs.filter((r) => r.ok);
       if (!ok.length) { bronstats[f.key] = { vandaag: null, fout: rs.map((r) => r.err).filter(Boolean).join("; ").slice(0, 80) || "geen antwoord", ...(st.okAt![f.key] ? { ok: st.okAt![f.key] } : {}) }; continue; }
-      st.okAt![f.key] = nowIso;
+      const okTijd = okVan(ok);
+      st.okAt![f.key] = okTijd;
       const seen = new Set<string>();
       let newest: number | null = null;
       for (const r of ok) {
         for (const e of r.entries || []) seen.add(normLink(e.l || e.t));
         if (r.newest && (newest == null || r.newest > newest)) newest = r.newest;
       }
-      const o: any = { vandaag: seen.size, ok: nowIso };
+      const o: any = { vandaag: seen.size, ok: okTijd };
       if (newest) o.laatste = new Date(newest).toISOString();
       if (ok.length < rs.length) o.fout = `${rs.length - ok.length} van ${rs.length} feeds niet bereikbaar`;
+      const tf = rs.find((r) => r.terugvalFout); if (tf) o.laatsteFout = tf.terugvalFout!.slice(0, 80);
       bronstats[f.key] = o;
     }
 
@@ -518,8 +550,10 @@ export class Runner extends DurableObject<Env> {
       const ok = rs.filter((r) => r.ok);
       const n = rs.reduce((a, r) => a + (r.videos?.length || 0), 0);
       if (!ok.length) { bronstats[key] = { vandaag: null, fout: [...new Set(rs.map((r) => r.err).filter(Boolean))].join("; ").slice(0, 80) || "geen antwoord", ...(st.okAt![key] ? { ok: st.okAt![key] } : {}) }; return; }
-      st.okAt![key] = nowIso;
-      bronstats[key] = { vandaag: n, ok: nowIso, ...(ok.length < rs.length ? { fout: `${rs.length - ok.length} van ${rs.length} niet bereikbaar` } : {}) };
+      const okTijd = okVan(ok);
+      st.okAt![key] = okTijd;
+      const tf = rs.find((r) => r.terugvalFout);
+      bronstats[key] = { vandaag: n, ok: okTijd, ...(ok.length < rs.length ? { fout: `${rs.length - ok.length} van ${rs.length} niet bereikbaar` } : {}), ...(tf ? { laatsteFout: tf.terugvalFout!.slice(0, 80) } : {}) };
     };
     vidStat("filmpjes|youtube", Object.values(YT_NIEUWS).map((cid) => ({ url: ytUrl(cid), kind: "feed" } as Job)));
     vidStat("filmpjes|reddit", REDDIT_SUBS.map((sub) => ({ url: redditUrl(sub), kind: "reddit" } as Job)));
@@ -677,6 +711,7 @@ export class Runner extends DurableObject<Env> {
     let ytControles = 0;
     const ytDiag: YtDiag[] = [];
     const voegYtToe = (batches: Job[][]) => {
+      if (!ytControleMag(bronTier)) return;
       for (const b of batches) {
         // Reserveer per controle ook ruimte voor een eventuele consent-herpoging.
         const aantal = Math.min(ytNieuw.length - ytControles, Math.floor((50 - b.length) / 3));
@@ -934,7 +969,7 @@ export class Runner extends DurableObject<Env> {
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys, ytGeblokkeerd,
-      meta: { kvWrites: 0, kvWritesRun: 0, kvSleutels: [] as string[], kvWritesOg: 0, ogTreffers: ogLinks.length - ogOnbekend.length, ogNieuw: ogOnbekend.length, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runInterval: interval, runsLeft: Math.round(runsLeft * 100) / 100, runVol: runCapped, aiWachtend: bundel.uitgesteld ? bundel.wachtend : 0, aiGebundeld: bundel.uitgesteld, dubbeleFilmpjes: dF.removed + dD.removed, filmGroepNieuw: fg.nieuw, filmGroepAi: fg.aiCall, filmGroepUitgesteld: fg.uitgesteld, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { tier: bronTier, bronnenOvergeslagen: vd.overgeslagen, fetcherHoofd, kvWrites: 0, kvWritesRun: 0, kvWritesDag: 0, publiceerInterval: 10 as number | string, kvSleutels: [] as string[], kvWritesOg: 0, ogTreffers: ogLinks.length - ogOnbekend.length, ogNieuw: ogOnbekend.length, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runInterval: interval, runsLeft: Math.round(runsLeft * 100) / 100, runVol: runCapped, aiWachtend: bundel.uitgesteld ? bundel.wachtend : 0, aiGebundeld: bundel.uitgesteld, dubbeleFilmpjes: dF.removed + dD.removed, filmGroepNieuw: fg.nieuw, filmGroepAi: fg.aiCall, filmGroepUitgesteld: fg.uitgesteld, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));
@@ -944,7 +979,9 @@ export class Runner extends DurableObject<Env> {
     // ---- KV alleen bij wijziging (of hartslag van 50 minuten); state staat primair in DO-opslag (#452)
     const ks: KvStand = (await opslag.get("kvstand")) || {}, wijz: KvStand = {};
     const uurH = await hash(`${A.iso}\n${uurInhoud(out)}`), meerH = await hash(JSON.stringify({ datum: A.iso, items: meer }));
-    const schrijfUur = moetSchrijven(ks.uur, uurH, now), schrijfMeer = moetSchrijven(ks.meer, meerH, now), schrijfStateKv = moetSchrijven(ks.state, undefined, now);
+    // publicatie hooguit elke PUBLICEER_MIN_MS (en bij veel writes vandaag langzamer, zie publiceerInterval); hartslag blijft 50 minuten
+    const kvDag = await leesKvDag(this.ctx.storage, U), pubInt = publiceerInterval(kvDag);
+    const schrijfUur = moetPubliceren(ks.uur, uurH, now, pubInt), schrijfMeer = moetPubliceren(ks.meer, meerH, now, Math.max(pubInt, MEER_MIN_MS)), schrijfStateKv = moetSchrijven(ks.state, undefined, now);
     // data-vooraf: de body volgt `uur` (nieuw, of anders de laatst geschreven versie), de statische data en sv-klaar; alleen schrijven bij een andere etag
     let voorafNieuw: { h: string; waarde: string } | null = null;
     if (stat) {
@@ -953,7 +990,7 @@ export class Runner extends DurableObject<Env> {
         const H = schrijfUur ? out : await env.NIEUWS.get("uur", "json");
         if (H) {
           const body = await berekenBody(stat, H, sv, Date.now()), tag = await etag(body), h = `${A.iso}|${tag}`;
-          if (moetSchrijven(ks["data-vooraf"], h, now)) voorafNieuw = { h, waarde: `${A.iso}\n${tag}\n${body}` };
+          if (moetPubliceren(ks["data-vooraf"], h, now, pubInt)) voorafNieuw = { h, waarde: `${A.iso}\n${tag}\n${body}` };
         }
       } catch { console.error("data-vooraf berekenen mislukt"); }
     }
@@ -961,6 +998,7 @@ export class Runner extends DurableObject<Env> {
     const gepland = [...(schrijfUur ? ["uur"] : []), ...(schrijfStateKv ? ["state"] : []), ...(schrijfMeer ? ["meer"] : []), ...(voorafNieuw ? ["data-vooraf"] : [])];
     out.meta.kvWritesRun = out.meta.kvWrites = tel.kvN() + gepland.length;
     out.meta.kvSleutels = [...new Set([...tel.kvSleutels(), ...gepland])];
+    out.meta.kvWritesDag = kvDag + out.meta.kvWritesRun; out.meta.publiceerInterval = Number.isFinite(pubInt) ? Math.round(pubInt / 60e3) : "hartslag";
     let stateOpgeslagen = false;
     // tellende proxy: slaagt de put niet, dan komt de stand niet in `wijz` en probeert de volgende run het opnieuw
     const kvPut = async (naam: string, v: string, h: string | undefined) => { await env.NIEUWS.put(naam, v); wijz[naam] = { at: now, ...(h !== undefined ? { h } : {}) }; };
@@ -987,7 +1025,7 @@ export class Runner extends DurableObject<Env> {
       try { await kvPut("data-vooraf", voorafNieuw.waarde, voorafNieuw.h); } catch { console.error("KV-schrijffout data-vooraf"); }
     }
     await bewaarKvStand(opslag, wijz).catch(() => console.error("kvstand opslaan mislukt"));
-    return { ok: true, ...out.meta, gegenereerd: out.gegenereerd, kvWritesRun: tel.kvN(), kvSleutels: tel.kvSleutels(), doWritesRun: tel.doN() };
+    return { ok: true, ...out.meta, gegenereerd: out.gegenereerd, kvWritesRun: tel.kvN(), kvWritesDag: out.meta.kvWritesDag, publiceerInterval: out.meta.publiceerInterval, kvSleutels: tel.kvSleutels(), doWritesRun: tel.doN() };
   }
 }
 async function hash(s: string) {
@@ -1013,7 +1051,7 @@ export default {
     if (h < 6 || h > 23) return; // cron draait in UTC; dit houdt het op 06:00–23:00 Amsterdam (zomer- en wintertijd)
     const stub = env.RUNNER.get(env.RUNNER.idFromName("runner"));
     try {
-      const r = await stub.fetch("https://do/run");
+      const r = await stub.fetch(`https://do/run?gepland=${ev.scheduledTime}`);
       const body = await r.text();
       if (r.status === 409) console.log("run overgeslagen", body.slice(0, 200));
       else if (!r.ok) console.error("run mislukt", r.status, body.slice(0, 500));
