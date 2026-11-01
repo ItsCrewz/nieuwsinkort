@@ -210,6 +210,30 @@ handmatige checks op echte data en draaien niet mee met `npm test`.
 
 nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project (nieuwsinkort.pages.dev blijft werken). `functions/_middleware.ts` stuurt www met een 301 door naar `https://nieuwsinkort.nl` met pad en query behouden (de Cloudflare-login mag geen Redirect Rules schrijven, vandaar code); apex en `*.pages.dev` blijven ongemoeid. `public/_routes.json` houdt `/assets/*`, `/fonts/*`, iconen en vaste bestanden buiten de Functions (Free-plan-quotum, max 100 regels); HTML-navigaties en de functieroutes (`/data.json`, `/meer`, `/samenvatting`, `/media/dumpert/*`) lopen er wel doorheen. Test: `tests/www-redirect.test.ts`. Controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`.
 
+## Bezoekersstatistieken
+
+Cloudflare Web Analytics is op 1-11-2026 aangezet via de Pages-instelling (Workers & Pages → nieuwsinkort → Metrics → Web Analytics). Cloudflare voegt de beacon (`https://static.cloudflareinsights.com/beacon.min.js`, met `integrity`/SRI) bij de volgende deploy zelf in de HTML in. Er staat dus bewust geen snippet in `index.html`, en er komt er ook geen. Dit vraagt geen codewijziging, geen nieuwe dependency en geen service worker; `dist/` verandert niet (het script komt van een derde domein), dus de performancebudget-check blijft ongemoeid.
+
+**Wat gemeten wordt** (volgens de Cloudflare-docs): visits, paginaweergaven, laadtijd en Core Web Vitals (LCP, INP en CLS; CLS alleen in Chromium-browsers), met filters op land, host, pad, verwijzer, apparaattype, browser en besturingssysteem. Er zijn geen UTM-parameters (querystrings worden niet gelogd) en geen custom events. Adblockers blokkeren de beacon, dus de cijfers zijn een ondergrens. Data is 7 dagen ongesampled, daarna geaggregeerd; er kan 6 maanden terug worden gekeken.
+
+**Kosten:** €0 (gratis Cloudflare-functie, geen betaald plan nodig).
+
+**Privacy:** geen cookies, geen localStorage, geen fingerprinting; volgens de Cloudflare-docs worden geen persoonsgegevens van bezoekers verzameld. Dit is niet juridisch getoetst.
+
+**Beperking: hash-routes.** De beacon wist hash en querystring uit de URL en telt een hashwissel niet als nieuwe paginaweergave. Nieuwsinkort navigeert via `location.hash` en `replaceState`. Gevolg: één paginaweergave per paginalaad, alle paden verschijnen als `/` en er zijn geen cijfers per rubriek. Cijfers per rubriek vragen een apart issue (bijvoorbeeld padrouting).
+
+**CSP.** `public/_headers` staat de beacon al toe sinds #278 (PR #338): `script-src` bevat `https://static.cloudflareinsights.com` en `connect-src` bevat `'self' https: https://cloudflareinsights.com`. `tests/beveiligingsheaders.test.ts` legt dat vast. Voor deze functie verandert er niets aan de CSP.
+
+**Controleren** (live, na een deploy; lokaal ontbreekt de beacon omdat Cloudflare hem alleen op Pages invoegt):
+- Het beacon-script laadt van `static.cloudflareinsights.com` (netwerktabblad).
+- De metingen naar `/cdn-cgi/rum` of `cloudflareinsights.com` geven een 2xx.
+- Er staan geen CSP- of CORS-fouten in de console.
+- `index.html` heeft `<meta name="referrer" content="no-referrer">`. Een cross-origin POST stuurt toch een `Origin`-header mee; controleer dat de meting daar (CORS) niet op stukloopt.
+
+**Bekijken:** Cloudflare-dashboard → Web Analytics → de site.
+
+**Uitzetten/terugdraaien:** Web Analytics uitschakelen onder Workers & Pages → nieuwsinkort → Metrics → Web Analytics, daarna één gewone deploy zodat de injectie verdwijnt. Geen codewijziging nodig.
+
 ## Open punten
 
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
