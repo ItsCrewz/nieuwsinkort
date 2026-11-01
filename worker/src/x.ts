@@ -1,4 +1,4 @@
-// X (Twitter) zonder login of API-sleutel. Elk uur, gratis:
+// X (Twitter) zonder login of API-sleutel. Elke 30 minuten (tier, zie tier.ts), gratis:
 //  1. api.fxtwitter.com/2/profile/<naam>/statuses  (FxEmbed, open JSON-API; laatste ±20 posts, met MP4-varianten)
 //  2. terugval: syndication.twitter.com timeline-profile (de officiële embed-tijdlijn, __NEXT_DATA__)
 // Reposts van anderen slaan we over: alleen wat het account zelf post.

@@ -1,0 +1,1 @@
+- Nieuws wordt elke 5 minuten bijgewerkt (cron `*/5 4-22`); gewone feeds elke run, YouTube en Reddit elke 15 minuten, X en Instagram elke 30 minuten, met het laatst gelukte resultaat voor overgeslagen bronnen. `meta.tier` en `meta.bronnenOvergeslagen` in de runrespons (#465).

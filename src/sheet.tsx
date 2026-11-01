@@ -19,7 +19,7 @@ function sourceLine(s: SourceRow): string {
   if (!st) return inOverzicht || "Niet in overzicht"; // oude data.json zonder bronstats: niets beweren over 'vandaag'
   // Ophalen mislukt is iets anders dan "vandaag niets": zeg het eerlijk, met wanneer het voor het laatst wél lukte.
   if (st.vandaag == null) return ["Ophalen mislukt", st.ok ? `laatst gelukt ${hhmm(st.ok)}` : st.laatste ? `laatste bericht ${hhmm(st.laatste)}` : "", inOverzicht].filter(Boolean).join(" · ");
-  const bij = st.ok ? `bijgewerkt ${hhmm(st.ok)}` : ""; // laatste gelukte ophaalronde (elk uur)
+  const bij = st.ok ? `bijgewerkt ${hhmm(st.ok)}` : ""; // laatste gelukte ophaalronde (elke 5 minuten)
   const deels = st.fout ? "deels mislukt" : "";
   if (st.vandaag === 0) return [`Vandaag niets${st.laatste ? ` · laatste ${hhmm(st.laatste)}` : ""}`, bij, deels].filter(Boolean).join(" · ");
   return [`${st.vandaag} vandaag`, inOverzicht, bij, deels].filter(Boolean).join(" · ");
