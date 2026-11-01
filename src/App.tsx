@@ -864,10 +864,10 @@ function useData() {
   }, []);
   useEffect(() => {
     load();
-    // ververs als je terugkomt op het tabblad, en elke 5 minuten
+    // ververs als je terugkomt op het tabblad, en elk kwartier
     const onVis = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onVis);
-    const t = window.setInterval(load, 5 * 60 * 1000);
+    const t = window.setInterval(load, 15 * 60 * 1000);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(t);
@@ -992,7 +992,7 @@ function Footer() {
         Nieuws in het kort
       </div>
       <p>Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron.</p>
-      <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elke 5 minuten bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
+      <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk kwartier bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
     </footer>
   );
 }

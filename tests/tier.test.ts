@@ -6,6 +6,13 @@ let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
 const min = (m: number) => Date.UTC(2026, 10, 2, 9, m, 0);
 
+t("#467 cron */15: elke run is minstens tier 15, social alleen op :00 en :30", () => {
+  const tiers = [0, 15, 30, 45].map((m) => tierVan(min(m)));
+  assert.deepEqual(tiers, ["30", "15", "30", "15"]);
+  for (const x of tiers) assert.ok(draaitMee(x, "zwaar"), x);
+  assert.deepEqual(tiers.map((x) => draaitMee(x, "social")), [true, false, true, false]);
+});
+
 t("tierVan: minuut % 30 = 30, % 15 = 15, anders 5; zonder geplande tijd alles", () => {
   assert.equal(tierVan(min(0)), "30");
   assert.equal(tierVan(min(30)), "30");
