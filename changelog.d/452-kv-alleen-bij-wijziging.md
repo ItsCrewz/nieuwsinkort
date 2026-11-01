@@ -1,0 +1,1 @@
+- Onderhoud: de uur-Worker schrijft nog maar naar KV bij gewijzigde inhoud (of elke 50 minuten); state, og-/ig-caches en vooraf-log staan in Durable Object-opslag, en een run telt zijn echte KV-writes (#452).
