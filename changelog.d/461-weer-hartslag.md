@@ -1,0 +1,1 @@
+- Onderhoud: de snel wisselende weervelden (weer.nu, weer.vandaag) gaan alleen mee met de hartslag of een andere wijziging, een KNMI-waarschuwing direct, en de filmgroep-AI wacht na een mislukte poging met backoff (15, 30 min) en bewaart daarna de terugval (#461).

@@ -180,7 +180,7 @@ try {
     for (const f of FXOK.slice(0, 12)) assert.equal(g2[f.titel], f.groep);
   });
 
-  await t("ongeldige AI-JSON of AI-fout: terugval, geen crash, niets bewaard en de volgende run probeert opnieuw", async () => {
+  await t("ongeldige AI-JSON of AI-fout: terugval, geen crash, telt als poging; na de backoff probeert een volgende run opnieuw", async () => {
     const h = harnas();
     h.aanbod.fx = FXOK.slice(0, 8);
     h.ai.antwoord = () => "dit is geen json";
@@ -188,17 +188,74 @@ try {
     assert.equal(r1.res.status, 200);
     assert.equal(r1.body.filmGroepAi, true);
     assert.equal(r1.body.filmGroepNieuw, 0);
-    assert.equal(h.opslag.m.has("filmgroep"), false);
+    assert.deepEqual(Object.keys((h.opslag.m.get("filmgroep") as any).g), [], "geen groep bewaard");
+    assert.equal(Object.keys((h.opslag.m.get("filmgroep") as any).p).length, 8, "wel een poging per filmpje");
     assert.equal(h.uur().filmpjes.length > 0, true);
     for (const v of h.uur().filmpjes) assert.ok((FILM_GROEPEN as readonly string[]).includes(v.groep));
     h.ai.antwoord = () => { throw new Error("AI stuk"); };
     const r2 = await h.run(60);
     assert.equal(r2.res.status, 200);
-    assert.equal(h.opslag.m.has("filmgroep"), false);
+    assert.deepEqual(Object.keys((h.opslag.m.get("filmgroep") as any).g), []);
     h.ai.antwoord = undefined;
     const r3 = await h.run(120);
     assert.equal(r3.groepCalls, 1);
     assert.equal(Object.keys((h.opslag.m.get("filmgroep") as any).g).length, 8);
+  });
+
+  await t("#461 backoff: leeg antwoord en fout tellen als poging; runs om de 5 min wachten 15 en 30 minuten; daarna de terugval bewaard", async () => {
+    const h = harnas();
+    h.aanbod.fx = FXOK.slice(0, 3);
+    const uitgesteld = (r: { body: any }) => r.body.filmGroepUitgesteld;
+    h.ai.antwoord = () => '{"items":[]}'; // leeg antwoord
+    const r0 = await h.run(0);
+    assert.equal(r0.groepCalls, 1);
+    assert.equal(uitgesteld(r0), 0);
+    assert.deepEqual(Object.values((h.opslag.m.get("filmgroep") as any).p).map((x: any) => x[0]), [1, 1, 1]);
+    for (const min of [5, 10, 14]) {
+      const r = await h.run(min);
+      assert.equal(r.groepCalls, 0, `minuut ${min}: nog in backoff`);
+      assert.equal(r.body.filmGroepAi, false);
+      assert.equal(uitgesteld(r), 3);
+    }
+    h.ai.antwoord = () => { throw new Error("time-out"); }; // fout telt ook
+    const r15 = await h.run(15);
+    assert.equal(r15.groepCalls, 1, "AI.run is aangeroepen en gooit");
+    assert.equal(r15.body.filmGroepAi, true);
+    assert.deepEqual(Object.values((h.opslag.m.get("filmgroep") as any).p).map((x: any) => x[0]), [2, 2, 2]);
+    for (const min of [20, 30, 44]) {
+      const r = await h.run(min);
+      assert.equal(r.body.filmGroepAi, false, `minuut ${min}: 30 minuten backoff`);
+      assert.equal(uitgesteld(r), 3);
+    }
+    h.ai.antwoord = () => '{"items":[]}';
+    const r45 = await h.run(45);
+    assert.equal(r45.body.filmGroepAi, true);
+    assert.equal(r45.body.filmGroepNieuw, 3, "derde poging: terugval bewaard");
+    const o: any = h.opslag.m.get("filmgroep");
+    assert.equal(Object.keys(o.g).length, 3);
+    assert.deepEqual(o.p, {});
+    const r50 = await h.run(50);
+    assert.equal(r50.body.filmGroepAi, false);
+    assert.equal(uitgesteld(r50), 0);
+  });
+
+  await t("#461 backoff: bij uurlijks draaien is de wachttijd altijd verstreken", async () => {
+    const h = harnas();
+    h.aanbod.fx = FXOK.slice(0, 2);
+    h.ai.antwoord = () => '{"items":[]}';
+    for (let i = 0; i < GROEP_POGINGEN; i++) assert.equal((await h.run(i * 60)).groepCalls, 1);
+    assert.equal(Object.keys((h.opslag.m.get("filmgroep") as any).g).length, 2);
+    assert.equal((await h.run(GROEP_POGINGEN * 60)).groepCalls, 0);
+  });
+
+  await t("#461 opslag: oude vorm p: Record<string, number> wordt gelezen (backoff verstreken), nieuwe vorm blijft", async () => {
+    assert.deepEqual(leesOpslag({ g: {}, p: { a: 2, b: [1, 5], c: "x", d: [1] } }).p, { a: [2, 0], b: [1, 5] });
+    const h = harnas();
+    h.aanbod.fx = FXOK.slice(0, 2);
+    h.opslag.m.set("filmgroep", { g: {}, p: Object.fromEntries(FXOK.slice(0, 2).map((f) => [groepSleutel(f.href), 2])) });
+    const r = await h.run(0);
+    assert.equal(r.groepCalls, 1, "oude teller: direct opnieuw aan de beurt");
+    assert.equal(r.body.filmGroepNieuw, 2);
   });
 
   await t("onbruikbare groep in een geldig antwoord: na drie pogingen wordt de terugval bewaard (geen eindeloze calls)", async () => {

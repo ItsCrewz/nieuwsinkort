@@ -59,7 +59,9 @@ export async function bewaarKvStand(opslag: Opslag, wijz: KvStand) {
   await opslag.put("kvstand", { ...ks, ...wijz });
 }
 
-/** Inhoud van `uur` zonder vluchtige velden: gegenereerd, meta, tijdstempels `ok` in bronstats, weer.bijgewerkt en gegenereerd per taboverzicht (de extractieve tekst krijgt elke run een nieuwe tijd; de UI toont die niet). */
+/** Inhoud van `uur` zonder vluchtige velden: gegenereerd, meta, tijdstempels `ok` in bronstats, gegenereerd per taboverzicht (de extractieve tekst krijgt elke run een nieuwe tijd; de UI toont die niet)
+ *  en de weervelden die bij elke Buienradar-update (±10 min) wisselen: weer.bijgewerkt, weer.nu (actuele meting) en weer.vandaag (neerslagkans, wind). Die gaan mee met de hartslag of een andere wijziging (#461).
+ *  Verwachting, dagen en vooral waarschuwing (KNMI-code) tellen wel mee, zodat een waarschuwing direct live gaat. */
 export function uurInhoud(out: any): string {
   const { gegenereerd: _g, meta: _m, bronstats, weer, tab_samenvatting, ...rest } = out;
   const tabs: Record<string, unknown> = {};
@@ -67,7 +69,7 @@ export function uurInhoud(out: any): string {
   const bs: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(bronstats || {})) { const { ok: _ok, ...r } = v as any; bs[k] = r; }
   let w = weer;
-  if (weer && typeof weer === "object") { const { bijgewerkt: _b, ...r } = weer; w = r; }
+  if (weer && typeof weer === "object") { const { bijgewerkt: _b, nu: _n, vandaag: _v, ...r } = weer; w = r; }
   return JSON.stringify({ ...rest, tab_samenvatting: tabs, bronstats: bs, weer: w });
 }
 
