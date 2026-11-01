@@ -141,7 +141,7 @@ try {
     assert.equal(r2.body.aiGebundeld, true); assert.equal(r2.body.aiWachtend, 4); assert.equal(h2.calls.samen, 0);
   });
 
-  await t("*/5: elk uur een nieuw bericht per run: minder AI-calls dan zonder bundeling, geen cluster > 10 min zonder AI, 'In het kort' ≤ 2x", async () => {
+  await t("*/5: elk uur een nieuw bericht per run: minder AI-calls dan zonder bundeling, geen cluster > 20 min zonder AI (10 bundelen + 10 publicatie), 'In het kort' ≤ 2x", async () => {
     const h = harnas(); await opwarmen(h);
     const eerst = new Map<number, number>(), klaar = new Map<number, number>();
     let ruwMax = 0;
@@ -159,9 +159,10 @@ try {
       ruwMax = Math.max(ruwMax, r.ruw);
     }
     for (let i = 0; i < 12; i++) {
-      if (i >= 10) continue; // de laatste runs: nog binnen de wachttijd
+      if (i >= 9) continue; // de laatste runs: nog binnen de wachttijd en de publicatietussenpoos
       assert.ok(klaar.has(i), `cluster ${i} heeft AI-tekst gekregen`);
-      assert.ok(klaar.get(i)! - eerst.get(i)! <= 10, `cluster ${i}: ${klaar.get(i)! - eerst.get(i)!} min zonder AI-tekst`);
+      // 10 minuten bundelen + hooguit 10 minuten tot de volgende toegestane KV-publicatie (#466)
+      assert.ok(klaar.get(i)! - eerst.get(i)! <= 20, `cluster ${i}: ${klaar.get(i)! - eerst.get(i)!} min zonder AI-tekst`);
     }
     assert.ok(h.calls.samen <= 6, `samenvatten ${h.calls.samen}x voor 12 nieuwe clusters (zonder bundeling 12x)`);
     assert.ok(h.calls.samen < 12);
