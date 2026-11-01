@@ -1,8 +1,8 @@
 // Draai: npm test  (artikelbeeldproxy functions/media/beeld/[[path]].ts en src/beeldhost.ts, zonder netwerk)
 import assert from "node:assert/strict";
-import { onRequest } from "../functions/media/beeld/[[path]]";
+import { onRequest, acceptEmmer, cacheSleutel } from "../functions/media/beeld/[[path]]";
 import { upstreamUrl } from "../functions/media/beeld/[[path]]";
-import { beeldViaProxy, beeldHostToegestaan } from "../src/beeldhost";
+import { beeldViaProxy, beeldHostToegestaan, beeldProxyPad } from "../src/beeldhost";
 
 let n = 0;
 const t = async (name: string, fn: () => void | Promise<void>) => { await fn(); n++; console.log("✓", name); };
@@ -44,7 +44,12 @@ await t("antwoordheaders: nosniff, CSP, cache, geen Set-Cookie/CORS, alleen whit
   assert.equal(r.headers.get("cache-control"), "public, max-age=86400");
   assert.equal(r.headers.get("etag"), "\"e\"");
   assert.equal(r.headers.get("content-length"), "8");
-  assert.deepEqual(calls[0].init.cf.cacheTtlByStatus["500-599"], 0);
+  assert.equal(r.headers.get("vary"), "Accept");
+  // randcache van de upstream-fetch uit: geen opslag op URL-basis (zou emmers mengen)
+  assert.equal(calls[0].init.cache, "no-store");
+  assert.equal(calls[0].init.cf.cacheTtl, -1);
+  assert.equal(calls[0].init.cf.cacheEverything, false);
+  assert.equal(calls[0].init.cf.cacheKey, undefined);
 });
 
 await t("verzoek van de bezoeker: geen cookies/Authorization/Referer door", async () => {
@@ -174,6 +179,182 @@ await t("client: allowlist → /media/beeld/…, rest ongewijzigd", () => {
 await t("client en server delen dezelfde allowlist (één module)", () => {
   assert.ok(beeldHostToegestaan("images.ad.nl") && beeldHostToegestaan("cdn-12.motorsport.com"));
   assert.ok(!beeldHostToegestaan("images.nu.nl.") && !beeldHostToegestaan("IMAGES.NU.NL"));
+});
+
+// Nep-Cache API (Node heeft geen caches.default): sleutel = URL van het Request.
+const nepCache = () => {
+  const m = new Map<string, Response>();
+  const c = { m, async match(k: Request) { const r = m.get(k.url); return r ? r.clone() : undefined; }, async put(k: Request, r: Response) { m.set(k.url, new Response(await r.arrayBuffer(), { status: r.status, headers: r.headers })); } };
+  (globalThis as any).caches = { default: c };
+  return c;
+};
+const zonderCache = () => { delete (globalThis as any).caches; };
+const AVIF = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8";
+const WEBP = "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8";
+const BASIS = "image/png,image/svg+xml,image/*;q=0.8,video/*;q=0.8,*/*;q=0.5";
+
+await t("Accept-emmers: avif > webp > basis, en de upstream-Accept volgt de emmer", async () => {
+  assert.equal(acceptEmmer(AVIF), "avif");
+  assert.equal(acceptEmmer("image/webp,image/avif"), "avif");
+  assert.equal(acceptEmmer(WEBP), "webp");
+  assert.equal(acceptEmmer(BASIS), "basis");
+  assert.equal(acceptEmmer("*/*"), "basis");
+  assert.equal(acceptEmmer(null), "basis");
+  assert.equal(acceptEmmer("IMAGE/AVIF"), "avif");
+  const verwacht: Record<string, string> = { [AVIF]: "image/avif,image/webp,image/*;q=0.8", [WEBP]: "image/webp,image/*;q=0.8", [BASIS]: "image/png,image/jpeg,image/gif,image/*;q=0.8" };
+  for (const [acc, up] of Object.entries(verwacht)) {
+    mock(jpg());
+    await vraag("images.nu.nl/a.jpg", "GET", { Accept: acc });
+    assert.equal(new Headers(calls[0].init.headers).get("accept"), up);
+  }
+  mock(jpg());
+  await vraag("images.nu.nl/a.jpg"); // zonder Accept
+  assert.equal(new Headers(calls[0].init.headers).get("accept"), "image/png,image/jpeg,image/gif,image/*;q=0.8");
+});
+
+await t("cachesleutel verschilt per emmer en bevat host, pad en query", () => {
+  const u = new URL("https://images.nu.nl/m/a%20b.jpg?w=1");
+  const k = (["avif", "webp", "basis"] as const).map((e) => cacheSleutel(e, u));
+  assert.equal(new Set(k).size, 3);
+  assert.equal(k[0], "https://nieuwsinkort.nl/__beeldcache/avif/images.nu.nl/m/a%20b.jpg?w=1");
+  assert.notEqual(cacheSleutel("avif", u), cacheSleutel("avif", new URL("https://images.nu.nl/m/a%20b.jpg?w=2")));
+});
+
+await t("Cache API: per emmer apart opgeslagen, hit geeft dezelfde headers zonder Set-Cookie en zonder tweede fetch", async () => {
+  const c = nepCache();
+  try {
+    const bron = (tekst: string) => () => new Response(tekst, { headers: { "content-type": "image/jpeg", "set-cookie": "__cf_bm=x", etag: "\"e\"", "content-length": String(tekst.length) } });
+    const wacht: Promise<unknown>[] = [];
+    const ctx = (accept: string, method = "GET") => ({ request: new Request("https://nieuwsinkort.nl/media/beeld/images.nu.nl/a.jpg?w=1", { method, headers: { Accept: accept } }), waitUntil: (p: Promise<unknown>) => { wacht.push(p); } });
+    mock(bron("AVIFBYTES"));
+    const a = await onRequest(ctx(AVIF));
+    assert.equal(await a.text(), "AVIFBYTES");
+    await Promise.all(wacht);
+    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/avif/images.nu.nl/a.jpg?w=1"]);
+    // andere emmer: geen hit, eigen upstream-fetch en eigen sleutel
+    mock(bron("JPEGBYTES"));
+    const b = await onRequest(ctx(BASIS));
+    assert.equal(await b.text(), "JPEGBYTES");
+    await Promise.all(wacht);
+    assert.equal(calls.length, 1);
+    assert.equal(c.m.size, 2);
+    // hit in de eerste emmer: zelfde bytes, geen fetch, dezelfde headers
+    mock(bron("NIETGEBRUIKT"));
+    const hit = await onRequest(ctx(AVIF));
+    assert.equal(calls.length, 0);
+    assert.equal(await hit.text(), "AVIFBYTES");
+    for (const h of ["content-type", "etag", "content-length", "cache-control", "x-content-type-options", "content-security-policy", "vary"]) assert.equal(hit.headers.get(h), a.headers.get(h), h);
+    assert.equal(hit.headers.get("set-cookie"), null);
+    assert.equal(hit.headers.get("vary"), "Accept");
+    assert.equal(hit.headers.get("cache-control"), "public, max-age=86400");
+    // HEAD op een hit: headers, geen body
+    const head = await onRequest(ctx(AVIF, "HEAD"));
+    assert.equal(calls.length, 0);
+    assert.equal(head.headers.get("content-type"), "image/jpeg");
+    assert.equal(await head.text(), "");
+  } finally { zonderCache(); }
+});
+
+await t("Cache API: alleen geslaagde 200's; fouten, 404, 415, 413, te grote stream en HEAD worden niet opgeslagen", async () => {
+  const c = nepCache();
+  try {
+    const wacht: Promise<unknown>[] = [];
+    const v = async (rest: string, method = "GET") => { const r = await onRequest({ request: new Request(`https://nieuwsinkort.nl/media/beeld/${rest}`, { method }), waitUntil: (p) => { wacht.push(p); } }); await r.arrayBuffer().catch(() => {}); await Promise.all(wacht); return r; };
+    mock(() => new Response("x", { status: 403 })); assert.equal((await v("images.nu.nl/a.jpg")).status, 502);
+    mock(() => new Response("x", { status: 404 })); assert.equal((await v("images.nu.nl/b.jpg")).status, 404);
+    mock(() => new Response("x", { status: 410 })); assert.equal((await v("images.nu.nl/c.jpg")).status, 502);
+    mock(() => new Response("x", { status: 429 })); assert.equal((await v("images.nu.nl/c2.jpg")).status, 502);
+    mock(() => new Response("<b>", { headers: { "content-type": "text/html" } })); assert.equal((await v("images.nu.nl/d.jpg")).status, 415);
+    mock(jpg({ "content-length": String(6 * 1024 * 1024) })); assert.equal((await v("images.nu.nl/e.jpg")).status, 413);
+    mock(() => new Response(new ReadableStream({ pull(k) { k.enqueue(new Uint8Array(1024 * 1024)); } }), { headers: { "content-type": "image/jpeg" } })); await v("images.nu.nl/f.jpg");
+    mock(jpg()); assert.equal((await v("images.nu.nl/g.jpg", "HEAD")).status, 200);
+    assert.equal(c.m.size, 0);
+    mock(jpg()); assert.equal((await v("images.nu.nl/h.jpg")).status, 200);
+    assert.equal(c.m.size, 1);
+  } finally { zonderCache(); }
+});
+
+await t("zonder waitUntil wordt inline opgeslagen; zonder Cache API werkt de proxy gewoon", async () => {
+  const c = nepCache();
+  try {
+    mock(jpg());
+    const r = await vraag("images.nu.nl/a.jpg", "GET", { Accept: WEBP });
+    assert.equal(await r.text(), "jpgbytes");
+    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/webp/images.nu.nl/a.jpg"]);
+  } finally { zonderCache(); }
+  mock(jpg());
+  assert.equal(await (await vraag("images.nu.nl/a.jpg")).text(), "jpgbytes");
+});
+
+await t("redirects: hoofdletters, protocol-relatieve Location en :443 worden gevolgd en gecontroleerd", async () => {
+  for (const loc of ["https://IMAGES.CDN.NOS.NL/b.jpg", "//images.cdn.nos.nl/b.jpg", "https://images.cdn.nos.nl:443/b.jpg"]) {
+    mock(() => new Response(null, { status: 302, headers: { location: loc } }), jpg());
+    assert.equal((await vraag("images.nu.nl/a.jpg")).status, 200, loc);
+    assert.equal(calls[1].url, "https://images.cdn.nos.nl/b.jpg", loc);
+  }
+  for (const loc of ["//evil.example/b.jpg", "https://images.cdn.nos.nl:444/b.jpg", "https://EVIL.example/b.jpg"]) {
+    mock(() => new Response(null, { status: 302, headers: { location: loc } }), jpg());
+    assert.equal((await vraag("images.nu.nl/a.jpg")).status, 502, loc);
+    assert.equal(calls.length, 1, loc);
+  }
+});
+
+await t("HEAD: content-length en type komen mee zonder body", async () => {
+  mock(jpg({ "content-length": "8" }));
+  const h = await vraag("images.nu.nl/a.jpg", "HEAD");
+  assert.equal(h.status, 200);
+  assert.equal(h.headers.get("content-length"), "8");
+  assert.equal(h.headers.get("content-type"), "image/jpeg");
+  assert.equal(await h.text(), "");
+});
+
+await t("content-encoding upstream: content-length wordt niet doorgegeven", async () => {
+  mock(jpg({ "content-length": "5", "content-encoding": "gzip" }));
+  const r = await vraag("images.nu.nl/a.jpg");
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("content-length"), null);
+});
+
+await t("body van redirect-, fout- en geweigerde antwoorden wordt geannuleerd", async () => {
+  let geannuleerd = 0;
+  const stroom = () => new ReadableStream({ pull(k) { k.enqueue(new Uint8Array(4)); }, cancel() { geannuleerd++; } });
+  mock(() => new Response(stroom(), { status: 302, headers: { location: "https://images.cdn.nos.nl/b.jpg" } }), jpg());
+  await vraag("images.nu.nl/a.jpg");
+  mock(() => new Response(stroom(), { status: 503 })); await vraag("images.nu.nl/a.jpg");
+  mock(() => new Response(stroom(), { headers: { "content-type": "text/html" } })); await vraag("images.nu.nl/a.jpg");
+  mock(() => new Response(stroom(), { headers: { "content-type": "image/jpeg", "content-length": String(9 * 1024 * 1024) } })); await vraag("images.nu.nl/a.jpg");
+  assert.equal(geannuleerd, 4);
+});
+
+await t("www.linda.nl alleen onder /lindanl-assets/ en /wp-content/; prod-img.dvhn.nl toegestaan", async () => {
+  mock(jpg());
+  assert.equal((await vraag("www.linda.nl/lindanl-assets/uploads/a.jpg")).status, 200);
+  assert.equal((await vraag("www.linda.nl/wp-content/uploads/a.jpg")).status, 200);
+  const n = calls.length;
+  for (const p of ["www.linda.nl/", "www.linda.nl/recepten/a.jpg", "www.linda.nl/lindanl-assetsx/a.jpg", "www.linda.nl/api/x.jpg"]) assert.equal((await vraag(p)).status, 404, p);
+  assert.equal(calls.length, n);
+  mock(() => new Response(null, { status: 302, headers: { location: "https://www.linda.nl/geheim/a.jpg" } }), jpg());
+  assert.equal((await vraag("images.nu.nl/a.jpg")).status, 502); // redirect buiten het prefix
+  mock(jpg());
+  assert.equal((await vraag("prod-img.dvhn.nl/public/a.jpg")).status, 200);
+  assert.equal(beeldViaProxy("https://www.linda.nl/recepten/a.jpg"), "https://www.linda.nl/recepten/a.jpg");
+  assert.equal(beeldViaProxy("https://www.linda.nl/lindanl-assets/uploads/a.jpg"), "/media/beeld/www.linda.nl/lindanl-assets/uploads/a.jpg");
+});
+
+await t("client en server weigeren dezelfde paden: //, %2F, %25 enz. blijven rechtstreeks", () => {
+  for (const u of [
+    "https://images.nu.nl/a//b.jpg", "https://images.nu.nl//a.jpg", "https://images.nu.nl/a%2Fb.jpg", "https://images.nu.nl/a%2fb.jpg", "https://images.nu.nl/a%25b.jpg",
+    "https://images.nu.nl/a%5Cb.jpg", "https://images.nu.nl/a%2Eb.jpg", "https://images.nu.nl/a%00.jpg", "https://images.nu.nl/a.jpg?x=%5C".replace("%5C", "\\"), "https://images.nu.nl/", "https://images.nu.nl",
+  ]) {
+    assert.equal(beeldProxyPad(u), null, u);
+    assert.equal(beeldViaProxy(u), u, u);
+  }
+  // en wat de client wel proxyt, accepteert de server ook
+  for (const u of ["https://images.nu.nl/a%20b.jpg?w=1&h=2", "https://redactie.rtl.nl/sites/a.jpg?itok=XZ", "https://webp.vi.cdn.pxr.nl/a.webp"]) {
+    const pad = beeldProxyPad(u)!;
+    const [pp, q] = [pad.slice("/media/beeld/".length).split("?")[0], pad.includes("?") ? "?" + pad.split("?").slice(1).join("?") : ""];
+    assert.ok(upstreamUrl(pp, q), u);
+  }
 });
 
 console.log(`\n${n} tests ok`);

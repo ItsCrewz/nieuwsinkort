@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deflateSync } from "node:zlib";
 
 // #439: Home laadt bij de eerste lading geen hls-chunk, playlists, segmenten of mp4 en praat niet met media.dumpert.nl;
 // Dumpert-posters lopen via /media/dumpert. Fixture-data, alle externe verzoeken geblokkeerd; nooit productie.
@@ -77,4 +78,29 @@ test("Home en artikel: foto's via /media/beeld, niets rechtstreeks naar uitgever
   const alles = verzoeken.filter((u) => u.includes("/media/beeld/"));
   console.log(`beeldverzoeken Home + artikel: ${alles.length}`);
   expect(verzoeken.filter((u) => BEELDHOSTS.some((h) => new URL(u).hostname === h)), "niets rechtstreeks").toEqual([]);
+});
+
+// #473 vangnet: geeft de proxy een fout (bijv. botbescherming van de uitgever), dan laadt de foto één keer rechtstreeks en valt hij niet weg.
+const crc = (b) => { let c = ~0; for (const x of b) { c ^= x; for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1; } return ~c >>> 0; };
+const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
+const groot = (() => { const w = 400, h = 300, ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2; return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(Buffer.alloc((w * 3 + 1) * h, 120))), chunk("IEND", Buffer.alloc(0))]); })();
+test("Home: proxy geeft 403, foto laadt rechtstreeks en blijft zichtbaar (vangnet)", async ({ page }) => {
+  const proxy = [], direct = [];
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => { direct.push(route.request().url()); return route.fulfill({ status: 200, contentType: "image/png", body: groot }); });
+  await page.route("**/media/beeld/**", (route) => { proxy.push(route.request().url()); return route.fulfill({ status: 403, body: "nee" }); });
+  await page.route("**/data.json*", async (route) => {
+    const r = await route.fetch();
+    const d = await r.json();
+    d.items = d.items.map((it, n) => ({ ...it, beeld: undefined, beelden: [`https://prod-img.telegraaf.nl/public/vangnet-${n}.jpg?w=1024`] }));
+    await route.fulfill({ response: r, json: d });
+  });
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const img = page.locator('img[src^="https://prod-img.telegraaf.nl/public/vangnet-"]').first();
+  await expect(img).toBeVisible();
+  await expect.poll(() => img.evaluate((i) => i.complete && i.naturalWidth)).toBe(400);
+  expect(proxy.length, "proxy is eerst geprobeerd").toBeGreaterThan(0);
+  expect(direct.some((u) => u.includes("prod-img.telegraaf.nl/public/vangnet-")), "daarna rechtstreeks").toBe(true);
+  const dubbel = proxy.filter((u, i) => proxy.indexOf(u) !== i);
+  expect(dubbel, "proxy per foto hooguit één keer").toEqual([]);
 });

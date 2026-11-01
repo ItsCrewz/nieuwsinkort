@@ -11,16 +11,29 @@ import { beeldViaProxy } from "./beeldhost";
 // Begrensd: nooit meer dan een handvol tegelijk, dus niet alle 200 foto's in één keer (die bevriezing blijft weg).
 const AHEAD = 3;
 const klaar = new Set<string>(); // url's die al gedecodeerd zijn
+// Vangnet: faalt de proxy (bijv. botbescherming van de uitgever), dan één keer rechtstreeks (oude gedrag) voor het wegvallen.
+const rechtstreeks = new Set<string>();
+export const bronUrl = (u: string): string => (rechtstreeks.has(u) ? u : beeldViaProxy(u));
+/** Proxy gefaald: true als er nog een rechtstreekse poging is (nu ingepland), false als dat al geprobeerd is of niet kan. */
+export function naarRechtstreeks(u: string): boolean {
+  if (rechtstreeks.has(u) || beeldViaProxy(u) === u) return false;
+  rechtstreeks.add(u);
+  return true;
+}
 const bezig = new Map<string, Promise<void>>();
 export function preloadBeeld(u: string | undefined): Promise<void> {
   if (!u || klaar.has(u)) return Promise.resolve();
   const p0 = bezig.get(u);
   if (p0) return p0;
-  const im = new Image();
-  im.referrerPolicy = "no-referrer";
-  im.decoding = "async";
-  im.src = beeldViaProxy(u); // zelfde URL als de <img src>, anders dubbele downloads
-  const p = (im.decode ? im.decode() : new Promise<void>((ok, nok) => { im.onload = () => ok(); im.onerror = nok; }))
+  const laad = (src: string): Promise<void> => {
+    const im = new Image();
+    im.referrerPolicy = "no-referrer";
+    im.decoding = "async";
+    im.src = src;
+    return im.decode ? im.decode() : new Promise<void>((ok, nok) => { im.onload = () => ok(); im.onerror = nok; });
+  };
+  const p = laad(bronUrl(u)) // zelfde URL als de <img src>, anders dubbele downloads
+    .catch(() => (naarRechtstreeks(u) ? laad(u) : Promise.reject()))
     .then(() => { klaar.add(u); }, () => {})
     .finally(() => bezig.delete(u));
   bezig.set(u, p);
@@ -100,6 +113,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     if (!el) return;
     return register({ el, wake: () => setNear(true), first: () => listRef.current[0], second: () => listRef.current[iRef.current + 1] });
   }, []);
+  const [, herlaad] = useState(0);
   const raf = useRef(0);
   useEffect(() => { setList(urls); setI(0); }, [urls]);
   listRef.current = list;
@@ -148,7 +162,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
             {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
               <img
-                src={beeldViaProxy(u)}
+                src={bronUrl(u)}
                 alt=""
                 aria-hidden="true"
                 draggable={false}
@@ -157,7 +171,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
                 className={klaar.has(u) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"
-                onError={() => drop(u)}
+                onError={() => (naarRechtstreeks(u) ? herlaad((n) => n + 1) : drop(u))}
                 onLoad={(e) => {
                   const im = e.currentTarget;
                   const w = im.naturalWidth, h = im.naturalHeight;
@@ -186,12 +200,13 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
 /** Kleine vierkante foto voor de lijst (alleen de eerste); valt weg als hij niet laadt. */
 export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
   const [k, setK] = useState(0);
+  const [, herlaad] = useState(0);
   const u = urls[k];
   if (!u) return null;
   return (
     <span className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
-      <img src={beeldViaProxy(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
-        onError={() => setK(k + 1)}
+      <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
+        onError={() => (naarRechtstreeks(u) ? herlaad((n) => n + 1) : setK(k + 1))}
         onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />
     </span>
   );
