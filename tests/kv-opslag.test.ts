@@ -32,10 +32,10 @@ const e = (slug: string, titel: string, min: number) => ({ t: titel, l: `https:/
 const bronnen = { groepen: [{ id: "nl", bronnen: [{ id: "nu", naam: "NU.nl", feeds: [{ url: "https://nu.test/rss" }] }] }] };
 
 /** Eén Runner met nep-KV, nep-opslag en nep-Fetchers; `feed` bepaalt wat de feed op dit moment levert. */
-function harnas(opties: { kvStart?: Record<string, string> } = {}) {
+function harnas(opties: { kvStart?: Record<string, string>; groepen?: any[] } = {}) {
   const kv = nepKv(), opslag = nepOpslag();
   for (const [k, v] of Object.entries(opties.kvStart || {})) kv.m.set(k, v);
-  const feed: { entries: any[]; br: any; knmi: string | null } = { entries: [], br: null, knmi: null };
+  const feed: { entries: any[]; br: any; knmi: string | null; extra: Record<string, any[]> } = { entries: [], br: null, knmi: null, extra: {} };
   const ogJobs: string[] = [];
   const env: any = {
     SITE: "https://lokaal", MODEL: "m", NIEUWS: kv,
@@ -44,7 +44,7 @@ function harnas(opties: { kvStart?: Record<string, string> } = {}) {
       if (j.url === BR_URL && feed.br) return { url: j.url, ok: true, status: 200, ms: 1, json: feed.br };
       if (j.url === KNMI_VERW && feed.knmi) return { url: j.url, ok: true, status: 200, ms: 1, text: feed.knmi };
       if (j.url === "https://nu.test/rss") return { url: j.url, ok: true, status: 200, ms: 1, entries: feed.entries, videos: [] };
-      return { url: j.url, ok: true, status: 200, ms: 1, entries: [], videos: [] };
+      return { url: j.url, ok: true, status: 200, ms: 1, entries: feed.extra[j.url] || [], videos: [] };
     })) }) },
   };
   const ctx: any = { storage: opslag, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() };
@@ -52,7 +52,7 @@ function harnas(opties: { kvStart?: Record<string, string> } = {}) {
   const statisch = { gegenereerd: iso(-240), items: [], filmpjes: [], dumpert: [] };
   globalThis.fetch = (async (u: any) => {
     const url = String(u);
-    if (url.includes("/bronnen.json")) return Response.json(bronnen);
+    if (url.includes("/bronnen.json")) return Response.json(opties.groepen ? { groepen: opties.groepen } : bronnen);
     if (url.includes("/data.json?statisch=1")) return Response.json(statisch);
     return new Response("nee", { status: 404 });
   }) as any;
@@ -210,7 +210,7 @@ try {
 
   await t("migratie: lege DO-opslag + KV state → de KV-state wordt gebruikt en daarna in DO-opslag bewaard", async () => {
     const link = "https://nu.test/binnenland/een";
-    const kvState = { datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 77, calls: 3, runs: 4, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit KV-state", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst.", punten: ["a"], at: T0 - MIN } } };
+    const kvState = { datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 77, calls: 3, runs: 4, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit KV-state", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst over het nieuws van vandaag in het hele land.", punten: ["Een tweede feit"], at: T0 - MIN } } };
     const h = harnas({ kvStart: { state: JSON.stringify(kvState) } });
     h.feed.entries = [{ ...e("een", "Kabinet praat over de begroting van volgend jaar", -20), l: link }];
     const r1 = await h.run(0);
@@ -225,6 +225,79 @@ try {
     // tweede run: de KV-kopie wordt alleen gelezen en is niet nieuwer, dus DO-opslag blijft leidend
     await h.run(5);
     assert.equal(JSON.parse(h.opslag.m.get("st:rest") as string).runs, 6);
+  });
+
+  await t("#476 gecachete slechte som wordt genegeerd (ruw, geen AI zonder binding); een goede som blijft en extra KV-writes zijn er niet", async () => {
+    const link = "https://nu.test/binnenland/een", titel = "Kabinet praat over de begroting van volgend jaar";
+    const slecht = { kop: titel, ai: titel, samenvatting: "Kort antwoord", punten: ["Kabinet", "Kabinet"], at: T0 - MIN };
+    const kvState = (som: object) => ({ datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 0, calls: 0, runs: 1, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: som } });
+    const hS = harnas({ kvStart: { state: JSON.stringify(kvState(slecht)) } });
+    hS.feed.entries = [{ ...e("een", titel, -20), l: link, s: "Het kabinet praat vandaag over de begroting. Er komt een besluit." }];
+    await hS.run(0);
+    const uurS = JSON.parse(hS.kv.m.get("uur")!);
+    assert.equal(uurS.items[0].ruw, true, "slechte cache telt als afwezig: extractief");
+    assert.match(uurS.items[0].ai, /Het kabinet praat vandaag over de begroting/, "extractief: de feedtekst, niet de kapotte cache");
+    assert.deepEqual(uurS.items[0].punten, [], "extractief: geen punten uit de slechte som");
+    const goed = { kop: "Kabinet bespreekt de begroting", ai: "Ministers overleggen vandaag over geld voor scholen en zorg.", samenvatting: "Het kabinet praat vandaag over de begroting. Er komt een besluit voor volgend jaar.", punten: ["Besluit volgt later", "Besluit volgt later"], at: T0 - MIN };
+    const hG = harnas({ kvStart: { state: JSON.stringify(kvState(goed)) } });
+    hG.feed.entries = hS.feed.entries;
+    await hG.run(0);
+    const it = JSON.parse(hG.kv.m.get("uur")!).items[0];
+    assert.equal(it.kop, goed.kop);
+    assert.ok(!it.ruw);
+    assert.deepEqual(it.punten, ["Besluit volgt later"], "dubbel punt weggelaten");
+    assert.ok(hG.kv.puts.every((k) => !/afgekeurd/i.test(k)), "geen nieuwe KV-sleutel");
+  });
+
+  await t("#476 afgekeurde AI-som (geen externe keten): extractief ruw, markering in DO-opslag, volgende runs geen AI meer voor dat cluster", async () => {
+    const titel = "Privéjet crash in Florida";
+    const h = harnas();
+    let aiCalls = 0;
+    h.env.AI = { run: async () => { aiCalls++; return { response: JSON.stringify({ items: [{ id: 1, kop: titel, ai: titel, samenvatting: "Negen inzittenden om het leven", punten: ["Florida", "Florida"] }] }) }; } };
+    h.feed.entries = [{ ...e("een", titel, -20), l: "https://nu.test/nieuws/artikel/5662394/privejet", s: "Bij een vliegtuigcrash in een woonwijk in de Amerikaanse staat Florida zijn vandaag alle negen inzittenden om het leven gekomen." }];
+    await h.run(0);
+    await h.run(11);
+    const uur = JSON.parse(h.kv.m.get("uur")!);
+    const na1 = aiCalls;
+    assert.ok(na1 >= 1, "AI is gebruikt");
+    assert.equal(uur.items[0].ruw, true, "geen kapotte som getoond: extractief");
+    assert.equal(uur.items[0].cat, "buitenland", "Florida in kop/omschrijving: Buitenland");
+    assert.deepEqual(JSON.parse(h.opslag.m.get("st:sums") as string), {}, "geen som bewaard");
+    assert.equal(Object.keys(JSON.parse(h.opslag.m.get("st:rest") as string).somAfgekeurd).length, 1);
+    assert.equal(uur.meta.somOpgegeven, 1);
+    await h.run(22);
+    await h.run(33);
+    assert.equal(aiCalls, na1, "afgekeurd cluster kost geen AI meer");
+  });
+
+  await t("#476 review: cluster van 5 bronnen waarvan de 5e titel ≈ kern kost bij een tweede run geen tweede AI-aanroep", async () => {
+    const titels = ["Grote brand verwoest café in centrum Zwolle", "Brand verwoest café centrum Zwolle", "Zwols café verwoest door grote brand", "Café in Zwolle verwoest door brand in centrum", "Uitslaande brand verwoest oud café aan de Diezerstraat in Zwolle"];
+    const feeds = titels.map((_, i) => ({ id: "b" + i, naam: "Bron" + i, feeds: [{ url: `https://b${i}.test/rss` }] }));
+    const h = harnas({ groepen: [{ id: "nl", bronnen: feeds }] });
+    let aiCalls = 0;
+    h.env.AI = { run: async () => { aiCalls++; return { response: JSON.stringify({ items: [{ id: 1, kop: "Café in centrum Zwolle verwoest", ai: titels[4] + ".", samenvatting: "Een grote brand heeft vanochtend een oud café in het centrum van Zwolle verwoest. De brandweer was lang bezig met blussen.", punten: [] }] }) }; } };
+    titels.forEach((t, i) => { h.feed.extra[`https://b${i}.test/rss`] = [{ t, l: `https://b${i}.test/nieuws/${i}`, s: "", d: T0 - 20 * MIN }]; });
+    await h.run(0);
+    const na1 = aiCalls;
+    assert.ok(na1 >= 1);
+    assert.equal(JSON.parse(h.kv.m.get("uur")!).items.filter((i: any) => !i.ruw).length, 1, "cluster met som");
+    await h.run(11); await h.run(22);
+    assert.equal(aiCalls, na1, "geen tweede aanroep voor hetzelfde cluster");
+  });
+
+  await t("#476 review: afgekeurde gecachete som buiten de AI-keuze (tier 3, showbizz) valt terug op extractief in plaats van te verdwijnen", async () => {
+    const titel = "Loiza Lamers verkleedt zich als haar spirit animal bij Halloween";
+    const slecht = { kop: titel, ai: titel, samenvatting: "Kort antwoord", punten: [], at: T0 - MIN };
+    const state = { datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 8500, calls: 0, runs: 1, okAt: {}, hashes: {}, links: { "sb.test/nieuws/loiza": "x1" }, sums: { x1: slecht } };
+    const h = harnas({ kvStart: { state: JSON.stringify(state) }, groepen: [{ id: "showbizz", bronnen: [{ id: "sb", naam: "Showbytes", feeds: [{ url: "https://sb.test/rss" }] }] }] });
+    let aiCalls = 0;
+    h.env.AI = { run: async () => { aiCalls++; return { response: JSON.stringify({ items: [] }) }; } };
+    h.feed.extra["https://sb.test/rss"] = [{ t: titel, l: "https://sb.test/nieuws/loiza", s: "De sterren delen hun Halloween-looks op sociale media. Loiza kiest voor een dierenpak.", d: T0 - 20 * MIN }];
+    await h.run(0);
+    const items = JSON.parse(h.kv.m.get("uur")!).items;
+    assert.equal(items.length, 1, "item verdwijnt niet");
+    assert.equal(items[0].ruw, true);
+    assert.equal(aiCalls, 0, "tier 3 kiest geen showbizz voor AI");
   });
 
   await t("state-KV: bij uurlijks elke run, daarna pas weer na 50 minuten; DO-state is altijd actueel", async () => {
@@ -362,7 +435,7 @@ try {
   await t("terugrollen: KV-state zonder stAt met meer neuronen dan DO-state wint (sums en neuronen behouden, geen nieuwe AI-calls)", async () => {
     const dag = "2026-11-02", link = "https://nu.test/binnenland/een";
     const doRest = { datum: dag, neuronDag: dag, neurons: 100, calls: 1, runs: 1, okAt: {}, stAt: T0 - 60 * MIN };
-    const kvState = { datum: dag, neuronDag: dag, neurons: 400, calls: 9, runs: 5, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit de oude Worker", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst.", punten: ["a"], at: T0 - MIN } } };
+    const kvState = { datum: dag, neuronDag: dag, neurons: 400, calls: 9, runs: 5, okAt: {}, hashes: {}, links: { "nu.test/binnenland/een": "x1" }, sums: { x1: { kop: "Samenvatting uit de oude Worker", ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst over het nieuws van vandaag in het hele land.", punten: ["Een tweede feit"], at: T0 - MIN } } };
     const h = harnas({ kvStart: { state: JSON.stringify(kvState) } });
     await h.opslag.put("st:rest", JSON.stringify(doRest));
     h.feed.entries = [{ ...e("een", "Kabinet praat over de begroting van volgend jaar", -20), l: link }];
@@ -380,7 +453,7 @@ try {
     assert.equal(kvStateWint({ neuronDag: dag, neurons: 400, stAt: 5 }, { neuronDag: dag, neurons: 400, stAt: 6 }), true);
   });
 
-  const sumsVan = (kop: string, at: number) => ({ x1: { kop, ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst.", punten: ["a"], at } });
+  const sumsVan = (kop: string, at: number) => ({ x1: { kop, ai: "Korte uitleg van het nieuws.", samenvatting: "Meer tekst over het nieuws van vandaag in het hele land.", punten: ["Een tweede feit"], at } });
 
   await t("halve DO-write (st:rest ja, st:sums faalt): volgende run kiest de KV-state, behoudt sums en llm, geen dubbele AI-calls; DO daarna compleet met st:at", async () => {
     const dag = "2026-11-02", link = "https://nu.test/binnenland/een", echt = console.error, fouten: string[] = [];
