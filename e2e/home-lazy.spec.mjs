@@ -49,3 +49,32 @@ test("Home: tab Dumpert aanwijzen start daarna wel het voorladen van video", asy
   await page.locator('[data-video-tab]').first().hover();
   await expect.poll(() => verzoeken.filter((u) => /\/media\/dumpert\/.*\.m3u8/.test(u)).length).toBeGreaterThan(0);
 });
+
+// #473: artikelfoto's lopen via /media/beeld (geen cookies van derden); Home en artikel praten niet rechtstreeks met uitgeversbeeldhosts.
+const BEELDHOSTS = ["prod-img.telegraaf.nl", "redactie.rtl.nl", "images.nu.nl", "images.cdn.nos.nl", "webp.br.cdn.pxr.nl", "cdn-2.motorsport.com", "images.ad.nl"];
+test("Home en artikel: foto's via /media/beeld, niets rechtstreeks naar uitgeversbeeldhosts", async ({ page }) => {
+  const verzoeken = [];
+  page.on("request", (r) => verzoeken.push(r.url()));
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort("blockedbyclient"));
+  await page.route("**/media/beeld/**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
+  await page.route("**/data.json*", async (route) => {
+    const r = await route.fetch();
+    const d = await r.json();
+    d.items = d.items.map((it, n) => ({ ...it, beeld: undefined, beelden: [`https://${BEELDHOSTS[n % BEELDHOSTS.length]}/public/foto%20${n}.jpg?width=1024&n=${n}`, `https://${BEELDHOSTS[(n + 1) % BEELDHOSTS.length]}/public/tweede-${n}.jpg`] }));
+    await route.fulfill({ response: r, json: d });
+  });
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await page.waitForLoadState("load");
+  await page.waitForTimeout(1500);
+  const homeBeelden = verzoeken.filter((u) => u.includes("/media/beeld/"));
+  console.log(`beeldverzoeken Home (eerste lading): ${homeBeelden.length}`);
+  expect(homeBeelden.length, "foto's via de proxy").toBeGreaterThan(0);
+  expect(homeBeelden.every((u) => BEELDHOSTS.some((h) => u.includes(`/media/beeld/${h}/`))), "proxy-pad met host").toBe(true);
+  await page.locator(".nc-title a").first().click();
+  await expect(page.locator(".d-title").first()).toBeVisible();
+  await page.waitForTimeout(1000);
+  const alles = verzoeken.filter((u) => u.includes("/media/beeld/"));
+  console.log(`beeldverzoeken Home + artikel: ${alles.length}`);
+  expect(verzoeken.filter((u) => BEELDHOSTS.some((h) => new URL(u).hostname === h)), "niets rechtstreeks").toEqual([]);
+});

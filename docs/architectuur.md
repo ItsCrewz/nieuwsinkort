@@ -18,7 +18,7 @@ Alles draait op Cloudflare (Free plan). Geen eigen server.
         │ leest
         ▼
  Pages Functions: /data.json (merge KV uur + statische data.json)
-                  /samenvatting, /meer, /media/dumpert/*
+                  /samenvatting, /meer, /media/dumpert/*, /media/beeld/*
         ▼
  Frontend (React, hls.js) op nieuwsinkort.pages.dev
 ```
@@ -118,6 +118,7 @@ Daarom staan pure helpers die het hoofdscherm of het voorladen nodig hebben los 
 - `samenvatting.ts`: `POST /samenvatting {id}`, samenvatting van één filmpje (alleen filmpjes die op de site staan). Tekst via YouTube-ondertiteling of Whisper, daarna samenvatten. Cache in KV (`vs:<id>`), ook fout-uitkomsten (30 min). Bewaakt het gedeelde dagbudget. Bescherming tegen misbruik: `Content-Type: application/json` verplicht (415), vreemde `Origin` geweigerd (403; `vooraf.ts` stuurt geen Origin), slot per video (409 bij bezig) vóór de budget- en mediastappen, geschatte Whisper-neuronen worden vóór `AI.run` atomair gereserveerd en achteraf verrekend met het echte verbruik, een globale rem van max 30 Whisper-aanroepen per uur (daarna code `druk`), en interne foutteksten (`why`) gaan alleen terug bij `pre:true`. Slot, reservering en uurrem zijn van de Durable Object `Budget` (binding `BUDGET_DO`, één instantie `dag`; zie hieronder), want KV is niet atomair. Is de DO onbereikbaar, dan antwoordt de Function 503 (niet gecachet); ontbreekt de binding (lokaal/preview), dan valt ze terug op het oude KV-gedrag (`vs-bezig:<id>`, `vs-uur:<datum>T<uur>`, `vid-neurons:<datum>`), een rem zonder harde garantie. De Cloudflare Rate Limiting-regel (issue #8) blijft apart en is nog open.
 - `meer.ts`: `GET /meer?k=<sleutel>`, extra tekst voor "Lees verder" uit KV `meer` (artikeltekst, AI-uitleg, kernpunten per bron), anders 404.
 - `media/dumpert/[[path]].ts`: GET/HEAD-proxy naar media.dumpert.nl voor HLS (CORS staat daar alleen dumpert.nl toe).
+- `media/beeld/[[path]].ts` (#473): GET/HEAD-proxy `/media/beeld/<host>/<pad>?<query>` voor artikelfoto's van uitgevers. Rechtstreeks laden zette cookies van derden (`__cf_bm` van prod-img.telegraaf.nl; Lighthouse best practices 79). De allowlist staat in `src/beeldhost.ts` (exacte hosts plus `webp.xx.cdn.pxr.nl` en `cdn-N.motorsport.com`) en wordt door client (`beeldViaProxy()` in `beelden.tsx`, ook `preloadBeeld` met dezelfde URL als de `<img src>`) en Function gedeeld. Beveiliging: alleen https en allowlisthosts, geen IP/poort/userinfo, geen `..`, `//`, backslash of versluierde `%2f`/`%2e`/`%5c`/`%25`/control chars, upstream-URL via `new URL` en opnieuw gecontroleerd; `redirect: "manual"` met maximaal 3 hops die elk opnieuw door de allowlist moeten; alleen jpeg/png/webp/gif/avif (geen svg), maximaal 5 MB (content-length én telling tijdens streamen); geen cookies/Authorization/Referer door, `Set-Cookie` nooit terug (whitelist content-type, content-length, last-modified, etag), `nosniff` en `Content-Security-Policy: default-src 'none'; sandbox`, geen CORS-header. Rand-cache 24 uur (fouten kort of niet), browser `max-age=86400`; geen KV of nieuwe bindings. Elke beeldrequest is een Functions-invocation (Free-quotum 100k/dag). Video-thumbs (YouTube, Instagram, X, Reddit) blijven rechtstreeks. Tests: `tests/media-beeld.test.ts`, `tests/preload-beeld.test.ts`, `e2e/home-lazy.spec.mjs`.
 
 Bindings in `wrangler.toml`: KV `NIEUWS` en Workers AI `AI`.
 
@@ -208,7 +209,7 @@ handmatige checks op echte data en draaien niet mee met `npm test`.
 
 ## Domein
 
-nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project (nieuwsinkort.pages.dev blijft werken). `functions/_middleware.ts` stuurt www met een 301 door naar `https://nieuwsinkort.nl` met pad en query behouden (de Cloudflare-login mag geen Redirect Rules schrijven, vandaar code); apex en `*.pages.dev` blijven ongemoeid. `public/_routes.json` houdt `/assets/*`, `/fonts/*`, iconen en vaste bestanden buiten de Functions (Free-plan-quotum, max 100 regels); HTML-navigaties en de functieroutes (`/data.json`, `/meer`, `/samenvatting`, `/media/dumpert/*`) lopen er wel doorheen. Test: `tests/www-redirect.test.ts`. Controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`.
+nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project (nieuwsinkort.pages.dev blijft werken). `functions/_middleware.ts` stuurt www met een 301 door naar `https://nieuwsinkort.nl` met pad en query behouden (de Cloudflare-login mag geen Redirect Rules schrijven, vandaar code); apex en `*.pages.dev` blijven ongemoeid. `public/_routes.json` houdt `/assets/*`, `/fonts/*`, iconen en vaste bestanden buiten de Functions (Free-plan-quotum, max 100 regels); HTML-navigaties en de functieroutes (`/data.json`, `/meer`, `/samenvatting`, `/media/dumpert/*`, `/media/beeld/*`) lopen er wel doorheen. Test: `tests/www-redirect.test.ts`. Controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`.
 
 ## Bezoekersstatistieken
 

@@ -33,18 +33,26 @@ try {
   await preloadBeeld(url);
   assert.equal(NepImage.beelden.length, 1);
 
+  const cdn = "https://prod-img.telegraaf.nl/public/a%20b.jpg?w=1";
+  const viaCdn = preloadBeeld(cdn);
+  assert.equal(NepImage.beelden[1].src, "/media/beeld/prod-img.telegraaf.nl/public/a%20b.jpg?w=1"); // zelfde URL als de <img src>
+  NepImage.beelden[1].klaar();
+  await viaCdn;
+  await preloadBeeld(cdn);
+  assert.equal(NepImage.beelden.length, 2);
+
   const misluktUrl = "https://voorbeeld.nl/mislukt.jpg";
   const mislukt = preloadBeeld(misluktUrl);
-  assert.equal(NepImage.beelden.length, 2);
-  NepImage.beelden[1].fout(new Error("decode mislukt"));
+  assert.equal(NepImage.beelden.length, 3);
+  NepImage.beelden[2].fout(new Error("decode mislukt"));
   await mislukt;
   const opnieuw = preloadBeeld(misluktUrl);
-  assert.equal(NepImage.beelden.length, 3);
-  assert.equal(NepImage.beelden[2].src, misluktUrl);
-  NepImage.beelden[2].klaar();
+  assert.equal(NepImage.beelden.length, 4);
+  assert.equal(NepImage.beelden[3].src, misluktUrl);
+  NepImage.beelden[3].klaar();
   await opnieuw;
   await preloadBeeld(misluktUrl);
-  assert.equal(NepImage.beelden.length, 3);
+  assert.equal(NepImage.beelden.length, 4);
 } finally {
   if (origineel) Object.defineProperty(globalThis, "Image", origineel);
   else Reflect.deleteProperty(globalThis, "Image");

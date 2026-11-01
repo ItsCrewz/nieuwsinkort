@@ -1,0 +1,1 @@
+- Laad artikelfoto's via de eigen beeldproxy `/media/beeld/<host>/…` (Pages Function met vaste hostallowlist) zodat uitgevers geen cookies van derden meer zetten; Lighthouse best practices herstelt (#473).

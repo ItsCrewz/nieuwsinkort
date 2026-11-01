@@ -3,6 +3,7 @@
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { beeldViaProxy } from "./beeldhost";
 
 // ---------------------------------------------------------------- vooruit laden
 // Tijdens scrollen laden we de eerste foto van de volgende 3 berichten (in de scrollrichting) al helemaal in,
@@ -18,7 +19,7 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
   const im = new Image();
   im.referrerPolicy = "no-referrer";
   im.decoding = "async";
-  im.src = u;
+  im.src = beeldViaProxy(u); // zelfde URL als de <img src>, anders dubbele downloads
   const p = (im.decode ? im.decode() : new Promise<void>((ok, nok) => { im.onload = () => ok(); im.onerror = nok; }))
     .then(() => { klaar.add(u); }, () => {})
     .finally(() => bezig.delete(u));
@@ -147,7 +148,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
             {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
               <img
-                src={u}
+                src={beeldViaProxy(u)}
                 alt=""
                 aria-hidden="true"
                 draggable={false}
@@ -189,7 +190,7 @@ export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
   if (!u) return null;
   return (
     <span className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
-      <img src={u} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
+      <img src={beeldViaProxy(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
         onError={() => setK(k + 1)}
         onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />
     </span>
