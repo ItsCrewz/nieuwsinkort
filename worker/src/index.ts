@@ -425,7 +425,7 @@ export class Runner extends DurableObject<Env> {
     ]);
     // state staat primair in DO-opslag; de KV-kopie wordt alleen gelezen en wint bij nieuwere inhoud (terugrollen naar de vorige Worker, of een mislukte DO-write), zie kvStateWint
     const kvState = (await env.NIEUWS.get("state", "json").catch(() => null)) as State | null;
-    const kvWint = !geladen || kvStateWint(geladen.st, kvState);
+    const kvWint = !geladen || kvStateWint(geladen.st, kvState, geladen.at);
     const stateRaw: State | null = kvWint ? kvState ?? geladen?.st ?? null : geladen!.st;
     // KV-state gebruikt: alle delen opnieuw schrijven (lege vorige tekst = verschilt altijd) en DO-delen die KV niet kent wissen
     const vorigeDelen = kvWint ? Object.fromEntries(Object.keys(geladen?.json || {}).map((k) => [k, ""])) : geladen!.json;
@@ -944,10 +944,12 @@ export class Runner extends DurableObject<Env> {
       if (k === "uur") { if (schrijfUur) await kvPut("uur", v, uurH); }
       else if (k === "meer") { if (schrijfMeer) await kvPut("meer", v, meerH); }
       else {
-        try { await schrijfState(opslag, st, vorigeDelen); stateOpgeslagen = true; }
-        catch (x) { console.error("opslagfout state (DO)", x); }
+        const status = { volledig: true };
+        try { await schrijfState(opslag, st, vorigeDelen, status); stateOpgeslagen = true; }
+        catch (x) { console.error("opslagfout state (DO)", x); status.volledig = false; }
         // KV-kopie voor /samenvatting en terugdraaien: hooguit ±50 minuten oud; mislukte DO-write = altijd schrijven (de volgende run en /samenvatting hebben de neuronenstand nodig)
-        if (schrijfStateKv || !stateOpgeslagen) { await kvPut("state", v, undefined); if (!stateOpgeslagen) stateOpgeslagen = true; /* KV-kopie bevat de llm-stand van deze run al */ }
+        // ook bij een overgeslagen deel (geen st:at): de KV-kopie wint dan bij de volgende run, zie kvStateWint
+        if (schrijfStateKv || !status.volledig) { await kvPut("state", v, undefined); if (!stateOpgeslagen) stateOpgeslagen = true; /* KV-kopie bevat de llm-stand van deze run al */ }
       }
     } }, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
       // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.

@@ -87,14 +87,17 @@ export function splitState(st: Record<string, any>): Record<string, string> {
 }
 
 /** Staat in DO-opslag? `json` zijn de gelezen strings, om bij het schrijven alleen gewijzigde delen te vervangen. Geen state = null (migratie: dan KV). */
-export async function leesState(opslag: Opslag): Promise<{ st: any; json: Record<string, string> } | null> {
+export async function leesState(opslag: Opslag): Promise<{ st: any; json: Record<string, string>; at: number | null } | null> {
   const rest = await opslag.get("st:rest");
   if (typeof rest !== "string") return null;
   const json: Record<string, string> = { "st:rest": rest };
   const st = JSON.parse(rest);
   const delen = await Promise.all(STATE_DELEN.map(async (d) => [d, await opslag.get(sl(d))] as const));
   for (const [d, s] of delen) if (typeof s === "string") { json[sl(d)] = s; st[d] = JSON.parse(s); }
-  return { st, json };
+  // st:at = commit-markering: alleen als allerlaatste geschreven, nadat alle delen gelukt zijn (ontbreekt = halve of oude DO-state)
+  const at = Number(await opslag.get("st:at"));
+  if (at > 0) json["st:at"] = String(at);
+  return { st, json, at: at > 0 ? at : null };
 }
 
 /** Een DO-waarde mag 2 MB zijn; daaronder blijven we ruim (bytes van de JSON-tekst). */
@@ -111,32 +114,42 @@ function krimp(naam: string, tekst: string): string {
 }
 
 /** Alleen de gewijzigde delen schrijven. `st:rest` (neuronenteller, llm-stand) eerst en apart, zodat die nooit mee faalt met een groot deel; `st:llm` als laatste, zodat een mislukking halverwege het llm-verbruik niet half bijschrijft (bewaarLlmDo telt het dan één keer bij).
- *  Een te groot deel wordt (bij art/artJ/diep: na inkorten) niet of verkleind geschreven en gelogd; de vorige DO-versie blijft dan staan. Geeft het aantal writes. */
-export async function schrijfState(opslag: Opslag, st: Record<string, any>, vorige: Record<string, string>): Promise<number> {
+ *  Een te groot deel wordt (bij art/artJ/diep: na inkorten) niet of verkleind geschreven en gelogd; de vorige DO-versie blijft dan staan. Geeft het aantal writes.
+ *  Daarna volgt `st:at` (= st.stAt) als commit-markering, alleen als geen deel is overgeslagen; `status.volledig` meldt dat (false = de KV-kopie moet de stand dragen). */
+export async function schrijfState(opslag: Opslag, st: Record<string, any>, vorige: Record<string, string>, status: { volledig: boolean } = { volledig: true }): Promise<number> {
   const nieuw = splitState(st), w: [string, string][] = [];
   for (const [k, v] of Object.entries(nieuw)) {
     if (vorige[k] === v) continue;
     const s = k === "st:rest" || bytes(v) <= DEEL_MAX ? v : krimp(k, v);
-    if (k !== "st:rest" && bytes(s) > DEEL_MAX) { console.error(`state-deel ${k} te groot (${bytes(s)} bytes), niet geschreven`); continue; }
+    if (k !== "st:rest" && bytes(s) > DEEL_MAX) { console.error(`state-deel ${k} te groot (${bytes(s)} bytes), niet geschreven`); status.volledig = false; continue; }
     if (s !== v) console.error(`state-deel ${k} te groot (${bytes(v)} bytes), ingekort`);
     w.push([k, s]);
   }
   const volg = (k: string) => (k === "st:rest" ? 0 : k === "st:llm" ? 2 : 1);
   w.sort((a, b) => volg(a[0]) - volg(b[0]));
   let n = 0;
-  const weg = Object.keys(vorige).filter((k) => !(k in nieuw));
+  const weg = Object.keys(vorige).filter((k) => !(k in nieuw) && k !== "st:at");
   for (const [k, s] of w) { if (k === "st:llm") { for (const d of weg) { await opslag.delete(d); n++; } weg.length = 0; } await opslag.put(k, s); n++; }
   for (const d of weg) { await opslag.delete(d); n++; }
+  const at = st.stAt === undefined ? undefined : String(st.stAt);
+  if (status.volledig && at !== undefined && vorige["st:at"] !== at) { await opslag.put("st:at", at); n++; }
   return n;
 }
 
-/** Bij een terugrol + weer uitrollen heeft de KV-kopie soms nieuwere state dan de DO-opslag: zelfde neuronendag met meer neuronen, een latere neuronendag, of een nieuwer `stAt`. Normaal is KV gelijk of ouder. */
-export function kvStateWint(doSt: any, kvSt: any): boolean {
+/** Calls + tokens van de llm-teller (Groq e.d.) voor één dag. */
+const llmSom = (st: any, dag: string) => Object.values(st.llm || {}).reduce((a: number, x: any) => a + (x?.dag === dag ? (x.calls || 0) + (x.tokens || 0) : 0), 0);
+
+/** Wint de KV-kopie van `state` van de DO-opslag? Normaal is KV gelijk of ouder (kopie van een eerdere run). KV wint bij: een latere neuronendag; meer neuronen; een nieuwer `stAt` dan de commit-markering `st:at` van de DO (halve of overgeslagen DO-write: `doAt` null = ontbreekt); of, bij een terugrol naar de vorige Worker (die `stAt` niet bijwerkt en ook zonder neuronen draait), meer `runs` of een hoger llm-totaal op dezelfde dag. `doAt` undefined = markering niet controleren. */
+export function kvStateWint(doSt: any, kvSt: any, doAt?: number | null): boolean {
   if (!kvSt || typeof kvSt !== "object" || !doSt) return false;
   const dd = doSt.neuronDag ?? doSt.datum, kd = kvSt.neuronDag ?? kvSt.datum;
   if (typeof kd !== "string" || typeof dd !== "string") return false;
   if (kd !== dd) return kd > dd;
-  return (kvSt.neurons || 0) > (doSt.neurons || 0) || (kvSt.stAt || 0) > (doSt.stAt || 0);
+  if ((kvSt.neurons || 0) > (doSt.neurons || 0)) return true;
+  if (doAt !== undefined && (doAt === null || (kvSt.stAt || 0) > doAt)) return true;
+  if (doAt === undefined && (kvSt.stAt || 0) > (doSt.stAt || 0)) return true;
+  if (kvSt.datum === doSt.datum && (kvSt.runs || 0) > (doSt.runs || 0)) return true;
+  return llmSom(kvSt, kd) > llmSom(doSt, kd);
 }
 
 /** Wat de alarm nodig heeft (neuronenteller) zonder de grote delen te lezen; null = geen DO-state. */
