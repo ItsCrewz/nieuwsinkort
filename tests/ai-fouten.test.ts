@@ -7,7 +7,7 @@ let n = 0;
 const t = async (naam: string, fn: () => Promise<void>) => { await fn(); n++; console.log("✓", naam); };
 const dag = new Date().toISOString().slice(0, 10);
 const items = [1, 2].map((id) => ({ id, cat: "nl", bronnen: ["Bron"], titels: ["Een titel"], tekst: "GEHEIME artikeltekst" }));
-const goed = JSON.stringify({ items: [{ id: 1, kop: "Kop een", ai: "Zin een" }, { id: 2, kop: "Kop twee", ai: "Zin twee" }] });
+const goed = JSON.stringify({ items: [{ id: 1, kop: "Kop een", ai: "Zin een met genoeg woorden erin.", samenvatting: "Dit is de eerste samenvatting met genoeg woorden." }, { id: 2, kop: "Kop twee", ai: "Zin twee met genoeg woorden erin.", samenvatting: "Dit is de tweede samenvatting met genoeg woorden." }] });
 const usage = (llm?: Partial<NonNullable<Usage["llm"]>>): Usage => ({ neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, ...(llm ? { llm: { state: {}, ...llm } } : {}) });
 const cf = (...antwoorden: (string | Error)[]) => {
   const ai = { n: 0, run: async () => { const a = antwoorden[Math.min(ai.n++, antwoorden.length - 1)]; if (a instanceof Error) throw a; return { response: a }; } };

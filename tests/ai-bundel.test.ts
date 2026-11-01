@@ -32,7 +32,7 @@ function harnas(opties: { budget?: string; vidNeuronen?: number; aiUsage?: Recor
       calls.samen++;
       const items = JSON.parse(user.slice(user.indexOf("Berichten:\n") + 11));
       calls.samenBatches.push(items.length);
-      return { response: JSON.stringify({ items: items.map((i: any) => ({ id: i.id, kop: `AI-kop ${i.titel}`, ai: `AI-uitleg ${i.titel}.`, samenvatting: `AI-tekst ${i.titel}.`, punten: [] })) }), ...usage };
+      return { response: JSON.stringify({ items: items.map((i: any) => ({ id: i.id, kop: `AI-kop ${i.titel}`, ai: `AI-uitleg: de bron meldt dat ${i.titel} vandaag gebeurde en bevestigd is.`, samenvatting: `AI-tekst ${i.titel}.`, punten: [] })) }), ...usage };
     }
     if (user.includes("In het kort")) { calls.kort++; return { response: "Dit is een samenvatting van het nieuws van vandaag met genoeg tekens erin.", ...usage }; }
     calls.tab++;

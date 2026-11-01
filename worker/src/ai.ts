@@ -1,4 +1,5 @@
 import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
+import { controleerSom } from "./somcheck";
 import { groq, mistral, keten, ruimteVoor, type LlmState, type Verzoek, type Wacht } from "./llm";
 // Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq- en Mistral-terugval tellen tokens, geen neuronen.
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
@@ -14,7 +15,7 @@ export const RATES: Record<string, [number, number]> = { // neuronen per 1M toke
 export type AiBron = "cloudflare" | "groq" | "mistral";
 export type AiLaatsteFout = { soort: "aanroep" | "output"; bericht: string; tijd: string; bron?: AiBron };
 // fails = fAanroep + fOutput (aiFouten in de run-meta); terugval = pogingen via de externe keten, terugvalGroq = daarvan geslaagd via Groq
-export type Usage = Meting & { fAanroep?: number; fOutput?: number; laatsteFout?: AiLaatsteFout; laatsteBron?: string; terugval?: number; terugvalGroq?: number; aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
+export type Usage = Meting & { fAanroep?: number; fOutput?: number; laatsteFout?: AiLaatsteFout; laatsteBron?: string; terugval?: number; terugvalGroq?: number; somAfgekeurd?: number; somHerpoging?: number; somOpgegeven?: number; aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
 
 // Alleen een echte Cloudflare-dagquota-fout (zelfde regel als #79) telt als "Cloudflare op"; geen brede regex.
 export const ketenQuota = (e: unknown) => e instanceof KetenFout && !!e.cloudflare && isDagQuota(e.cloudflare);
@@ -124,18 +125,8 @@ async function jsonStap<T>(ai: Ai, model: string, sys: string, user: string, max
 export type In = { id: number; cat: string; bronnen: string[]; titels: string[]; tekst: string };
 export type Sum = { kop: string; ai: string; samenvatting: string; punten: string[] };
 
-export async function summarize(ai: Ai, model: string, items: In[], u: Usage): Promise<Map<number, Sum>> {
-  const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
-  const user =
-    `Vat elk bericht samen in nieuwsstijl. Geef per bericht:\n- "kop": nieuwskop, liefst 6 tot 10 woorden: wie of wat (waar) plus de kern of uitkomst, niet alleen wie praat. Staat er een citaat in de titel, dan mag de kern ervan in de kop (X noemt Y 'grote PR-machine'). Fout: "Discussie over voetballer X". Goed: "Trainer X: speler Y mag vertrekken", "Premier Z stapt op na verlies stemming" (alleen als het zo in de tekst staat). Geen vraag, uitroepteken of lokkertje\n- "ai": 1 of 2 korte zinnen met de kern en de data, plaatsen, adressen en namen uit de tekst. Waarom het ertoe doet alleen als de bron dat zegt, anders een tweede concreet feit. Nooit "Dit is belangrijk" of "Dit gaat over". Herhaal de kop niet\n` +
-    `- "samenvatting": 2 tot 3 korte zinnen met de belangrijkste feiten\n- "punten": hooguit 2 korte kernpunten (elk max 12 woorden), alleen feiten die nog niet in de samenvatting staan; anders een lege lijst\n` +
-    `Alleen wat letterlijk in titel of tekst staat: geen interpretatie, gevolgen of oorzaken. Onduidelijke afkortingen (zoals GCC) neutraal overnemen, niet uitleggen. Liever tegenwoordige tijd en actieve vorm ("is", niet "wordt"). Te dunne tekst: schrijf kort wat er staat; gok niet.\n` +
-    `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
-    JSON.stringify(items.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
-  // kleine modellen: geen JSON-modus (niet overal ondersteund), wel JSON vragen en eruit vissen
-  const small = /llama-3\.2-[13]b/.test(model);
-  // Minder uitvoer per bericht, met vaste ruimte voor de JSON-structuur.
-  return jsonStap(ai, model, sys, user, (small ? 150 : 180) * items.length + 80, u, !small, (txt) => {
+/** Antwoord van het model → sommen per id (nog niet gecontroleerd). */
+function leesSommen(txt: string, items: In[]): Map<number, Sum> {
   const out = new Map<number, Sum>();
   const j = jsonFrom(txt);
   const arr = Array.isArray(j) ? j : j?.items;
@@ -146,7 +137,47 @@ export async function summarize(ai: Ai, model: string, items: In[], u: Usage): P
     if (s.kop && s.ai) out.set(id, s);
   }
   return out;
-  });
+}
+
+/** Controle (#476): goede sommen (met opgeschoonde punten) naar `goed`, de rest naar `slecht`. */
+function keurSommen(res: Map<number, Sum>, goed: Map<number, Sum>, slecht: Set<number>) {
+  for (const [id, s] of res) {
+    const c = controleerSom(s);
+    if (c.ok) goed.set(id, c.som); else slecht.add(id);
+  }
+}
+
+/** Per bericht gecontroleerd (worker/src/somcheck.ts). Afgekeurde berichten krijgen precies één herpoging via de externe keten (zoals de jsonStap-terugval:
+ *  binnen de limieten, geen extra Cloudflare-aanroep, geen lus). Wat dan nog afgekeurd is of ontbreekt, staat niet in het resultaat; `afgekeurd` krijgt die id's
+ *  (alleen de echt afgekeurde, niet de door het model overgeslagen berichten), zodat de aanroeper er geen samenvatting voor bewaart. */
+export async function summarize(ai: Ai, model: string, items: In[], u: Usage, afgekeurd?: Set<number>): Promise<Map<number, Sum>> {
+  const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
+  const prompt = (lijst: In[]) =>
+    `Vat elk bericht samen in nieuwsstijl. Geef per bericht:\n- "kop": nieuwskop, liefst 6 tot 10 woorden: wie of wat (waar) plus de kern of uitkomst, niet alleen wie praat. Staat er een citaat in de titel, dan mag de kern ervan in de kop (X noemt Y 'grote PR-machine'). Fout: "Discussie over voetballer X". Goed: "Trainer X: speler Y mag vertrekken", "Premier Z stapt op na verlies stemming" (alleen als het zo in de tekst staat). Geen vraag, uitroepteken of lokkertje\n- "ai": 1 of 2 korte zinnen met de kern en de data, plaatsen, adressen en namen uit de tekst. Waarom het ertoe doet alleen als de bron dat zegt, anders een tweede concreet feit. Nooit "Dit is belangrijk" of "Dit gaat over". Herhaal de kop niet\n` +
+    `- "samenvatting": 2 tot 3 korte zinnen met de belangrijkste feiten\n- "punten": hooguit 2 korte kernpunten (elk max 12 woorden), alleen feiten die nog niet in de samenvatting staan; anders een lege lijst\n` +
+    `Alleen wat letterlijk in titel of tekst staat: geen interpretatie, gevolgen of oorzaken. Onduidelijke afkortingen (zoals GCC) neutraal overnemen, niet uitleggen. Liever tegenwoordige tijd en actieve vorm ("is", niet "wordt"). Te dunne tekst: schrijf kort wat er staat; gok niet.\n` +
+    `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
+    JSON.stringify(lijst.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
+  // kleine modellen: geen JSON-modus (niet overal ondersteund), wel JSON vragen en eruit vissen
+  const small = /llama-3\.2-[13]b/.test(model);
+  // Minder uitvoer per bericht, met vaste ruimte voor de JSON-structuur.
+  const tokens = (n: number) => (small ? 150 : 180) * n + 80;
+  const res = await jsonStap(ai, model, sys, prompt(items), tokens(items.length), u, !small, (txt) => leesSommen(txt, items));
+  const goed = new Map<number, Sum>(), slecht = new Set<number>();
+  keurSommen(res, goed, slecht);
+  if (!slecht.size) return goed;
+  u.somAfgekeurd = (u.somAfgekeurd || 0) + slecht.size;
+  const opnieuw = items.filter((i) => slecht.has(i.id));
+  const v: Verzoek = { sys, user: prompt(opnieuw), maxTokens: tokens(opnieuw.length), json: !small };
+  if (u.llm && ruimteVoor(externe(u), u.llm.state, v)) {
+    u.somHerpoging = (u.somHerpoging || 0) + opnieuw.length;
+    try {
+      const tweede = leesSommen(await chat(ai, model, sys, v.user, v.maxTokens, u, v.json, true), opnieuw);
+      keurSommen(tweede, goed, new Set());
+    } catch (e) { telAanroepFout(u, e); }
+  }
+  for (const id of slecht) if (!goed.has(id)) { afgekeurd?.add(id); u.somOpgegeven = (u.somOpgegeven || 0) + 1; }
+  return goed;
 }
 const str = (x: any, n: number) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
