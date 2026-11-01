@@ -805,13 +805,6 @@
  },
  {
   "cat": "nl",
-  "naam": "RTL Z (YouTube)",
-  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3lleI2WsaIiW8IzkJ0kIYA",
-  "werkt": true,
-  "notitie": "YouTube-kanaal vrijwel stil; de economie-RSS van rtl.nl (RTL Z is opgegaan in RTL Nieuws Economie) staat hieronder. rtlz.nl/rss gaf een DPG-consentpagina."
- },
- {
-  "cat": "nl",
   "naam": "RTL Z economie",
   "url": "https://www.rtl.nl/nieuws/economie/rss.xml",
   "werkt": true,
