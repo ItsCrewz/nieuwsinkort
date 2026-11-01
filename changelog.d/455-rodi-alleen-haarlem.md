@@ -1,0 +1,1 @@
+- Rodi (tab Haarlem) toont alleen nog Haarlem-artikelen: de feeds van Heemstede, Bloemendaal, Zandvoort en Velsen leverden Rodi Hollands Kroon en staan uit; Rodi Haarlem krijgt het padfilter `/haarlem/`, dat nu ook voor RSS/Atom-items geldt (#455).

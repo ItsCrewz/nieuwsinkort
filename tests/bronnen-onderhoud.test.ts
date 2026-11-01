@@ -28,3 +28,24 @@ assert.equal(alarm?.pad, "/noord-holland/kennemerland/");
 assert.equal(live.filter((u) => u.includes("POL_Haarlem")).length, 0);
 assert.equal(igUser("https://kg.meowing.de/omroeppowned/atom.xml"), "omroeppowned");
 console.log("✓ bronnenlijst #448: groep A en B");
+
+// #455: Rodi alleen Haarlem
+import { parseFeed } from "../worker/src/parse";
+const rodiXml = readFileSync("tests/fixtures/rodi-gemengd.xml", "utf8");
+const rodiUrl = "https://www.rodi.nl/haarlem/rss";
+const zonder = parseFeed(rodiXml, rodiUrl);
+assert.equal(zonder.length, 6);
+const metPad = parseFeed(rodiXml, rodiUrl, "/haarlem/");
+assert.equal(metPad.length, 3);
+assert.ok(metPad.every((e) => new URL(e.l).pathname.includes("/haarlem/")));
+assert.equal(parseFeed(rodiXml, rodiUrl, "/bestaat-niet/").length, 0);
+const zonderLink = `<rss><channel><item><title>Zonder link</title></item><item><title>Kapot</title><link>http://[kapot</link></item></channel></rss>`;
+assert.equal(parseFeed(zonderLink, rodiUrl).length, 2);
+assert.equal(parseFeed(zonderLink, rodiUrl, "/haarlem/").length, 0);
+const rodi = bronnen.groepen.flatMap((g: any) => g.bronnen).filter((s: any) => s.id === "rodi");
+assert.equal(rodi.length, 1);
+assert.equal(rodi[0].feeds.length, 1);
+assert.equal(rodi[0].feeds[0].url, rodiUrl);
+assert.equal(rodi[0].feeds[0].pad, "/haarlem/");
+for (const n of ["Heemstede", "Bloemendaal", "Zandvoort", "Velsen"]) assert.equal(feeds.find((f) => f.naam === `Rodi ${n}`)?.werkt, false, n);
+console.log("✓ Rodi alleen Haarlem #455");
