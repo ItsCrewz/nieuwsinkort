@@ -20,3 +20,7 @@ Grok Bot-routine "Dagelijks Nieuws". Hier staan ze als kopie, ongewijzigd.
   (standaard `/workspace/nieuws/filmpjes.py`). Wil je deze kopie gebruiken, zet dan
   `FEEDS_JSON=scripts/pipeline/feeds.json` en `FILMPJES_PY=scripts/pipeline/filmpjes.py`.
 - Vastgelegde `/workspace`-paden in de scripts zijn bewust niet aangepast.
+
+## Optionele velden in `feeds.json`
+
+`pad` (#448): alleen items waarvan het URL-pad dit stuk bevat tellen mee. Bedoeld voor sitemaps die meerdere regio's mengen (Alarmeringen Kennemerland: `alarmeringen.nl/sitemap-news.xml` met `/noord-holland/kennemerland/`). `build-bronnen.mjs` zet het in `bronnen.json` (`feeds[].pad`).

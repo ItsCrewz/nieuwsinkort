@@ -92,12 +92,6 @@
  },
  {
   "cat": "nl",
-  "naam": "Politie.nl",
-  "url": "https://www.politie.nl/nieuws/rss",
-  "werkt": false
- },
- {
-  "cat": "nl",
   "naam": "KNMI",
   "url": "https://cdn.knmi.nl/knmi/xml/rss/rss_KNMIberichten.xml",
   "werkt": false
@@ -246,8 +240,10 @@
  {
   "cat": "tech",
   "naam": "Computable",
-  "url": "https://www.computable.nl/rss.xml",
-  "werkt": false
+  "url": "https://www.computable.nl/feed/",
+  "werkt": true,
+  "soort": "rss",
+  "notitie": "WordPress-standaardfeed (10 items); oude rss.xml, rss/nieuws en atom.xml geven 404."
  },
  {
   "cat": "haarlem",
@@ -270,26 +266,17 @@
  {
   "cat": "haarlem",
   "naam": "Alarmeringen Kennemerland",
-  "url": "https://alarmeringen.nl/noord-holland/kennemerland/rss",
-  "werkt": false
+  "url": "https://alarmeringen.nl/sitemap-news.xml",
+  "werkt": true,
+  "soort": "sitemap",
+  "pad": "/noord-holland/kennemerland/",
+  "notitie": "Google-news-sitemap van heel Nederland (~440 kB); alleen items met pad /noord-holland/kennemerland/ tellen mee. De oude RSS gaf een DPG-consentpagina."
  },
  {
   "cat": "tech",
   "naam": "Hacker News",
   "url": "https://hnrss.org/frontpage",
   "werkt": true
- },
- {
-  "cat": "tech",
-  "naam": "Computable",
-  "url": "https://www.computable.nl/rss/nieuws",
-  "werkt": false
- },
- {
-  "cat": "tech",
-  "naam": "Computable atom",
-  "url": "https://www.computable.nl/atom.xml",
-  "werkt": false
  },
  {
   "cat": "tech",
@@ -319,12 +306,6 @@
   "cat": "nl",
   "naam": "Rijksoverheid",
   "url": "https://feeds.rijksoverheid.nl/nieuws.rss",
-  "werkt": false
- },
- {
-  "cat": "nl",
-  "naam": "Politie",
-  "url": "https://www.politie.nl/rss.xml",
   "werkt": false
  },
  {
@@ -360,29 +341,11 @@
   "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
  },
  {
-  "cat": "nl",
-  "naam": "PowNed atom",
-  "url": "https://www.powned.tv/atom.xml",
-  "werkt": false
- },
- {
   "cat": "social",
   "naam": "Reddit r/Haarlem top day",
   "url": "https://www.reddit.com/r/Haarlem/top/.rss?t=day",
   "werkt": true,
   "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "nl",
-  "naam": "PowNed feed",
-  "url": "https://www.powned.tv/feed",
-  "werkt": false
- },
- {
-  "cat": "nl",
-  "naam": "PowNed",
-  "url": "https://www.powned.tv/rss",
-  "werkt": false
  },
  {
   "cat": "nl",
@@ -431,18 +394,6 @@
   "url": "https://www.reddit.com/r/Haarlem/new/.rss",
   "werkt": false,
   "notitie": "429 rate-limit (wisselend). Bot-UA + max 1 verzoek per paar seconden; vanaf Cloudflare-IP's vaak 403."
- },
- {
-  "cat": "nl",
-  "naam": "PowNed sitemap",
-  "url": "https://www.powned.tv/sitemap.xml",
-  "werkt": false
- },
- {
-  "cat": "nl",
-  "naam": "PowNed (geen RSS, site)",
-  "url": "https://www.powned.tv/",
-  "werkt": false
  },
  {
   "cat": "nl",
@@ -551,7 +502,7 @@
  {
   "cat": "nl",
   "naam": "Instagram PowNed (Kittygram)",
-  "url": "https://kg.meowing.de/powned/atom.xml",
+  "url": "https://kg.meowing.de/omroeppowned/atom.xml",
   "werkt": true,
   "soort": "atom",
   "note": "Kittygram Atom; <updated>=ophaaltijd niet posttijd; primary kg.meowing.de (browser-UA); backup kittygram.nadeko.net (Atom uit)/pussthecat (challenge). Bevestig nieuws met nieuwsbron.",
@@ -854,17 +805,11 @@
  },
  {
   "cat": "nl",
-  "naam": "RTL Z (YouTube)",
-  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3lleI2WsaIiW8IzkJ0kIYA",
+  "naam": "RTL Z economie",
+  "url": "https://www.rtl.nl/nieuws/economie/rss.xml",
   "werkt": true,
-  "notitie": "rtlz.nl/rss en rtlnieuws economie-RSS geblokkeerd; YouTube-fallback"
- },
- {
-  "cat": "nl",
-  "naam": "RTL Z site RSS",
-  "url": "https://www.rtlz.nl/rss",
-  "werkt": false,
-  "notitie": "403 Access Denied"
+  "soort": "rss",
+  "notitie": "Officiële RSS van RTL Nieuws Economie (41 items); vervangt de dode rtlz.nl/rss."
  },
  {
   "cat": "haarlem",
@@ -1002,14 +947,6 @@
   "soort": "rss",
   "notitie": "403 met browser-UA, 200 met bot-UA (28-10)",
   "ua": "bot"
- },
- {
-  "cat": "haarlem",
-  "naam": "Politie X POL_Haarlem",
-  "url": "https://x.com/POL_Haarlem",
-  "werkt": true,
-  "soort": "x",
-  "notitie": "Elk uur via de uur-Worker (api.fxtwitter.com, terugval syndication.twitter.com); daarnaast rss.politie.nl Haarlem-feed."
  },
  {
   "cat": "haarlem",
@@ -1224,7 +1161,7 @@
  {
   "cat": "politiek",
   "naam": "VVD (YouTube)",
-  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCzlQ9dqrRn10tHxU9BvqSTQ",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCZean7nAZKDGIHANq-MuaGA",
   "werkt": true,
   "soort": "atom",
   "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."
@@ -1248,7 +1185,7 @@
  {
   "cat": "politiek",
   "naam": "JA21 (YouTube)",
-  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCsmqf-MUzYyVzF5DYtdL2FA",
+  "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCefm-CCsWsWWQeCYf1Ozp_g",
   "werkt": true,
   "soort": "atom",
   "notitie": "Politiek: officieel account; tekstposts naar Politiek, video's naar Shorts. Niet los AI-samenvatten (alleen mee in clusters met nieuws)."

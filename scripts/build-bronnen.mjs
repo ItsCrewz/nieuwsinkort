@@ -116,7 +116,7 @@ for (const f of feeds) {
   const id = norm(naam);
   const s = g.get(id) || { id, naam, alias: new Set(), hosts: new Set(), soort: new Set(), feeds: 0, urls: [] };
   s.feeds++;
-  s.urls.push({ url: f.url, ...(f.ua ? { ua: f.ua } : {}), ...(f.max != null ? { max: f.max } : {}) });
+  s.urls.push({ url: f.url, ...(f.ua ? { ua: f.ua } : {}), ...(f.max != null ? { max: f.max } : {}), ...(f.pad ? { pad: f.pad } : {}) });
   s.alias.add(norm(f.naam));
   s.alias.add(norm(naam.replace(/\s*\(X\)$/, "")));
   const xh = /x\.com\/([A-Za-z0-9_]+)/.exec(f.url || "");
