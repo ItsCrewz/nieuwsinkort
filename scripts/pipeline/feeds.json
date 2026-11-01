@@ -817,42 +817,43 @@
   "url": "https://www.rodi.nl/haarlem/rss",
   "werkt": true,
   "soort": "rss",
-  "notitie": "403 met browser-UA, 200 met bot-UA",
-  "ua": "bot"
+  "notitie": "403 met browser-UA, 200 met bot-UA. Alleen Haarlem-artikelen: padfilter /haarlem/ als vangnet (#455).",
+  "ua": "bot",
+  "pad": "/haarlem/"
  },
  {
   "cat": "haarlem",
   "naam": "Rodi Heemstede",
   "url": "https://www.rodi.nl/heemstede/rss",
-  "werkt": true,
+  "werkt": false,
   "soort": "rss",
-  "notitie": "403 met browser-UA, 200 met bot-UA",
+  "notitie": "Levert Rodi Hollands Kroon (/hollandskroon/), niet de eigen gemeente (01-11-2026). Uit op verzoek van Joey: alleen Haarlem-artikelen (#455).",
   "ua": "bot"
  },
  {
   "cat": "haarlem",
   "naam": "Rodi Bloemendaal",
   "url": "https://www.rodi.nl/bloemendaal/rss",
-  "werkt": true,
+  "werkt": false,
   "soort": "rss",
-  "notitie": "Pubble RSS; soms 403."
+  "notitie": "Levert Rodi Hollands Kroon (/hollandskroon/), niet de eigen gemeente (01-11-2026). Uit op verzoek van Joey: alleen Haarlem-artikelen (#455)."
  },
  {
   "cat": "haarlem",
   "naam": "Rodi Zandvoort",
   "url": "https://www.rodi.nl/zandvoort/rss",
-  "werkt": true,
+  "werkt": false,
   "soort": "rss",
-  "notitie": "403 met browser-UA, 200 met bot-UA",
+  "notitie": "Levert Rodi Hollands Kroon (/hollandskroon/), niet de eigen gemeente (01-11-2026). Uit op verzoek van Joey: alleen Haarlem-artikelen (#455).",
   "ua": "bot"
  },
  {
   "cat": "haarlem",
   "naam": "Rodi Velsen",
   "url": "https://www.rodi.nl/velsen/rss",
-  "werkt": true,
+  "werkt": false,
   "soort": "rss",
-  "notitie": "werkt (28-10)",
+  "notitie": "Levert Rodi Hollands Kroon (/hollandskroon/), niet de eigen gemeente (01-11-2026). Uit op verzoek van Joey: alleen Haarlem-artikelen (#455).",
   "ua": "bot"
  },
  {

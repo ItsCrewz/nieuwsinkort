@@ -44,7 +44,7 @@ export function igTime(link: string): number | null {
   return t > 1.3e12 && t < Date.now() + 864e5 ? t : null;
 }
 
-// Google-news-sitemap (<urlset>): titel en tijd uit <news:...>, anders <lastmod>; `pad` houdt alleen links met dat padstuk over
+// Google-news-sitemap (<urlset>): titel en tijd uit <news:...>, anders <lastmod>; `pad` houdt alleen links met dat padstuk over (ook voor RSS/Atom in parseFeed)
 function parseSitemap(body: string, url: string, pad?: string): Entry[] {
   const out: Entry[] = [];
   for (const b of body.match(/<url>[\s\S]*?<\/url>/gi) || []) {
@@ -54,6 +54,11 @@ function parseSitemap(body: string, url: string, pad?: string): Entry[] {
     out.push({ t, l, d: date(tag(b, ["news:publication_date", "lastmod"])), s: stripHtml(tag(b, ["news:keywords"])).slice(0, 600) });
   }
   return out;
+}
+
+// Met `pad` gezet: alleen een geldige link waarvan het pathname `pad` bevat
+function padOk(l: string, pad: string): boolean {
+  try { return new URL(l).pathname.includes(pad); } catch { return false; }
 }
 
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
@@ -80,7 +85,9 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     if (alt) l = decode(alt[1]);
     if (!l) l = decode(tag(b, ["link"]));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
+    const leeg = !l.trim(); // absUrl("") geeft anders de feed-URL zelf
     l = absUrl(l, url);
+    if (pad && (leeg || !padOk(l, pad))) continue;
     let d = date(tag(b, ["pubDate", "published", "dc:date", "updated", "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
     const raw = tag(b, ["description", "media:description", "summary", "content:encoded", "content"]);
