@@ -118,12 +118,12 @@ function hangtSamen(ks: Cluster[]): boolean {
 /** de eigennamen die twee leden delen */
 const deelNamen = (a: Lid, b: Lid) => [...(a.nm || [])].filter((w) => b.nm?.has(w));
 
-/** clusters die de kandidaat via de eigennamen-regel raakt. Een cluster dat zelf via die regel is gegroeid heeft een `kern` (de gedeelde namen); een nieuwe naam-samenvoeging moet daar minstens één naam mee delen, anders kan een overzichtsbericht dat al bij het ene verhaal zat (de brug) er ook een tweede verhaal aan hangen, ongeacht de binnenkomstvolgorde. */
+/** clusters die de kandidaat via de eigennamen-regel raakt. Een cluster dat zelf via die regel is gegroeid heeft een `kern` (de gedeelde namen); een nieuwe naam-samenvoeging moet daar minstens twee namen mee delen, anders kan een overzichtsbericht dat al bij het ene verhaal zat (de brug) er ook een tweede verhaal aan hangen, ongeacht de binnenkomstvolgorde. */
 function naamClusters(lid: Lid, out: Cluster[]): { k: Cluster; gedeeld: string[] }[] {
   const res: { k: Cluster; gedeeld: string[] }[] = [];
   for (const k of out) {
     const gedeeld = new Set<string>();
-    for (const l of k.leden) if (gelijk(lid, l) > 0) { const g = deelNamen(lid, l); if (!k.kern || g.some((w) => k.kern!.has(w))) g.forEach((w) => gedeeld.add(w)); }
+    for (const l of k.leden) if (gelijk(lid, l) > 0) { const g = deelNamen(lid, l); if (!k.kern || g.filter((w) => k.kern!.has(w)).length >= 2) g.forEach((w) => gedeeld.add(w)); }
     if (gedeeld.size) res.push({ k, gedeeld: [...gedeeld] });
   }
   return res;

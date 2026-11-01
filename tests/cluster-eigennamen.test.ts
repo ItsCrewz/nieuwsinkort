@@ -82,4 +82,20 @@ t("negatief: namen die in veel kandidaten voorkomen zijn een onderwerp, geen ken
   const ruis = Array.from({ length: 7 }, (_, i) => c(`Ruis${i}`, `Museumbezoek ${i} druk dit weekend`, `Bram en Naturalis kwamen ook ter sprake bij onderwerp ${i}.`));
   assert.ok(cluster([...wolf(), ...ruis]).filter((k) => k.c.some((x) => FIX.some((f) => f.href === x.href))).length > 1);
 });
+// echte feeds van Malen/Roma en Inter–Milan: Telegraaf en NU zijn allebei een brug (noemen beide wedstrijden)
+const MI: { site: string; t: string; s: string; href: string }[] = JSON.parse(readFileSync("tests/fixtures/malen-inter-feeds.json", "utf8"));
+const mi = (p: number[]): Cand[] => p.map((i, k) => ({ cat: "voetbal", site: MI[i].site, href: MI[i].href, t: MI[i].t, s: MI[i].s, d: k * 60000 }));
+t("negatief: twee bruggen (Telegraaf en NU) verbinden Inter–Milan (AD) en Malen/Roma (RTL) in geen enkele van de 120 volgordes", () => {
+  const ad = MI.findIndex((x) => x.site === "AD Voetbal"), rtl = MI.findIndex((x) => x.site === "RTL Nieuws");
+  for (const p of perm([0, 1, 2, 3, 4])) {
+    const k = cluster(mi(p));
+    assert.ok(!k.some((cl) => cl.c.some((x) => x.href === MI[ad].href) && cl.c.some((x) => x.href === MI[rtl].href)), p.join());
+  }
+});
+t("kern: één gedeelde kernnaam (milan) is niet genoeg om bij een naamcluster aan te sluiten", () => {
+  const k = cluster(mi([3, 4, 1])); // NOS + RTL (Malen) en NU
+  assert.ok(k.some((cl) => cl.kern && cl.c.length >= 2));
+  const c2 = cluster(mi([3, 4, 1, 2])); // AD erbij
+  assert.ok(!c2.some((cl) => cl.c.some((x) => x.site === "AD Voetbal") && cl.c.some((x) => x.site === "RTL Nieuws")));
+});
 console.log(`${n} tests ok`);
