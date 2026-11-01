@@ -3,10 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2025-07-01"
 workers_dev = false  # geen workers.dev-subdomein op dit account; handmatig starten gaat via de site (/uur/run)
 
-# Elke 5 minuten (bronnen in tiers, zie worker/src/tier.ts). Cron is UTC: 04–22 UTC dekt 06:00–23:00 Amsterdam in zomer- én wintertijd;
+# Elk kwartier (bronnen in tiers, zie worker/src/tier.ts). Cron is UTC: 04–22 UTC dekt 06:00–23:00 Amsterdam in zomer- én wintertijd;
 # de code slaat de uren buiten 06–23 Amsterdam-tijd over.
 [triggers]
-crons = ["*/5 4-22 * * *"]
+crons = ["*/15 4-22 * * *"]
 
 [vars]
 SITE = "https://nieuwsinkort.pages.dev"

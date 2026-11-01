@@ -1,0 +1,1 @@
+- Cron terug van `*/5` naar `*/15 4-22`: nieuws wordt elk kwartier bijgewerkt (footer en browser-refresh ook elk kwartier). Tiers en KV-rem ongewijzigd: elke run is minstens tier 15, X en Instagram draaien op :00 en :30 (#467).

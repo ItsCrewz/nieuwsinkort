@@ -7,7 +7,7 @@ Alles draait op Cloudflare (Free plan). Geen eigen server.
 
 ```
  bronnen (RSS, hnrss, X, YouTube, Instagram, Dumpert, Reddit/Redlib, weer)
-        │  elke 5 minuten 06–23 (Amsterdam)
+        │  elk kwartier 06–23 (Amsterdam)
         ▼
  Worker nieuwsinkort-uur ── DO Fetcher (ophalen in batches)
    DO Runner (run, budget, state) ── Workers AI → Groq → Mistral (tekst-AI)
