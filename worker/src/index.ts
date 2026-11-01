@@ -17,6 +17,7 @@ import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
 import { vooraf, MAX_ALARMS_PER_UUR } from "./vooraf";
+import { neemSlot, geefSlot, meetInterval, runsOver, runPlafonds, voorafTeller } from "./runslot";
 import { xUser, xPosts, xEntry, xVideo, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
@@ -309,16 +310,26 @@ export class Runner extends DurableObject<Env> {
     const u = new URL(req.url);
     const force = u.searchParams.get("force") === "1";
     // Reserveer vóór de run; gelijktijdige force-verzoeken mogen niet door de limiet glippen.
-    const toegestaan = await this.ctx.blockConcurrencyWhile(async () => {
+    const nu = Date.now();
+    const slot = await this.ctx.blockConcurrencyWhile(async () => {
       const laatst = await this.ctx.storage.get<number>("laatsteRun");
-      const nu = Date.now();
-      if (force && laatst !== undefined && nu - laatst < 10 * 60e3) return false;
+      if (force && laatst !== undefined && nu - laatst < 10 * 60e3) return "te-snel" as const;
+      if (!await neemSlot(this.ctx.storage, nu)) return "bezig" as const;
       await this.ctx.storage.put("laatsteRun", nu);
-      return true;
+      // interval uit de werkelijke afstand tussen geplande runs; een handmatige (force)run hergebruikt het laatste interval en verschuift de meting niet
+      let interval = (await this.ctx.storage.get<number>("runInterval")) ?? 60;
+      if (!force) {
+        interval = meetInterval(await this.ctx.storage.get<number>("vorigeRunStart"), nu);
+        await this.ctx.storage.put("vorigeRunStart", nu);
+        await this.ctx.storage.put("runInterval", interval);
+      }
+      return interval;
     });
     // geweigerd verzoek is geen mislukte run: telt niet mee in de faalreeks
-    if (!toegestaan) return Response.json({ ok: false, err: "Laatste run minder dan 10 minuten geleden" }, { status: 429 });
-    return bewaakteRun(() => this.run(force), this.ctx.storage, this.env.NIEUWS);
+    if (slot === "te-snel") return Response.json({ ok: false, err: "Laatste run minder dan 10 minuten geleden" }, { status: 429 });
+    if (slot === "bezig") return Response.json({ ok: false, overgeslagen: "vorige run nog bezig" }, { status: 409 });
+    try { return await bewaakteRun(() => this.run(force, slot), this.ctx.storage, this.env.NIEUWS); }
+    finally { await geefSlot(this.ctx.storage, nu).catch(() => console.error("run-slot vrijgeven mislukt")); }
   }
 
   async alarm() {
@@ -357,14 +368,14 @@ export class Runner extends DurableObject<Env> {
 
   // Groq-verbruik van deze run (#431): wordt bij een mislukte run apart in `state.llm` bijgeschreven, anders gaat het verloren met `st`.
   private llmBewaar: (() => Promise<void>) | null = null;
-  async run(force: boolean) {
+  async run(force: boolean, interval = 60) {
     this.llmBewaar = null;
-    try { return await this.runBinnen(force); }
+    try { return await this.runBinnen(force, interval); }
     catch (e) { await this.bewaarLlm(); throw e; }
     finally { this.llmBewaar = null; }
   }
   private async bewaarLlm() { await this.llmBewaar?.(); }
-  private async runBinnen(force: boolean) {
+  private async runBinnen(force: boolean, interval: number) {
     const env = this.env, T0 = Date.now(), now = Date.now(), A = ams(now), U = utcDag(now), since = midnight(now);
     // BUDGET / NEURON_FACTOR: de echte Cloudflare-teller kan hoger staan dan onze schatting (docs/ai-budget.md)
     const model = env.MODEL, CAP = +(env.CAP || 40), FACTOR = neuronFactor(env.NEURON_FACTOR), BUDGET = +(env.BUDGET || 9000) / FACTOR;
@@ -528,8 +539,9 @@ export class Runner extends DurableObject<Env> {
     let vidN = await leesVid();
     const used = () => st.neurons + vidN + usage.neurons;
     const tier = () => (used() < 0.7 * BUDGET ? 1 : used() < 0.9 * BUDGET ? 2 : used() < BUDGET ? 3 : 4);
-    const runsLeft = Math.max(1, 23 - A.h + 1);
-    const runBudget = Math.max(300, ((BUDGET - st.neurons - vidN) / runsLeft) * 2);
+    // aandeel van deze run uit de tijd (interval tussen runs en minuten tot 24:00), niet uit een uuraanname
+    const runsLeft = runsOver(now, interval);
+    const runBudget = runPlafonds(BUDGET - st.neurons - vidN, runsLeft, interval).runBudget;
     const tier0 = tier();
     let runCapped = false;
     const modelsUsed = new Set<string>();
@@ -726,7 +738,7 @@ export class Runner extends DurableObject<Env> {
     // per run een eerlijk deel van wat er tot die grens over is (min 120, max 700 neuronen).
     vidN = await leesVid(); // video-samenvattingen lopen door tijdens deze run; niet met de waarde van het begin rekenen
     const diepGrens = 0.65 * BUDGET;
-    const diepRun = Math.max(120, Math.min(700, ((diepGrens - used()) / runsLeft) * 2));
+    const diepRun = runPlafonds(0, runsLeft, interval).diepRun(diepGrens - used());
     const diepStart = usage.neurons;
     let diepNieuw = 0, diepStop = "";
     const diepTodo = zonderUitleg(mOrde, st.diep!).filter((m) => artVan(m).length);
@@ -847,7 +859,7 @@ export class Runner extends DurableObject<Env> {
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys, ytGeblokkeerd,
-      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + tabWrites + (stat ? 4 : 3), kvWritesOg, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { kvWrites: results.reduce((n, r) => n + (r.kvWrites || 0), 0) + kvWritesOg + quotaKvWrites + tabWrites + (stat ? 4 : 3), kvWritesOg, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runInterval: interval, runsLeft: Math.round(runsLeft * 100) / 100, runVol: runCapped, dubbeleFilmpjes: dF.removed + dD.removed, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // oude samenvattingen (niet meer in de feeds) opruimen
     const live = new Set(clusters.map((k) => k.key));
@@ -858,8 +870,10 @@ export class Runner extends DurableObject<Env> {
     const kvLog = { put: async (k: string, v: string) => { await env.NIEUWS.put(k, v); geschreven.add(k); } };
     const uurGelukt = await schrijfRun(kvLog, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
       // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.
-      await this.ctx.storage.put("vooraf", { uur: A.h, n: 0 });
-      await this.ctx.storage.setAlarm(Date.now() + 60e3);
+      // teller per Amsterdams uur: bij runs elke 5 minuten niet bij elke run resetten
+      await this.ctx.storage.put("vooraf", voorafTeller(await this.ctx.storage.get<{ uur: number; n: number }>("vooraf"), A.h));
+      const gepland = await this.ctx.storage.getAlarm(), over = Date.now() + 60e3;
+      if (gepland === null || gepland > over) await this.ctx.storage.setAlarm(over);
     });
     if (geschreven.has("state")) this.llmBewaar = null; else await this.bewaarLlm(); // state niet weggeschreven: Groq-verbruik toch bijschrijven
     if (stat && uurGelukt && ams().iso === A.iso) {
@@ -898,7 +912,8 @@ export default {
     try {
       const r = await stub.fetch("https://do/run");
       const body = await r.text();
-      if (!r.ok) console.error("run mislukt", r.status, body.slice(0, 500));
+      if (r.status === 409) console.log("run overgeslagen", body.slice(0, 200));
+      else if (!r.ok) console.error("run mislukt", r.status, body.slice(0, 500));
       else console.log(body.slice(0, 2000));
     } catch {
       console.error("run starten mislukt");

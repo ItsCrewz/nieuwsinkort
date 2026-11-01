@@ -37,7 +37,7 @@ await t("showbizz: RTL Boulevard-site telt als nieuws, YouTube niet; algemene fe
   globalThis.fetch = (async (u: any) => String(u).includes("/bronnen.json") ? Response.json(bronnen) : new Response("nee", { status: 404 })) as any;
   try {
     const data = new Map<string, unknown>();
-    const ctx: any = { storage: { get: async (k: string) => data.get(k), put: async (k: string, v: unknown) => { data.set(k, v); }, setAlarm: async () => {} }, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() };
+    const ctx: any = { storage: { get: async (k: string) => data.get(k), put: async (k: string, v: unknown) => { data.set(k, v); }, setAlarm: async () => {}, getAlarm: async () => null, delete: async (k: string) => { data.delete(k); } }, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() };
     await new Runner(ctx, runEnv).run(true);
   } finally { globalThis.fetch = echte; }
   const uur = JSON.parse(kv.get("uur") || "{}");
