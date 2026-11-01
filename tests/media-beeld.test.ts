@@ -41,7 +41,7 @@ await t("antwoordheaders: nosniff, CSP, cache, geen Set-Cookie/CORS, alleen whit
   assert.equal(r.headers.get("x-geheim"), null);
   assert.equal(r.headers.get("x-content-type-options"), "nosniff");
   assert.match(r.headers.get("content-security-policy") || "", /default-src 'none'; sandbox/);
-  assert.equal(r.headers.get("cache-control"), "public, max-age=86400");
+  assert.equal(r.headers.get("cache-control"), "private, max-age=86400");
   assert.equal(r.headers.get("etag"), "\"e\"");
   assert.equal(r.headers.get("content-length"), "8");
   assert.equal(r.headers.get("vary"), "Accept");
@@ -246,7 +246,9 @@ await t("Cache API: per emmer apart opgeslagen, hit geeft dezelfde headers zonde
     for (const h of ["content-type", "etag", "content-length", "cache-control", "x-content-type-options", "content-security-policy", "vary"]) assert.equal(hit.headers.get(h), a.headers.get(h), h);
     assert.equal(hit.headers.get("set-cookie"), null);
     assert.equal(hit.headers.get("vary"), "Accept");
-    assert.equal(hit.headers.get("cache-control"), "public, max-age=86400");
+    assert.equal(hit.headers.get("cache-control"), "private, max-age=86400");
+    // de Cache API zelf bewaart het antwoord als public (private zou niet worden opgeslagen)
+    assert.ok([...c.m.values()].every((v) => /public/.test(v.headers.get("cache-control") || "")));
     // HEAD op een hit: headers, geen body
     const head = await onRequest(ctx(AVIF, "HEAD"));
     assert.equal(calls.length, 0);

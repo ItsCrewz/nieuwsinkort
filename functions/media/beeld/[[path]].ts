@@ -54,7 +54,9 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
   const emmer = acceptEmmer(request.headers.get("accept"));
   const sleutel = new Request(cacheSleutel(emmer, doel));
   const cache: Cache | undefined = (globalThis as { caches?: { default?: Cache } }).caches?.default;
-  const metVary = (h: Headers) => { h.set("Vary", "Accept"); return h; };
+  // Naar de bezoeker `private`: de gedeelde zone-randcache keyt op URL en negeert Vary, dus de eerste bezoeker bepaalde het formaat voor iedereen.
+  // In de Cache API (emmer in de sleutel) blijft `public` staan, want die laag slaat `private` niet op.
+  const metVary = (h: Headers) => { h.set("Vary", "Accept"); h.set("Cache-Control", `private, max-age=${TTL}`); return h; };
   if (cache) {
     let hit: Response | undefined;
     try { hit = await cache.match(sleutel); } catch { /* cachefout: gewoon upstream */ }
