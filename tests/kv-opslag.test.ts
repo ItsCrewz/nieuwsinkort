@@ -260,6 +260,42 @@ try {
     assert.equal(await (leeg.r as any).bewaarLlmDo({ opslag: leeg.opslag, kv: leeg.kv }, {}, {}), false, "zonder state niets schrijven");
   });
 
+  await t("bewaarLlmDo na halve DO-write: de KV-kopie is de basis, niet de halve DO-state (review-blokker 1)", async () => {
+    const h = harnas();
+    h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
+    await h.run(0);
+    const teller = (tokens: number): LlmState[string] => ({ dag: "2026-11-02", calls: 1, tokens, venster: [] });
+    const oud = JSON.parse(h.opslag.m.get("st:rest") as string);
+    // run A: st:rest is nieuw (stAt T1, neuronen), st:llm/st:at staan nog op T0; de KV-kopie van A is compleet
+    const kvA = { ...JSON.parse(h.kv.m.get("state")!), stAt: oud.stAt + 1, neurons: oud.neurons + 10, llm: { "groq:m": teller(100) } };
+    h.kv.m.set("state", JSON.stringify(kvA));
+    h.opslag.m.set("st:rest", JSON.stringify({ ...oud, stAt: oud.stAt + 1, neurons: oud.neurons + 10 }));
+    h.opslag.m.set("st:llm", JSON.stringify({ "groq:m": teller(10) }));
+    klok = T0 + 5 * MIN;
+    assert.equal(await (h.r as any).bewaarLlmDo({ opslag: h.opslag, kv: h.kv }, {}, { "groq:m": teller(40) }), true);
+    assert.equal(JSON.parse(h.opslag.m.get("st:llm") as string)["groq:m"].tokens, 140, "llm van A (KV) + verschil van B");
+    assert.equal(JSON.parse(h.opslag.m.get("st:rest") as string).neurons, kvA.neurons);
+    assert.equal(h.opslag.m.get("st:at"), String(kvA.stAt));
+    assert.ok(JSON.parse(h.opslag.m.get("st:sums") as string), "sums uit de KV-kopie");
+  });
+
+  await t("bewaarLlmDo telt niets bij als het verschil van deze run al in de state staat (review-blokker 2)", async () => {
+    const h = harnas();
+    h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
+    await h.run(0);
+    const teller = (tokens: number): LlmState[string] => ({ dag: "2026-11-02", calls: 1, tokens, venster: [] });
+    const st = JSON.parse(h.opslag.m.get("st:rest") as string);
+    // st:llm van de run is geschreven (verschil al bijgeteld), st:at en de KV-put faalden
+    const llm = { "groq:m": teller(70) };
+    h.opslag.m.set("st:llm", JSON.stringify(llm));
+    h.opslag.m.set("st:rest", JSON.stringify({ ...st, stAt: T0 + 5 * MIN }));
+    const puts = h.opslag.puts.length;
+    const ok = await (h.r as any).bewaarLlmDo({ opslag: h.opslag, kv: h.kv }, {}, { "groq:m": teller(40) }, { stAt: T0 + 5 * MIN, llm: JSON.stringify(llm) });
+    assert.equal(ok, true);
+    assert.equal(JSON.parse(h.opslag.m.get("st:llm") as string)["groq:m"].tokens, 70, "niet dubbel geteld");
+    assert.equal(h.opslag.puts.length, puts, "niets geschreven");
+  });
+
   await t("schrijfState: te groot deel wordt niet geschreven (vorige blijft, gelogd); art/diep/artJ worden ingekort; st:rest eerst, st:llm laatst", async () => {
     const fouten: string[] = [], echt = console.error;
     console.error = (...a: unknown[]) => { fouten.push(a.join(" ")); };

@@ -1,0 +1,1 @@
+- Herstel van het llm-verbruik na een halve of mislukte state-write kiest de juiste basis (KV-kopie of DO) en telt het verschil niet dubbel (#462).

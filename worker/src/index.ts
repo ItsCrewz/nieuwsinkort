@@ -402,13 +402,19 @@ export class Runner extends DurableObject<Env> {
   }
   private async bewaarLlm() { await this.llmBewaar?.(); }
   /** Schrijft het verbruik van een mislukte run bij in de state in DO-opslag; de KV-kopie volgt de 50-minutenregel. */
-  private async bewaarLlmDo(tel: Tel, voor: LlmState, na: LlmState): Promise<boolean> {
+  private async bewaarLlmDo(tel: Tel, voor: LlmState, na: LlmState, klaar: { stAt: number; llm: string } | null = null): Promise<boolean> {
     try {
       const g = await leesState(tel.opslag);
-      const st = g ? g.st : await tel.kv.get("state", "json");
+      // basis als in runBinnen: wint de KV-kopie (halve DO-write), dan die als basis en alle DO-delen opnieuw schrijven
+      const kv = g ? await tel.kv.get("state", "json").catch(() => null) : null;
+      const kvWint = !!g && kvStateWint(g.st, kv, g.at);
+      const st = !g || kvWint ? (kv ?? (g ? g.st : await tel.kv.get("state", "json"))) : g.st;
       if (!st) return false;
+      const vorige = kvWint ? Object.fromEntries(Object.keys(g!.json).map((k) => [k, ""])) : g?.json || {};
+      // het verschil van deze run staat er al in (st:llm lukte, daarna faalde st:at/KV): niet nog een keer bijtellen
+      if (klaar && st.stAt === klaar.stAt && JSON.stringify(st.llm || {}) === klaar.llm) return true;
       telOp(st.llm ||= {}, verschilStand(voor, na));
-      await schrijfState(tel.opslag, st, g?.json || {});
+      await schrijfState(tel.opslag, st, vorige);
       const ks: KvStand = (await tel.opslag.get("kvstand")) || {}, nu = Date.now();
       if (moetSchrijven(ks.state, undefined, nu)) { await tel.kv.put("state", JSON.stringify(st)); await bewaarKvStand(tel.opslag, { state: { at: nu } }); }
       return true;
@@ -573,7 +579,8 @@ export class Runner extends DurableObject<Env> {
     const groqChat = ((await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null) || {};
     const ketenStand = somStand(st.llm!, groqChat, U), ketenVoor = kopieStand(ketenStand);
     const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: ketenStand } };
-    this.llmBewaar = async () => { await this.bewaarLlmDo(tel, ketenVoor, ketenStand); };
+    let llmKlaar: { stAt: number; llm: string } | null = null;
+    this.llmBewaar = async () => { await this.bewaarLlmDo(tel, ketenVoor, ketenStand, llmKlaar); };
     // Alleen-politiek (losse partijposts) nooit door de AI: die tonen we zoals de partij ze schrijft.
     const todo = clusters.filter((k) => !sumOf(k) && k.cat !== "politiek");
     // ---- AI-budget in trappen (gratis = 10.000 neuronen/dag, BUDGET = eigen plafond daaronder)
@@ -921,6 +928,7 @@ export class Runner extends DurableObject<Env> {
     // ---- wegschrijven
     st.stAt = now;
     telOp(st.llm!, verschilStand(ketenVoor, ketenStand)); // alleen het eigen verschil, niet de meegenomen Function-stand
+    llmKlaar = { stAt: now, llm: JSON.stringify(st.llm) };
     const groqVandaag = groqTokens(U, st.llm, (await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null);
     st.neurons += usage.neurons; st.calls += usage.calls;
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
