@@ -9,6 +9,12 @@ const MIN_WOORDEN_SAMENVATTING = 6, MIN_WOORDEN_PUNT = 2, GELIJK = 0.8, MIN_NIEU
 /** Kleine letters, accenten en leestekens weg; losse woorden. */
 const woorden = (s: string) => (s || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
 
+/** Een oordeel of onbepaald woord zonder toelichting aan het einde van een kop. */
+export function vageKop(kop: string): boolean {
+  const w = woorden(kop);
+  return /^(erg|raar|gek|bizar|vreemd|iets|dingen)$/.test(w.at(-1) || "");
+}
+
 /** (Bijna) gelijk: woord-Jaccard ≥ 0,8, of (met `deelvan`) `a` bestaat helemaal uit woorden van `b` (a ⊂ b). Lege tekst is nooit "gelijk". */
 export function bijnaGelijk(a: string, b: string, deelvan = true): boolean {
   const x = new Set(woorden(a)), y = new Set(woorden(b));

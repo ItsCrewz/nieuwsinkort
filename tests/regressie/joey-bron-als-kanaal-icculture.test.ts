@@ -50,12 +50,12 @@ await t("stripBronvermelding: eindvermelding en 'via' eruit; toeschrijving aan h
   const sites = ["iCulture"];
   assert.equal(stripBronvermelding(fx.item.ai, sites), "Apple lanceert nieuwe stroomadapters voor de MacBook. Ook komt er een nieuwe reisset beschikbaar.");
   assert.equal(stripBronvermelding("De set is te koop via iCulture, zegt Apple.", sites), "De set is te koop, zegt Apple.");
-  assert.equal(stripBronvermelding("Het nieuws is er, aldus iCulture.", sites), "Het nieuws is er.");
+  assert.equal(stripBronvermelding("Het nieuws is er, aldus iCulture.", sites), "Het nieuws is er, aldus iCulture.");
   assert.equal(stripBronvermelding("Volgens iCulture is de set er.", sites), "Volgens iCulture is de set er.");
   assert.equal(stripBronvermelding("De set is te koop via Coolblue.", sites), "De set is te koop via Coolblue.");
   assert.equal(stripBronvermelding("Het gaat om de iCultureshop.", sites), "Het gaat om de iCultureshop.");
-  assert.equal(stripBronvermelding("Tekst via de Volkskrant.", ["de Volkskrant"]), "Tekst.");
-  assert.equal(stripBronvermelding("Tekst via Volkskrant.", ["de Volkskrant"]), "Tekst.");
+  assert.equal(stripBronvermelding("Tekst via de Volkskrant.", ["de Volkskrant"]), "Tekst via de Volkskrant.");
+  assert.equal(stripBronvermelding("Tekst via Volkskrant.", ["de Volkskrant"]), "Tekst via Volkskrant.");
   assert.equal(stripBronvermelding("Tekst zonder bron.", []), "Tekst zonder bron.");
   assert.ok(heeftBronvermelding(fx.item.ai, sites));
 });
@@ -65,4 +65,12 @@ await t("AI-uitleg onder Uitgebreid: 'Je kunt deze kopen via iCulture' blijft in
   const uit = uitgebreidOntdubbeld(fx.item, { uitleg: fx.meer.uitleg!.map((p) => stripBronvermelding(p, ["iCulture"])) }).uitgebreid.join(" ");
   assert.ok(uit.includes("AC Connector") || uit.includes("watt"));
   assert.ok(!uit.includes("via iCulture"));
+});
+
+await t("alleen een volledig gematchte bron in verkoopcontext", () => {
+  assert.equal(stripBronvermelding("De wedstrijd is live te volgen via NOS.", ["NOS"]), "De wedstrijd is live te volgen via NOS.");
+  assert.equal(stripBronvermelding("De berichten gaan via WhatsApp.", ["WhatsApp"]), "De berichten gaan via WhatsApp.");
+  assert.equal(stripBronvermelding("Het is te koop via NU.nl.", ["NU", "NU.nl"]), "Het is te koop.");
+  assert.equal(stripBronvermelding("Het is te koop via NU.nlshop.", ["NU", "NU.nl"]), "Het is te koop via NU.nlshop.");
+  assert.equal(stripBronvermelding("Het is te koop via NOS.", ["iCulture"]), "Het is te koop via NOS.");
 });

@@ -3,9 +3,8 @@
 // getallen als 4.900 blijven heel) van een zin of punt dat al in de bekende tekst voorkomt.
 export const DREMPEL_PUNT = 0.75;      // punt met ≥ 75% van zijn inhoudswoorden in intro+samenvatting staat er al in
 export const DREMPEL_ZIN = 0.75;       // idem voor een zin uit Uitgebreid t.o.v. intro+samenvatting+punten
-export const MIN_NIEUWE_PUNTEN = 2;    // minder nieuwe punten: hele lijst weg
-export const MIN_NIEUWE_ZINNEN = 2;    // minder nieuwe zinnen: sectie Uitgebreid weg
-const MIN_ZINWOORDEN = 3;              // zin met minder inhoudswoorden telt niet als herhaling of als nieuwe inhoud (losse bijzin)
+export const MIN_NIEUWE_PUNTEN = 1;
+export const MIN_NIEUWE_ZINNEN = 1;
 
 const STOP = new Set("een het van voor met bij naar door over uit aan ook dat die dit deze zijn was waren wordt worden werd heeft hebben had hij zij haar hun niet maar als dan nog wel per zal zou kan kunnen moet wil gaat er om te zo nu in op is de en of we je u ze zich ons onze veel meer ander andere".split(" "));
 const stam = (w: string) => (w.length >= 5 ? w.replace(/(en|e|s|n|t|d)$/, "") : w);
@@ -27,29 +26,35 @@ export function dekking(tekst: string, bekend: string): number {
 export const zinnen = (alinea: string): string[] => (alinea || "").split(/(?<=[.!?])\s+(?=[\p{Lu}\p{N}"'‘“(])/u).map((z) => z.trim()).filter(Boolean);
 const alineas = (t?: string) => (t || "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
 
-/** Punten die niet al in intro of samenvatting staan; bij minder dan 2 nieuwe punten (en dubbele punten onderling) blijft er niets over. */
+// Getallen en mogelijke eigennamen vergelijken we letterlijk, niet via de lichte stam.
+function nieuwFeit(tekst: string, bekend: string): boolean {
+  const tokens = (s: string) => s.normalize("NFC").match(/[\p{L}\p{M}]+|\p{N}+(?:[.,]\p{N}+)*/gu) || [];
+  const bekende = new Set(tokens(bekend).map((w) => w.toLocaleLowerCase("nl")));
+  return tokens(tekst).some((w) => (/^\p{N}/u.test(w) || /^\p{Lu}/u.test(w)) && !bekende.has(w.toLocaleLowerCase("nl")));
+}
+const verwijzing = /^["'‘“(]*\s*(?:die|dit|deze|dat|hij|zij|ze|het|hun|haar|zijn|hem)\b/iu;
+
+/** Punten die niet al in intro of samenvatting staan; dubbele punten onderling verdwijnen. */
 export function nieuwePunten(punten: string[] | undefined, intro: string | undefined, samenvatting: string | undefined): string[] {
   const bekend = `${intro || ""}\n${samenvatting || ""}`;
   const uit: string[] = [];
   for (const p of punten ?? []) {
-    if (!p?.trim() || dekking(p, bekend) >= DREMPEL_PUNT || uit.some((g) => dekking(p, g) >= DREMPEL_PUNT)) continue;
+    if (!p?.trim() || (!nieuwFeit(p, bekend) && dekking(p, bekend) >= DREMPEL_PUNT) || uit.some((g) => !nieuwFeit(p, g) && dekking(p, g) >= DREMPEL_PUNT)) continue;
     uit.push(p);
   }
   return uit.length >= MIN_NIEUWE_PUNTEN ? uit : [];
 }
 
-/** Alinea's met alleen de zinnen die niet al in `bekend` staan; te weinig nieuwe zinnen: lege lijst (sectie verbergen). */
+/** Alinea's met nieuwe zinnen en zo nodig hun context; volledig dubbele tekst levert een lege lijst op. */
 export function nieuweAlineas(tekst: string[], bekend: string[]): string[] {
   const b = bekend.join("\n");
-  let n = 0;
+  const z = tekst.flatMap((a, alinea) => zinnen(a).map((zin) => ({ zin, alinea })));
+  const behoud = z.map(({ zin }) => nieuwFeit(zin, b) || (inhoudswoorden(zin).length > 0 && dekking(zin, b) < DREMPEL_ZIN));
+  // Een behouden verwijszin heeft ook haar voorganger nodig, zo nodig over alineagrenzen heen.
+  for (let i = z.length - 1; i > 0; i--) if (behoud[i] && verwijzing.test(z[i].zin)) behoud[i - 1] = true;
   const uit: string[] = [];
-  for (const a of tekst) {
-    const nieuw = zinnen(a).filter((z) => inhoudswoorden(z).length >= MIN_ZINWOORDEN && dekking(z, b) < DREMPEL_ZIN);
-    if (!nieuw.length) continue;
-    n += nieuw.length;
-    uit.push(nieuw.join(" "));
-  }
-  return n >= MIN_NIEUWE_ZINNEN ? uit : [];
+  for (let i = 0; i < z.length; i++) if (behoud[i]) uit[z[i].alinea] = [uit[z[i].alinea], z[i].zin].filter(Boolean).join(" ");
+  return uit.filter(Boolean);
 }
 
 type Tekst = { ai?: string; samenvatting?: string; punten?: string[] };

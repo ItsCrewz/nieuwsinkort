@@ -1,5 +1,5 @@
 import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
-import { controleerSom } from "./somcheck";
+import { controleerSom, vageKop } from "./somcheck";
 import { stripBronvermelding } from "../../src/bronvermelding";
 import { groq, mistral, keten, ruimteVoor, type LlmState, type Verzoek, type Wacht } from "./llm";
 // Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq- en Mistral-terugval tellen tokens, geen neuronen.
@@ -138,6 +138,11 @@ function leesSommen(txt: string, items: In[]): Map<number, Sum> {
     // bron (nieuwssite) is nooit verkoper of kanaal (#488): "via iCulture" eruit, alleen bij een nieuwe som (geen extra AI, geen hash-churn)
     const zb = (t: string) => stripBronvermelding(t, bron.bronnen);
     const s: Sum = { kop: str(x.kop, 90), ai: zb(str(x.ai, 240)), samenvatting: zb(str(x.samenvatting, 900)), punten: (Array.isArray(x.punten) ? x.punten : []).map((p: any) => zb(str(p, 140))).filter(Boolean).slice(0, 2) };
+    if (vageKop(s.kop)) {
+      // Alleen nieuwe sommen: neem een volledige feedtitel of een volledige kernzin.
+      const kandidaten = [...bron.titels.map((t) => str(t, 240)), s.ai.split(/(?<=[.!?])\s/)[0]];
+      s.kop = kandidaten.find((t) => t && t.length <= 90 && !vageKop(t)) || "Nieuwsbericht";
+    }
     if (s.kop && s.ai) out.set(id, s);
   }
   return out;
@@ -157,7 +162,7 @@ function keurSommen(res: Map<number, Sum>, goed: Map<number, Sum>, slecht: Set<n
 export async function summarize(ai: Ai, model: string, items: In[], u: Usage, afgekeurd?: Set<number>): Promise<Map<number, Sum>> {
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
   const prompt = (lijst: In[]) =>
-    `Vat elk bericht samen in nieuwsstijl. Geef per bericht:\n- "kop": nieuwskop, liefst 6 tot 10 woorden: wie of wat (waar) plus de kern of uitkomst, niet alleen wie praat. Staat er een citaat in de titel, dan mag de kern ervan in de kop (X noemt Y 'grote PR-machine'). Fout: "Discussie over voetballer X". Goed: "Trainer X: speler Y mag vertrekken", "Premier Z stapt op na verlies stemming" (alleen als het zo in de tekst staat). Geen vraag, uitroepteken of lokkertje\n- "ai": 1 of 2 korte zinnen met de kern en de data, plaatsen, adressen en namen uit de tekst. Waarom het ertoe doet alleen als de bron dat zegt, anders een tweede concreet feit. Nooit "Dit is belangrijk" of "Dit gaat over". Herhaal de kop niet. Het belangrijkste concrete getal (aantal, bedrag, capaciteit, percentage, datum) staat in "ai" of "samenvatting", niet weggelaten\n` +
+    `Vat elk bericht samen in nieuwsstijl. Geef per bericht:\n- "kop": nieuwskop, liefst 6 tot 10 woorden: wie of wat (waar) plus de kern of uitkomst, niet alleen wie praat. Staat er een citaat in de titel, dan mag de kern ervan in de kop (X noemt Y 'grote PR-machine'). Fout: "Discussie over voetballer X". Goed: "Trainer X: speler Y mag vertrekken", "Premier Z stapt op na verlies stemming" (alleen als het zo in de tekst staat). Zeg concreet wie wat doet of zegt; vermijd vage of verkeerd vertaalde woorden zoals erg, iets, dingen, raar, gek en bizar. Geen vraag, uitroepteken of clickbait\n- "ai": 1 of 2 korte zinnen met de kern en de data, plaatsen, adressen en namen uit de tekst. Waarom het ertoe doet alleen als de bron dat zegt, anders een tweede concreet feit. Nooit "Dit is belangrijk" of "Dit gaat over". Herhaal de kop niet. Het belangrijkste concrete getal (aantal, bedrag, capaciteit, percentage, datum) staat in "ai" of "samenvatting", niet weggelaten\n` +
     `- "samenvatting": 2 tot 3 korte zinnen met de belangrijkste feiten\n- "punten": hooguit 2 korte kernpunten (elk max 12 woorden), alleen feiten die nog niet in de samenvatting staan; anders een lege lijst\n` +
     `Alleen wat letterlijk in titel of tekst staat: geen interpretatie, gevolgen of oorzaken. De bron (naam van de nieuwssite, zie "bron") is nooit verkoper, aanbieder of kanaal: schrijf niet "via iCulture" of "bij Tweakers". Onduidelijke afkortingen (zoals GCC) neutraal overnemen, niet uitleggen. Liever tegenwoordige tijd en actieve vorm ("is", niet "wordt"). Te dunne tekst: schrijf kort wat er staat; gok niet.\n` +
     `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +

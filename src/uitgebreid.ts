@@ -19,7 +19,7 @@ export function zonderUitleg<T extends { key: string }>(lijst: T[], cache: Recor
 }
 
 // Wat onder "Uitgebreid" komt (#488): dezelfde keten, maar zonder zinnen die al in intro, samenvatting of punten staan. Is een bron te dun
-// (te weinig nieuwe zinnen), dan probeert hij de volgende; blijft er niets over, dan verdwijnt de sectie (lege lijst). Punten alleen bij ≥ 2 nieuwe punten.
+// (zonder nieuwe zinnen), dan probeert hij de volgende; blijft er niets over, dan verdwijnt de sectie (lege lijst). Ook één nieuw punt blijft zichtbaar.
 // De terugval op samenvatting+ai+punten (puur herhaling) bestaat hier niet meer; een artikel zonder enige andere tekst houdt de oude terugval.
 export function uitgebreidOntdubbeld(item: Item, meer: Meer | null | undefined): { punten: string[]; uitgebreid: string[]; uitleg: boolean } {
   const schoon = (l?: string[]) => (l ?? []).map((p) => p.trim()).filter(Boolean);

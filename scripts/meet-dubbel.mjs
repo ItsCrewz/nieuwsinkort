@@ -2,8 +2,8 @@
 // Schrijft markdown naar stdout. Alleen lezen: per item met `meer` één GET /meer?k=… (gecachet in --cache, rustig, hooguit --max-fetch echte verzoeken in totaal).
 // Overlapmaat: src/dubbel.ts `dekking` = deel van de inhoudswoorden (zonder lidwoorden/hulpwoorden, lichte stam, getallen heel) dat al in de bekende tekst staat.
 //   (1) punt "al in de tekst":    dekking(punt, intro+samenvatting) ≥ 0,75
-//   (2) lijst met < 2 nieuwe punten: nieuwePunten() is leeg terwijl er punten zijn (dit verbergt de hele lijst)
-//   (3) Uitgebreid = herhaling:   de Uitgebreid-bron (AI-uitleg → bronalinea's → terugval samenvatting+ai+punten) heeft < 2 zinnen met dekking < 0,75 t.o.v. intro+samenvatting+punten
+//   (2) lijst zonder nieuwe punten: nieuwePunten() is leeg terwijl er punten zijn (dit verbergt de hele lijst)
+//   (3) Uitgebreid = herhaling:   de Uitgebreid-bron (AI-uitleg → bronalinea's → terugval samenvatting+ai+punten) bevat geen nieuwe zinnen na de controles op feiten en context
 //   (4) samenvatting herhaalt intro: dekking(samenvatting, intro) ≥ 0,6 ("grotendeels")
 // "na" = wat de client nu doet (uitgebreidOntdubbeld/nieuwePunten): verborgen, ingekort (sectie blijft maar zinnen vallen weg) of ongewijzigd.
 import { build } from "esbuild";
@@ -37,7 +37,7 @@ async function meerVan(k) {
 }
 
 const schoon = (l) => (l ?? []).map((p) => p.trim()).filter(Boolean);
-const uit = [`# Dubbele inhoud in artikelen (#488), meting ${new Date().toISOString().slice(0, 16)}Z`, "", "Maat en drempels: zie kop van scripts/meet-dubbel.mjs (dekking in inhoudswoorden; punt/zin telt als herhaling bij ≥ 0,75; samenvatting↔intro bij ≥ 0,6).", ""];
+const uit = [`# Dubbele inhoud in artikelen (#488), meting ${new Date().toISOString().slice(0, 16)}Z`, "", "Maat en drempels: zie kop van scripts/meet-dubbel.mjs (dekking in inhoudswoorden; dekking ≥ 0,75 met behoud van nieuwe feiten en verwijscontext; samenvatting↔intro bij ≥ 0,6).", ""];
 const voorbeelden = [];
 for (const f of bestanden) {
   const items = JSON.parse(readFileSync(f, "utf8")).items ?? [];
@@ -87,7 +87,7 @@ for (const f of bestanden) {
   uit.push(`## ${f}`, "", `Items: ${t.n}; met punten: ${t.metPunten}; met \`meer\`: ${t.meerKey} (bruikbare respons ${t.meerOk}; geen bruikbare respons ${t.meerKey - t.meerOk}, waarvan ${t.nietGemeten} niet geprobeerd door de limiet). Bij een null-respons wordt net als in de client terugval geteld; een oude cache-null bewijst niet of de sleutel verlopen was of het verzoek mislukte. Niet geprobeerd telt niet mee in (3) en na.`, "",
     "| type | aantal |", "|---|---|",
     `| (1) punten die al (grotendeels) in intro/samenvatting staan (artikelen) | ${t.t1} (${t.t1items}) |`,
-    `| (2) puntenlijst met < 2 nieuwe punten (daarvan lijst van 1 punt) | ${t.t2} (${t.t2een}) |`,
+    `| (2) puntenlijst zonder nieuwe punten (daarvan lijst van 1 punt) | ${t.t2} (${t.t2een}) |`,
     `| (3) Uitgebreid = herhaling (totaal) | ${t.t3uit} |`,
     `| (3a) daarvan: terugval samenvatting+ai+punten (geen \`meer\`-tekst) | ${t.t3terugval} |`,
     `| (4) samenvatting herhaalt intro grotendeels | ${t.t4} |`, "",

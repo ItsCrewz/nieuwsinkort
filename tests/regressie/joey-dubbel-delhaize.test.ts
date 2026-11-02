@@ -19,12 +19,12 @@ await t("Delhaize-item zonder /meer: geen Uitgebreid dat intro+samenvatting herh
   assert.ok(h.includes('aria-label="Bronnen"') && h.includes("tweakers.net/nieuws/254034"), "bronlink blijft");
 });
 
-await t("puntenlijst met één punt of punten die al in de tekst staan wordt verborgen", () => {
+await t("één nieuw punt blijft zichtbaar; twijfelgevallen blijven behouden", () => {
   assert.equal(fx.item.punten.length, 1);
-  assert.ok(!html(fx.item).includes('aria-label="Belangrijkste punten"'), "minder dan 2 nieuwe punten");
+  assert.ok(html(fx.item).includes('aria-label="Belangrijkste punten"'), "ook één nieuw punt blijft zichtbaar");
   const ajax = fx.puntenDubbel;
   assert.equal(ajax.punten.length, 2);
-  assert.ok(!html(ajax).includes('aria-label="Belangrijkste punten"'), "beide punten staan al in de samenvatting");
+  assert.ok(html(ajax).includes('aria-label="Belangrijkste punten"'), "afwijkende formuleringen blijven bij twijfel behouden");
 });
 
 const { nieuwePunten } = await import("../../src/dubbel");
