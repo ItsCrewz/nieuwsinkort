@@ -31,6 +31,24 @@ await isolates[0].bewaarGroqStand(env, key, {});
 assert.equal(writes, 25, "geen wijziging geeft geen schrijfopdracht");
 assert.equal(calls, 25);
 
+for (const fout of ["status", "uitzondering"]) {
+  const terugvalKv = new Map([[key, JSON.stringify(start)]]);
+  const terugvalEnv: any = {
+    NIEUWS: { get: async (k: string) => JSON.parse(terugvalKv.get(k) || "null"), put: async (k: string, v: string) => { terugvalKv.set(k, v); } },
+    BUDGET_DO: { idFromName: () => "dag", get: () => ({ fetch: async () => { if (fout === "uitzondering") throw new Error("DO-fout"); return new Response("fout", { status: 503 }); } }) },
+  };
+  await isolates[0].bewaarGroqStand(terugvalEnv, key, teller(5));
+  assert.equal(JSON.parse(terugvalKv.get(key)!)["groq:model"].tokens, 25, `KV-terugval bij ${fout}`);
+}
+
+const validatie = budget(new Map([[key, JSON.stringify(start)]]));
+for (const waarde of [{ calls: "1" }, { tokens: null }, { maandTokens: "2" }, { venster: {} }, null, []]) {
+  const r = await validatie.b.fetch(new Request("https://do/groq-bij", { method: "POST", body: JSON.stringify({ datum: dag, verschil: { "groq:model": waarde } }) }));
+  assert.equal(r.status, 400);
+  assert.equal(validatie.kv.get(key), JSON.stringify(start));
+  assert.equal(validatie.data.size, 0);
+}
+
 let stuk = true;
 const herstel = budget(new Map([[key, JSON.stringify(start)]]), { putFout: () => stuk });
 await herstel.call("groq-bij", { datum: dag, verschil: teller(5) });

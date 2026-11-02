@@ -215,14 +215,15 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
   return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5) };
 }
 
-// De DO telt verschillen atomair op; zonder binding blijft de KV-terugval per isolate serieel.
+// De DO telt verschillen atomair op; de KV-terugval is per isolate serieel.
 export async function bewaarGroqStand(env: Env, key: string, verschil: LlmState) {
   if (!Object.values(verschil).some((v) => v.calls || v.tokens || v.maandTokens)) return;
   if (env.BUDGET_DO) {
-    const stub = env.BUDGET_DO.get(env.BUDGET_DO.idFromName("dag"));
-    const r = await stub.fetch("https://do/groq-bij", { method: "POST", body: JSON.stringify({ datum: key.slice("groq-chat:".length), verschil }) });
-    if (!r.ok) throw new Error("Groq-teller niet bijgewerkt");
-    return;
+    try {
+      const stub = env.BUDGET_DO.get(env.BUDGET_DO.idFromName("dag"));
+      const r = await stub.fetch("https://do/groq-bij", { method: "POST", body: JSON.stringify({ datum: key.slice("groq-chat:".length), verschil }) });
+      if (r.ok) return;
+    } catch { console.error("samenvatting: Groq-teller DO niet beschikbaar"); }
   }
   await opKv(async () => {
     const vers: LlmState = await env.NIEUWS.get(key, "json") || {};

@@ -1,6 +1,8 @@
 // Logica van de Durable Object `Budget`: enige eigenaar van het slot per video, de video-neuronen per dag en de
 // Whisper-rem per uur voor /samenvatting. KV is niet atomair; de shell voert de aanroepen strikt serieel uit (externe KV-I/O opent de input gate).
 // Hier zonder cloudflare:workers, zodat het met een kleine in-memory opslag te testen is (shell: worker/src/budget.ts).
+import { telOp, type LlmState } from "../worker/src/llm";
+
 export const MAX_WHISPER_UUR = 30; // globale rem: hooguit zoveel Whisper-aanroepen per uur
 export const SLOT_TTL = 90e3; // ms; verloopt vanzelf als de Function wegvalt
 
@@ -61,7 +63,6 @@ export interface Opslag {
 // spiegel geeft `false` als het schrijven mislukte: de logica probeert het bij de volgende aanroep (ook een lezing) opnieuw, zodat de Worker geen verouderde stand blijft lezen
 export interface Buiten { spiegel(datum: string, n: number): Promise<void | boolean>; zaad(datum: string): Promise<number | null> }
 export type Reservering = { datum: string; uur: string; nieuws: number; budget: number; reserve: number; marge: number; schatting: number };
-import { telOp, type LlmState } from "../worker/src/llm";
 export interface GroqBuiten { zaad(datum: string): Promise<LlmState>; spiegel(datum: string, stand: LlmState): Promise<boolean> }
 
 const rond = (n: number) => Math.round(n * 10) / 10;
