@@ -20,7 +20,7 @@ export function playerFor(v: Video): Player {
   if (yt) {
     return {
       kind: "youtube",
-      src: `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&rel=0&playsinline=1&modestbranding=1`,
+      src: `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&rel=0&playsinline=1&modestbranding=1&cc_load_policy=0`,
     };
   }
   try { if (new URL(e).protocol !== "https:") return null; } catch { return null; }
