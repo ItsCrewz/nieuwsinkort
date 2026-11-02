@@ -61,15 +61,33 @@ export interface Opslag {
 // spiegel geeft `false` als het schrijven mislukte: de logica probeert het bij de volgende aanroep (ook een lezing) opnieuw, zodat de Worker geen verouderde stand blijft lezen
 export interface Buiten { spiegel(datum: string, n: number): Promise<void | boolean>; zaad(datum: string): Promise<number | null> }
 export type Reservering = { datum: string; uur: string; nieuws: number; budget: number; reserve: number; marge: number; schatting: number };
+import { telOp, type LlmState } from "../worker/src/llm";
+export interface GroqBuiten { zaad(datum: string): Promise<LlmState>; spiegel(datum: string, stand: LlmState): Promise<boolean> }
 
 const rond = (n: number) => Math.round(n * 10) / 10;
 
 export class BudgetLogica {
-  constructor(private s: Opslag, private buiten: Buiten, private nu: () => number = Date.now) {}
+  constructor(private s: Opslag, private buiten: Buiten, private nu: () => number = Date.now, private groq?: GroqBuiten) {}
   private vuil = new Set<string>(); // dagen waarvan de KV-spiegel achterloopt op de opslag
 
   private async spiegel(datum: string, n: number) {
     if ((await this.buiten.spiegel(datum, n)) === false) this.vuil.add(datum); else this.vuil.delete(datum);
+  }
+
+  // Eén opslagwaarde bewaart ook of een mislukte KV-spiegel nog moet worden hersteld.
+  async groqBij(datum: string, verschil: LlmState): Promise<void> {
+    if (!this.groq) throw new Error("Groq-spiegel ontbreekt");
+    const sleutel = `groq:${datum}`;
+    const opgeslagen = await this.s.get<{ stand: LlmState; vuil: boolean }>(sleutel);
+    const stand = opgeslagen?.stand ?? await this.groq.zaad(datum);
+    const gewijzigd = Object.values(verschil).some((v) => v.calls || v.tokens || v.maandTokens);
+    if (gewijzigd) {
+      telOp(stand, verschil);
+      await this.s.put(sleutel, { stand, vuil: true });
+    }
+    if ((gewijzigd || opgeslagen?.vuil) && await this.groq.spiegel(datum, stand)) {
+      await this.s.put(sleutel, { stand, vuil: false });
+    }
   }
 
   // Slot per video: bezig => null. Het token voorkomt dat een verlopen eigenaar het slot van een ander vrijgeeft.

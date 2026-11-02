@@ -1,0 +1,1 @@
+- De Groq-dagstand van samenvattingen wordt atomair bijgehouden via de bestaande Budget-DO (#445).

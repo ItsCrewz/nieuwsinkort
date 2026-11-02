@@ -14,6 +14,12 @@ export class Budget extends DurableObject<BudgetEnv> {
       catch { console.error("budget: KV-spiegel schrijven mislukt"); return false; }
     },
     zaad: async (datum) => { try { return +((await this.env.NIEUWS.get(`vid-neurons:${datum}`)) || 0) || 0; } catch { console.error("budget: KV-spiegel lezen mislukt"); return null; } },
+  }, Date.now, {
+    zaad: async (datum) => JSON.parse((await this.env.NIEUWS.get(`groq-chat:${datum}`)) || "{}"),
+    spiegel: async (datum, stand) => {
+      try { await this.env.NIEUWS.put(`groq-chat:${datum}`, JSON.stringify(stand), { expirationTtl: 3 * 86400 }); return true; }
+      catch { console.error("budget: Groq KV-spiegel schrijven mislukt"); return false; }
+    },
   });
   // Mutex: externe I/O (KV-zaad/-spiegel) opent de input gate, dus zonder dit kunnen operaties interleaven en elkaars stand overschrijven.
   private keten: Promise<unknown> = Promise.resolve();
@@ -33,6 +39,7 @@ export class Budget extends DurableObject<BudgetEnv> {
     if (a === "stand" && typeof b.datum === "string") return Response.json({ video: await this.l.stand(b.datum) });
     if (a === "reserveer" && typeof b.datum === "string") return Response.json(await this.l.reserveer(b as Reservering));
     if (a === "verreken" && typeof b.datum === "string" && typeof b.delta === "number") return Response.json({ video: await this.l.verreken(b.datum, b.delta) });
+    if (a === "groq-bij" && /^\d{4}-\d{2}-\d{2}$/.test(b.datum) && b.verschil && typeof b.verschil === "object" && !Array.isArray(b.verschil)) { await this.l.groqBij(b.datum, b.verschil); return Response.json({ ok: true }); }
     return new Response("onbekend", { status: 404 });
   }
 }
