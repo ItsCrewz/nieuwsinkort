@@ -54,10 +54,12 @@ export function afstanden(kop: string): number[] | null {
 /** bekende raceafstanden in meter (schaatsen, atletiek, zwemmen): alleen die tellen voor de afstandsregel */
 const RACE_M = new Set([100, 200, 400, 500, 800, 1000, 1500, 3000, 5000, 10000]);
 const METER = /(\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\b/gi;
-const SPORTWOORD = /\b(wint|won|winnaar|race|schaats\w*|wk|ek|record|baanrecord|goud|zilver|brons|medaille|sprint|finale|thialf|zwem\w*|hardloop\w*)\b/i;
-/** raceafstanden in een titel: alleen eenheid meter/m (geen km), alleen bekende afstanden en alleen mét een sportwoord ("bom binnen 300 meter" of "130 km" is geen race); leeg bij twijfel */
+const SPORTWOORD = /\b(?:schaatsen|schaatser|schaatsers|schaatsster|schaatssters|schaatst|schaatswedstrijd|zwemmen|zwemmer|zwemmers|zwemster|zwemsters|zwemt|zwemwedstrijd|hardlopen|hardloper|hardlopers|hardloopster|hardloopwedstrijd|atletiek|thialf)\b/i;
+const UITSLAG = /\b(?:wint|won|winnaar|winnares|tijd|tijden|record|baanrecord|wereldrecord|goud|zilver|brons|medaille|medailles|race|sprint|finale|wk|ek)\b/i;
+const NAAST_AFSTAND = /\b(?:wint|won|winnaar|winnares|record|baanrecord|wereldrecord|goud|zilver|brons|medaille|race|sprint|finale)\s+(?:(?:de|het|op|van|over)\s+){0,2}(?:\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\b|\b(?:\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\s+(?:race|sprint|finale|record)\b/i;
+/** Alleen bekende meterafstanden met duidelijke wedstrijdcontext; bij twijfel geen afstandsregel. */
 const raceAfstanden = (t: string) => {
-  if (!SPORTWOORD.test(t) || afstanden(t) === null) return [];
+  if (!(SPORTWOORD.test(t) && UITSLAG.test(t)) && !NAAST_AFSTAND.test(t) || afstanden(t) === null) return [];
   return [...new Set([...t.matchAll(METER)].map((m) => Number(m[1].replace(/\./g, ""))).filter((v) => RACE_M.has(v)))];
 };
 /** twee titels met elk afstanden maar zonder één gedeelde afstand gaan over verschillende races (500 m ≠ 1.500 m) (#443) */

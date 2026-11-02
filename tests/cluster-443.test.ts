@@ -36,8 +36,22 @@ t("afstandsregel alleen voor sport: kilometers en meters zonder sportcontext bli
     ["Ruim 300 kilometer file door ongeluk op de A2 bij Utrecht", "Ruim 350 kilometer file door ongeluk op de A2 bij Utrecht"],
     ["Bom gevonden in Haarlem, woningen binnen 300 meter ontruimd", "Bom gevonden in Haarlem, woningen binnen 500 meter ontruimd"],
     ["Bom gevonden in Haarlem, woningen binnen 500 meter ontruimd", "Bom gevonden in Haarlem, woningen binnen 1000 meter ontruimd"],
+    ["Bom gevonden in Haarlem, zwembad binnen 500 meter ontruimd", "Bom gevonden in Haarlem, zwembad binnen 1000 meter ontruimd"],
+    ["Bom gevonden in Haarlem, schaatsbaan binnen 500 meter ontruimd", "Bom gevonden in Haarlem, schaatsbaan binnen 1000 meter ontruimd"],
+    ["Bom gevonden in Haarlem, racebaan binnen 500 meter ontruimd", "Bom gevonden in Haarlem, racebaan binnen 1000 meter ontruimd"],
+    ["Goudprijs stijgt na vondst op 500 meter diepte in mijn", "Goudprijs stijgt na vondst op 1000 meter diepte in mijn"],
+    ["Recordhoogte bereikt door golven van 500 meter bij eiland", "Recordhoogte bereikt door golven van 1000 meter bij eiland"],
   ];
   for (const [a, b] of paren) assert.equal(cluster([cand("NU.nl", a, 1), cand("AD", b, 2)]).length, 1, a);
+});
+
+t("hele sportwoorden en directe wedstrijdcontext blijven races onderscheiden", () => {
+  for (const [a, b] of [
+    ["Zwemster pakt goud op de 500 meter in finale", "Zwemster pakt goud op de 1000 meter in finale"],
+    ["Schaatser wint de 500 meter in Heerenveen", "Schaatser wint de 1000 meter in Heerenveen"],
+    ["Kok wint 500 meter in Thialf", "Kok wint 1000 meter in Thialf"],
+    ["Atleet loopt 500 meter sprint in finale", "Atleet loopt 1000 meter sprint in finale"],
+  ]) assert.equal(cluster([cand("NU.nl", a, 1), cand("AD", b, 2)]).length, 2, a);
 });
 
 t("eenPerUitgever: eerste per uitgever, 'AD Formule 1' = 'AD', volgorde stabiel", () => {
