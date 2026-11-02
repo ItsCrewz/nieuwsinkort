@@ -2,6 +2,7 @@
 // Een kleine model gaf eens kern = kop, een samenvatting van 5 woorden en punten ["Florida","Florida"]; dat werd gecachet en elke run hergebruikt.
 // Kern (ai) of samenvatting slecht = hele som af; losse slechte punten worden weggelaten (lege punten is een bestaande staat).
 export type SomIn = { kop: string; ai: string; samenvatting: string; punten: string[] };
+import { isWeigering } from "./weigering";
 export type SomUitslag = { ok: true; som: SomIn } | { ok: false; reden: string };
 
 const MIN_WOORDEN_SAMENVATTING = 6, MIN_WOORDEN_PUNT = 2, GELIJK = 0.8, MIN_NIEUW = 3, MAX_KORTE_KERN = 10;
@@ -47,7 +48,7 @@ export const samenvattingOk = (som: SomIn) => controleerSom(som).ok;
 
 /** Gecachete som hergebruiken (#476): slecht = null (wordt opnieuw gemaakt), anders de som met opgeschoonde punten. */
 export function zuiverSom<T extends SomIn>(som: T | null | undefined): T | null {
-  if (!som) return null;
+  if (!som || isWeigering(som)) return null;
   const c = controleerSom(som);
   return c.ok ? { ...som, punten: c.som.punten } : null;
 }

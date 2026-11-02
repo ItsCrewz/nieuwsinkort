@@ -15,7 +15,7 @@ await t("showbizz: RTL Boulevard-site telt als nieuws, YouTube niet; algemene fe
   assert.equal(nietAlsNieuws("showbizz", "YouTube", "https://www.rtl.nl/boulevard/rss.xml"), false);
   assert.equal(nietAlsNieuws("politiek", "YouTube", "https://www.youtube.com/feeds/videos.xml?channel_id=x"), false);
   const nu = Date.now();
-  const e = (l: string, t: string, m: number) => ({ t, l, s: "", d: nu - m * 60e3 });
+  const e = (l: string, t: string, m: number) => ({ t, l, s: "De betrokkenen geven vandaag meer uitleg over het onderwerp en verwachten binnenkort verdere ontwikkelingen.", d: nu - m * 60e3 });
   const feed = (url: string, entries: any[]) => ({ url, ok: true, entries, videos: [] });
   const nl = [e("https://www.nu.nl/binnenland/1/kabinet-praat-over-begroting.html", "Kabinet praat over de begroting van volgend jaar", 20), e("https://www.rtl.nl/nieuws/politiek/artikel/2/x", "Kamer debatteert over zorgpremie", 21)];
   const feeds: Record<string, any> = {

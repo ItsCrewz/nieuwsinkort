@@ -31,6 +31,7 @@ import { cluster, normLink, sim, toks, type Cand, type Cluster } from "./cluster
 import { Budget, utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quotaSleutel } from "./budget";
 import { clusterHash, vindClusterSum } from "./clusterhash";
 import { zuiverSom } from "./somcheck";
+import { bruikbareInvoer, isWeigering } from "./weigering";
 import { BATCH, bijwerkGezien, bundelBeslis, kortToegestaan } from "./bundel";
 import { maakTabSam, tabTekst, tabAiRoute } from "./tabsam";
 import { herindeel } from "../../src/regio";
@@ -381,7 +382,11 @@ export class Runner extends DurableObject<Env> {
           env.NIEUWS.get("uur", "json"), env.NIEUWS.get("sv-klaar", "json"),
         ]);
         if (statR.ok && uur) {
-          const body = await berekenBody(await statR.json(), uur, sv);
+          const stat = await statR.json() as any;
+          if (Array.isArray(stat?.items)) stat.items = stat.items.filter((i: any) => !isWeigering(i));
+          const uurData = uur as any;
+          if (Array.isArray(uurData?.items)) uurData.items = uurData.items.filter((i: any) => !isWeigering(i));
+          const body = await berekenBody(stat, uur, sv);
           const tag = await etag(body), h = `${ams().iso}|${tag}`;
           // alleen schrijven als de etag anders is (of de vorige write 24 uur of ouder is)
           if (moetSchrijven(ks["data-vooraf"], h, Date.now(), DAG_MS)) {
@@ -447,6 +452,7 @@ export class Runner extends DurableObject<Env> {
     const vorigeDelen = kvWint ? Object.fromEntries(Object.keys(geladen?.json || {}).map((k) => [k, ""])) : geladen!.json;
     const bronnen: any = await bronnenR.json();
     const stat: any = staticR.ok ? await staticR.json().catch(() => null) : null;
+    if (Array.isArray(stat?.items)) stat.items = stat.items.filter((i: any) => !isWeigering(i));
     // cache per Amsterdamse dag, neuronenteller per UTC-dag: de teller loopt door over de Amsterdamse datumgrens
     const st: State = stateRaw && stateRaw.datum === A.iso ? stateRaw : { datum: A.iso, neurons: stateRaw?.neurons || 0, calls: stateRaw?.calls || 0, inTok: stateRaw?.inTok, outTok: stateRaw?.outTok, geschat: stateRaw?.geschat, foutN: stateRaw?.foutN, neuronDag: stateRaw?.neuronDag ?? stateRaw?.datum, sums: stateRaw?.sums || {}, links: {}, hashes: stateRaw?.hashes || {}, runs: 0, okAt: stateRaw?.okAt || {} };
     st.ytEmbed = ruimYtCache(stateRaw?.ytEmbed, now);
@@ -642,7 +648,7 @@ export class Runner extends DurableObject<Env> {
 
     // ---- samenvattingen: eerst per link, daarna per titel en rubriek
     // Ook een gecachete som wordt gecontroleerd (#476): een slechte telt als afwezig (en wordt binnen de normale caps opnieuw gemaakt), slechte punten vallen weg.
-    const zuiver = (som: (Sum & { at: number }) | null | undefined) => zuiverSom(som);
+    const zuiver = (som: (Sum & { at: number }) | null | undefined) => som && !isWeigering(som) ? zuiverSom(som) : null;
     st.somAfgekeurd ||= {};
     const opgegeven = (k: Cluster) => !!st.somAfgekeurd![k.key];
     const ruweSumOf = (k: Cluster) => {
@@ -660,7 +666,8 @@ export class Runner extends DurableObject<Env> {
     let llmKlaar: { stAt: number; llm: string } | null = null;
     this.llmBewaar = async () => { await this.bewaarLlmDo(tel, ketenVoor, ketenStand, llmKlaar); };
     // Alleen-politiek (losse partijposts) nooit door de AI: die tonen we zoals de partij ze schrijft.
-    const todo = clusters.filter((k) => !sumOf(k) && k.cat !== "politiek" && !opgegeven(k));
+    const geweigerd = new Set(clusters.filter((k) => { const s = ruweSumOf(k); return s && isWeigering(s); }).map((k) => k.key));
+    const todo = clusters.filter((k) => !sumOf(k) && !geweigerd.has(k.key) && k.cat !== "politiek" && !opgegeven(k) && bruikbareInvoer(k.c.slice(0, 4)));
     // ---- AI-budget in trappen (gratis = 10.000 neuronen/dag, BUDGET = eigen plafond daaronder)
     //  <70%: hoofdmodel voor alles · 70–90%: klein model, minder berichten · 90–100%: klein model, alleen NL/Haarlem · daarna: geen AI.
     // Per run hooguit 2x het eerlijke deel van wat er nog over is, zodat ook de late uren samenvattingen krijgen.
@@ -717,6 +724,7 @@ export class Runner extends DurableObject<Env> {
           if (afgekeurd.has(i + 1)) { st.somAfgekeurd![k.key] = now; return; } // geen som bewaren; volgende runs niet opnieuw proberen
           const s = res.get(i + 1);
           if (!s) return;
+          if (isWeigering(s)) geweigerd.add(k.key); // bewaren als blokkade, zodat volgende runs geen nieuwe AI-aanroep doen
           const id = k.key;
           st.sums[id] = { ...s, at: now };
           for (const c of k.c) st.links[normLink(c.href)] = id;
@@ -737,7 +745,7 @@ export class Runner extends DurableObject<Env> {
     const noAI = quotaOut || runCapped || bundel.uitgesteld || tijdelijk > 0 || !env.AI; // uitgesteld = zelfde terugval als een volle run
     const politiekLos = clusters.filter((k) => k.cat === "politiek").sort((a, b) => Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d))).slice(0, 40);
     // afgekeurde AI-som (#476): dezelfde extractieve route (ruw: true) als zonder AI
-    const shown = clusters.filter((k) => sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : (noAI || opgegeven(k) || slechtGecachet(k)) && extractief(k.c[0], isNL(k))));
+    const shown = clusters.filter((k) => !geweigerd.has(k.key) && (sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : (noAI || opgegeven(k) || slechtGecachet(k) || !bruikbareInvoer(k.c.slice(0, 4))) && extractief(k.c[0], isNL(k)))));
     // ---- filmpjes + dumpert
     let dumpert = (R.get(DUMPERT_URL)?.videos || []) as (Video & { _pub: number })[];
     dumpert = dumpert.filter((v) => vanVandaag(v._pub, now)).slice(0, 25);
@@ -822,6 +830,7 @@ export class Runner extends DurableObject<Env> {
         else items.push({ cat: k.cat, ...extractief(k.c[0], isNL(k))!, punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true }); // extractief, alle rubrieken; Engels met "(Engels)"
       }
     }
+    for (let i = items.length - 1; i >= 0; i--) if (isWeigering(items[i])) items.splice(i, 1);
     items.sort((a, b) => b._t - a._t);
     for (const i of items) delete i._t;
     // Na de AI-stap staat de AI-kop er (bijv. "voetballer"): sport opnieuw bepalen, ook voor items uit eerdere runs; buitenland pas daarna
@@ -1035,7 +1044,8 @@ export class Runner extends DurableObject<Env> {
     if (stat) {
       try {
         const sv = await env.NIEUWS.get("sv-klaar", "json");
-        const H = schrijfUur ? out : await env.NIEUWS.get("uur", "json");
+        const H: any = schrijfUur ? out : await env.NIEUWS.get("uur", "json");
+        if (Array.isArray(H?.items)) H.items = H.items.filter((i: any) => !isWeigering(i));
         if (H) {
           const body = await berekenBody(stat, H, sv, Date.now()), tag = await etag(body), h = `${A.iso}|${tag}`;
           if (moetPubliceren(ks["data-vooraf"], h, now, pubInt)) voorafNieuw = { h, waarde: `${A.iso}\n${tag}\n${body}` };

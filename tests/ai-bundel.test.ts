@@ -51,7 +51,7 @@ function harnas(opties: { budget?: string; vidNeuronen?: number; aiUsage?: Recor
     if (url.includes("/data.json?statisch=1")) return Response.json({ gegenereerd: new Date(T0 - 240 * MIN).toISOString(), items: [], filmpjes: [], dumpert: [] });
     return new Response("nee", { status: 404 });
   }) as any;
-  const nieuw = (i: number, min: number) => ({ t: ONDERWERPEN[i], l: `https://nu.test/binnenland/${i}`, s: `Uitleg bij ${ONDERWERPEN[i]}.`, d: T0 + min * MIN });
+  const nieuw = (i: number, min: number) => ({ t: ONDERWERPEN[i], l: `https://nu.test/binnenland/${i}`, s: `Uitleg bij ${ONDERWERPEN[i]}. De betrokkenen geven vandaag meer uitleg over het onderwerp en verwachten binnenkort verdere ontwikkelingen.`, d: T0 + min * MIN });
   const run = async (min: number, force = false) => {
     klok = T0 + min * MIN;
     const res = await r.fetch(new Request(`https://do/run${force ? "?force=1" : ""}`));
@@ -66,6 +66,15 @@ function harnas(opties: { budget?: string; vidNeuronen?: number; aiUsage?: Recor
 async function opwarmen(h: ReturnType<typeof harnas>) { await h.run(-10); await h.run(-5); }
 
 try {
+  await t("korte feedtekst blijft extractief zonder AI-samenvatting", async () => {
+    const h = harnas();
+    h.feed.entries = [{ ...h.nieuw(0, -20), s: "" }];
+    const r = await h.run(0);
+    assert.equal(h.calls.samen, 0);
+    assert.equal(r.ruw, 1);
+    assert.equal(r.uur.items[0].kop, ONDERWERPEN[0]);
+  });
+
   await t("bundelBeslis: wacht tot batch, 10-minutengrens of force; interval 60 direct", async () => {
     const g: Record<string, number> = {};
     bijwerkGezien(g, ["a", "b"], 1000);

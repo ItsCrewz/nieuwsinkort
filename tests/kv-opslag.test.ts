@@ -28,7 +28,7 @@ function nepOpslag() {
 }
 
 const iso = (min: number) => new Date(T0 + min * MIN).toISOString();
-const e = (slug: string, titel: string, min: number) => ({ t: titel, l: `https://nu.test/binnenland/${slug}`, s: "", d: T0 + min * MIN });
+const e = (slug: string, titel: string, min: number) => ({ t: titel, l: `https://nu.test/binnenland/${slug}`, s: "De betrokkenen geven vandaag meer uitleg over het onderwerp en verwachten binnenkort verdere ontwikkelingen.", d: T0 + min * MIN });
 const bronnen = { groepen: [{ id: "nl", bronnen: [{ id: "nu", naam: "NU.nl", feeds: [{ url: "https://nu.test/rss" }] }] }] };
 
 /** Eén Runner met nep-KV, nep-opslag en nep-Fetchers; `feed` bepaalt wat de feed op dit moment levert. */
@@ -276,7 +276,7 @@ try {
     const h = harnas({ groepen: [{ id: "nl", bronnen: feeds }] });
     let aiCalls = 0;
     h.env.AI = { run: async () => { aiCalls++; return { response: JSON.stringify({ items: [{ id: 1, kop: "Café in centrum Zwolle verwoest", ai: titels[4] + ".", samenvatting: "Een grote brand heeft vanochtend een oud café in het centrum van Zwolle verwoest. De brandweer was lang bezig met blussen.", punten: [] }] }) }; } };
-    titels.forEach((t, i) => { h.feed.extra[`https://b${i}.test/rss`] = [{ t, l: `https://b${i}.test/nieuws/${i}`, s: "", d: T0 - 20 * MIN }]; });
+    titels.forEach((t, i) => { h.feed.extra[`https://b${i}.test/rss`] = [{ t, l: `https://b${i}.test/nieuws/${i}`, s: "De betrokkenen geven vandaag meer uitleg over het onderwerp en verwachten binnenkort verdere ontwikkelingen.", d: T0 - 20 * MIN }]; });
     await h.run(0);
     const na1 = aiCalls;
     assert.ok(na1 >= 1);
