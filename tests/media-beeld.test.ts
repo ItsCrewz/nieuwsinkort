@@ -343,8 +343,8 @@ await t("www.linda.nl alleen onder /lindanl-assets/ en /wp-content/; prod-img.dv
   assert.equal(beeldViaProxy("https://www.linda.nl/lindanl-assets/uploads/a.jpg"), "/media/beeld/www.linda.nl/lindanl-assets/uploads/a.jpg");
 });
 
-await t("Pubble: alleen /worker/, ook zonder extensie en bij redirects", async () => {
-  const pad = "images.pubble.cloud/worker/jpg/quick/1920/2229725/648e3015/content/2026/11/12345678-1234-1234-1234-123456789abc";
+await t("Pubble: alleen Rodi-beeldpaden zonder query, ook bij redirects", async () => {
+  const pad = "images.pubble.cloud/worker/jpg/quick/1920/2229725/648e3015/content/2026/11/1d8096c1-467a-4ef5-917b-d970306e659c";
   const url = `https://${pad}`;
   mock(jpg());
   assert.equal(beeldProxyPad(url), `/media/beeld/${pad}`);
@@ -353,14 +353,18 @@ await t("Pubble: alleen /worker/, ook zonder extensie en bij redirects", async (
   assert.equal(r.headers.get("content-type"), "image/jpeg");
   assert.equal(await r.text(), "jpgbytes");
   assert.equal(calls[0].url, url);
-  for (const p of ["images.pubble.cloud/ander/beeld", "images.pubble.cloud/workerx/beeld", "images.pubble.cloud/worker"]) {
+  for (const p of ["images.pubble.cloud/ander/beeld", "images.pubble.cloud/workerx/beeld", "images.pubble.cloud/worker", pad.replace("648e3015", "12345678"), `${pad}?url=https://evil.example`, `${pad}/extra`, `${pad}.jpg`, pad.replace("/jpg/", "/svg/"), pad.replace("/quick/", "/https:/evil.com/"), pad.replace("/2026/11/", "/2026/1/")]) {
     assert.equal(beeldProxyPad(`https://${p}`), null);
     assert.equal((await vraag(p)).status, 404);
   }
   assert.equal(calls.length, 1);
-  mock(() => new Response(null, { status: 302, headers: { location: "/ander/beeld" } }));
-  assert.equal((await vraag(pad)).status, 502);
-  assert.equal(calls.length, 1);
+  for (const location of ["/ander/beeld", `https://${pad.replace("648e3015", "12345678")}`, `https://${pad}?url=https://evil.example`, `https://${pad}/extra`]) {
+    mock(() => new Response(null, { status: 302, headers: { location } }));
+    assert.equal((await vraag(pad)).status, 502, location);
+    assert.equal(calls.length, 1);
+  }
+  mock(() => new Response(null, { status: 302, headers: { location: `https://${pad.replace("/jpg/", "/webp/")}` } }), jpg());
+  assert.equal((await vraag(pad)).status, 200);
 });
 
 await t("client en server weigeren dezelfde paden: //, %2F, %25 enz. blijven rechtstreeks", () => {

@@ -1,1 +1,1 @@
-- Rodi-beelden van images.pubble.cloud laden via de eigen beeldproxy (#483).
+- Rodi-beelden van images.pubble.cloud laden via de eigen beeldproxy, uitsluitend met toegestane Rodi-paden zonder query (#483).
