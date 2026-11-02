@@ -1,1 +1,1 @@
-- YouTube-kanaalfeeds die tijdelijk 404/5xx geven (storing aan YouTube-kant) worden per run met één kanarie-verzoek herkend en overgeslagen; Bronnen toont dan "YouTube-feedstoring (tijdelijk)" i.p.v. harde fouten (#480).
+- YouTube-kanaalfeeds die tijdelijk 404/5xx geven (storing aan YouTube-kant) worden per run met maximaal twee kanarie-verzoeken (het tweede alleen na 404/5xx) herkend en overgeslagen; Bronnen toont dan "YouTube-feedstoring (tijdelijk)" i.p.v. harde fouten (#480).
