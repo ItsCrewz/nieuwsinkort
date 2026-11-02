@@ -3,16 +3,16 @@
 // Alleen exacte hostnamen of strikte patronen op labelgrens; geen IP's, poorten of vrije hosts (SSRF-grens).
 const EXACT = new Set([
   "redactie.rtl.nl", "prod-img.telegraaf.nl", "images.nu.nl", "images.cdn.nos.nl", "images.nrc.nl",
-  "prod-img.noordhollandsdagblad.nl", "prod-img.dvhn.nl", "www.linda.nl", "images.ad.nl", "image.volkskrant.nl", "image.trouw.nl",
+  "prod-img.noordhollandsdagblad.nl", "prod-img.dvhn.nl", "www.linda.nl", "images.ad.nl", "image.volkskrant.nl", "image.trouw.nl", "images.pubble.cloud",
 ]);
 const PATRONEN = [/^webp\.[a-z]{2}\.cdn\.pxr\.nl$/, /^cdn-\d{1,3}\.motorsport\.com$/];
 
-// Gewone websites (geen beeld-CDN) alleen onder hun beeldpadprefix, zodat de proxy geen open doorgeefluik naar de hele site is.
-const PREFIX: Record<string, string[]> = { "www.linda.nl": ["/lindanl-assets/", "/wp-content/"] };
+// Beperk websites en gedeelde CDN's tot hun beeldpad, zodat de proxy geen open doorgeefluik is.
+const PREFIX: Record<string, string[]> = { "www.linda.nl": ["/lindanl-assets/", "/wp-content/"], "images.pubble.cloud": ["/worker/"] };
 
 export const beeldHostToegestaan = (host: string): boolean => EXACT.has(host) || PATRONEN.some((p) => p.test(host));
 
-/** Hostbeperking op het pad (alleen voor gewone websites); ook voor redirect-doelen. */
+/** Hostbeperking op het pad; ook voor redirect-doelen. */
 export const beeldPrefixToegestaan = (host: string, pad: string): boolean => !PREFIX[host] || PREFIX[host].some((x) => pad.startsWith(x));
 
 const stuurTeken = (s: string): boolean => [...s].some((c) => c.charCodeAt(0) < 0x20 || c.charCodeAt(0) === 0x7f);

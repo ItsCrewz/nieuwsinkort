@@ -1,0 +1,1 @@
+- Rodi-beelden van images.pubble.cloud laden via de eigen beeldproxy (#483).

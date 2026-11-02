@@ -343,6 +343,26 @@ await t("www.linda.nl alleen onder /lindanl-assets/ en /wp-content/; prod-img.dv
   assert.equal(beeldViaProxy("https://www.linda.nl/lindanl-assets/uploads/a.jpg"), "/media/beeld/www.linda.nl/lindanl-assets/uploads/a.jpg");
 });
 
+await t("Pubble: alleen /worker/, ook zonder extensie en bij redirects", async () => {
+  const pad = "images.pubble.cloud/worker/jpg/quick/1920/2229725/648e3015/content/2026/11/12345678-1234-1234-1234-123456789abc";
+  const url = `https://${pad}`;
+  mock(jpg());
+  assert.equal(beeldProxyPad(url), `/media/beeld/${pad}`);
+  const r = await vraag(pad);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("content-type"), "image/jpeg");
+  assert.equal(await r.text(), "jpgbytes");
+  assert.equal(calls[0].url, url);
+  for (const p of ["images.pubble.cloud/ander/beeld", "images.pubble.cloud/workerx/beeld", "images.pubble.cloud/worker"]) {
+    assert.equal(beeldProxyPad(`https://${p}`), null);
+    assert.equal((await vraag(p)).status, 404);
+  }
+  assert.equal(calls.length, 1);
+  mock(() => new Response(null, { status: 302, headers: { location: "/ander/beeld" } }));
+  assert.equal((await vraag(pad)).status, 502);
+  assert.equal(calls.length, 1);
+});
+
 await t("client en server weigeren dezelfde paden: //, %2F, %25 enz. blijven rechtstreeks", () => {
   for (const u of [
     "https://images.nu.nl/a//b.jpg", "https://images.nu.nl//a.jpg", "https://images.nu.nl/a%2Fb.jpg", "https://images.nu.nl/a%2fb.jpg", "https://images.nu.nl/a%25b.jpg",
