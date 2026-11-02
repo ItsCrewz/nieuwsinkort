@@ -27,7 +27,7 @@ import { uniekeBeelden, ogImage } from "../../src/beeld";
 import { isNL } from "../../src/bronlink";
 import { extractief } from "./extractief";
 import { isBuitenland } from "../../src/regio";
-import { cluster, normLink, sim, toks, type Cand, type Cluster } from "./cluster";
+import { cluster, eenPerUitgever, normLink, sim, toks, type Cand, type Cluster } from "./cluster";
 import { Budget, utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quotaSleutel } from "./budget";
 import { clusterHash, vindClusterSum } from "./clusterhash";
 import { zuiverSom } from "./somcheck";
@@ -803,7 +803,7 @@ export class Runner extends DurableObject<Env> {
       const buitenland = k.cat === "nl" && isBuitenland({ kop: k.c.map((c) => c.t).join(" "), ai: s?.ai, omschrijving: k.c.map((c) => (c.s || "").slice(0, 300)).join(" "), bronnen: k.c.map((c) => ({ href: c.href, buitenFeed: buitenL.has(normLink(c.href)) })) });
       const laatst = nieuwsteTijd(k.c);
       if (buitenland) k.cat = "buitenland";
-      const bron = [...new Map(k.c.map((c) => [c.site, { site: c.site, href: c.href, ft: c.t.slice(0, 200), fd: (c.s || "").slice(0, 300) }])).values()].slice(0, 6);
+      const bron = eenPerUitgever(k.c.map((c) => ({ site: c.site, href: c.href, ft: c.t.slice(0, 200), fd: (c.s || "").slice(0, 300) }))).slice(0, 6); // één link per uitgever (#443)
       const beelden = uniekeBeelden(k.c.flatMap((c) => [c.img, og.get(c.href)]));
       const bb = beelden.length ? { beelden } : {};
       if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true });
