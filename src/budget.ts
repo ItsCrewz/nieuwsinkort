@@ -9,10 +9,12 @@ export const SLOT_TTL = 90e3; // ms; verloopt vanzelf als de Function wegvalt
 // ---- meting van Workers AI-verbruik (gedeeld door Worker en Pages Function; zie docs/ai-budget.md)
 // Cloudflare telt de gratis 10.000 neuronen per UTC-dag (reset 00:00 UTC), niet per Amsterdamse dag.
 export const utcDag = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
-/** Veiligheidsfactor uit env NEURON_FACTOR (tussen 0,5 en 5, anders 1): de echte teller kan hoger staan dan de onze. Effectief budget = BUDGET / factor. */
+// Meting 02-11: Cloudflare telt circa 1,06× onze teller; zie docs/ai-budget.md.
+export const STANDAARD_NEURON_FACTOR = 1.12;
+/** Veiligheidsfactor uit env NEURON_FACTOR (tussen 0,5 en 5). Effectief budget = BUDGET / factor. */
 export function neuronFactor(s?: string | number): number {
   const f = Number(s);
-  return Number.isFinite(f) && f > 0 ? Math.min(5, Math.max(0.5, f)) : 1;
+  return Number.isFinite(f) && f > 0 ? Math.min(5, Math.max(0.5, f)) : STANDAARD_NEURON_FACTOR;
 }
 export const TEKENS_PER_TOKEN = 3.5; // grove schatting als de respons geen usage meldt
 export const schatTokens = (s: string) => Math.ceil(s.length / TEKENS_PER_TOKEN);
