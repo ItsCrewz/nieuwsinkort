@@ -1,21 +1,21 @@
 // Replay #443: vergelijkt de samenvoeglogica van main (oud) met die van deze branch (nieuw) op bevroren data.json-bestanden.
 // Artikelen worden uit items[].bronnen (+ kop/cat) gereconstrueerd; feedtitels staan er niet in (ft) en worden dan uit de URL-slug benaderd.
-// Gebruik: node scripts/replay-443.mjs [rapport.md] — leest alleen lokale bestanden, geen netwerk, geen AI.
+// Gebruik: node scripts/replay-443.mjs <rapport.md> <data.json> [data.json…] — vergelijkt origin/main met de werkboom; leest alleen lokale bestanden, geen netwerk, geen AI.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { build } from "esbuild";
 
-const BESTANDEN = ["/workspace/logs/orch/live-data-440-na.json", "/workspace/logs/orch/leeg-run/pix/data-frozen.json", "/workspace/logs/orch/yt404/data-na.json"];
-const RAPPORT = process.argv[2] || "/workspace/logs/orch/onderhoud-0211/replay-443.md";
+const [RAPPORT, ...BESTANDEN] = process.argv.slice(2);
+if (!RAPPORT || !BESTANDEN.length) { console.error("Gebruik: node scripts/replay-443.mjs <rapport.md> <data.json> [data.json…]"); process.exit(1); }
 const root = new URL("..", import.meta.url).pathname;
 const tmp = mkdtempSync(join(tmpdir(), "replay443-"));
 
 // oude versie: worker/src en src van main uitpakken
 const oudDir = join(tmp, "oud");
 mkdirSync(oudDir);
-execFileSync("sh", ["-c", `git -C ${root} archive main worker/src src | tar -x -C ${oudDir}`]);
+execFileSync("sh", ["-c", `git -C ${root} archive origin/main worker/src src | tar -x -C ${oudDir}`]);
 const laad = async (dir, naam) => {
   const uit = join(tmp, `${naam}.mjs`);
   await build({ entryPoints: [join(dir, "worker/src/cluster.ts")], bundle: true, platform: "node", format: "esm", outfile: uit, logLevel: "error" });
@@ -50,7 +50,6 @@ for (const f of BESTANDEN) {
   const titel = (k) => k.c.map((c) => `${c.site}: ${c.t.slice(0, 70)}`).join("; ");
   for (const s of alleenOud) md += `- OUD (gesplitst/anders): ${titel(so.get(s))}\n`;
   for (const s of alleenNieuw) md += `- NIEUW: ${titel(sn.get(s))}\n`;
-  const dubbel = (m, cs) => cs.reduce((n, k) => n + k.c.length - nBron(m, k).length, 0);
   // uitgeverlinks per item: oude bronnenlijst (exacte site) en daarna de oude sportdubbel-samenvoeging
   const itemsBronnen = (m, cs) => cs.map((k) => ({ cat: k.cat, kop: items[k.c[0].item]?.kop, t: items[k.c[0].item]?.t, bronnen: nBron(m, k).map((c) => ({ site: c.site, href: c.href })) }));
   const sdo = oud.ontdubbelSport(itemsBronnen(oud, co)), sdn = nieuw.ontdubbelSport(itemsBronnen(nieuw, cn));

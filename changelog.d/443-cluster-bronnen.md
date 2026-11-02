@@ -1,1 +1,1 @@
-- Samengevoegde items tonen nog maar één bronlink per uitgever en koppelen geen artikelen over verschillende races (500 m / 1.500 m) meer (#443).
+- Samengevoegde items tonen nog maar één bronlink per uitgever en koppelen geen sportartikelen over verschillende races (500 m / 1.500 m) meer (#443).

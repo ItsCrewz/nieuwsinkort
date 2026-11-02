@@ -51,15 +51,24 @@ export function afstanden(kop: string): number[] | null {
   if (/\d[\d.,]{2,}/.test(rest)) return null;
   return [...new Set(uit)].sort((a, b) => a - b);
 }
-/** raceafstanden in een titel (≥100 m: "10 meter hoge golf" is geen race); leeg bij twijfel */
-const raceAfstanden = (t: string) => (afstanden(t) || []).filter((v) => v >= 100);
+/** bekende raceafstanden in meter (schaatsen, atletiek, zwemmen): alleen die tellen voor de afstandsregel */
+const RACE_M = new Set([100, 200, 400, 500, 800, 1000, 1500, 3000, 5000, 10000]);
+const METER = /(\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\b/gi;
+const SPORTWOORD = /\b(wint|won|winnaar|race|schaats\w*|wk|ek|record|baanrecord|goud|zilver|brons|medaille|sprint|finale|thialf|zwem\w*|hardloop\w*)\b/i;
+/** raceafstanden in een titel: alleen eenheid meter/m (geen km), alleen bekende afstanden en alleen mét een sportwoord ("bom binnen 300 meter" of "130 km" is geen race); leeg bij twijfel */
+const raceAfstanden = (t: string) => {
+  if (!SPORTWOORD.test(t) || afstanden(t) === null) return [];
+  return [...new Set([...t.matchAll(METER)].map((m) => Number(m[1].replace(/\./g, ""))).filter((v) => RACE_M.has(v)))];
+};
 /** twee titels met elk afstanden maar zonder één gedeelde afstand gaan over verschillende races (500 m ≠ 1.500 m) (#443) */
 const afstandBotst = (a?: number[], b?: number[]) => !!a?.length && !!b?.length && !a.some((x) => b.includes(x));
 
+/** sleutel die alleen een rubriekstaart en ".nl" weghaalt ("AD Formule 1" = "AD", "NU.nl Voetbal" = "NU.nl"); "The Verge" en "The Decoder" blijven verschillend (anders dan uitgever()) */
+const bronSleutel = (site: string) => site.trim().toLowerCase().replace(/\s+(voetbal|football|formule 1|f1|auto|sport)$/, "").replace(/\.nl$/, "");
 /** één bron per uitgever ("AD" = "AD Formule 1"): de eerste blijft, volgorde behouden (#443) */
 export function eenPerUitgever<T extends { site: string }>(bronnen: T[]): T[] {
   const gezien = new Set<string>();
-  return bronnen.filter((b) => { const u = uitgever(b.site); if (gezien.has(u)) return false; gezien.add(u); return true; });
+  return bronnen.filter((b) => { const u = bronSleutel(b.site); if (gezien.has(u)) return false; gezien.add(u); return true; });
 }
 
 export type Cand = { cat: string; site: string; href: string; t: string; s: string; d: number; img?: string };

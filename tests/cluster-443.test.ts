@@ -30,9 +30,25 @@ t("zonder afstanden of met een gedeelde afstand blijft samenvoegen werken", () =
   assert.equal(golf.length, 1); // kleine maten tellen niet als race
 });
 
+t("afstandsregel alleen voor sport: kilometers en meters zonder sportcontext blijven samen", () => {
+  const paren: [string, string][] = [
+    ["Kabinet verlaagt maximumsnelheid snelweg overdag terug naar 130 km", "Kabinet verlaagt maximumsnelheid snelweg overdag terug naar 120 km"],
+    ["Ruim 300 kilometer file door ongeluk op de A2 bij Utrecht", "Ruim 350 kilometer file door ongeluk op de A2 bij Utrecht"],
+    ["Bom gevonden in Haarlem, woningen binnen 300 meter ontruimd", "Bom gevonden in Haarlem, woningen binnen 500 meter ontruimd"],
+    ["Bom gevonden in Haarlem, woningen binnen 500 meter ontruimd", "Bom gevonden in Haarlem, woningen binnen 1000 meter ontruimd"],
+  ];
+  for (const [a, b] of paren) assert.equal(cluster([cand("NU.nl", a, 1), cand("AD", b, 2)]).length, 1, a);
+});
+
 t("eenPerUitgever: eerste per uitgever, 'AD Formule 1' = 'AD', volgorde stabiel", () => {
   const b = [{ site: "NU.nl", href: "1" }, { site: "AD Formule 1", href: "2" }, { site: "NU.nl Sport", href: "3" }, { site: "AD", href: "4" }, { site: "RTL Nieuws", href: "5" }];
   assert.deepEqual(eenPerUitgever(b).map((x) => x.href), ["1", "2", "5"]);
+});
+
+t("eenPerUitgever: verschillende uitgevers met hetzelfde eerste woord blijven staan", () => {
+  const b = ["The Verge", "The Decoder", "Google AI Blog", "Google DeepMind", "RTL Z", "RTL Boulevard", "RTL Nieuws", "Instagram NOS", "Instagram NU.nl", "Reddit r/Haarlem", "Reddit r/thenetherlands"].map((site, i) => ({ site, href: String(i) }));
+  assert.equal(eenPerUitgever(b).length, b.length);
+  assert.equal(eenPerUitgever([{ site: "NU.nl Voetbal" }, { site: "NU.nl" }, { site: "AD Formule 1" }, { site: "AD Auto" }]).length, 2);
 });
 
 t("ontdubbelSport: samengevoegd item heeft één link per uitgever", () => {
