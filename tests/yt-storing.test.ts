@@ -19,13 +19,35 @@ const haler = (status: number | "fout") => {
   return { haal, gehaald };
 };
 
-await t("canary 404: eerste YouTube-feed opgehaald, de rest overgeslagen", async () => {
+await t("beide kanaries 404: storing, rest overgeslagen", async () => {
   const h = haler(404);
   const r = await ytCanary(due, h.haal);
-  assert.deepEqual(h.gehaald, [yt("a").url]);
-  assert.deepEqual(r.storing, { status: 404, overgeslagen: 2 });
-  assert.deepEqual(r.overslaan.map((j) => j.url), [yt("b").url, yt("c").url]);
+  assert.deepEqual(h.gehaald, [yt("a").url, yt("b").url]);
+  assert.deepEqual(r.storing, { status: 404, overgeslagen: 1 });
+  assert.deepEqual(r.overslaan.map((j) => j.url), [yt("c").url]);
+  assert.deepEqual(r.canary.map((x) => x.url), [yt("a").url, yt("b").url]);
   assert.equal(r.rest.length, 0);
+});
+
+await t("eerste 404, tweede 200: geen storing, rest opgehaald, elk precies 1x", async () => {
+  const gehaald: string[] = [];
+  const haal = async (js: { url: string }[]): Promise<R[]> => js.map((j) => { gehaald.push(j.url); return { url: j.url, ok: j.url !== yt("a").url, status: j.url === yt("a").url ? 404 : 200 }; });
+  const r = await ytCanary(due, haal);
+  assert.equal(r.storing, null);
+  assert.equal(r.overslaan.length, 0);
+  assert.deepEqual(r.rest.map((j) => j.url), [yt("c").url]);
+  const rest = await haal(r.rest);
+  const alle = [...r.canary, ...rest].map((x) => x.url);
+  assert.deepEqual(alle.sort(), [yt("a").url, yt("b").url, yt("c").url].sort());
+  assert.equal(new Set(gehaald).size, gehaald.length);
+  assert.equal(gehaald.length, 3);
+});
+
+await t("één YouTube-job met 404: oude regel, storing zonder tweede kanarie", async () => {
+  const h = haler(404);
+  const r = await ytCanary([due[0], yt("a")], h.haal);
+  assert.deepEqual(h.gehaald, [yt("a").url]);
+  assert.equal(r.storing?.status, 404);
 });
 
 await t("canary 500/503 is een storing; netwerkfout/time-out (status 0) niet", async () => {
@@ -43,7 +65,7 @@ await t("canary 200: rest wordt opgehaald, kanarie niet dubbel, geen storing", a
   const h = haler(200);
   const r = await ytCanary(due, h.haal);
   assert.equal(r.storing, null);
-  assert.deepEqual(h.gehaald, [yt("a").url]);
+  assert.deepEqual(h.gehaald, [yt("a").url]); // gezonde eerste: tweede niet apart opgehaald
   assert.deepEqual(r.rest.map((j) => j.url), [yt("b").url, yt("c").url]);
   assert.equal(r.canary.length, 1);
   assert.equal(r.overslaan.length, 0);

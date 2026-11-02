@@ -13,17 +13,24 @@ export interface YtStoring { status: number; overgeslagen: number }
 export const ytStoringStatus = (r: ResLike) => !r.ok && (r.status === 404 || r.status >= 500);
 
 /**
- * Haalt de eerste YouTube-feed (kanarie) apart op. Antwoordt die met een storing, dan komen de andere YouTube-feeds van deze run in `overslaan` (geen verzoek);
- * anders blijven ze in `rest` en wordt de kanarie niet nog eens opgehaald (zijn antwoord zit in `canary`).
+ * Haalt de eerste YouTube-feed (kanarie) apart op. Pas als die een storing geeft, volgt een tweede kanarie (de volgende YouTube-feed), zodat één dood kanaal niet alles uitschakelt.
+ * Geven beide een storing, dan komen de andere YouTube-feeds van deze run in `overslaan` (geen verzoek); anders blijven ze in `rest`.
+ * Opgehaalde kanaries zitten in `canary` en worden niet nog eens opgehaald. Bij één YouTube-job beslist die alleen.
  */
 export async function ytCanary<J extends JobLike, R extends ResLike>(due: J[], haal: (js: J[]) => Promise<R[]>): Promise<{ canary: R[]; rest: J[]; overslaan: J[]; storing: YtStoring | null }> {
   const yt = due.filter((j) => j.kind === "feed" && isYtFeed(j.url));
   if (!yt.length) return { canary: [], rest: [], overslaan: [], storing: null };
-  const kanarie = yt[0], anderen = yt.slice(1);
-  let canary: R[];
-  try { canary = await haal([kanarie]); } catch { canary = [{ url: kanarie.url, ok: false, status: 0 } as R]; }
-  const r = canary.find((x) => x.url === kanarie.url) ?? ({ url: kanarie.url, ok: false, status: 0 } as R);
-  if (ytStoringStatus(r)) return { canary: canary.length ? canary : [r], rest: [], overslaan: anderen, storing: { status: r.status, overgeslagen: anderen.length } };
+  const proef = async (k: J) => {
+    let canary: R[];
+    try { canary = await haal([k]); } catch { canary = [{ url: k.url, ok: false, status: 0 } as R]; }
+    const r = canary.find((x) => x.url === k.url) ?? ({ url: k.url, ok: false, status: 0 } as R);
+    return { canary: canary.length ? canary : [r], r };
+  };
+  const p1 = await proef(yt[0]);
+  if (!ytStoringStatus(p1.r)) return { canary: p1.canary, rest: yt.slice(1), overslaan: [], storing: null };
+  if (yt.length < 2) return { canary: p1.canary, rest: [], overslaan: [], storing: { status: p1.r.status, overgeslagen: 0 } };
+  const p2 = await proef(yt[1]), canary = [...p1.canary, ...p2.canary], anderen = yt.slice(2);
+  if (ytStoringStatus(p2.r)) return { canary, rest: [], overslaan: anderen, storing: { status: p1.r.status, overgeslagen: anderen.length } };
   return { canary, rest: anderen, overslaan: [], storing: null };
 }
 
