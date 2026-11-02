@@ -1,5 +1,8 @@
 // Echte artikelen en gecachete uitleg uit de bevroren data van 2 november 2026.
 import assert from "node:assert/strict";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server.browser";
+import { DetailView } from "../../src/detail";
 import { readFileSync } from "node:fs";
 import { nieuweAlineas, nieuwePunten } from "../../src/dubbel";
 import { uitgebreidOntdubbeld } from "../../src/uitgebreid";
@@ -25,6 +28,8 @@ for (const woord of ["nu", "nog", "al", "pas", "weer", "niet meer", "nooit"]) {
 }
 
 for (const [eerste, tweede] of [
+  ["Importheffingen van de EU treffen de VS.", "Importheffingen van de VS treffen de EU."],
+  ["De VS en de EU steunen de VN.", "De VN steunt de VS en de EU."],
   ["Israël valt Iran aan.", "Iran valt Israël aan."],
   ["Israël en Amerika steunen Iran en Jordanië.", "Iran en Jordanië steunen Israël en Amerika."],
   ["De ploeg verslaat de tegenstander met 3 tegen 2.", "De ploeg verslaat de tegenstander met 2 tegen 3."],
@@ -37,3 +42,7 @@ for (const [eerste, tweede] of [
     assert.deepEqual(nieuweAlineas([bron], [bron]), []);
   }
 }
+
+const item = { ...JSON.parse(readFileSync("tests/fixtures/joey/delhaize.json", "utf8")).item, ai: "Importheffingen van de EU treffen de VS.", samenvatting: "", punten: ["Importheffingen van de VS treffen de EU."] };
+const html = renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false }));
+assert.ok(html.includes("Importheffingen van de VS treffen de EU."));

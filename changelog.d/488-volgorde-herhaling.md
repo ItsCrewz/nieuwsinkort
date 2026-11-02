@@ -1,1 +1,1 @@
-- Behoud punten en uitlegzinnen met een andere woordvolgorde, zoals een tegenaanval met omgekeerde rollen (#488).
+- Behoud punten en uitlegzinnen met een andere woordvolgorde, ook bij korte afkortingen zoals EU en VS (#488).

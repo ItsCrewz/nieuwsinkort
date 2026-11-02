@@ -9,6 +9,13 @@ export const MIN_NIEUWE_ZINNEN = 1;
 const STOP = new Set("een het van voor met bij naar door over uit aan ook dat die dit deze zijn was waren wordt worden werd heeft hebben had hij zij haar hun niet maar als dan nog wel per zal zou kan kunnen moet wil gaat er om te zo nu in op is de en of we je u ze zich ons onze veel meer ander andere".split(" "));
 const stam = (w: string) => (w.length >= 5 ? w.replace(/(en|e|s|n|t|d)$/, "") : w);
 
+// Korte namen en afkortingen tellen mee bij het vergelijken van de volgorde.
+function volgordewoorden(s: string): string[] {
+  const t = (s || "").normalize("NFD").replace(/\p{M}/gu, "").match(/\p{N}+(?:[.,]\p{N}+)*|\p{L}+/gu) || [];
+  return t.filter((w) => w.length >= 3 || /\d/.test(w) || (w.length >= 2 && /^\p{Lu}/u.test(w)))
+    .map((w) => w.replace(/[.,]/g, "").toLowerCase()).filter((w) => !STOP.has(w)).map(stam);
+}
+
 /** Inhoudswoorden (kleine letters, zonder accenten en lidwoorden/hulpwoorden, lichte stam); getallen met punt of komma blijven heel. */
 export function inhoudswoorden(s: string): string[] {
   const t = (s || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().match(/\p{N}+(?:[.,]\p{N}+)*|\p{L}+/gu) || [];
@@ -37,9 +44,9 @@ const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:niet|geen|
 function herhaling(tekst: string, bekend: string): boolean {
   return bekend.split(/\n/).flatMap(zinnen).some((bron) => {
     const a = bijzonder(tekst), b = bijzonder(bron);
-    const woorden = inhoudswoorden(tekst);
+    const woorden = volgordewoorden(tekst);
     let i = 0;
-    for (const woord of inhoudswoorden(bron)) if (woord === woorden[i]) i++;
+    for (const woord of volgordewoorden(bron)) if (woord === woorden[i]) i++;
     return [...a].every((x) => b.has(x)) && [...b].every((x) => a.has(x)) && !nieuwFeit(tekst, bron) && woorden.length > 0 && i === woorden.length;
   });
 }
