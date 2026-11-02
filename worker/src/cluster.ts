@@ -1,5 +1,6 @@
 // Clusteren van nieuwskandidaten uit feeds: pure module (geen Worker-API's), getest in tests/cluster.test.ts.
 // Conservatief: liever twee losse berichten dan twee verschillende verhalen samen.
+import { sportCat } from "./sportcat";
 
 export const STOP = new Set(("de het een en van in op te voor met is zijn er dat die bij uit aan om ook als naar over na door nog niet wel maar dan was wordt worden heeft hebben meer dit deze tot kan nu zo al wat hoe waar wie ze hij zij we je jij u the a an of to in on for with and is are was be at by from as it its this that after over new says will has have can how why what who "
   // hulpwerkwoorden: zeggen niets over het verhaal ("Kamer wil ..." / "Kamer wilt ...")
@@ -59,7 +60,7 @@ const UITSLAG = /\b(?:wint|won|winnaar|winnares|tijd|tijden|record|baanrecord|we
 const NAAST_AFSTAND = /\b(?:wint|won|winnaar|winnares|record|baanrecord|wereldrecord|goud|zilver|brons|medaille|race|sprint|finale)\s+(?:(?:de|het|op|van|over)\s+){0,2}(?:\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\b|\b(?:\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\s+(?:race|sprint|finale|record)\b/i;
 /** Alleen bekende meterafstanden met duidelijke wedstrijdcontext; bij twijfel geen afstandsregel. */
 const raceAfstanden = (t: string) => {
-  if (!(SPORTWOORD.test(t) && UITSLAG.test(t)) && !NAAST_AFSTAND.test(t) || afstanden(t) === null) return [];
+  if (/\b(?:diepte|diep)\b/i.test(t) || (!(SPORTWOORD.test(t) && UITSLAG.test(t)) && !NAAST_AFSTAND.test(t)) || afstanden(t) === null) return [];
   return [...new Set([...t.matchAll(METER)].map((m) => Number(m[1].replace(/\./g, ""))).filter((v) => RACE_M.has(v)))];
 };
 /** twee titels met elk afstanden maar zonder één gedeelde afstand gaan over verschillende races (500 m ≠ 1.500 m) (#443) */
@@ -168,7 +169,8 @@ export function cluster(cands: Cand[]): Cluster[] {
   const zeldzaam = (x: Set<string>) => new Set([...x].filter((w) => (df.get(w) || 0) <= NAAM_MAX));
   for (const [i, c] of sorted.entries()) {
     const tk = toks(c.t), ts = new Set([...tk, ...toks((c.s || "").slice(0, 300))]);
-    const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: uitgever(c.site), afst: c.cat === "sport" ? raceAfstanden(c.t) : [] };
+    const sport = c.cat === "sport" || sportCat({ cat: c.cat, kop: c.t, hrefs: [c.href], besch: c.s }) === "sport";
+    const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: uitgever(c.site), afst: sport ? raceAfstanden(c.t) : [] };
     // per lid vergelijken (max), niet met de unie: een groot cluster mag geen lagere Jaccard geven
     // de eigennamen-regel mag geen twee losse verhalen verbinden (een overzichtsbericht over twee wedstrijden is een brug): alleen als de geraakte clusters ook onderling bij elkaar horen
     // verschillende races (500 m / 1.500 m) horen nooit in één cluster, ook niet via een live-blog over beide als brug (#443)

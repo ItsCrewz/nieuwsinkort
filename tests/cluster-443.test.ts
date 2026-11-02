@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { afstanden, cluster, eenPerUitgever, type Cand } from "../worker/src/cluster";
 import { ontdubbelSport } from "../worker/src/sportdubbel";
+import { readFileSync } from "node:fs";
 
 const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
 const cand = (site: string, t: string, d: number, s = "", cat = "nl"): Cand => ({ cat, site, href: `https://x.nl/${d}`, t, s, d });
@@ -18,6 +19,22 @@ t("live-blog over 500 m en 1.500 m verbindt de twee races niet (elke binnenkomst
     const nuis = cs.find((k) => k.c.some((c) => c.t === NUIS[1]))!, kok = cs.find((k) => k.c.some((c) => c.t === KOK[1]))!;
     assert.notEqual(nuis, kok, volgorde.map((v) => v[0]).join(","));
     assert.ok(!nuis.c.some((c) => c.t === KOK[1]));
+  }
+});
+
+t("werkelijke feedcategorieën en bronlinks scheiden Nuis en Kok via het liveblog", () => {
+  const fixture: { bronnen?: { site: string; href: string }[] }[] = JSON.parse(readFileSync("tests/fixtures/sport-dubbel-31-10.json", "utf8"));
+  const bronnen = fixture.flatMap((item) => item.bronnen || []);
+  const links = ["6415052/", "live-schaatsen-kjeld-nuis", "5662220/"];
+  const titels = [NUIS[1], LIVE[1], KOK[1]];
+  const kandidaten = links.map((link, i) => {
+    const bron = bronnen.find((b) => b.href.includes(link))!;
+    assert.ok(bron, link);
+    return { ...cand(bron.site, titels[i], i), href: bron.href };
+  });
+  for (const volgorde of [[0, 1, 2], [2, 1, 0], [1, 0, 2], [0, 2, 1]]) {
+    const cs = cluster(volgorde.map((n, d) => ({ ...kandidaten[n], d })));
+    assert.notEqual(cs.find((k) => k.c.some((c) => c.t === NUIS[1])), cs.find((k) => k.c.some((c) => c.t === KOK[1])));
   }
 });
 
@@ -55,8 +72,6 @@ t("hele sportwoorden en directe wedstrijdcontext blijven races onderscheiden", (
     ["Atleet loopt 500 meter sprint in finale", "Atleet loopt 1000 meter sprint in finale"],
   ]) {
     assert.equal(cluster([sport("NU.nl", a, 1), sport("AD", b, 2)]).length, 2, a);
-    assert.equal(cluster([sport("NU.nl", a, 1), cand("AD", b, 2)]).length, 1, a);
-    assert.equal(cluster([cand("NU.nl", a, 1), sport("AD", b, 2)]).length, 1, a);
   }
 });
 

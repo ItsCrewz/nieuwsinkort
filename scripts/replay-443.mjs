@@ -30,7 +30,7 @@ const sig = (k) => k.c.map((c) => c.href).sort().join("|");
 const exactBron = (k) => [...new Map(k.c.map((c) => [c.site, c])).values()]; // zoals main in index.ts
 const nBron = (m, k) => (m.eenPerUitgever ? m.eenPerUitgever(k.c) : exactBron(k));
 
-let md = `# Replay #443 — oude (main) vs nieuwe samenvoeglogica\n\nGegenereerd door \`scripts/replay-443.mjs\`. Artikelen gereconstrueerd uit items[].bronnen (feedtitel \`ft\` indien aanwezig, anders URL-slug; beschrijving \`fd\`), clusterstap + bronnenlijst + sportdubbel. Zonder netwerk en zonder AI.\n\n**Beperking:** data.json bevat geen feedtitels (alleen URL-slugs, zonder hoofdletters) en de items zijn al samengevoegd; de reconstructie is dus een benadering. De opgeslagen itemrubriek wordt gebruikt als feedcategorie, maar kan daarvan afwijken. De afstandsregel is op echte feedtitels getest in tests/cluster-443.test.ts; hier is vooral te zien dat de nieuwe logica niets extra splitst en dat clusterkeys/-hashes gelijk blijven.\n`;
+let md = `# Replay #443 — oude (main) vs nieuwe samenvoeglogica\n\nGegenereerd door \`scripts/replay-443.mjs\`. Artikelen gereconstrueerd uit items[].bronnen (feedtitel \`ft\` indien aanwezig, anders URL-slug; beschrijving \`fd\`), clusterstap + bronnenlijst + sportdubbel. Zonder netwerk en zonder AI.\n\n**Beperking:** ontbrekende feedtitels worden benaderd uit URL-slugs en items zijn al samengevoegd. De opgeslagen itemrubriek wordt gebruikt als feedcategorie, maar kan daarvan afwijken. De regressietest gebruikt de oorspronkelijke feedcategorie en bronlinks met benaderde titels.\n`;
 for (const f of BESTANDEN) {
   md += `\n## ${f}\n\n`;
   if (!existsSync(f)) { md += "Bestand ontbreekt, overgeslagen.\n"; continue; }
