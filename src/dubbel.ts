@@ -33,7 +33,7 @@ function nieuwFeit(tekst: string, bekend: string): boolean {
   return tokens(tekst).some((w) => (/^\p{N}/u.test(w) || /^\p{Lu}/u.test(w)) && !bekende.has(w.toLocaleLowerCase("nl")));
 }
 // Vergelijk met één bronzin: ontkenningen en tijdsaanduidingen veranderen de betekenis.
-const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:niet|geen|nooit|morgen|vandaag|gisteren|overmorgen|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\d{1,2}:\d{2}/gu) || []));
+const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:niet|geen|nooit|nu|nog|al|pas|weer|morgen|vandaag|gisteren|overmorgen|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\d{1,2}:\d{2}/gu) || []));
 function herhaling(tekst: string, bekend: string): boolean {
   return bekend.split(/\n/).flatMap(zinnen).some((bron) => {
     const a = bijzonder(tekst), b = bijzonder(bron);

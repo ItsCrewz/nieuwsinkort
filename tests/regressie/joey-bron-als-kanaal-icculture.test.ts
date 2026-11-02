@@ -80,3 +80,14 @@ await t("uitzendingen en samengestelde bronnamen blijven intact", () => {
     assert.equal(stripBronvermelding(zin, ["NOS", "iCulture"]), zin);
   }
 });
+
+await t("meervouden en Unicode-koppeltekens blijven behouden", () => {
+  for (const woord of ["uitzendingen", "livestreams", "afleveringen", "programma's", "wedstrijden"]) {
+    const zin = `Het pakket met ${woord} komt beschikbaar via NOS`;
+    assert.equal(stripBronvermelding(zin, ["NOS"]), zin);
+  }
+  for (const koppelteken of ["-", "‐", "‑", "–", "—"]) {
+    const zin = `De set is te koop via iCulture${koppelteken}shop`;
+    assert.equal(stripBronvermelding(zin, ["iCulture"]), zin);
+  }
+});

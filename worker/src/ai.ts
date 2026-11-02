@@ -145,8 +145,7 @@ function leesSommen(txt: string, items: In[]): Map<number, Sum> {
         if (!/[\p{L}\p{N}]/u.test(schoon)) continue;
         const kandidaat = schoon.length > 90 ? schoon.slice(0, 90).replace(/\s+\S*$/, "") || schoon : schoon;
         const veilig = [schoon, kandidaat].every((kop) => {
-          const controle = controleerSom({ ...s, kop });
-          return controle.ok || !["kern gelijk aan kop", "kern voegt niets toe aan kop"].includes(controle.reden);
+          return controleerSom({ ...s, kop }).ok;
         });
         if (veilig) s.kop = kandidaat;
         break;

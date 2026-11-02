@@ -41,3 +41,7 @@ assert.equal(aantal, 1);
 const gelijk = await summarize(model as never, "test", [{ ...invoer[0], titels: [antwoord.ai] }], u);
 assert.equal(gelijk.get(1)?.kop, antwoord.kop);
 assert.equal(aantal, 2);
+
+const samenvattingGelijk = await summarize(model as never, "test", [{ ...invoer[0], titels: [antwoord.samenvatting] }], u);
+assert.equal(samenvattingGelijk.get(1)?.kop, antwoord.kop);
+assert.equal(aantal, 3, "kopcontrole veroorzaakt geen extra AI-aanroep");

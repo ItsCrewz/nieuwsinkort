@@ -14,3 +14,12 @@ assert.deepEqual(nieuweAlineas(["De verkoop start vandaag. Dit gebeurt in Haarle
 assert.deepEqual(nieuweAlineas(["De verkoop start vandaag.", "Dit gebeurt in Haarlem."], ["De verkoop start vandaag."]), ["De verkoop start vandaag.", "Dit gebeurt in Haarlem."]);
 assert.deepEqual(nieuwePunten(["De verkoop start op 18 februari 2027."], "De verkoop start in februari 2027.", ""), ["De verkoop start op 18 februari 2027."]);
 console.log("ok - unieke feiten en verwijszinnen blijven behouden");
+
+for (const woord of ["nu", "nog", "al", "pas", "weer", "niet meer", "nooit"]) {
+  const gewoon = "De verkoop start in Haarlem.";
+  const bijzonder = `De verkoop start ${woord} in Haarlem.`;
+  for (const [bron, nieuw] of [[gewoon, bijzonder], [bijzonder, gewoon]]) {
+    assert.deepEqual(nieuwePunten([nieuw], bron, ""), [nieuw], `${woord}: punt`);
+    assert.deepEqual(nieuweAlineas([nieuw], [bron]), [nieuw], `${woord}: uitleg`);
+  }
+}
