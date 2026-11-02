@@ -31,7 +31,7 @@ const { nieuwePunten } = await import("../../src/dubbel");
 const { uitgebreidOntdubbeld } = await import("../../src/uitgebreid");
 
 await t("twee echt nieuwe punten blijven staan", () => {
-  const item = { ...fx.item, punten: ["Delhaize is het moederbedrijf van Albert Heijn", "Slagerijen in België zijn ook geraakt"] };
+  const item = { ...fx.item, punten: ["Delhaize is het moederbedrijf van Albert Heijn", "De politie onderzoekt de aanval"] };
   assert.deepEqual(nieuwePunten(item.punten, item.ai, item.samenvatting), item.punten);
   assert.ok(html(item).includes('aria-label="Belangrijkste punten"'));
 });

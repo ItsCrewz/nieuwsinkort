@@ -1,0 +1,1 @@
+- Dubbele artikelinhoud verborgen en samenvattingen vermelden het kernfeit zonder de nieuwsbron als verkoopkanaal voor te stellen (#488).
