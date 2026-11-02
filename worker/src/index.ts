@@ -8,7 +8,7 @@ import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
-import { maakTel, voegTellerToe, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoud, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
+import { maakTel, voegTellerToe, legeRun, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoud, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
@@ -347,8 +347,11 @@ export class Runner extends DurableObject<Env> {
     try { res = await bewaakteRun(() => this.run(force, slot, tel, geplandTijd), opslag, tel.kv, kvBeleid); }
     finally { await geefSlot(opslag, nu).catch(() => console.error("run-slot vrijgeven mislukt")); }
     await telKvDag(this.ctx.storage, utcDag(Date.now()), tel.kvN()).catch(() => console.error("kv-dagteller opslaan mislukt"));
-    await voegTellerToe(this.ctx.storage, { at: new Date().toISOString(), soort: "run", kv: tel.kvN(), doWrites: tel.doN() }).catch(() => console.error("tellers opslaan mislukt"));
-    return res;
+    // lege succesrun zichtbaar maken (#478): alleen in het bestaande tellerregel-object, geen extra opslag-write
+    const uitkomst: any = await res.clone().json().catch(() => null), leeg = legeRun(uitkomst);
+    if (leeg) console.warn("LEGE RUN: success zonder effect");
+    await voegTellerToe(this.ctx.storage, { at: new Date().toISOString(), soort: "run", kv: tel.kvN(), doWrites: tel.doN(), ...(leeg ? { leeg: true as const } : {}) }).catch(() => console.error("tellers opslaan mislukt"));
+    return leeg ? Response.json({ ...uitkomst, leeg: true }, { status: res.status }) : res;
   }
 
   async alarm() {
@@ -1060,14 +1063,19 @@ async function toegelaten(req: Request, sleutel?: string): Promise<boolean> {
 export default {
   async scheduled(ev: ScheduledController, env: Env, _ctx: ExecutionContext) {
     const h = ams(ev.scheduledTime).h;
-    if (h < 6 || h > 23) return; // cron draait in UTC; dit houdt het op 06:00–23:00 Amsterdam (zomer- en wintertijd)
+    if (h < 6 || h > 23) { console.log(`skipped: buiten venster 06-23 Amsterdam (uur=${h})`); return; } // cron draait in UTC; dit houdt het op 06:00–23:00 Amsterdam (zomer- en wintertijd)
     const stub = env.RUNNER.get(env.RUNNER.idFromName("runner"));
     try {
       const r = await stub.fetch(`https://do/run?gepland=${ev.scheduledTime}`);
       const body = await r.text();
-      if (r.status === 409) console.log("run overgeslagen", body.slice(0, 200));
+      if (r.status === 409) console.log("skipped: vorige run nog bezig", body.slice(0, 200));
       else if (!r.ok) console.error("run mislukt", r.status, body.slice(0, 500));
-      else console.log(body.slice(0, 2000));
+      else {
+        let leeg = false;
+        try { leeg = JSON.parse(body).leeg === true; } catch { /* geen JSON */ }
+        if (leeg) console.warn("LEGE RUN: success zonder effect");
+        console.log(body.slice(0, 2000));
+      }
     } catch {
       console.error("run starten mislukt");
     }

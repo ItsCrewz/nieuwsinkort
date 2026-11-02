@@ -42,7 +42,9 @@ export function maakTel(kv: Kv, opslag: Opslag): Tel {
   return { kv: kvP, opslag: doP, kvN: () => kvN, kvSleutels: () => [...sleutels], doN: () => doN };
 }
 
-export interface TellerRegel { at: string; soort: "run" | "alarm"; kv: number; doWrites: number }
+export interface TellerRegel { at: string; soort: "run" | "alarm"; kv: number; doWrites: number; leeg?: true }
+/** Succesvolle run zonder effect (#478): geen feeds opgehaald, geen KV-writes, geen AI-aanroepen. Een run zonder nieuws haalt wel feeds op en telt dus niet. */
+export const legeRun = (r: { ok?: boolean; feeds?: number; kvWritesRun?: number; aiCalls?: number } | null | undefined): boolean => !!r && r.ok === true && r.feeds === 0 && r.kvWritesRun === 0 && r.aiCalls === 0;
 /** Laatste 48 regels; get en put volgen direct op elkaar (geen andere await ertussen), dus run en alarm overschrijven elkaar niet. */
 export async function voegTellerToe(opslag: Opslag, regel: TellerRegel) {
   const l: TellerRegel[] = (await opslag.get("tellers")) || [];
