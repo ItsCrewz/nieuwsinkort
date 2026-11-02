@@ -1,1 +1,1 @@
-- Samengevoegde items tonen één bronlink per uitgever en scheiden verschillende races zonder gewone afstandsberichten te splitsen (#443).
+- Samengevoegde items tonen één bronlink per uitgever en scheiden verschillende races uit sportfeeds zonder gewone afstandsberichten te splitsen (#443).

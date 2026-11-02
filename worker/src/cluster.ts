@@ -168,7 +168,7 @@ export function cluster(cands: Cand[]): Cluster[] {
   const zeldzaam = (x: Set<string>) => new Set([...x].filter((w) => (df.get(w) || 0) <= NAAM_MAX));
   for (const [i, c] of sorted.entries()) {
     const tk = toks(c.t), ts = new Set([...tk, ...toks((c.s || "").slice(0, 300))]);
-    const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: uitgever(c.site), afst: raceAfstanden(c.t) };
+    const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: uitgever(c.site), afst: c.cat === "sport" ? raceAfstanden(c.t) : [] };
     // per lid vergelijken (max), niet met de unie: een groot cluster mag geen lagere Jaccard geven
     // de eigennamen-regel mag geen twee losse verhalen verbinden (een overzichtsbericht over twee wedstrijden is een brug): alleen als de geraakte clusters ook onderling bij elkaar horen
     // verschillende races (500 m / 1.500 m) horen nooit in één cluster, ook niet via een live-blog over beide als brug (#443)

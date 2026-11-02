@@ -5,7 +5,8 @@ import { afstanden, cluster, eenPerUitgever, type Cand } from "../worker/src/clu
 import { ontdubbelSport } from "../worker/src/sportdubbel";
 
 const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
-const cand = (site: string, t: string, d: number, s = ""): Cand => ({ cat: "nl", site, href: `https://x.nl/${d}`, t, s, d });
+const cand = (site: string, t: string, d: number, s = "", cat = "nl"): Cand => ({ cat, site, href: `https://x.nl/${d}`, t, s, d });
+const sport = (site: string, t: string, d: number): Cand => cand(site, t, d, "", "sport");
 
 const NUIS = ["NU.nl", "Kjeld Nuis wint 1500 meter in Thialf na mislukte aanloop"] as const;
 const LIVE = ["Telegraaf", "Live schaatsen: Nuis wint 1500 meter in Thialf, Kok wint 500 meter in Thialf"] as const;
@@ -13,7 +14,7 @@ const KOK = ["RTL Nieuws", "Femke Kok wint 500 meter in Thialf nipt voor Duizend
 
 t("live-blog over 500 m en 1.500 m verbindt de twee races niet (elke binnenkomstvolgorde)", () => {
   for (const volgorde of [[NUIS, LIVE, KOK], [KOK, LIVE, NUIS], [LIVE, NUIS, KOK], [NUIS, KOK, LIVE]]) {
-    const cs = cluster(volgorde.map(([s, ti], i) => cand(s, ti, i)));
+    const cs = cluster(volgorde.map(([s, ti], i) => sport(s, ti, i)));
     const nuis = cs.find((k) => k.c.some((c) => c.t === NUIS[1]))!, kok = cs.find((k) => k.c.some((c) => c.t === KOK[1]))!;
     assert.notEqual(nuis, kok, volgorde.map((v) => v[0]).join(","));
     assert.ok(!nuis.c.some((c) => c.t === KOK[1]));
@@ -41,6 +42,7 @@ t("afstandsregel alleen voor sport: kilometers en meters zonder sportcontext bli
     ["Bom gevonden in Haarlem, racebaan binnen 500 meter ontruimd", "Bom gevonden in Haarlem, racebaan binnen 1000 meter ontruimd"],
     ["Goudprijs stijgt na vondst op 500 meter diepte in mijn", "Goudprijs stijgt na vondst op 1000 meter diepte in mijn"],
     ["Recordhoogte bereikt door golven van 500 meter bij eiland", "Recordhoogte bereikt door golven van 1000 meter bij eiland"],
+    ["Mijnwerkers vinden goud op 500 meter diepte in Zuid-Afrika", "Mijnwerkers vinden goud op 1000 meter diepte in Zuid-Afrika"],
   ];
   for (const [a, b] of paren) assert.equal(cluster([cand("NU.nl", a, 1), cand("AD", b, 2)]).length, 1, a);
 });
@@ -51,7 +53,15 @@ t("hele sportwoorden en directe wedstrijdcontext blijven races onderscheiden", (
     ["Schaatser wint de 500 meter in Heerenveen", "Schaatser wint de 1000 meter in Heerenveen"],
     ["Kok wint 500 meter in Thialf", "Kok wint 1000 meter in Thialf"],
     ["Atleet loopt 500 meter sprint in finale", "Atleet loopt 1000 meter sprint in finale"],
-  ]) assert.equal(cluster([cand("NU.nl", a, 1), cand("AD", b, 2)]).length, 2, a);
+  ]) {
+    assert.equal(cluster([sport("NU.nl", a, 1), sport("AD", b, 2)]).length, 2, a);
+    assert.equal(cluster([sport("NU.nl", a, 1), cand("AD", b, 2)]).length, 1, a);
+    assert.equal(cluster([cand("NU.nl", a, 1), sport("AD", b, 2)]).length, 1, a);
+  }
+});
+
+t("sportfeed zonder wedstrijdcontext splitst niet op afstand", () => {
+  assert.equal(cluster([sport("NU.nl", "Bom gevonden bij sporthal binnen 500 meter ontruimd", 1), sport("AD", "Bom gevonden bij sporthal binnen 1000 meter ontruimd", 2)]).length, 1);
 });
 
 t("eenPerUitgever: eerste per uitgever, 'AD Formule 1' = 'AD', volgorde stabiel", () => {
