@@ -57,6 +57,8 @@ const RACE_M = new Set([100, 200, 400, 500, 800, 1000, 1500, 3000, 5000, 10000])
 const METER = /(\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\b/gi;
 const SPORTWOORD = /\b(?:schaatsen|schaatser|schaatsers|schaatsster|schaatssters|schaatst|schaatswedstrijd|zwemmen|zwemmer|zwemmers|zwemster|zwemsters|zwemt|zwemwedstrijd|hardlopen|hardloper|hardlopers|hardloopster|hardloopwedstrijd|atletiek|thialf)\b/i;
 const UITSLAG = /\b(?:wint|won|winnaar|winnares|tijd|tijden|record|baanrecord|wereldrecord|goud|zilver|brons|medaille|medailles|race|sprint|finale|wk|ek)\b/i;
+const WEDSTRIJDCONTEXT = /\b(?:schaats(?:en|ers?|sters?|t|wedstrijd)|zwemm(?:en|ers?|sters?|t|wedstrijd)|atletiek|wk|ek|nk|olympisch\w*|finale|races?|wedstrijd\w*|kampioen\w*|medailles?|wereldbeker)\b/i;
+const GEEN_SPORT = /\b(?:mijn\w*|onder de grond|diep\w*|boring\w*|put(?:ten)?|tunnels?)\b/i;
 const NAAST_AFSTAND = /\b(?:wint|won|winnaar|winnares|record|baanrecord|wereldrecord|goud|zilver|brons|medaille|race|sprint|finale)\s+(?:(?:de|het|op|van|over)\s+){0,2}(?:\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\b|\b(?:\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\s+(?:race|sprint|finale|record)\b/i;
 /** Alleen bekende meterafstanden met duidelijke wedstrijdcontext; bij twijfel geen afstandsregel. */
 const raceAfstanden = (t: string) => {
@@ -169,7 +171,8 @@ export function cluster(cands: Cand[]): Cluster[] {
   const zeldzaam = (x: Set<string>) => new Set([...x].filter((w) => (df.get(w) || 0) <= NAAM_MAX));
   for (const [i, c] of sorted.entries()) {
     const tk = toks(c.t), ts = new Set([...tk, ...toks((c.s || "").slice(0, 300))]);
-    const sport = c.cat === "sport" || sportCat({ cat: c.cat, kop: c.t, hrefs: [c.href], besch: c.s }) === "sport";
+    const context = `${c.t} ${c.s || ""}`;
+    const sport = !GEEN_SPORT.test(context) && (c.cat === "sport" || sportCat({ cat: c.cat, kop: "", hrefs: [c.href] }) === "sport" || WEDSTRIJDCONTEXT.test(context));
     const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: uitgever(c.site), afst: sport ? raceAfstanden(c.t) : [] };
     // per lid vergelijken (max), niet met de unie: een groot cluster mag geen lagere Jaccard geven
     // de eigennamen-regel mag geen twee losse verhalen verbinden (een overzichtsbericht over twee wedstrijden is een brug): alleen als de geraakte clusters ook onderling bij elkaar horen

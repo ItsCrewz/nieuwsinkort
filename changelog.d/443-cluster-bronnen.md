@@ -1,1 +1,1 @@
-- Samengevoegde items tonen één bronlink per uitgever en scheiden verschillende sportwedstrijden ook bij algemene feedcategorieën zonder gewone afstandsberichten te splitsen (#443).
+- Samengevoegde items tonen één bronlink per uitgever en scheiden verschillende sportwedstrijden ook bij algemene feedcategorieën zonder gewone afstandsberichten zoals mijnvondsten te splitsen (#443).

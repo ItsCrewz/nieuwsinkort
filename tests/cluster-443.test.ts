@@ -59,6 +59,7 @@ t("afstandsregel alleen voor sport: kilometers en meters zonder sportcontext bli
     ["Bom gevonden in Haarlem, racebaan binnen 500 meter ontruimd", "Bom gevonden in Haarlem, racebaan binnen 1000 meter ontruimd"],
     ["Goudprijs stijgt na vondst op 500 meter diepte in mijn", "Goudprijs stijgt na vondst op 1000 meter diepte in mijn"],
     ["Recordhoogte bereikt door golven van 500 meter bij eiland", "Recordhoogte bereikt door golven van 1000 meter bij eiland"],
+    ["Mijnwerkers vinden goud op 500 meter onder de grond in Zuid-Afrika", "Mijnwerkers vinden goud op 1000 meter onder de grond in Zuid-Afrika"],
     ["Mijnwerkers vinden goud op 500 meter diepte in Zuid-Afrika", "Mijnwerkers vinden goud op 1000 meter diepte in Zuid-Afrika"],
   ];
   for (const [a, b] of paren) assert.equal(cluster([cand("NU.nl", a, 1), cand("AD", b, 2)]).length, 1, a);
@@ -77,6 +78,15 @@ t("hele sportwoorden en directe wedstrijdcontext blijven races onderscheiden", (
 
 t("sportfeed zonder wedstrijdcontext splitst niet op afstand", () => {
   assert.equal(cluster([sport("NU.nl", "Bom gevonden bij sporthal binnen 500 meter ontruimd", 1), sport("AD", "Bom gevonden bij sporthal binnen 1000 meter ontruimd", 2)]).length, 1);
+});
+
+t("wedstrijdcontext en uitsluiting gelden voor beide kandidaten", () => {
+  const a = "Schaatser wint goud op 500 meter in finale";
+  const b = "Schaatser wint goud op 1000 meter in finale";
+  assert.equal(cluster([cand("NU.nl", a, 1), cand("AD", b, 2)]).length, 2);
+  assert.equal(cluster([cand("NU.nl", a, 1), cand("AD", b, 2, "Een boring in de mijn")]).length, 1);
+  assert.equal(cluster([sport("NU.nl", "Mijnwerkers vinden goud op 500 meter onder de grond", 1), sport("AD", "Mijnwerkers vinden goud op 1000 meter onder de grond", 2)]).length, 1);
+  assert.equal(cluster([cand("NU.nl", "Winnaar vindt goud op 500 meter", 1), cand("AD", "Winnaar vindt goud op 1000 meter", 2)]).length, 1);
 });
 
 t("eenPerUitgever: eerste per uitgever, 'AD Formule 1' = 'AD', volgorde stabiel", () => {
