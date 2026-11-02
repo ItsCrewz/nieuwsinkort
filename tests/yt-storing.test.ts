@@ -28,13 +28,15 @@ await t("canary 404: eerste YouTube-feed opgehaald, de rest overgeslagen", async
   assert.equal(r.rest.length, 0);
 });
 
-await t("canary 500 en netwerkfout/time-out (status 0) zijn ook een storing", async () => {
+await t("canary 500/503 is een storing; netwerkfout/time-out (status 0) niet", async () => {
   assert.equal((await ytCanary(due, haler(500).haal)).storing?.status, 500);
   assert.equal((await ytCanary(due, haler(503).haal)).storing?.status, 503);
   const f = await ytCanary(due, haler("fout").haal);
-  assert.deepEqual(f.storing, { status: 0, overgeslagen: 2 });
+  assert.equal(f.storing, null);
+  assert.equal(f.overslaan.length, 0);
+  assert.deepEqual(f.rest.map((j) => j.url), [yt("b").url, yt("c").url]);
   const w = await ytCanary(due, async (js) => js.map((j) => ({ url: j.url, ok: false, status: 0 })));
-  assert.equal(w.storing?.status, 0);
+  assert.equal(w.storing, null);
 });
 
 await t("canary 200: rest wordt opgehaald, kanarie niet dubbel, geen storing", async () => {
@@ -45,6 +47,26 @@ await t("canary 200: rest wordt opgehaald, kanarie niet dubbel, geen storing", a
   assert.deepEqual(r.rest.map((j) => j.url), [yt("b").url, yt("c").url]);
   assert.equal(r.canary.length, 1);
   assert.equal(r.overslaan.length, 0);
+});
+
+await t("gezonde kanarie: elke YouTube-feed precies één keer opgehaald, niet-YouTube wacht niet op de kanarie", async () => {
+  const volgorde: string[] = [], gehaald: string[] = [];
+  let open!: () => void;
+  const poort = new Promise<void>((r) => { open = r; });
+  const haal = async (js: { url: string }[]): Promise<R[]> => {
+    for (const j of js) { volgorde.push(`start ${j.url}`); gehaald.push(j.url); }
+    if (js[0].url === yt("a").url) await poort; // trage kanarie
+    return js.map((j) => ({ url: j.url, ok: true, status: 200 }));
+  };
+  // zelfde samenstelling als worker/src/index.ts: niet-YouTube direct, YouTube-rest na de kanarie
+  const nietYt = due.filter((j) => !isYtFeed(j.url));
+  const haalNietYt = async () => { const r = await haal(nietYt); open(); return r; };
+  const haalYt = async () => { const yk = await ytCanary(due, haal); return [...yk.canary, ...(yk.rest.length ? await haal(yk.rest) : [])]; };
+  const [a, b] = await Promise.all([haalNietYt(), haalYt()]);
+  assert.ok(volgorde.indexOf("start https://nu.nl/rss") < volgorde.indexOf(`start ${yt("b").url}`));
+  assert.equal(gehaald.filter(isYtFeed).length, due.filter((j) => isYtFeed(j.url)).length);
+  assert.equal(new Set(gehaald).size, gehaald.length);
+  assert.equal(a.length + b.length, due.length);
 });
 
 await t("geen YouTube-feeds in deze run: geen kanarie, niets gehaald", async () => {
@@ -59,6 +81,8 @@ await t("alleen echte YouTube-kanaalfeeds tellen; 403/429 is geen storing", () =
   assert.ok(!isYtFeed("https://nu.nl/rss"));
   assert.equal(jobGroep(yt("a")), "zwaar");
   assert.ok(ytStoringStatus({ url: "", ok: false, status: 404 }));
+  assert.ok(ytStoringStatus({ url: "", ok: false, status: 500 }));
+  assert.ok(!ytStoringStatus({ url: "", ok: false, status: 0 }));
   assert.ok(!ytStoringStatus({ url: "", ok: false, status: 429 }));
   assert.ok(!ytStoringStatus({ url: "", ok: false, status: 403 }));
   assert.ok(!ytStoringStatus({ url: "", ok: true, status: 200 }));

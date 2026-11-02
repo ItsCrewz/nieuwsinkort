@@ -9,8 +9,8 @@ interface JobLike { url: string; kind: string }
 interface ResLike { url: string; ok: boolean; status: number }
 export interface YtStoring { status: number; overgeslagen: number }
 
-/** Storing = 404, 5xx of geen antwoord (netwerkfout/time-out, status 0); 403/429 blijft een gewone fout. */
-export const ytStoringStatus = (r: ResLike) => !r.ok && (r.status === 0 || r.status === 404 || r.status >= 500);
+/** Storing = 404 of 5xx; status 0 (netwerkfout/time-out) is één trage kanarie en geen storing, net als 403/429 een gewone fout. */
+export const ytStoringStatus = (r: ResLike) => !r.ok && (r.status === 404 || r.status >= 500);
 
 /**
  * Haalt de eerste YouTube-feed (kanarie) apart op. Antwoordt die met een storing, dan komen de andere YouTube-feeds van deze run in `overslaan` (geen verzoek);
