@@ -25,11 +25,11 @@ t("Nuis-item: bronnen uniek, meest complete eerst; Kok-item krijgt alleen eigen 
   const nuis = met(/Nuis/)[0];
   const hrefs = nuis.bronnen.map((b: any) => b.href);
   assert.equal(new Set(hrefs).size, hrefs.length);
-  // 8 unieke bronnen in de groep; plafond 6, bronnen van het meest complete item (4 bronnen, live-blogs) eerst
-  assert.equal(nuis.bronnen.length, 6);
-  assert.deepEqual(hrefs.slice(0, 4), items[5].bronnen.map((b: any) => b.href));
+  // 8 unieke links in de groep, maar één per uitgever (#443): NU.nl, RTL Nieuws, Telegraaf, AD; bronnen van het meest complete item eerst
+  assert.equal(nuis.bronnen.length, 4);
+  assert.deepEqual(hrefs, items[5].bronnen.map((b: any) => b.href));
   const kok = met(/Kok.*500/)[0];
-  assert.deepEqual(kok.bronnen.map((b: any) => b.site).sort(), ["NU.nl", "NU.nl", "NU.nl", "RTL Nieuws"]);
+  assert.deepEqual(kok.bronnen.map((b: any) => b.site).sort(), ["NU.nl", "RTL Nieuws"]);
   assert.equal(kok.t, 1793470037000); // nieuwste tijd van de groep
 });
 
