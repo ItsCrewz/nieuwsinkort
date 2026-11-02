@@ -1,0 +1,1 @@
+- Herkenbare AI-weigeringen verschijnen niet langer als nieuws; bij te weinig feedtekst blijft de kop zonder AI beschikbaar (#493).
