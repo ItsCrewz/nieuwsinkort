@@ -84,7 +84,7 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
     weg(r);
     let volgende: URL | null = null;
     try { if (loc) volgende = new URL(loc, doel); } catch { /* ongeldig */ }
-    if (!volgende || volgende.protocol !== "https:" || volgende.port || volgende.username || volgende.password || !beeldHostToegestaan(volgende.hostname) || !beeldPrefixToegestaan(volgende.hostname, volgende.pathname) || n === MAX_REDIRECTS) return fout(502);
+    if (!volgende || volgende.protocol !== "https:" || volgende.port || volgende.username || volgende.password || !beeldHostToegestaan(volgende.hostname) || !beeldPrefixToegestaan(volgende.hostname, volgende.pathname, volgende.search) || n === MAX_REDIRECTS) return fout(502);
     doel = volgende;
     r = null;
   }

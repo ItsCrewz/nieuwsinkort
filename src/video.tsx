@@ -8,6 +8,7 @@ import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
+import { ytOndertitelsBijBericht } from "./ytstart";
 
 // De volledige videofeed (spelers, hls.js-glue, debug-overlay) is een eigen chunk: pas laden op touch + videoroute.
 const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
@@ -91,6 +92,14 @@ export function VideoGrid({
   onCloseFeed: () => void;
 }) {
   const touch = useTouch();
+  useEffect(() => {
+    if (!video || !touch) return;
+    const onReady = (e: MessageEvent) => {
+      ytOndertitelsBijBericht(e, document.querySelectorAll<HTMLIFrameElement>(".feed iframe.f-yt"));
+    };
+    window.addEventListener("message", onReady);
+    return () => window.removeEventListener("message", onReady);
+  }, [video, touch]);
   const opgeslagen = useRef(leesFeed());
   const vast = useRef<Video[] | null>(null);
   if (!video) vast.current = null;
