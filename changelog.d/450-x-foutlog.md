@@ -1,0 +1,1 @@
+- Diagnose van mislukte X-accounts met foutredenen per ophaalroute toegevoegd (#450).

@@ -92,7 +92,7 @@ try {
     assert.equal(groepVan({ groep: "Politiek" }), "Politiek");
     assert.equal(heeftGroepen([{}, {}]), false);
     assert.equal(heeftGroepen([{}, { groep: "Sport" }]), true);
-    assert.deepEqual(sorteerOpGroep([{ id: 1 }, { id: 2 }]).map((x: any) => x.id), [1, 2], "oude data blijft in dezelfde volgorde");
+    assert.deepEqual(sorteerOpGroep<{ id: number; groep?: unknown }>([{ id: 1 }, { id: 2 }]).map((x: any) => x.id), [1, 2], "oude data blijft in dezelfde volgorde");
   });
 
   await t("terugval: sport- en showbizzkanalen vallen goed, onbekend = Nieuws, Politiek-hint", async () => {

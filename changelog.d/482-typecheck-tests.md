@@ -1,0 +1,1 @@
+- Typecontrole van tests hersteld en routecontrole voor Sport aangevuld (#482).
