@@ -1,0 +1,1 @@
+- Behoud punten en uitlegzinnen met een andere woordvolgorde, zoals een tegenaanval met omgekeerde rollen (#488).

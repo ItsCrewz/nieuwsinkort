@@ -23,3 +23,17 @@ for (const woord of ["nu", "nog", "al", "pas", "weer", "niet meer", "nooit"]) {
     assert.deepEqual(nieuweAlineas([nieuw], [bron]), [nieuw], `${woord}: uitleg`);
   }
 }
+
+for (const [eerste, tweede] of [
+  ["Israël valt Iran aan.", "Iran valt Israël aan."],
+  ["Israël en Amerika steunen Iran en Jordanië.", "Iran en Jordanië steunen Israël en Amerika."],
+  ["De ploeg verslaat de tegenstander met 3 tegen 2.", "De ploeg verslaat de tegenstander met 2 tegen 3."],
+]) {
+  for (const [bron, nieuw] of [[eerste, tweede], [tweede, eerste]]) {
+    assert.deepEqual(nieuwePunten([nieuw], bron, ""), [nieuw]);
+    assert.deepEqual(nieuwePunten([bron, nieuw], "", ""), [bron, nieuw]);
+    assert.deepEqual(nieuweAlineas([nieuw], [bron]), [nieuw]);
+    assert.deepEqual(nieuwePunten([bron], bron, ""), []);
+    assert.deepEqual(nieuweAlineas([bron], [bron]), []);
+  }
+}

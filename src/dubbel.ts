@@ -37,7 +37,10 @@ const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:niet|geen|
 function herhaling(tekst: string, bekend: string): boolean {
   return bekend.split(/\n/).flatMap(zinnen).some((bron) => {
     const a = bijzonder(tekst), b = bijzonder(bron);
-    return [...a].every((x) => b.has(x)) && [...b].every((x) => a.has(x)) && !nieuwFeit(tekst, bron) && dekking(tekst, bron) === 1;
+    const woorden = inhoudswoorden(tekst);
+    let i = 0;
+    for (const woord of inhoudswoorden(bron)) if (woord === woorden[i]) i++;
+    return [...a].every((x) => b.has(x)) && [...b].every((x) => a.has(x)) && !nieuwFeit(tekst, bron) && woorden.length > 0 && i === woorden.length;
   });
 }
 const verwijzing = /^["'‘“(]*\s*(?:die|dit|deze|dat|hij|zij|ze|het|hun|haar|zijn|hem)\b/iu;

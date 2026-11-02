@@ -55,3 +55,11 @@ await t("tijd en ontkenning blijven behouden in punten en zinnen", () => {
     assert.deepEqual(uitgebreidOntdubbeld({ ...fx.item, ai: bron, samenvatting: "", punten: [] }, { uitleg: [nieuw] }).uitgebreid, [nieuw]);
   }
 });
+
+await t("DetailView toont ook een tegenaanval met omgekeerde rollen", () => {
+  const item = { ...fx.item, ai: "Israël valt Iran aan.", samenvatting: "", punten: ["Iran valt Israël aan."] };
+  const h = html(item);
+  assert.ok(h.includes("Israël valt Iran aan."));
+  assert.ok(h.includes("Iran valt Israël aan."));
+  assert.ok(h.includes('aria-label="Belangrijkste punten"'));
+});
