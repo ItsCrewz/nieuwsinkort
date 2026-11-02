@@ -97,15 +97,25 @@ await t("dagteller van de state: loopt door over de Amsterdamse datumgrens, rese
   assert.deepEqual([st.neurons, st.calls, st.neuronDag], [0, 0, "2026-10-31"]);
   assert.equal(quotaSleutel("2026-10-30"), "ai-quota:2026-10-30");
 });
-await t("NEURON_FACTOR: standaard 1, ongeldig valt terug op 1, begrensd tussen 0,5 en 5", () => {
-  assert.equal(neuronFactor(undefined), 1);
-  assert.equal(neuronFactor(""), 1);
-  assert.equal(neuronFactor("abc"), 1);
-  assert.equal(neuronFactor("-2"), 1);
+await t("NEURON_FACTOR: standaard 1,12, ongeldig valt terug op 1,12, begrensd tussen 0,5 en 5", () => {
+  assert.equal(neuronFactor(undefined), 1.12);
+  assert.equal(neuronFactor(""), 1.12);
+  assert.equal(neuronFactor("abc"), 1.12);
+  assert.equal(neuronFactor("-2"), 1.12);
   assert.equal(neuronFactor("1.25"), 1.25);
   assert.equal(neuronFactor("100"), 5);
   assert.equal(neuronFactor("0.1"), 0.5);
   assert.equal(9000 / neuronFactor("1.5"), 6000, "effectief budget = BUDGET / factor");
+});
+
+await t("regressie #497: standaardplafond volgt de Cloudflare-meting en env 1 wint", () => {
+  const factor = neuronFactor();
+  const plafond = 9000 / factor;
+  assert.equal(factor, 1.12);
+  assert.ok(plafond > 8035 && plafond < 8036);
+  assert.ok(plafond * 1.06 > 8517 && plafond * 1.06 < 8520);
+  assert.equal(neuronFactor("1"), 1);
+  assert.equal(9000 / neuronFactor("1"), 9000);
 });
 
 // ---- /samenvatting: fouten van Workers AI (mock-KV, mock-AI, geen netwerk)
@@ -126,6 +136,11 @@ function sv(aiFoutMsg: string, extra: Record<string, string> = {}) {
 const echteFetch = globalThis.fetch;
 globalThis.fetch = (async () => new Response(new Uint8Array(2e6), { status: 200 })) as any;
 try {
+  await t("samenvatting: rond 8036 eigen neuronen stopt AI zonder env-factor", async () => {
+    const a = sv("nooit", { state: JSON.stringify({ neuronDag: utcDag(), neurons: 8036 }) });
+    assert.equal(((await (await a.post()).json()) as any).code, "budget");
+    assert.equal(a.calls(), 0);
+  });
   await t("samenvatting: echte dagquota-fout zet de KV-vlag ai-quota en geeft de budgetmelding", async () => {
     const a = sv(DAG_FOUT);
     const j: any = await (await a.post()).json();

@@ -23,7 +23,7 @@ De teller (`state.neurons`, `vid-neurons:<dag>`, de dagsleutels van de `Budget`-
 
 ## Veiligheidsfactor
 
-Env `NEURON_FACTOR` (optioneel, standaard 1, begrensd op 0,5–5; niet in `wrangler.toml`) deelt het budget: effectief budget = `BUDGET / NEURON_FACTOR`. Met 1,25 stopt AI bij 7200 eigen neuronen in plaats van 9000. De factor geldt in de Worker (run en alarm) en in `functions/samenvatting.ts`. Instellen kan alleen door Joey (dashboard of `wrangler secret`/vars); dat valt onder de deploygoedkeuring.
+Env `NEURON_FACTOR` (optioneel, standaard 1,12, begrensd op 0,5–5; niet in `wrangler.toml`) deelt het budget: effectief budget = `BUDGET / NEURON_FACTOR`. Standaard stopt AI bij circa 8036 eigen neuronen; met 1 als expliciete waarde bij 9000. De meting van 02-11 gaf 5424,5 neuronen bij Cloudflare tegenover 5116 intern (1,06×); per nieuwsrun waren de tellers gelijk. Het verschil komt uit video/Whisper en lokale wrangler-dev-harnassen. Bij dezelfde verhouding komt 8036 intern overeen met circa 8520 bij Cloudflare; lopende aanroepen kunnen het totaal nog verhogen. De factor geldt in de Worker (run en alarm) en in `functions/samenvatting.ts`. Instellen kan alleen door Joey (dashboard of `wrangler secret`/vars); dat valt onder de deploygoedkeuring.
 
 ## Quotafout herkennen
 
