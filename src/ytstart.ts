@@ -1,8 +1,21 @@
 export type YtStart = { actief: boolean; gepauzeerd: boolean; klaar: boolean; status: number | null; pogingen: number; sinds: number; nu: number; gespeeld?: boolean; fout?: boolean };
 
 export function ytEmbedUrl(id: string, actief: boolean, origin: string): string {
-  const params = new URLSearchParams({ autoplay: actief ? "1" : "0", mute: "1", playsinline: "1", enablejsapi: "1", controls: "1", rel: "0", modestbranding: "1", iv_load_policy: "3", loop: "1", playlist: id, origin });
+  const params = new URLSearchParams({ autoplay: actief ? "1" : "0", cc_load_policy: "0", mute: "1", playsinline: "1", enablejsapi: "1", controls: "1", rel: "0", modestbranding: "1", iv_load_policy: "3", loop: "1", playlist: id, origin });
   return `https://www.youtube-nocookie.com/embed/${id}?${params}`;
+}
+
+// Alleen een onReady van een eigen YouTube-frame krijgt de opdracht.
+export function ytOndertitelsBijBericht(e: MessageEvent, frames: Iterable<HTMLIFrameElement>): void {
+  if (e.origin !== "https://www.youtube-nocookie.com") return;
+  let bericht: { event?: string };
+  try { bericht = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch { return; }
+  if (bericht?.event !== "onReady") return;
+  for (const frame of frames) {
+    if (frame.contentWindow === e.source && frame.contentWindow) {
+      frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "unloadModule", args: ["captions"] }), "https://www.youtube-nocookie.com");
+    }
+  }
 }
 
 export function ytToonHint(s: YtStart): boolean {

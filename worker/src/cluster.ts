@@ -1,5 +1,6 @@
 // Clusteren van nieuwskandidaten uit feeds: pure module (geen Worker-API's), getest in tests/cluster.test.ts.
 // Conservatief: liever twee losse berichten dan twee verschillende verhalen samen.
+import { sportCat } from "./sportcat";
 
 export const STOP = new Set(("de het een en van in op te voor met is zijn er dat die bij uit aan om ook als naar over na door nog niet wel maar dan was wordt worden heeft hebben meer dit deze tot kan nu zo al wat hoe waar wie ze hij zij we je jij u the a an of to in on for with and is are was be at by from as it its this that after over new says will has have can how why what who "
   // hulpwerkwoorden: zeggen niets over het verhaal ("Kamer wil ..." / "Kamer wilt ...")
@@ -42,9 +43,42 @@ export const toks = (s: string) => {
 export function sim(a: Set<string>, b: Set<string>) { let n = 0; for (const x of a) if (b.has(x)) n++; return { n, j: n / (a.size + b.size - n || 1) }; }
 export const normLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
 
+const AFSTAND = /(\d{1,2}(?:\.\d{3})+|\d+)\s?(km|kilometer|m|meter)\b/gi;
+
+/** afstanden in meter ("1.500 meter" = "1500 m" = 1500); null bij een getal zonder eenheid van 3+ cijfers (twijfel) */
+export function afstanden(kop: string): number[] | null {
+  const uit: number[] = [];
+  const rest = kop.replace(AFSTAND, (_, g: string, e: string) => { const v = Number(g.replace(/\./g, "")); uit.push(/^k/i.test(e) ? v * 1000 : v); return " "; });
+  if (/\d[\d.,]{2,}/.test(rest)) return null;
+  return [...new Set(uit)].sort((a, b) => a - b);
+}
+/** bekende raceafstanden in meter (schaatsen, atletiek, zwemmen): alleen die tellen voor de afstandsregel */
+const RACE_M = new Set([100, 200, 400, 500, 800, 1000, 1500, 3000, 5000, 10000]);
+const METER = /(\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\b/gi;
+const SPORTWOORD = /\b(?:schaatsen|schaatser|schaatsers|schaatsster|schaatssters|schaatst|schaatswedstrijd|zwemmen|zwemmer|zwemmers|zwemster|zwemsters|zwemt|zwemwedstrijd|hardlopen|hardloper|hardlopers|hardloopster|hardloopwedstrijd|atletiek|thialf)\b/i;
+const UITSLAG = /\b(?:wint|won|winnaar|winnares|tijd|tijden|record|baanrecord|wereldrecord|goud|zilver|brons|medaille|medailles|race|sprint|finale|wk|ek)\b/i;
+const WEDSTRIJDCONTEXT = /\b(?:schaats(?:en|ers?|sters?|t|wedstrijd)|zwemm(?:en|ers?|sters?|t|wedstrijd)|atletiek|wk|ek|nk|olympisch\w*|finale|races?|wedstrijd\w*|kampioen\w*|medailles?|wereldbeker)\b/i;
+const GEEN_SPORT = /\b(?:mijn\w*|onder de grond|diep\w*|boring\w*|put(?:ten)?|tunnels?)\b/i;
+const NAAST_AFSTAND = /\b(?:wint|won|winnaar|winnares|record|baanrecord|wereldrecord|goud|zilver|brons|medaille|race|sprint|finale)\s+(?:(?:de|het|op|van|over)\s+){0,2}(?:\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\b|\b(?:\d{1,2}(?:\.\d{3})+|\d+)\s?(?:meter|m)\s+(?:race|sprint|finale|record)\b/i;
+/** Alleen bekende meterafstanden met duidelijke wedstrijdcontext; bij twijfel geen afstandsregel. */
+const raceAfstanden = (t: string) => {
+  if (/\b(?:diepte|diep)\b/i.test(t) || (!(SPORTWOORD.test(t) && UITSLAG.test(t)) && !NAAST_AFSTAND.test(t)) || afstanden(t) === null) return [];
+  return [...new Set([...t.matchAll(METER)].map((m) => Number(m[1].replace(/\./g, ""))).filter((v) => RACE_M.has(v)))];
+};
+/** twee titels met elk afstanden maar zonder één gedeelde afstand gaan over verschillende races (500 m ≠ 1.500 m) (#443) */
+const afstandBotst = (a?: number[], b?: number[]) => !!a?.length && !!b?.length && !a.some((x) => b.includes(x));
+
+/** sleutel die alleen een rubriekstaart en ".nl" weghaalt ("AD Formule 1" = "AD", "NU.nl Voetbal" = "NU.nl"); "The Verge" en "The Decoder" blijven verschillend (anders dan uitgever()) */
+const bronSleutel = (site: string) => site.trim().toLowerCase().replace(/\s+(voetbal|football|formule 1|f1|auto|sport)$/, "").replace(/\.nl$/, "");
+/** één bron per uitgever ("AD" = "AD Formule 1"): de eerste blijft, volgorde behouden (#443) */
+export function eenPerUitgever<T extends { site: string }>(bronnen: T[]): T[] {
+  const gezien = new Set<string>();
+  return bronnen.filter((b) => { const u = bronSleutel(b.site); if (gezien.has(u)) return false; gezien.add(u); return true; });
+}
+
 export type Cand = { cat: string; site: string; href: string; t: string; s: string; d: number; img?: string };
 /** tok/tokS: titeltokens resp. titel + begin van de beschrijving (alleen extra bewijs); nmT/nm: eigennamen (hoofdletter midden in de zin) in de titel resp. titel + beschrijving */
-export type Lid = { tok: Set<string>; tokS: Set<string>; nmT?: Set<string>; nm?: Set<string>; site?: string };
+export type Lid = { tok: Set<string>; tokS: Set<string>; nmT?: Set<string>; nm?: Set<string>; site?: string; afst?: number[] };
 /** tok/tokS hier zijn de unie van de leden (voor covered() in index.ts); vergelijken gebeurt per lid in `leden` */
 export type Cluster = { key: string; cat: string; c: Cand[]; tok: Set<string>; tokS: Set<string>; leden: Lid[]; kern?: Set<string> };
 /** uitgever zonder rubriek- of .nl-staart: "NU.nl Voetbal" = "NU.nl", "AD Voetbal" = "AD" */
@@ -137,19 +171,26 @@ export function cluster(cands: Cand[]): Cluster[] {
   const zeldzaam = (x: Set<string>) => new Set([...x].filter((w) => (df.get(w) || 0) <= NAAM_MAX));
   for (const [i, c] of sorted.entries()) {
     const tk = toks(c.t), ts = new Set([...tk, ...toks((c.s || "").slice(0, 300))]);
-    const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: uitgever(c.site) };
+    const context = `${c.t} ${c.s || ""}`;
+    const sport = !GEEN_SPORT.test(context) && (c.cat === "sport" || sportCat({ cat: c.cat, kop: "", hrefs: [c.href] }) === "sport" || WEDSTRIJDCONTEXT.test(context));
+    const lid: Lid = { tok: tk, tokS: ts, nmT: zeldzaam(namenVan[i].nmT), nm: zeldzaam(namenVan[i].nm), site: uitgever(c.site), afst: sport ? raceAfstanden(c.t) : [] };
     // per lid vergelijken (max), niet met de unie: een groot cluster mag geen lagere Jaccard geven
     // de eigennamen-regel mag geen twee losse verhalen verbinden (een overzichtsbericht over twee wedstrijden is een brug): alleen als de geraakte clusters ook onderling bij elkaar horen
-    let raak = out.filter((k) => k.leden.some((l) => gelijk(lid, l, false) > 0));
+    // verschillende races (500 m / 1.500 m) horen nooit in één cluster, ook niet via een live-blog over beide als brug (#443)
+    const pas = (k: Cluster) => !k.leden.some((l) => afstandBotst(lid.afst, l.afst));
+    let raak = out.filter((k) => pas(k) && k.leden.some((l) => gelijk(lid, l, false) > 0));
     let nieuweKern: string[] = [];
     // goedkope voorcheck: de naamregel eist ≥2 eigennamen en ≥1 naam in de titel
     if (!raak.length && lid.nm!.size >= 2 && lid.nmT!.size > 0) {
-      const nr = naamClusters(lid, out);
+      const nr = naamClusters(lid, out.filter(pas));
       if (nr.length && hangtSamen(nr.map((x) => x.k))) { raak = nr.map((x) => x.k); nieuweKern = nr.flatMap((x) => x.gedeeld); }
     }
     if (!raak.length) { out.push({ key: normLink(c.href), cat: c.cat, c: [c], tok: new Set(tk), tokS: new Set(ts), leden: [lid] }); continue; }
     // past de kandidaat bij meer clusters, dan horen die bij hetzelfde verhaal: samenvoegen in het oudste
-    const [k, ...rest] = raak;
+    // (clusters die onderling over verschillende races gaan blijven los)
+    const [k, ...kand] = raak;
+    const rest: Cluster[] = [];
+    for (const r of kand) if (!r.leden.some((x) => k.leden.concat(...rest.map((y) => y.leden)).some((y) => afstandBotst(x.afst, y.afst)))) rest.push(r);
     for (const r of rest) { k.c.push(...r.c); k.leden.push(...r.leden); for (const x of r.tok) k.tok.add(x); for (const x of r.tokS) k.tokS.add(x); for (const x of r.kern || []) (k.kern ||= new Set()).add(x); }
     if (rest.length) out = out.filter((x) => !rest.includes(x));
     if (nieuweKern.length) { k.kern ||= new Set(); for (const x of nieuweKern) k.kern.add(x); }
