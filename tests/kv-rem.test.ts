@@ -25,7 +25,7 @@ function nepOpslag() {
   let alarm: number | null = null;
   return { m, get: async (k: string) => (m.has(k) ? structuredClone(m.get(k)) : undefined), put: async (k: any, v?: unknown) => { if (typeof k === "string") m.set(k, structuredClone(v)); else for (const [a, b] of Object.entries(k)) m.set(a, structuredClone(b)); }, delete: async (k: string) => { m.delete(k); }, getAlarm: async () => alarm, setAlarm: async (a: number) => { alarm = a; } };
 }
-const e = (slug: string, titel: string, min: number) => ({ t: titel, l: `https://nu.test/binnenland/${slug}`, s: "", d: T0 + min * MIN });
+const e = (slug: string, titel: string, min: number) => ({ t: titel, l: `https://nu.test/binnenland/${slug}`, s: "De betrokkenen geven vandaag meer uitleg over het onderwerp en verwachten binnenkort verdere ontwikkelingen.", d: T0 + min * MIN });
 const bronnen = { groepen: [{ id: "nl", bronnen: [{ id: "nu", naam: "NU.nl", feeds: [{ url: "https://nu.test/rss" }] }] }] };
 const TITELS = ["Kabinet praat over begroting", "Brand verwoest loods Rotterdam", "Voetbalclub wint bekerfinale Ajax", "Storm trekt over Noordzee kust", "Rechter veroordeelt oplichter ziekenhuis", "Nieuwe museum opent Amsterdam deuren", "Spoorstaking legt treinverkeer plat", "Onderzoek toont zorgen over huizenprijzen", "Wetenschappers ontdekken nieuwe planeet", "Politie arresteert verdachte inbraak Utrecht", "Boeren demonstreren tegen stikstofplannen", "Schaatser breekt wereldrecord Heerenveen", "Staking luchthaven Schiphol bagagepersoneel"];
 const YT = Object.values(YT_NIEUWS).map((c) => ytUrl(c));
