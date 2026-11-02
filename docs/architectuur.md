@@ -348,3 +348,5 @@ Rubriek Sport (#435): alle sport buiten Voetbal, Formule 1 en Auto (darts, schaa
 ### Bronkwaliteit en AI-weigeringen (#493)
 
 De uur-Worker stuurt alleen nieuwsclusters met voldoende aanvullende feedtekst naar de AI; bij een losse of herhaalde titel volgt de bestaande extractieve terugval zonder AI-aanroep. De hoofdsamenvatting ontvangt feedtitels en -beschrijvingen, geen artikeltekst: artikel- en Jina-extractie volgen pas daarna voor ‘Lees verder’. Een deterministisch filter weert herkenbare meta-weigeringen in kop, kern, samenvatting en punten, ook bij hergebruikte sommen en bij de samenvoeging met routine- en oude uurdata. Een weigering wordt niet opnieuw aan de AI aangeboden. Verwijdering verandert de inhoud alleen wanneer een bericht daadwerkelijk verdwijnt; bestaande publicatie- en KV-hartslagregels blijven gelden.
+
+Het filter vereist expliciete context over de brontekst of het samenvatten. Een kop die met ‘geen nieuws’ begint of een geciteerde weigering van een persoon is op zichzelf geen afwijsgrond. Bij twijfel blijft het bericht behouden; de herkenning is bewust niet volledig.
