@@ -51,3 +51,24 @@ export function zuiverSom<T extends SomIn>(som: T | null | undefined): T | null 
   const c = controleerSom(som);
   return c.ok ? { ...som, punten: c.som.punten } : null;
 }
+
+/** Kerngetallen van een brontekst (#488): de eerste twee verschillende getallen (≥ 2 cijfers, geen jaartal) uit de eerste vier zinnen, zonder punt/komma erin ("4.900" → "4900"). */
+export function kernGetallen(brontekst: string): string[] {
+  const zinnen = (brontekst || "").split(/(?<=[.!?])\s+(?=[\p{Lu}\p{N}"'‘“(])/u).slice(0, 4).join(" ");
+  const uit: string[] = [];
+  for (const m of zinnen.matchAll(/\d+(?:[.,]\d+)*/g)) {
+    const g = m[0].replace(/[.,]/g, "");
+    if (g.length < 2 || (g.length === 4 && /^(19|20)/.test(g) && g === m[0]) || uit.includes(g)) continue;
+    uit.push(g);
+    if (uit.length === 2) break;
+  }
+  return uit;
+}
+
+/** Kernfeit ontbreekt (#488): de bron noemt een duidelijk getal vooraan, maar geen van die getallen staat in ai of samenvatting. Alleen een controle (geen afkeuring, geen extra AI). */
+export function kernfeitOntbreekt(som: Pick<SomIn, "ai" | "samenvatting">, brontekst: string): boolean {
+  const g = kernGetallen(brontekst);
+  if (!g.length) return false;
+  const tekst = `${som.ai || ""} ${som.samenvatting || ""}`.replace(/(\d)[.,](?=\d)/g, "$1");
+  return !g.some((x) => new RegExp(`(?<!\\d)${x}(?!\\d)`).test(tekst));
+}
