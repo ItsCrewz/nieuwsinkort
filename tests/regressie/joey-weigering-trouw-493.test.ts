@@ -20,6 +20,19 @@ for (const zin of ["Ik kan dit artikel niet samenvatten omdat de brontekst ontbr
   assert.equal(isWeigering(volledig), true, zin);
   assert.equal(zuiverSom(volledig), null, zin);
 }
+for (const zin of ["Ik kan dit niet samenvatten.", "Ik kan dit bericht niet samenvatten.", "Ik kan geen samenvatting geven.", "Er is geen inhoud beschikbaar.", "Er is geen brontekst beschikbaar.", "De tekst bevat geen informatie.", "Geen informatie beschikbaar", "I cannot summarize this article.", "No content available", "As an AI I cannot answer."]) {
+  for (const veld of ["ai", "samenvatting", "punten"] as const) {
+    const volledig = { kop: "Gemeente presenteert nieuwe plannen voor het centrum", ai: "Het stadsbestuur bespreekt de plannen tijdens een openbare vergadering.", samenvatting: "De gemeenteraad bespreekt binnenkort de gevolgen voor bewoners en ondernemers.", punten: [] as string[], [veld]: veld === "punten" ? [zin] : zin };
+    assert.equal(isWeigering(volledig), true, `${veld}: ${zin}`);
+    assert.equal(zuiverSom(volledig), null, `${veld}: ${zin}`);
+  }
+}
+for (const zin of ["Minister: “Ik kan geen samenvatting geven van het vertrouwelijke overleg”", "Volgens de politie is er geen informatie beschikbaar over dit onderwerp.", "Er is geen inhoud beschikbaar, zegt de minister.", "'Ik kan dit niet samenvatten', meldt de woordvoerder."]) {
+  const volledig = { kop: "Overleg over vertrouwelijke stukken", ai: zin, samenvatting: "De betrokken partijen bespreken de situatie tijdens een besloten overleg.", punten: [] };
+  assert.equal(isWeigering(volledig), false, zin);
+  assert.notEqual(zuiverSom(volledig), null, zin);
+}
+assert.equal(isWeigering({ kop: "Ik kan dit niet samenvatten", ai: "De gemeente licht haar plannen toe." }), false);
 assert.equal(isWeigering({ kop: "Nieuws", punten: ["Er is geen informatie beschikbaar over dit onderwerp."] }), true);
 assert.equal(bruikbareInvoer([{ t: "Het colofon van Trouw", s: "" }]), false);
 assert.equal(bruikbareInvoer([{ t: "Het colofon van Trouw", s: "Het colofon van Trouw" }]), false);

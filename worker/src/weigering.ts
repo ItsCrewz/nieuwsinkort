@@ -2,12 +2,17 @@
 import { schoon } from "./extractief";
 
 export function weigerzin(tekst: string): boolean {
-  const s = (tekst || "").replace(/[’‘]/g, "'").replace(/\s+/g, " ");
-  return /\b(?:de bron|de brontekst|het artikel|de tekst|deze tekst)\b[^.!?]{0,80}\b(?:niet beschikbaar|ontbreekt|ontbreken|geen (?:bruikbare |verdere |voldoende )?(?:tekst|informatie|gegevens|inhoud))\b|\bgeen (?:bruikbare |verdere |voldoende )?(?:informatie|tekst|gegevens)\s+beschikbaar\s+(?:over|voor)\s+(?:dit onderwerp|dit bericht|deze tekst|het artikel)\b|\b(?:ik|wij|we)\s+kan(?:nen)?\s+(?:dit artikel|deze tekst|het artikel|de tekst)\s+niet\s+samenvatten\b|\b(?:ik|wij|we)\s+kan(?:nen)?\s+geen\s+(?:goede\s+|betrouwbare\s+)?samenvatting\b|\b(?:i cannot|i can't)\s+(?:summari[sz]e|summari[sz]ing)\b|\bas an ai\b|\b(?:i am sorry|i'm sorry)[^.!?]{0,80}\bno information\b|\bno information is available about this topic\b|\b(?:the source|the article|this text)\b[^.!?]{0,80}\b(?:not available|unavailable|does not contain|contains no)\b/i.test(s);
+  const zinnen = (tekst || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]*/g) || [];
+  return zinnen.some((zin) => {
+    // Een geciteerde of aan een bron toegeschreven uitspraak is een nieuwsfeit.
+    if (/[“”„"‘’]/.test(zin.replace(/\b(?:I|it|that|there|he|she|we|they)[’'](?:m|s|re|ve|d|ll)\b/gi, "")) || /(?:^|\s)'[^']+'/.test(zin) || /(?:^|\s)[\p{L}][\p{L}\s-]{0,50}:|\b(?:volgens|aldus|zegt|zei|zeggen|meldt|meldde|melden|laat weten|liet weten|said|says|according to)\b/iu.test(zin)) return false;
+    const s = zin.replace(/[’‘]/g, "'").trim();
+    return /\b(?:de bron|de brontekst|het artikel|de tekst|deze tekst)\b[^.!?]{0,80}\b(?:niet beschikbaar|ontbreekt|ontbreken|geen (?:bruikbare |verdere |voldoende )?(?:tekst|informatie|gegevens|inhoud))\b|\bgeen (?:bruikbare |verdere |voldoende )?(?:informatie|(?:bron)?tekst|gegevens|inhoud)\s+beschikbaar\s+(?:over|voor)\s+(?:dit onderwerp|dit bericht|deze tekst|het artikel)\b|^(?:er is )?geen (?:bruikbare |verdere |voldoende )?(?:informatie|(?:bron)?tekst|gegevens|inhoud) beschikbaar[.!?]*$|\b(?:ik|wij|we)\s+kan(?:nen)?\s+(?:dit(?: artikel| bericht)?|deze tekst|het artikel|het bericht|de tekst)\s+niet\s+samenvatten\b|\b(?:ik|wij|we)\s+kan(?:nen)?\s+geen\s+(?:goede\s+|betrouwbare\s+)?samenvatting\b|\b(?:i cannot|i can't)\s+(?:summari[sz]e|summari[sz]ing)\b|\bas an ai\b|\b(?:i am sorry|i'm sorry)[^.!?]{0,80}\bno information\b|\bno (?:content|information) (?:is )?available(?: about this topic)?\b|\b(?:the source|the article|this text)\b[^.!?]{0,80}\b(?:not available|unavailable|does not contain|contains no)\b/i.test(s);
+  });
 }
 
 export function isWeigering(item: { kop?: string; ai?: string; samenvatting?: string; punten?: string[] }): boolean {
-  return [item.kop, item.ai, item.samenvatting, ...(Array.isArray(item.punten) ? item.punten : [])].some((s) => typeof s === "string" && weigerzin(s));
+  return [item.ai, item.samenvatting, ...(Array.isArray(item.punten) ? item.punten : [])].some((s) => typeof s === "string" && weigerzin(s));
 }
 
 /** De titel alleen is geen onderbouwing; herhaalde titel telt niet als beschrijving. */
