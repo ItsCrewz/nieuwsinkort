@@ -626,7 +626,7 @@ try {
     klok = T0 + 5 * MIN;
     await h.r.alarm();
     assert.equal(samenvattingen, 2, "het alarm vraagt de samenvatting opnieuw aan (de Function cachet)");
-    assert.deepEqual(h.kv.puts, [], "zelfde klaar-lijst en zelfde etag: 0 writes");
+    assert.deepEqual([...h.kv.puts], [], "zelfde klaar-lijst en zelfde etag: 0 writes");
     const info: any = await (await h.r.fetch(new Request("https://do/info"))).json();
     assert.equal(info.vooraf.klaar, 1);
     assert.equal(info.tellers.length, 2);
