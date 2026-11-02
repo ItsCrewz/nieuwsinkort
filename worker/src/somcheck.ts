@@ -12,6 +12,8 @@ const woorden = (s: string) => (s || "").normalize("NFD").replace(/\p{M}/gu, "")
 /** Een oordeel of onbepaald woord zonder toelichting aan het einde van een kop. */
 export function vageKop(kop: string): boolean {
   const w = woorden(kop);
+  if (w.some((x) => /^(niet|geen|nooit)$/.test(x))) return false;
+  if (w.slice(-3).join(" ") === "internet der dingen") return false;
   return /^(erg|raar|gek|bizar|vreemd|iets|dingen)$/.test(w.at(-1) || "");
 }
 

@@ -13,10 +13,12 @@ export function naamVarianten(site: string): string[] {
 export function stripBronvermelding(tekst: string, sites: string[]): string {
   const namen = [...new Set(sites.flatMap(naamVarianten))].sort((a, b) => b.length - a.length);
   if (!tekst || !namen.length) return tekst;
-  const via = new RegExp(`\\s+via\\s+(?:${namen.map(esc).join("|")})(?![\\p{L}\\p{N}\\p{M}]|\\.[\\p{L}\\p{N}])`, "giu");
+  const via = new RegExp(`\\s+via\\s+(?:${namen.map(esc).join("|")})(?![\\p{L}\\p{N}\\p{M}-]|\\.[\\p{L}\\p{N}])`, "giu");
   return tekst.replace(via, (match, offset: number) => {
     const vooraf = tekst.slice(0, offset).split(/[.!?…;\n]/u).pop() || "";
-    return /\b(?:beschikbaar|te koop|verkrijgbaar|komt|verkoopt|verkopen|bestellen|besteld|kopen|koop|aanbod)\b/iu.test(vooraf) ? "" : match;
+    const zin = vooraf + tekst.slice(offset).split(/[!?…;\n]|\.(?![\p{L}\p{N}])/u)[0];
+    if (/\b(?:kijken|luisteren|uitzending|livestream|live|volgen|te zien|te horen)\b/iu.test(zin)) return match;
+    return /\b(?:te koop|verkrijgbaar|te bestellen|verkocht|kopen|in de winkel|prijs)\b/iu.test(vooraf) || /\bkomt\s+(?:er\s+)?[^.!?…;\n]*\bbeschikbaar\s*$/iu.test(vooraf) ? "" : match;
   });
 }
 

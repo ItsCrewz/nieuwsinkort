@@ -1,8 +1,8 @@
 // Dubbele inhoud in een artikel (#488): puntenlijst en "Uitgebreid" tonen alleen wat niet al in intro, samenvatting en punten staat.
 // Pure module (ook door scripts/meet-dubbel.mjs gebruikt), deterministisch, geen AI. Maat: dekking = deel van de inhoudswoorden (lichte stam,
 // getallen als 4.900 blijven heel) van een zin of punt dat al in de bekende tekst voorkomt.
-export const DREMPEL_PUNT = 0.75;      // punt met ≥ 75% van zijn inhoudswoorden in intro+samenvatting staat er al in
-export const DREMPEL_ZIN = 0.75;       // idem voor een zin uit Uitgebreid t.o.v. intro+samenvatting+punten
+export const DREMPEL_PUNT = 1;      // punt met 100% van zijn inhoudswoorden in intro+samenvatting staat er al in
+export const DREMPEL_ZIN = 1;       // 100% voor een zin uit Uitgebreid t.o.v. intro+samenvatting+punten
 export const MIN_NIEUWE_PUNTEN = 1;
 export const MIN_NIEUWE_ZINNEN = 1;
 
@@ -32,6 +32,14 @@ function nieuwFeit(tekst: string, bekend: string): boolean {
   const bekende = new Set(tokens(bekend).map((w) => w.toLocaleLowerCase("nl")));
   return tokens(tekst).some((w) => (/^\p{N}/u.test(w) || /^\p{Lu}/u.test(w)) && !bekende.has(w.toLocaleLowerCase("nl")));
 }
+// Vergelijk met één bronzin: ontkenningen en tijdsaanduidingen veranderen de betekenis.
+const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:niet|geen|nooit|morgen|vandaag|gisteren|overmorgen|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\d{1,2}:\d{2}/gu) || []));
+function herhaling(tekst: string, bekend: string): boolean {
+  return bekend.split(/\n/).flatMap(zinnen).some((bron) => {
+    const a = bijzonder(tekst), b = bijzonder(bron);
+    return [...a].every((x) => b.has(x)) && [...b].every((x) => a.has(x)) && !nieuwFeit(tekst, bron) && dekking(tekst, bron) === 1;
+  });
+}
 const verwijzing = /^["'‘“(]*\s*(?:die|dit|deze|dat|hij|zij|ze|het|hun|haar|zijn|hem)\b/iu;
 
 /** Punten die niet al in intro of samenvatting staan; dubbele punten onderling verdwijnen. */
@@ -39,7 +47,7 @@ export function nieuwePunten(punten: string[] | undefined, intro: string | undef
   const bekend = `${intro || ""}\n${samenvatting || ""}`;
   const uit: string[] = [];
   for (const p of punten ?? []) {
-    if (!p?.trim() || (!nieuwFeit(p, bekend) && dekking(p, bekend) >= DREMPEL_PUNT) || uit.some((g) => !nieuwFeit(p, g) && dekking(p, g) >= DREMPEL_PUNT)) continue;
+    if (!p?.trim() || herhaling(p, bekend) || uit.some((g) => herhaling(p, g))) continue;
     uit.push(p);
   }
   return uit.length >= MIN_NIEUWE_PUNTEN ? uit : [];
@@ -49,7 +57,7 @@ export function nieuwePunten(punten: string[] | undefined, intro: string | undef
 export function nieuweAlineas(tekst: string[], bekend: string[]): string[] {
   const b = bekend.join("\n");
   const z = tekst.flatMap((a, alinea) => zinnen(a).map((zin) => ({ zin, alinea })));
-  const behoud = z.map(({ zin }) => nieuwFeit(zin, b) || (inhoudswoorden(zin).length > 0 && dekking(zin, b) < DREMPEL_ZIN));
+  const behoud = z.map(({ zin }) => !herhaling(zin, b));
   // Een behouden verwijszin heeft ook haar voorganger nodig, zo nodig over alineagrenzen heen.
   for (let i = z.length - 1; i > 0; i--) if (behoud[i] && verwijzing.test(z[i].zin)) behoud[i - 1] = true;
   const uit: string[] = [];

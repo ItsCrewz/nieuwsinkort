@@ -1,1 +1,1 @@
-- Dubbele artikelinhoud wordt voorzichtig verborgen, met behoud van unieke feiten en geldige bronvermeldingen (#488).
+- Dubbele artikelinhoud wordt voorzichtig verborgen met behoud van tijd, ontkenning, nieuwe feiten en geldige bronvermeldingen; vage koppen krijgen zo mogelijk een passende feedtitel (#488).

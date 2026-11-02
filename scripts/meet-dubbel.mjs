@@ -37,7 +37,7 @@ async function meerVan(k) {
 }
 
 const schoon = (l) => (l ?? []).map((p) => p.trim()).filter(Boolean);
-const uit = [`# Dubbele inhoud in artikelen (#488), meting ${new Date().toISOString().slice(0, 16)}Z`, "", "Maat en drempels: zie kop van scripts/meet-dubbel.mjs (dekking in inhoudswoorden; dekking ≥ 0,75 met behoud van nieuwe feiten en verwijscontext; samenvatting↔intro bij ≥ 0,6).", ""];
+const uit = [`# Dubbele inhoud in artikelen (#488), meting ${new Date().toISOString().slice(0, 16)}Z`, "", "Maat en drempels: zie kop van scripts/meet-dubbel.mjs (dekking in inhoudswoorden; volledige dekking per zin met behoud van tijd, ontkenning, nieuwe feiten en verwijscontext; samenvatting↔intro bij ≥ 0,6).", ""];
 const voorbeelden = [];
 for (const f of bestanden) {
   const items = JSON.parse(readFileSync(f, "utf8")).items ?? [];
@@ -46,7 +46,7 @@ for (const f of bestanden) {
   for (const it of items) {
     const bekend = `${it.ai || ""}\n${it.samenvatting || ""}`;
     const punten = it.punten ?? [];
-    const dubbelPunt = punten.filter((p) => D.dekking(p, bekend) >= D.DREMPEL_PUNT).length;
+    const dubbelPunt = punten.filter((p) => D.dekking(p, bekend) >= 0.75).length;
     let puntenVerborgen = false;
     if (punten.length) {
       t.metPunten++;

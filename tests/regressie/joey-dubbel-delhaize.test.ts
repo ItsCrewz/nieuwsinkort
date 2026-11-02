@@ -43,3 +43,15 @@ await t("AI-uitleg die alleen intro+samenvatting herhaalt: sectie weg; nieuwe zi
   assert.equal(mix.length, 1);
   assert.ok(mix[0].includes("koelwagens") && !mix[0].includes("zeker 40 winkels"));
 });
+
+await t("tijd en ontkenning blijven behouden in punten en zinnen", () => {
+  const paren = [
+    ["De winkel verkoopt de telefoon.", "De winkel verkoopt de telefoon morgen."],
+    ["De politie heeft de verdachte aangehouden.", "De politie heeft de verdachte niet aangehouden."],
+    ["De politie heeft de verdachte niet aangehouden.", "De politie heeft de verdachte aangehouden."],
+  ];
+  for (const [bron, nieuw] of paren) {
+    assert.deepEqual(nieuwePunten([nieuw], bron, ""), [nieuw]);
+    assert.deepEqual(uitgebreidOntdubbeld({ ...fx.item, ai: bron, samenvatting: "", punten: [] }, { uitleg: [nieuw] }).uitgebreid, [nieuw]);
+  }
+});

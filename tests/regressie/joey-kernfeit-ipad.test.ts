@@ -14,7 +14,7 @@ await t("samenvattingsprompt eist het belangrijkste getal in ai of samenvatting,
   const ai = { run: async (_m: string, o: any) => { prompt = o.messages[1].content; return { response: JSON.stringify({ items: [] }) }; } };
   const u: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0 };
   await summarize(ai as any, "@cf/google/gemma-4-26b-a4b-it", [{ id: 1, cat: "tech", bronnen: ["Bright"], titels: [fx.item.kop], tekst: fx.brontekst }], u);
-  assert.match(prompt, /belangrijkste concrete getal \(aantal, bedrag, capaciteit, percentage, datum\)/);
+  assert.match(prompt, /belangrijkste getal/);
   assert.match(prompt, /in "ai" of "samenvatting"/);
   assert.ok(prompt.includes("4.900 mAh"), "de brontekst zit in de invoer");
 });

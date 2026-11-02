@@ -74,3 +74,9 @@ await t("alleen een volledig gematchte bron in verkoopcontext", () => {
   assert.equal(stripBronvermelding("Het is te koop via NU.nlshop.", ["NU", "NU.nl"]), "Het is te koop via NU.nlshop.");
   assert.equal(stripBronvermelding("Het is te koop via NOS.", ["iCulture"]), "Het is te koop via NOS.");
 });
+
+await t("uitzendingen en samengestelde bronnamen blijven intact", () => {
+  for (const zin of ["De uitzending komt via NOS", "De livestream is beschikbaar via NOS", "De set is te koop via iCulture-shop", "De uitzending is te koop via NOS", "De wedstrijd is te koop via NOS om live te volgen."]) {
+    assert.equal(stripBronvermelding(zin, ["NOS", "iCulture"]), zin);
+  }
+});

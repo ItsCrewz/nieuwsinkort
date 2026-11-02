@@ -21,9 +21,23 @@ for (const [titel, vaag] of [
   ["Ergens in Nederland valt sneeuw", false], ["Ergo opent kantoor", false],
   ["Schade is erger dan verwacht", false], ["Minister vindt plan erg duur", false],
   ["Minister vindt de situatie erg voor bewoners", false],
+  ["Verstappen vindt mislopen van poleposition niet erg", false],
+  ["Koning bezoekt tentoonstelling over het internet der dingen", false],
+  ["Het voorstel is erg goed", false], ["Het gebouw is erg groot", false],
 ] as const) {
   kop = titel;
   const res = await summarize(ai as never, "test", invoer, u);
   assert.equal(res.get(1)?.kop, vaag ? feedtitel : titel, titel);
 }
 console.log("ok - vage kop valt bij nieuwe som terug, cache en concrete koppen blijven intact");
+
+const lang = "Een uitvoerige feedtitel over het aangekondigde nieuwe plan van de minister voor de woningen in Nederlandse gemeenten";
+const antwoord = { id: 1, kop: "Minister vindt plan erg", ai: "De minister presenteert een voorstel voor woningbouw in gemeenten met extra geld voor lokale projecten en ondersteuning voor bewoners.", samenvatting: "De gemeenten krijgen ondersteuning bij de uitvoering van de nieuwe plannen.", punten: [] };
+let aantal = 0;
+const model = { run: async () => { aantal++; return { response: JSON.stringify({ items: [antwoord] }) }; } };
+const langResultaat = await summarize(model as never, "test", [{ ...invoer[0], titels: [lang] }], u);
+assert.ok(langResultaat.get(1)?.kop.startsWith("Een uitvoerige feedtitel"));
+assert.equal(aantal, 1);
+const gelijk = await summarize(model as never, "test", [{ ...invoer[0], titels: [antwoord.ai] }], u);
+assert.equal(gelijk.get(1)?.kop, antwoord.kop);
+assert.equal(aantal, 2);
