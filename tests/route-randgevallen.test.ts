@@ -36,7 +36,7 @@ t("dubbele en afsluitende slashes blijven onderdeel van het huidige routegedrag"
 t("viewHash en parseHash vormen een round-trip voor iedere view", () => {
   const hashes: Record<View, string> = {
     alles: "#/", nl: "#/nederland", buitenland: "#/buitenland", politiek: "#/politiek",
-    voetbal: "#/voetbal", f1: "#/formule-1", auto: "#/auto", tech: "#/tech",
+    voetbal: "#/voetbal", sport: "#/sport", f1: "#/formule-1", auto: "#/auto", tech: "#/tech",
     haarlem: "#/haarlem", showbizz: "#/showbizz", filmpjes: "#/filmpjes", dumpert: "#/dumpert",
   };
   for (const [view, hash] of Object.entries(hashes) as [View, string][]) {
