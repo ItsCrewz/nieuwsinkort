@@ -1,5 +1,6 @@
 import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
-import { controleerSom } from "./somcheck";
+import { controleerSom, vageKop } from "./somcheck";
+import { stripBronvermelding } from "../../src/bronvermelding";
 import { groq, mistral, keten, ruimteVoor, type LlmState, type Verzoek, type Wacht } from "./llm";
 // Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq- en Mistral-terugval tellen tokens, geen neuronen.
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
@@ -132,8 +133,24 @@ function leesSommen(txt: string, items: In[]): Map<number, Sum> {
   const arr = Array.isArray(j) ? j : j?.items;
   for (const x of Array.isArray(arr) ? arr : []) {
     const id = Number(x?.id);
-    if (!items.some((i) => i.id === id)) continue;
-    const s: Sum = { kop: str(x.kop, 90), ai: str(x.ai, 240), samenvatting: str(x.samenvatting, 900), punten: (Array.isArray(x.punten) ? x.punten : []).map((p: any) => str(p, 140)).filter(Boolean).slice(0, 2) };
+    const bron = items.find((i) => i.id === id);
+    if (!bron) continue;
+    // bron (nieuwssite) is nooit verkoper of kanaal (#488): "via iCulture" eruit, alleen bij een nieuwe som (geen extra AI, geen hash-churn)
+    const zb = (t: string) => stripBronvermelding(t, bron.bronnen);
+    const s: Sum = { kop: str(x.kop, 90), ai: zb(str(x.ai, 240)), samenvatting: zb(str(x.samenvatting, 900)), punten: (Array.isArray(x.punten) ? x.punten : []).map((p: any) => zb(str(p, 140))).filter(Boolean).slice(0, 2) };
+    if (vageKop(s.kop)) {
+      // Een feedtitel mag de kerncontrole niet laten afkeuren.
+      for (const titel of bron.titels) {
+        const schoon = str(titel, 10000);
+        if (!/[\p{L}\p{N}]/u.test(schoon)) continue;
+        const kandidaat = schoon.length > 90 ? schoon.slice(0, 90).replace(/\s+\S*$/, "") || schoon : schoon;
+        const veilig = [schoon, kandidaat].every((kop) => {
+          return controleerSom({ ...s, kop }).ok;
+        });
+        if (veilig) s.kop = kandidaat;
+        break;
+      }
+    }
     if (s.kop && s.ai) out.set(id, s);
   }
   return out;
@@ -153,9 +170,9 @@ function keurSommen(res: Map<number, Sum>, goed: Map<number, Sum>, slecht: Set<n
 export async function summarize(ai: Ai, model: string, items: In[], u: Usage, afgekeurd?: Set<number>): Promise<Map<number, Sum>> {
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
   const prompt = (lijst: In[]) =>
-    `Vat elk bericht samen in nieuwsstijl. Geef per bericht:\n- "kop": nieuwskop, liefst 6 tot 10 woorden: wie of wat (waar) plus de kern of uitkomst, niet alleen wie praat. Staat er een citaat in de titel, dan mag de kern ervan in de kop (X noemt Y 'grote PR-machine'). Fout: "Discussie over voetballer X". Goed: "Trainer X: speler Y mag vertrekken", "Premier Z stapt op na verlies stemming" (alleen als het zo in de tekst staat). Geen vraag, uitroepteken of lokkertje\n- "ai": 1 of 2 korte zinnen met de kern en de data, plaatsen, adressen en namen uit de tekst. Waarom het ertoe doet alleen als de bron dat zegt, anders een tweede concreet feit. Nooit "Dit is belangrijk" of "Dit gaat over". Herhaal de kop niet\n` +
+    `Vat elk bericht samen in nieuwsstijl. Geef per bericht:\n- "kop": nieuwskop, liefst 6 tot 10 woorden: wie of wat (waar) plus de kern of uitkomst, niet alleen wie praat. Staat er een citaat in de titel, dan mag de kern ervan in de kop (X noemt Y 'grote PR-machine'). Fout: "Discussie over voetballer X". Goed: "Trainer X: speler Y mag vertrekken", "Premier Z stapt op na verlies stemming" (alleen als het zo in de tekst staat). Schrijf concreet, zonder vaag oordeel. Geen vraag, uitroepteken of clickbait\n- "ai": 1 of 2 korte zinnen met de kern en de data, plaatsen, adressen en namen uit de tekst. Waarom het ertoe doet alleen als de bron dat zegt, anders een tweede concreet feit. Nooit "Dit is belangrijk" of "Dit gaat over". Herhaal de kop niet. Noem het belangrijkste getal in "ai" of "samenvatting"\n` +
     `- "samenvatting": 2 tot 3 korte zinnen met de belangrijkste feiten\n- "punten": hooguit 2 korte kernpunten (elk max 12 woorden), alleen feiten die nog niet in de samenvatting staan; anders een lege lijst\n` +
-    `Alleen wat letterlijk in titel of tekst staat: geen interpretatie, gevolgen of oorzaken. Onduidelijke afkortingen (zoals GCC) neutraal overnemen, niet uitleggen. Liever tegenwoordige tijd en actieve vorm ("is", niet "wordt"). Te dunne tekst: schrijf kort wat er staat; gok niet.\n` +
+    `Alleen wat letterlijk in titel of tekst staat: geen interpretatie, gevolgen of oorzaken. De nieuwsbron is nooit verkoper, aanbieder of kanaal. Onduidelijke afkortingen (zoals GCC) neutraal overnemen, niet uitleggen. Liever tegenwoordige tijd en actieve vorm ("is", niet "wordt"). Te dunne tekst: schrijf kort wat er staat; gok niet.\n` +
     `Antwoord als {"items":[{"id":1,"kop":"...","ai":"...","samenvatting":"...","punten":["..."]}]}\n\nBerichten:\n` +
     JSON.stringify(lijst.map((i) => ({ id: i.id, bron: i.bronnen.join(", "), titel: i.titels.join(" | "), tekst: i.tekst })));
   // kleine modellen: geen JSON-modus (niet overal ondersteund), wel JSON vragen en eruit vissen
@@ -210,7 +227,7 @@ export async function verdiep(ai: Ai, model: string, items: DiepIn[], u: Usage):
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";
   const user =
     `Schrijf voor elk bericht een eenvoudige langere uitleg voor wie meer wil weten dan de korte samenvatting ("kort").\n` +
-    `- "uitleg": 3 tot 5 korte alinea's (samen 120 tot 220 woorden): wat er precies gebeurde, de achtergrond, wie erbij betrokken zijn, wat het betekent en wat er nu gaat gebeuren. Herhaal "kort" niet letterlijk. Alleen wat in de bronteksten staat.\n` +
+    `- "uitleg": 3 tot 5 korte alinea's (samen 120 tot 220 woorden): wat er precies gebeurde, de achtergrond, wie erbij betrokken zijn, wat het betekent en wat er nu gaat gebeuren. Vul "kort" aan met nieuwe details (getallen, achtergrond) en herhaal geen zin uit "kort". Noem een bronnaam nooit als verkoper, aanbieder of kanaal ("via iCulture"). Alleen wat in de bronteksten staat.\n` +
     `- "perBron": per bron 2 tot 4 korte kernpunten (elk max 15 woorden) met wat díe bron meldt; "site" precies zoals aangeleverd.\n` +
     `Antwoord als {"items":[{"id":1,"uitleg":["alinea","..."],"perBron":[{"site":"...","punten":["..."]}]}]}\n\nBerichten:\n` +
     JSON.stringify(items);
@@ -222,7 +239,7 @@ export async function verdiep(ai: Ai, model: string, items: DiepIn[], u: Usage):
     const id = Number(x?.id);
     const src = items.find((i) => i.id === id);
     if (!src) continue;
-    const uitleg = (Array.isArray(x.uitleg) ? x.uitleg : String(x.uitleg || "").split(/\n\s*\n/)).map((p: any) => str(p, 900)).filter((p: string) => p.length > 20).slice(0, 6);
+    const uitleg = (Array.isArray(x.uitleg) ? x.uitleg : String(x.uitleg || "").split(/\n\s*\n/)).map((p: any) => stripBronvermelding(str(p, 900), src.bronnen.map((b) => b.site))).filter((p: string) => p.length > 20).slice(0, 6);
     const perBron = (Array.isArray(x.perBron) ? x.perBron : [])
       .map((b: any) => ({ site: str(b?.site, 60), punten: (Array.isArray(b?.punten) ? b.punten : []).map((p: any) => str(p, 160)).filter(Boolean).slice(0, 4) }))
       .filter((b: any) => b.punten.length && src.bronnen.some((s) => s.site === b.site));

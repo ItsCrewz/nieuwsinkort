@@ -6,7 +6,9 @@ import { Icon } from "./icons";
 import { Beelden } from "./beelden";
 import { veiligeUrl } from "./url";
 import { bronnenTekst, detailInhoud, fotos } from "./leesverder";
-import { uitgebreidAlineas } from "./uitgebreid";
+import { uitgebreidOntdubbeld } from "./uitgebreid";
+import { nieuwePunten } from "./dubbel";
+import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
 
@@ -46,25 +48,36 @@ function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
   return st;
 }
 
+// Bron (nieuwssite) nooit als verkoper of kanaal tonen (#488): de teksten van het bericht zonder "via <bron>"-vermeldingen.
+function zonderBronvermelding(item: Item): Item {
+  const sites = (item.bronnen ?? []).map((b) => b.site);
+  const schoon = (t: string) => stripBronvermelding(t, sites);
+  return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: (item.punten ?? []).map(schoon) };
+}
+
 function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   const { meer, laden } = useMeer(item);
   if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
-  const uitleg = uitgebreidAlineas(item, meer);
+  const sites = (item.bronnen ?? []).map((b) => b.site);
+  const o = uitgebreidOntdubbeld(zonderBronvermelding(item), meer && { ...meer, uitleg: meer.uitleg?.map((p) => stripBronvermelding(p, sites)) });
+  const uitleg = o.uitgebreid;
   const per = (meer?.perBron ?? []).filter((b) => b.punten?.length);
-  // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg is; de alineas staan dan al onder Uitgebreid
-  const uit = meer?.uitleg?.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
+  // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg getoond wordt; de alineas staan dan al onder Uitgebreid
+  const uit = o.uitleg && uitleg.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
   return (
     <>
-      <section className="d-sec d-meer" aria-label="Uitgebreid">
-        <h2 className="d-h">Uitgebreid</h2>
-        <div className="d-body bn">
-          {uitleg.map((p, n) => (
-            <p key={n}>
-              <BionicText text={p} on={bionic} />
-            </p>
-          ))}
-        </div>
-      </section>
+      {uitleg.length ? (
+        <section className="d-sec d-meer" aria-label="Uitgebreid">
+          <h2 className="d-h">Uitgebreid</h2>
+          <div className="d-body bn">
+            {uitleg.map((p, n) => (
+              <p key={n}>
+                <BionicText text={p} on={bionic} />
+              </p>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {per.length ? (
         <section className="d-sec" aria-label="Wat elke bron meldt">
           <h2 className="d-h">Wat elke bron meldt</h2>
@@ -111,7 +124,10 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
   }, [item]);
-  const { paragraphs, punten, bronnen } = detailInhoud(item);
+  // punten alleen als ze iets nieuws zeggen (#488)
+  const tekst = zonderBronvermelding(item);
+  const { paragraphs, bronnen } = detailInhoud(tekst);
+  const punten = nieuwePunten(tekst.punten, tekst.ai, tekst.samenvatting);
   return (
     <article className={`detail cat-${item.cat}`}>
       <button type="button" className="back" onClick={onBack}>
@@ -127,9 +143,9 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
         </div>
         <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
-        {item.ai ? (
+        {tekst.ai ? (
           <p className="d-lead bn">
-            <BionicText text={item.ai} on={bionic} />
+            <BionicText text={tekst.ai} on={bionic} />
           </p>
         ) : null}
       </header>

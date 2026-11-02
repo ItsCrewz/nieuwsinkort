@@ -1,0 +1,1 @@
+- Nieuwe samenvattingen krijgen bij een vage kop een concrete terugval; de kopinstructie vraagt om duidelijke feiten (#488).

@@ -10,6 +10,14 @@ const MIN_WOORDEN_SAMENVATTING = 6, MIN_WOORDEN_PUNT = 2, GELIJK = 0.8, MIN_NIEU
 /** Kleine letters, accenten en leestekens weg; losse woorden. */
 const woorden = (s: string) => (s || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
 
+/** Een oordeel of onbepaald woord zonder toelichting aan het einde van een kop. */
+export function vageKop(kop: string): boolean {
+  const w = woorden(kop);
+  if (w.some((x) => /^(niet|geen|nooit)$/.test(x))) return false;
+  if (w.slice(-3).join(" ") === "internet der dingen") return false;
+  return /^(erg|raar|gek|bizar|vreemd|iets|dingen)$/.test(w.at(-1) || "");
+}
+
 /** (Bijna) gelijk: woord-Jaccard ≥ 0,8, of (met `deelvan`) `a` bestaat helemaal uit woorden van `b` (a ⊂ b). Lege tekst is nooit "gelijk". */
 export function bijnaGelijk(a: string, b: string, deelvan = true): boolean {
   const x = new Set(woorden(a)), y = new Set(woorden(b));
@@ -51,4 +59,25 @@ export function zuiverSom<T extends SomIn>(som: T | null | undefined): T | null 
   if (!som || isWeigering(som)) return null;
   const c = controleerSom(som);
   return c.ok ? { ...som, punten: c.som.punten } : null;
+}
+
+/** Kerngetallen van een brontekst (#488): de eerste twee verschillende getallen (≥ 2 cijfers, geen jaartal) uit de eerste vier zinnen, zonder punt/komma erin ("4.900" → "4900"). */
+export function kernGetallen(brontekst: string): string[] {
+  const zinnen = (brontekst || "").split(/(?<=[.!?])\s+(?=[\p{Lu}\p{N}"'‘“(])/u).slice(0, 4).join(" ");
+  const uit: string[] = [];
+  for (const m of zinnen.matchAll(/\d+(?:[.,]\d+)*/g)) {
+    const g = m[0].replace(/[.,]/g, "");
+    if (g.length < 2 || (g.length === 4 && /^(19|20)/.test(g) && g === m[0]) || uit.includes(g)) continue;
+    uit.push(g);
+    if (uit.length === 2) break;
+  }
+  return uit;
+}
+
+/** Kernfeit ontbreekt (#488): de bron noemt een duidelijk getal vooraan, maar geen van die getallen staat in ai of samenvatting. Alleen een controle (geen afkeuring, geen extra AI). */
+export function kernfeitOntbreekt(som: Pick<SomIn, "ai" | "samenvatting">, brontekst: string): boolean {
+  const g = kernGetallen(brontekst);
+  if (!g.length) return false;
+  const tekst = `${som.ai || ""} ${som.samenvatting || ""}`.replace(/(\d)[.,](?=\d)/g, "$1");
+  return !g.some((x) => new RegExp(`(?<!\\d)${x}(?!\\d)`).test(tekst));
 }
