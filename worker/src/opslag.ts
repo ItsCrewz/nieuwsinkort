@@ -92,7 +92,7 @@ export async function bewaarKvStand(opslag: Opslag, wijz: KvStand) {
   await opslag.put("kvstand", { ...ks, ...wijz });
 }
 
-/** Inhoud van `uur` zonder vluchtige velden: gegenereerd, meta, tijdstempels `ok` en `laatsteFout` (fetchfout met terugval op tc:) in bronstats, gegenereerd per taboverzicht (de extractieve tekst krijgt elke run een nieuwe tijd; de UI toont die niet)
+/** Inhoud van `uur` zonder vluchtige velden: gegenereerd, meta, tijdstempels `ok` en `laatsteFout` (fetchfout met terugval op tc:) in bronstats, de YouTube-storingsmarkering (`storing` + bijbehorende `fout`, #480: geen extra write bij begin/einde van een storing), gegenereerd per taboverzicht (de extractieve tekst krijgt elke run een nieuwe tijd; de UI toont die niet)
  *  en de weervelden die bij elke Buienradar-update (±10 min) wisselen: weer.bijgewerkt, weer.nu (actuele meting) en weer.vandaag (neerslagkans, wind). Die gaan mee met de hartslag of een andere wijziging (#461).
  *  Verwachting, dagen en vooral waarschuwing (KNMI-code) tellen wel mee, zodat een waarschuwing direct live gaat. */
 export function uurInhoud(out: any): string {
@@ -100,7 +100,7 @@ export function uurInhoud(out: any): string {
   const tabs: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(tab_samenvatting || {})) { const { gegenereerd: _t, ...r } = (v || {}) as any; tabs[k] = r; }
   const bs: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(bronstats || {})) { const { ok: _ok, laatsteFout: _lf, ...r } = v as any; bs[k] = r; }
+  for (const [k, v] of Object.entries(bronstats || {})) { const { ok: _ok, laatsteFout: _lf, storing, ...r } = v as any; if (storing) delete r.fout; bs[k] = r; }
   let w = weer;
   if (weer && typeof weer === "object") { const { bijgewerkt: _b, nu: _n, vandaag: _v, ...r } = weer; w = r; }
   return JSON.stringify({ ...rest, tab_samenvatting: tabs, bronstats: bs, weer: w });

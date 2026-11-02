@@ -140,8 +140,11 @@ try {
     assert.ok(r3.kvPuts.includes("uur"));
     const uur3 = JSON.parse(h.kv.m.get("uur")!);
     assert.equal(uur3.bronstats["filmpjes|youtube"].vandaag, 1);
-    assert.equal(uur3.bronstats["filmpjes|youtube"].laatsteFout, "HTTP 500");
-    assert.equal(uur3.bronstats["filmpjes|youtube"].fout, undefined);
+    // #480: kanarie 500 = YouTube-feedstoring: geen harde fout maar een storingsmarkering (buiten de hash)
+    assert.equal(uur3.bronstats["filmpjes|youtube"].storing, true);
+    assert.equal(uur3.bronstats["filmpjes|youtube"].fout, "YouTube-feedstoring (tijdelijk)");
+    assert.equal(uur3.bronstats["filmpjes|youtube"].laatsteFout, undefined);
+    assert.equal(uur3.meta.ytStoring.status, 500);
     assert.deepEqual(uur3.filmpjes, uur0.filmpjes);
   });
 
