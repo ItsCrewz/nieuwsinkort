@@ -137,9 +137,13 @@ const echteFetch = globalThis.fetch;
 globalThis.fetch = (async () => new Response(new Uint8Array(2e6), { status: 200 })) as any;
 try {
   await t("samenvatting: rond 8036 eigen neuronen stopt AI zonder env-factor", async () => {
-    const a = sv("nooit", { state: JSON.stringify({ neuronDag: utcDag(), neurons: 8036 }) });
-    assert.equal(((await (await a.post()).json()) as any).code, "budget");
-    assert.equal(a.calls(), 0);
+    const echteNow = Date.now;
+    Date.now = () => Date.parse("2026-11-02T23:00:00+01:00");
+    try {
+      const a = sv("nooit", { state: JSON.stringify({ neuronDag: utcDag(), neurons: 8036 }) });
+      assert.equal(((await (await a.post()).json()) as any).code, "budget");
+      assert.equal(a.calls(), 0);
+    } finally { Date.now = echteNow; }
   });
   await t("samenvatting: echte dagquota-fout zet de KV-vlag ai-quota en geeft de budgetmelding", async () => {
     const a = sv(DAG_FOUT);
