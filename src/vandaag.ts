@@ -57,3 +57,14 @@ export function alleenVandaag(data: any, now: number) {
   if (!vandaag) out.dag_samenvatting = "";
   return out;
 }
+
+/** Houd de huidige data bij gelijke generatietijd alleen als de videolijsten ook gelijk zijn. */
+export function kiesNieuweData<T extends { gegenereerd?: string; filmpjes?: unknown[]; dumpert?: unknown[] }>(vorig: T | null, nieuw: T): T {
+  return vorig && vorig.gegenereerd && vorig.gegenereerd === nieuw.gegenereerd && JSON.stringify([vorig.filmpjes, vorig.dumpert]) === JSON.stringify([nieuw.filmpjes, nieuw.dumpert]) ? vorig : nieuw;
+}
+
+export function verwijderGisteren<T extends { filmpjes?: { gisteren?: boolean }[]; dumpert?: { gisteren?: boolean }[] }>(data: T, now: number): T {
+  if (ams(now).h < 10) return data;
+  const filmpjes = data.filmpjes?.filter((v) => !v.gisteren), dumpert = data.dumpert?.filter((v) => !v.gisteren);
+  return filmpjes?.length === data.filmpjes?.length && dumpert?.length === data.dumpert?.length ? data : { ...data, filmpjes, dumpert };
+}

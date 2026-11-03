@@ -73,3 +73,20 @@ try {
   const ongewijzigd = await onRequestGet({ request: new Request("https://voorbeeld.nl/data.json", { headers: { "If-None-Match": tag } }), env });
   assert.equal(ongewijzigd.status, 304);
 } finally { Date.now = oudeKlok; }
+
+const { zonderGisteren, videoToegestaan } = await import("../../worker/src/videomoment");
+const { kiesNieuweData, verwijderGisteren } = dag;
+const met = data(zeven, [{ ...oud, gisteren: true }], []);
+assert.deepEqual(zonderGisteren(met), data(zeven, [], []));
+assert.equal(videoToegestaan("abcdefghijk", new Set(), { abcdefghijk: { geblokkeerd: true } }), false);
+assert.deepEqual(videomoment([], { dag: "2026-11-02", lijst: [oud] }, nu, () => videoToegestaan("abcdefghijk", new Set(), { abcdefghijk: { geblokkeerd: true } })).lijst, []);
+try {
+  Date.now = () => ms(zeven);
+  const { merge } = await import("../../functions/data.json");
+  const filmpje = { ...oud, t: ms("2026-11-02T06:00:00Z"), tijd: "07:00", gisteren: true, href: "https://voorbeeld.nl/video" };
+  assert.deepEqual(merge(data("2026-11-03T07:00:00Z", [], []), data(zeven, [filmpje], [])).filmpjes, [filmpje]);
+} finally { Date.now = oudeKlok; }
+const leeg = data(zeven, [], []);
+assert.equal(kiesNieuweData(met, leeg), leeg);
+assert.equal(verwijderGisteren(met, ms("2026-11-03T08:59:00Z")), met);
+assert.deepEqual(verwijderGisteren(met, ms("2026-11-03T09:00:00Z")).filmpjes, []);

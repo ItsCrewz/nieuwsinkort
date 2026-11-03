@@ -11,3 +11,12 @@ export function videomoment<T extends object>(lijst: T[], vorig: { dag: string; 
     ? vorig.lijst.filter(toegestaan).map((v) => ({ ...v, gisteren: true })) : lijst;
   return { lijst: terugval, bewaar: undefined };
 }
+
+/** Verwijder tijdelijke terugval voordat de vergelijkingsbody wordt berekend. */
+export function zonderGisteren<T extends Record<string, any>>(data: T): T {
+  return { ...data, filmpjes: (data.filmpjes || []).filter((v: any) => !v.gisteren), dumpert: (data.dumpert || []).filter((v: any) => !v.gisteren) };
+}
+
+export function videoToegestaan(id: string | null | undefined, geblokkeerd: Set<string>, cache: Record<string, { geblokkeerd: boolean | null }>): boolean {
+  return !id || (!geblokkeerd.has(id) && cache?.[id]?.geblokkeerd !== true);
+}

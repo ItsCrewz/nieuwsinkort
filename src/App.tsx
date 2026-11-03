@@ -25,6 +25,7 @@ import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
+import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -856,7 +857,7 @@ function useData() {
       d.dumpert ??= [];
       d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
       d.filmpjes = sorteerOpGroep(d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }))); // Shorts of Journaals; op onderwerpgroep (#459): Sport onderaan, ook voor de volgorde van doorlopend kijken
-      setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
+      setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
       setError(false);
     } catch {
       setError(true);
@@ -868,9 +869,11 @@ function useData() {
     const onVis = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onVis);
     const t = window.setInterval(load, 15 * 60 * 1000);
+    const grens = window.setInterval(() => setData((d) => d && verwijderGisteren(d, Date.now())), 1000);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(t);
+      window.clearInterval(grens);
     };
   }, [load]);
   return { data, error, reload: load };

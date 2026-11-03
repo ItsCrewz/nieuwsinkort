@@ -69,7 +69,7 @@ export function merge(S: any, H: any) {
   const sTijd = sOk ? new Date(S.gegenereerd).toLocaleTimeString("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }) : "00:00";
   // Nieuwe filmpjes van het uur (na de routine), plus alle Instagram-reels (die zijn altijd van nieuwsaccounts).
   // Per soort (Shorts/Journaals) apart begrensd, zodat de ene soort de andere niet wegdrukt.
-  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.bron === "Instagram" || (v.tijd || "") >= sTijd));
+  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.gisteren || v.bron === "Instagram" || (v.tijd || "") >= sTijd));
   const extraF = [...extra.filter((v: any) => v.soort !== "journaal").slice(0, 12), ...extra.filter((v: any) => v.soort === "journaal").slice(0, 10)];
   const { meta, meerKeys, ...h } = H;
   // "Lees verder": ook berichten van de routine krijgen hun extra tekst (sleutel = eerste bron met tekst in KV "meer")
