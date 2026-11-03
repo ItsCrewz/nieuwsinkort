@@ -12,7 +12,7 @@ const escaped = (s: string) => renderToStaticMarkup(createElement("span", null, 
 for (const item of items.slice(0, 7)) {
   test(`ruw: ${item.kop}`, () => {
     const h = html(item);
-    const tekst = item.ai || item.kop;
+    const tekst = item.ai && item.ai !== "null" ? item.ai : item.kop;
     const blokken = (h.match(/<(?:h1|p)\b[^>]*>.*?<\/(?:h1|p)>/g) || []).join("");
     assert.equal(blokken.split(escaped(tekst)).length - 1, 1, "tekst staat eenmaal in het artikel");
     assert.ok(h.includes("nog niet samengevat"));
@@ -23,6 +23,19 @@ test("samengevatte controles behouden intro en body", () => {
   for (const item of items.slice(7)) {
     const h = html(item);
     assert.ok(h.includes(escaped(item.ai)) && h.includes(escaped(item.samenvatting)));
+  }
+});
+test("betekenisvolle toevoegingen en getaltekens blijven zichtbaar", () => {
+  for (const [kop, tekst] of [["Minister treedt af.", "(Onbevestigd) Minister treedt af."], ["Temperatuur is 5 graden.", "Temperatuur is -5 graden."]]) {
+    const h = html({ ...items[3], kop, ai: tekst, samenvatting: tekst });
+    assert.ok(h.includes(escaped(kop)) && h.includes(escaped(tekst)));
+  }
+});
+test("lege ruwe tekstwaarden verschijnen niet", () => {
+  for (const waarde of ["null", "undefined", null]) {
+    const h = html({ ...items[6], ai: waarde, samenvatting: waarde } as unknown as Item);
+    assert.ok(!/>\s*(?:null|undefined)\s*</i.test(h));
+    assert.ok(h.includes(escaped(items[6].kop)) && h.includes("nog niet samengevat"));
   }
 });
 test("normalisatie en betekenisvolle verschillen bij ruwe tekst", () => {

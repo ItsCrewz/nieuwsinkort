@@ -51,7 +51,7 @@ function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
 // Bron (nieuwssite) nooit als verkoper of kanaal tonen (#488): de teksten van het bericht zonder "via <bron>"-vermeldingen.
 function zonderBronvermelding(item: Item): Item {
   const sites = (item.bronnen ?? []).map((b) => b.site);
-  const schoon = (t: string) => stripBronvermelding(t, sites);
+  const schoon = (t: string) => item.ruw && /^(?:null|undefined)$/i.test(t.trim()) ? "" : stripBronvermelding(t, sites);
   return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: (item.punten ?? []).map(schoon) };
 }
 
