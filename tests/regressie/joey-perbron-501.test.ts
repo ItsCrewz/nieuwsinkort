@@ -109,9 +109,13 @@ test("verschillende getallen en ontkenningen blijven afzonderlijke punten", asyn
   const { bronnenPunten } = await import("../../src/bronnenSamen");
   const basis = fixtures.find((f) => f.item.bronnen.length > 1)!.item;
   const item = { ...basis, kop: "Een andere kop voor dit bericht", ai: "", samenvatting: "", bronnen: [
-    { site: "A", href: "https://a.example", ft: "De rechtbank veroordeelt vandaag tien mensen tot 12 maanden cel" },
+    { site: "A", href: "https://a.example", ft: "De rechtbank veroordeelt vandaag tien mensen tot 12 maanden cel", fd: "Dit is niet zo." },
     { site: "B", href: "https://b.example", ft: "De rechtbank veroordeelt vandaag tien mensen tot 21 maanden cel" },
     { site: "C", href: "https://c.example", ft: "De rechtbank veroordeelt vandaag niet tien mensen tot 12 maanden cel" },
   ] };
-  assert.equal(bronnenPunten(item, null).length, 3);
+  assert.deepEqual(bronnenPunten(item, null).map((p) => ({ tekst: p.tekst, bronnen: p.bronnen.map((b) => b.site) })), [
+    { tekst: item.bronnen[0].ft, bronnen: ["A"] },
+    { tekst: item.bronnen[1].ft, bronnen: ["B"] },
+    { tekst: item.bronnen[2].ft, bronnen: ["C"] },
+  ]);
 });

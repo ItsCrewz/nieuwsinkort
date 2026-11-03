@@ -8,12 +8,12 @@ const matchWoord = (a: string, b: string) => a === b || (a.length >= 5 && b.leng
 const getallen = (s: string) => new Set(s.match(/\d+(?:[.,:-]\d+)*/g) ?? []);
 const feiten = (s: string) => new Set((s.match(/\d+(?:[.,:-]\d+)*|(?<![\p{L}])(?:één|twee|drie|vier|vijf|zes|zeven|acht|negen|tien)(?![\p{L}])/giu) ?? []).map((w) => w.toLowerCase()));
 const namen = (s: string) => new Set((s.match(/\b[\p{L}][\p{L}\p{M}]*\b/gu) ?? []).filter((w, i) => (i > 0 && /^\p{Lu}/u.test(w)) || (/^\p{Lu}{2,}$/u.test(w))).map((w) => w.toLowerCase()));
+const ontkenning = (s: string) => (s.toLowerCase().match(/\b(?:niet|geen|ontkent|ontkennen|ontkende|ontkend)\b/g) ?? []).sort().join(" ");
 const dekt = (punt: string, tekst: string) => {
   const inhoud = woorden(punt), eigen = woorden(tekst), ns = namen(tekst), gs = feiten(tekst);
-  return inhoud.size > 0 && [...inhoud].filter((w) => [...eigen].some((v) => matchWoord(w, v))).length / inhoud.size >= 0.85
+  return ontkenning(punt) === ontkenning(tekst) && inhoud.size > 0 && [...inhoud].filter((w) => [...eigen].some((v) => matchWoord(w, v))).length / inhoud.size >= 0.85
     && [...feiten(punt)].every((w) => gs.has(w)) && [...namen(punt)].every((w) => ns.has(w) || new RegExp(`(?:^|[^\\p{L}])${w}(?:$|[^\\p{L}])`, "iu").test(tekst));
 };
-const ontkenning = (s: string) => (s.toLowerCase().match(/\b(?:niet|geen|ontkent|ontkennen|ontkende|ontkend)\b/g) ?? []).sort().join(" ");
 // De kortste bewering moet door de langere tekst worden gedragen.
 const gelijk = (a: string, b: string) => {
   const wa = woorden(a), wb = woorden(b);
