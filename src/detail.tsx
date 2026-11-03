@@ -62,6 +62,11 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   const o = uitgebreidOntdubbeld(zonderBronvermelding(item), meer && { ...meer, uitleg: meer.uitleg?.map((p) => stripBronvermelding(p, sites)) });
   const uitleg = item.ruw ? o.uitgebreid.filter((p) => !zelfdeRuweTekst(p, item.kop)) : o.uitgebreid;
   const per = (meer?.perBron ?? []).filter((b) => b.punten?.length);
+  const bronnen = (item.bronnen ?? []).filter((b, i, alle) => alle.findIndex((x) => x.site.trim().toLowerCase() === b.site.trim().toLowerCase()) === i);
+  const perCompleet = bronnen.length > 1 && meer && (meer.uitleg?.length || per.length)
+    ? [...bronnen.map((b) => ({ ...b, punten: per.find((p) => p.site.trim().toLowerCase() === b.site.trim().toLowerCase())?.punten ?? [] })).filter((b) => b.punten.length),
+      ...bronnen.filter((b) => !per.some((p) => p.site.trim().toLowerCase() === b.site.trim().toLowerCase())).map((b) => ({ ...b, punten: [] as string[] }))]
+    : per;
   // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg getoond wordt; de alineas staan dan al onder Uitgebreid
   const uit = o.uitleg && uitleg.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
   return (
@@ -78,23 +83,23 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
           </div>
         </section>
       ) : null}
-      {per.length ? (
+      {perCompleet.length ? (
         <section className="d-sec" aria-label="Wat elke bron meldt">
           <h2 className="d-h">Wat elke bron meldt</h2>
           <div className="perbron">
-            {per.map((b, n) => (
+            {perCompleet.map((b, n) => (
               <div className="pb" key={b.site + n}>
                 <a className="pb-site" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
                   {b.site}
                   <Icon name="ext" className="sm" />
                 </a>
-                <ul className="bn">
+                {b.punten.length ? <ul className="bn">
                   {b.punten.map((p, k) => (
                     <li key={k}>
                       <BionicText text={p} on={bionic} />
                     </li>
                   ))}
-                </ul>
+                </ul> : <p>Geen eigen punten beschikbaar voor deze bron.</p>}
               </div>
             ))}
           </div>
