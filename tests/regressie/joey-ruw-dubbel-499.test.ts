@@ -26,9 +26,17 @@ test("samengevatte controles behouden intro en body", () => {
   }
 });
 test("betekenisvolle toevoegingen en getaltekens blijven zichtbaar", () => {
-  for (const [kop, tekst] of [["Minister treedt af.", "(Onbevestigd) Minister treedt af."], ["Temperatuur is 5 graden.", "Temperatuur is -5 graden."]]) {
+  for (const [kop, tekst] of [["Minister treedt af.", "(Onbevestigd) Minister treedt af."], ["Temperatuur is 5 graden.", "Temperatuur is -5 graden."], ["Temperatuur is 5 graden.", "Temperatuur is −5 graden."], ["Aandeel kost £5.", "Aandeel kost ¥5."]]) {
     const h = html({ ...items[3], kop, ai: tekst, samenvatting: tekst });
     assert.ok(h.includes(escaped(kop)) && h.includes(escaped(tekst)));
+  }
+});
+test("symbolen en Unicode-streepjes behouden betekenis in ruwe tekst", () => {
+  for (const teken of ["−", "£", "¥", "€", "$", "©", "™", "∞", "→", "😀", "-", "‐", "–", "—", "%", "#", "@", "&", "/", "+", "*"]) {
+    const kop = "Waarde is 5.";
+    const tekst = `Waarde is ${teken}5.`;
+    const h = html({ ...items[3], kop, ai: tekst, samenvatting: tekst });
+    assert.ok(h.includes(escaped(kop)) && h.includes(escaped(tekst)), `teken ${teken} blijft zichtbaar`);
   }
 });
 test("lege ruwe tekstwaarden verschijnen niet", () => {

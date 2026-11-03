@@ -90,7 +90,8 @@ export function ontdubbel(item: Tekst, bronnen: string[][]): { punten: string[];
 // Alleen volledige gelijkheid na normalisatie: alle woorden en hun volgorde moeten gelijk blijven.
 // Gewone leestekens, witruimte, hoofdletters en het taalvoorvoegsel (Engels) tellen niet mee.
 export function zelfdeRuweTekst(a: string | null | undefined, b: string | null | undefined): boolean {
-  const norm = (s: string | null | undefined) => (s || "").replace(/^\s*\(Engels\)\s*/iu, "").toLocaleLowerCase("nl").normalize("NFC").match(/[\p{L}\p{N}]+|[+\-%€$]|(?<=\p{N})[.,](?=\p{N})/gu)?.join(" ") || "";
+  const norm = (s: string | null | undefined) => (s || "").replace(/^\s*\(Engels\)\s*/iu, "").toLocaleLowerCase("nl").normalize("NFC")
+    .replace(/(?<!\p{N})[.,]|[.,](?!\p{N})|[\s:;!?…'"‘’“”„‚«»|()[\]]/gu, "");
   const x = norm(a), y = norm(b);
   return !!x && x === y;
 }
