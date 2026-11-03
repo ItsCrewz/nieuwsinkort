@@ -48,7 +48,7 @@ test("Bijlmer: één gezamenlijke lijst met alle bronnen", async () => {
 });
 
 test("datafunctie bewaart feedtekst alleen voor meerdere uitgevers", async () => {
-  const { slim, onRequestGet } = await import("../../functions/data.json");
+  const { slim, onRequestGet } = await import("../../functions/data.json.ts");
   const item = fixtures.find((f) => f.item.kop.includes("140 gasten"))!.item;
   const enkel = { ...item, bronnen: [item.bronnen[0]] };
   const out = slim({ items: [item, enkel] });
@@ -86,9 +86,9 @@ test("bronlabels worden gedekt door eigen tekst en unieke informatie blijft zich
     assert.equal(new Set(genormaliseerd).size, punten.length, item.kop);
     for (const punt of punten) for (const label of punt.bronnen) {
       const bron = item.bronnen.find((b) => b.site === label.site)!;
-      const teksten = [bron.ft?.replace(/^[^|]{1,40}\|\s*/, "") ?? "", ...(bron.fd?.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? []), ...(meer?.perBron?.find((b) => b.site === bron.site)?.punten ?? [])];
+      const teksten = [bron.ft ?? "", ...(bron.fd?.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? []), ...(meer?.perBron?.find((b) => b.site === bron.site)?.punten ?? [])];
       const { zelfdeZin } = await import("../../src/bronnenSamen");
-      assert.ok(teksten.some((tekst) => zelfdeZin(punt.tekst, tekst)), `${label.site}: ${punt.tekst}`);
+      assert.ok(teksten.some((tekst) => zelfdeZin(punt.tekst, tekst, item.bronnen.map((b) => b.site))), `${label.site}: ${punt.tekst}`);
     }
   }
   const qeshm = fixtures.find((f) => f.item.kop.includes("eiland Qeshm"))!;
@@ -156,4 +156,26 @@ test("alleen bijna identieke zinnen worden samengevoegd", async () => {
   const zin = "Het kabinet trekt extra geld uit voor de opvang";
   const gelijk = { ...item, bronnen: [{ site: "A", href: "https://a.example", ft: zin }, { site: "B", href: "https://b.example", ft: '“HET KABINET TREKT EXTRA GELD UIT VOOR DE OPVANG” - NOS' }] };
   assert.deepEqual(bronnenPunten(gelijk, null).map((p) => [p.tekst, p.bronnen.map((bron) => bron.site)]), [[zin, ["A", "B"]]]);
+});
+
+
+test("Bijlmer: identieke easyHotel-zin heeft precies twee bronlabels", async () => {
+  const { bronnenPunten } = await import("../../src/bronnenSamen");
+  const { item, meer } = fixtures.find((f) => f.item.kop.includes("140 gasten"))!;
+  const zin = "Het easyHotel aan de Johan Cruijff Boulevard in Amsterdam-Zuidoost is in de nacht van maandag op dinsdag ontruimd vanwege een grote brand.";
+  assert.deepEqual(bronnenPunten(item, meer).filter((p) => p.tekst === zin).map((p) => [p.tekst, p.bronnen.map((b) => b.site)]), [[zin, ["RTL Nieuws", "Telegraaf"]]]);
+});
+
+test("alleen bekende bronnamen en ANP worden als suffix verwijderd", async () => {
+  const { bronnenPunten } = await import("../../src/bronnenSamen");
+  const basis = fixtures.find((f) => f.item.bronnen.length > 1)!.item;
+  const punten = (a: string, b: string) => bronnenPunten({ ...basis, kop: "Ander bericht", ai: "", samenvatting: "", bronnen: [
+    { site: "A", href: "https://a.example", ft: a }, { site: "B", href: "https://b.example", ft: b },
+  ] }, null).map((p) => [p.tekst, p.bronnen.map((bron) => bron.site)]);
+  const a = "Brand in woning Utrecht - drie gewonden";
+  const b = "Brand in woning Utrecht - geen gewonden";
+  assert.deepEqual(punten(a, b), [[a, ["A"]], [b, ["B"]]]);
+  const zin = "Brand in woning Utrecht";
+  for (const suffix of [" - NOS", " (ANP)"]) assert.deepEqual(punten(zin + suffix, zin), [[zin, ["A", "B"]]]);
+  assert.deepEqual(punten(zin + " (drie gewonden)", zin + " (geen gewonden)"), [[zin + " (drie gewonden)", ["A"]], [zin + " (geen gewonden)", ["B"]]]);
 });

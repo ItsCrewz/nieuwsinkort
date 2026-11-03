@@ -2,12 +2,19 @@ import type { Bron, Item, Meer } from "./types";
 
 export type BronnenPunt = { tekst: string; bronnen: Bron[] };
 const schoon = (s: string) => s.replace(/[\u200b-\u200f\u2060\ufeff\ufffd]/g, "").replace(/\s+/g, " ").trim();
-const zonderBron = (s: string) => s.replace(/^[^|]{1,40}\|\s*/, "").replace(/\s+(?:[-–—|]\s*[^|]+|\([^()]+\))\s*$/, "");
-const normaliseer = (s: string) => zonderBron(schoon(s)).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
-export const zelfdeZin = (a: string, b: string) => {
+const bekendeBronnen = ["ANP", "NOS", "NU.nl", "RTL Nieuws", "Telegraaf", "AD", "Volkskrant", "Trouw", "NRC", "Parool", "Omroep Brabant", "L1", "BN DeStem", "De Gelderlander", "Algemeen Dagblad", "Het Parool", "De Volkskrant", "Nederlands Dagblad", "Reformatorisch Dagblad", "NH Nieuws", "RTV Utrecht", "Omroep Gelderland", "Omroep West", "Omroep Zeeland", "RTV Noord", "RTV Drenthe", "Omrop Fryslân", "NOS Nieuws"];
+const bronSleutel = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+const zonderBron = (s: string, namen: string[]) => {
+  const bekend = (naam: string) => namen.some((n) => bronSleutel(n) === bronSleutel(naam));
+  return s.replace(/^([^|]{1,80})\|\s*/, (geheel, naam: string) => bekend(naam) ? "" : geheel)
+    .replace(/\s+(?:[-–—|]\s*([^|]+)|\(([^()]+)\))\s*$/, (geheel, naam: string, tussen: string) => bekend(naam ?? tussen) ? "" : geheel);
+};
+const normaliseer = (s: string, namen: string[]) => zonderBron(schoon(s), namen).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+export const zelfdeZin = (a: string, b: string, extraBronnen: string[] = []) => {
   if (a.trim().endsWith("?") !== b.trim().endsWith("?")) return false;
-  const tekst = normaliseer(a);
-  return tekst.length > 0 && tekst === normaliseer(b);
+  const namen = [...bekendeBronnen, ...extraBronnen];
+  const tekst = normaliseer(a, namen);
+  return tekst.length > 0 && tekst === normaliseer(b, namen);
 };
 const sleutel = (s: string) => s.trim().toLowerCase();
 const zinnen = (s: string) => s.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [];
@@ -16,21 +23,23 @@ const zinnen = (s: string) => s.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [];
 export function bronnenPunten(item: Item, meer: Meer | null): BronnenPunt[] {
   const bronnen = (item.bronnen ?? []).filter((b, i, alle) => alle.findIndex((x) => sleutel(x.site) === sleutel(b.site)) === i);
   if (bronnen.length < 2 && !meer?.perBron?.length) return [];
-  const eigenTeksten = (bron: Bron) => [bron.ft?.replace(/^[^|]{1,40}\|\s*/, "") ?? "", ...zinnen(bron.fd ?? ""), ...(meer?.perBron?.find((b) => sleutel(b.site) === sleutel(bron.site))?.punten ?? [])].map(schoon);
+  const namen = bronnen.map((b) => b.site);
+  const gelijk = (a: string, b: string) => zelfdeZin(a, b, namen);
+  const eigenTeksten = (bron: Bron) => [bron.ft ?? "", ...zinnen(bron.fd ?? ""), ...(meer?.perBron?.find((b) => sleutel(b.site) === sleutel(bron.site))?.punten ?? [])].map(schoon);
   const punten: BronnenPunt[] = [];
   for (const bron of bronnen) {
     const ai = meer?.perBron?.find((b) => sleutel(b.site) === sleutel(bron.site));
-    const bruikbaar = (tekst: string) => tekst.length >= 25 && !/^(?:volg\b.*\b(?:ons|het) liveblog\b|lees meer\b)/i.test(tekst) && /[\p{L}\p{N}]/u.test(tekst);
+    const bruikbaar = (tekst: string) => tekst.length >= 20 && !/^(?:volg\b.*\b(?:ons|het) liveblog\b|lees meer\b)/i.test(tekst) && /[\p{L}\p{N}]/u.test(tekst);
     const teksten = [...(ai?.punten ?? []), ...zinnen(bron.fd ?? "")].map(schoon).filter(bruikbaar);
-    const titel = schoon(bron.ft ?? "").replace(/^[^|]{1,40}\|\s*/, "");
+    const titel = zonderBron(schoon(bron.ft ?? ""), [...bekendeBronnen, ...namen]);
     if (!teksten.length && bruikbaar(titel)) teksten.push(titel);
-    for (const tekst of teksten) if (!punten.some((p) => zelfdeZin(p.tekst, tekst))) punten.push({ tekst, bronnen: [] });
+    for (const tekst of teksten) if (!punten.some((p) => gelijk(p.tekst, tekst))) punten.push({ tekst, bronnen: [] });
   }
-  for (const punt of punten) punt.bronnen = bronnen.filter((bron) => eigenTeksten(bron).some((tekst) => zelfdeZin(punt.tekst, tekst)));
+  for (const punt of punten) punt.bronnen = bronnen.filter((bron) => eigenTeksten(bron).some((tekst) => gelijk(punt.tekst, tekst)));
   const boven = [item.kop, ...zinnen(item.samenvatting ?? ""), ...zinnen(item.ai ?? "")];
   const aantallen = new Map(bronnen.map((bron) => [bron, punten.filter((p) => p.bronnen.includes(bron)).length]));
   return punten.filter((p) => {
-    if (p.bronnen.length > 1 || !boven.some((tekst) => zelfdeZin(p.tekst, tekst)) || p.bronnen.some((bron) => aantallen.get(bron)! <= 1)) return true;
+    if (p.bronnen.length > 1 || !boven.some((tekst) => gelijk(p.tekst, tekst)) || p.bronnen.some((bron) => aantallen.get(bron)! <= 1)) return true;
     for (const bron of p.bronnen) aantallen.set(bron, aantallen.get(bron)! - 1);
     return false;
   }).sort((a, b) => b.bronnen.length - a.bronnen.length).map(({ tekst, bronnen: bs }) => ({ tekst, bronnen: bs.map(({ site, href }) => ({ site, href })) }));
