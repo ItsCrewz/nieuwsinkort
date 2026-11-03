@@ -10,15 +10,21 @@
       "bronnen": [
         {
           "site": "NOS",
-          "href": "https://nos.nl/l/2637812"
+          "href": "https://nos.nl/l/2637812",
+          "ft": "Noord-Korea ontkent achter de Binance-hack te zitten",
+          "fd": "Noord-Korea heeft voor het eerst gereageerd op de Amerikaanse beschuldigingen dat het achter de diefstal van miljarden euro's op cryptoplatform Binance zit. Kim Yo-jong, de invloedrijke zus van leider Kim Jong-un, ontkent nu dat het land achter de hack zit en noemt de beschuldiging \"absurde retoriek"
         },
         {
           "site": "RTL Nieuws",
-          "href": "https://www.rtl.nl/nieuws/buitenland/artikel/5662597/noord-korea-ontkent-betrokkenheid-bij-binance-hack"
+          "href": "https://www.rtl.nl/nieuws/buitenland/artikel/5662597/noord-korea-ontkent-betrokkenheid-bij-binance-hack",
+          "ft": "Noord-Korea ontkent betrokkenheid bij megahack op Binance",
+          "fd": "Noord-Korea verwerpt Amerikaanse beschuldigingen dat het land verantwoordelijk is voor een cyberaanval waarbij voor naar schatting 6,3 miljard dollar (ruim 5,6 miljard euro) aan digitale activa werd buitgemaakt bij cryptobeurs Binance."
         },
         {
           "site": "NU.nl",
-          "href": "https://www.nu.nl/economie/6415298/noord-korea-ontkent-betrokkenheid-bij-cryptoroof-binance-provocatie.html"
+          "href": "https://www.nu.nl/economie/6415298/noord-korea-ontkent-betrokkenheid-bij-cryptoroof-binance-provocatie.html",
+          "ft": "Noord-Korea ontkent betrokkenheid bij cryptoroof Binance: 'Provocatie'",
+          "fd": "Noord-Korea ontkent verantwoordelijk te zijn voor mogelijk de grootste cryptodiefstal ooit. Kim Yo-jong, de zus van de Noord-Koreaanse leider Kim Jong-un, noemt de Amerikaanse beschuldigingen aan het adres van Noord-Korea \"ernstige politieke provocatie\", meldt staatspersbureau KCNA."
         }
       ],
       "beelden": [
@@ -64,19 +70,27 @@
       "bronnen": [
         {
           "site": "RTL Nieuws",
-          "href": "https://www.rtl.nl/nieuws/binnenland/artikel/5662593/hotel-amsterdam-ontruimd-vanwege-grote-brand"
+          "href": "https://www.rtl.nl/nieuws/binnenland/artikel/5662593/hotel-amsterdam-ontruimd-vanwege-grote-brand",
+          "ft": "Grote brand in hotel in Amsterdam, 140 gasten geëvacueerd",
+          "fd": "Het easyHotel aan de Johan Cruijff Boulevard in Amsterdam-Zuidoost is in de nacht van maandag op dinsdag ontruimd vanwege een grote brand. Meerdere mensen zijn door ambulancepersoneel nagekeken vanwege rookinhalatie."
         },
         {
           "site": "NOS",
-          "href": "https://nos.nl/l/2637811"
+          "href": "https://nos.nl/l/2637811",
+          "ft": "Hotel in Amsterdam ontruimd om grote brand",
+          "fd": "Bij een grote brand in een hotel in Amsterdam zijn vannacht 140 gasten geëvacueerd. De brand ontstond mogelijk door een apparaat dat vlam vatte. De brandweer had de brand snel onder controle. Enkele hotelgasten zijn door het ambulancepersoneel nagekeken. Twee van hen moesten ter controle naar het zi"
         },
         {
           "site": "Telegraaf",
-          "href": "https://www.telegraaf.nl/binnenland/hotel-in-amsterdam-zuidoost-ontruimd-om-grote-brand-140-hotelgasten-geevacueerd/163995315.html"
+          "href": "https://www.telegraaf.nl/binnenland/hotel-in-amsterdam-zuidoost-ontruimd-om-grote-brand-140-hotelgasten-geevacueerd/163995315.html",
+          "ft": "Hotel in Amsterdam-Zuidoost ontruimd om grote brand: ’140 hotelgasten geëvacueerd’",
+          "fd": "Het easyHotel aan de Johan Cruijff Boulevard in Amsterdam-Zuidoost is in de nacht van maandag op dinsdag ontruimd vanwege een grote brand. Meerdere mensen zijn door ambulancepersoneel nagekeken vanwege rookinhalatie. Twee van hen moesten naar het ziekenhuis voor verdere controle."
         },
         {
           "site": "NU.nl",
-          "href": "https://www.nu.nl/331902/video/hotelgasten-geevacueerd-na-grote-brand-in-amsterdams-hotel.html"
+          "href": "https://www.nu.nl/331902/video/hotelgasten-geevacueerd-na-grote-brand-in-amsterdams-hotel.html",
+          "ft": "Video | Hotelgasten geëvacueerd na grote brand in Amsterdams hotel",
+          "fd": ""
         }
       ],
       "beelden": [
@@ -121,16 +135,28 @@
       "tijd": "07:00",
       "bronnen": [
         {
+          "site": "de Volkskrant",
+          "href": "https://www.volkskrant.nl/buitenland/vs-doen-nieuwe-poging-tot-vredesbespreking-met-oekraine-en-rusland-in-abu-dhabi~bde4fbe2/",
+          "ft": "VS doen nieuwe poging tot vredesbespreking met Oekraïne en Rusland in Abu Dhabi",
+          "fd": ""
+        },
+        {
           "site": "NOS",
-          "href": "https://nos.nl/l/2637810"
+          "href": "https://nos.nl/l/2637810",
+          "ft": "VS kondigt overleg Oekraïne-Rusland aan in Abu Dhabi",
+          "fd": "Onder leiding van de Amerikaanse gezanten Steve Witkoff en Jared Kushner wordt op 10 en 11 november in Abu Dhabi gesproken over de beëindiging van de oorlog in Oekraïne. Dat maakte Steve Witkoff op X bekend. Volgens de Amerikanen zal er zowel vanuit Oekraïne als vanuit Rusland een delegatie aanwezig"
         },
         {
           "site": "Telegraaf",
-          "href": "https://www.telegraaf.nl/buitenland/live-volgende-week-gesprekken-tussen-vs-oekrane-en-rusland-in-abu-dhabi/163994472.html"
+          "href": "https://www.telegraaf.nl/buitenland/live-volgende-week-gesprekken-tussen-vs-oekrane-en-rusland-in-abu-dhabi/163994472.html",
+          "ft": "LIVE | ’Volgende week gesprekken tussen VS, Oekraïne en Rusland in Abu Dhabi’",
+          "fd": "De Oekraïense bevolking leeft al ruim vier jaar in onzekerheid door de Russische terreur. Vredesgesprekken leverden tot nu toe weinig op, de gevechten gaan door. Volg de laatste ontwikkelingen rond de oorlog in Oekraïne in ons liveblog."
         },
         {
           "site": "AD",
-          "href": "https://www.ad.nl/buitenland/live-oorlog-oekraine-rusland-en-oekraine-voeren-nieuwe-aanvallen-uit-op-energiefaciliteiten~adfb97be/"
+          "href": "https://www.ad.nl/buitenland/live-oorlog-oekraine-rusland-en-oekraine-voeren-nieuwe-aanvallen-uit-op-energiefaciliteiten~adfb97be/",
+          "ft": "LIVE Oorlog Oekraïne | Rusland en Oekraïne voeren nieuwe aanvallen uit op energiefaciliteiten",
+          "fd": "Rusland heeft een grootschalige aanval uitgevoerd op Oekraïense energiefaciliteiten in de regio’s Vinnytsja, Dnipropetrovsk en Charkiv. Dat meldde persbureau Interfax dinsdagochtend op basis van informatie van het Russische ministerie van Defensie. Volg alle ontwikkelingen in de oorlog in Oekraïne i"
         }
       ],
       "beelden": [
@@ -155,7 +181,9 @@
       "bronnen": [
         {
           "site": "NU.nl",
-          "href": "https://www.nu.nl/331900/video/texanen-willen-signaal-afgeven-aan-elon-musk-wij-zijn-niet-te-koop.html"
+          "href": "https://www.nu.nl/331900/video/texanen-willen-signaal-afgeven-aan-elon-musk-wij-zijn-niet-te-koop.html",
+          "ft": "Explainer | Texanen willen signaal afgeven aan Elon Musk: 'Wij zijn niet te koop'",
+          "fd": ""
         }
       ],
       "beelden": [

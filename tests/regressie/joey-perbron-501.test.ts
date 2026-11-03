@@ -28,21 +28,47 @@ async function render(item: Item, meer: Meer | null) {
   try { return renderToStaticMarkup(createElement(MetMeer)); } finally { herstel(); }
 }
 
-for (const { item, meer } of fixtures) {
-  test(`bronnen met punten of uitleg: ${item.kop}`, async () => {
-    // De livefixture bevat voor Abu Dhabi geen blob; boots de gemelde lege perBron na.
-    const respons = meer ?? (item.kop.includes("Abu Dhabi") ? { uitleg: ["De gesprekken vinden plaats in Abu Dhabi."], perBron: [] } : null);
-    const html = await render(item, respons);
-    const sectie = html.match(/<section class="d-sec" aria-label="Wat elke bron meldt">(.*?)<\/section>/)?.[1];
-    if (item.bronnen.length === 1) { assert.equal(sectie, undefined); return; }
-    assert.ok(sectie, "sectie is zichtbaar");
-    const blokken = [...sectie.matchAll(/<div class="pb">(.*?)<\/div>/g)].map((m) => m[1]);
-    for (const bron of item.bronnen) {
-      const blok = blokken.find((b) => b.includes(`>${bron.site}<`));
-      assert.ok(blok, `${bron.site} ontbreekt`);
-      assert.ok(/<li>|<p>[^<]+<\/p>/.test(blok), `${bron.site} mist punten of reden`);
-      assert.ok(blok.includes(bron.href));
-    }
-    for (const bron of meer?.perBron ?? []) for (const punt of bron.punten) assert.ok(sectie.includes(punt));
-  });
-}
+test("Bijlmer: één gezamenlijke lijst met alle bronnen", async () => {
+  const { item, meer } = fixtures.find((f) => f.item.kop.includes("140 gasten"))!;
+  const html = await render(item, meer);
+  assert.equal((html.match(/Dit zeggen de bronnen/g) ?? []).length, 2);
+  assert.ok(!html.includes("Wat elke bron meldt"));
+  const sectie = html.match(/<section class="d-sec" aria-label="Dit zeggen de bronnen">(.*?)<\/section>/)?.[1];
+  assert.ok(sectie);
+  for (const site of ["RTL Nieuws", "NOS", "Telegraaf", "NU.nl"]) assert.ok(sectie.includes(`>${site}</a>`), site);
+  const regels = [...sectie.matchAll(/<li>(.*?)<\/li>/g)].map((m) => m[1]);
+  const easy = regels.filter((r) => r.includes("Het easyHotel aan de Johan Cruijff Boulevard"));
+  assert.equal(easy.length, 1);
+  assert.ok(easy[0].includes(">RTL Nieuws</a>") && easy[0].includes(">Telegraaf</a>"));
+  assert.equal(regels.filter((r) => /140 (hotel)?gasten.*ge[ëe]vacueerd/i.test(r)).length, 1);
+  const { bronnenPunten } = await import("../../src/bronnenSamen");
+  const punten = bronnenPunten(item, meer);
+  assert.equal(new Set(punten.map((p) => p.tekst.toLowerCase().replace(/[^a-z0-9]/g, ""))).size, punten.length);
+});
+
+test("datafunctie bewaart feedtekst alleen voor meerdere uitgevers", async () => {
+  const { slim, onRequestGet } = await import("../../functions/data.json");
+  const item = fixtures.find((f) => f.item.kop.includes("140 gasten"))!.item;
+  const enkel = { ...item, bronnen: [item.bronnen[0]] };
+  const out = slim({ items: [item, enkel] });
+  assert.deepEqual(out.items[0].bronnen, item.bronnen);
+  assert.equal(out.items[1].bronnen[0].ft, undefined);
+  assert.equal(out.items[1].bronnen[0].fd, undefined);
+  const nu = new Date().toISOString();
+  const data = { gegenereerd: nu, items: [{ ...item, t: Date.now() }, { ...enkel, kop: "Enkelvoudig testbericht", t: Date.now() }], filmpjes: [], dumpert: [] };
+  const respons = await onRequestGet({ request: new Request("https://voorbeeld.nl/data.json"), env: {
+    ASSETS: { fetch: async () => new Response(JSON.stringify({ gegenereerd: nu, items: [], filmpjes: [], dumpert: [] })) },
+    NIEUWS: { get: async (key: string) => key === "uur" ? data : null },
+  } });
+  const body = await respons.json();
+  assert.deepEqual(body.items[0].bronnen, item.bronnen);
+  assert.equal(body.items[1].bronnen[0].ft, undefined);
+});
+
+test("oude en enkelvoudige berichten blijven werken", async () => {
+  const enkel = fixtures.find((f) => f.item.bronnen.length === 1)!;
+  const html = await render(enkel.item, enkel.meer);
+  assert.ok(html.includes("<h1"));
+  const item = { ...fixtures[0].item, bronnen: fixtures[0].item.bronnen.map(({ site, href }) => ({ site, href })) };
+  assert.ok(!(await render(item, null)).includes('aria-label="Dit zeggen de bronnen"'));
+});

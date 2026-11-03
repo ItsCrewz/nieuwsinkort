@@ -1,1 +1,1 @@
-Bij berichten met meerdere bronnen toont ‘Wat elke bron meldt’ ook bronnen waarvoor geen eigen punten beschikbaar zijn.
+Bij berichten met meerdere bronnen zie je samen wat de bronnen melden en welke bron elk punt noemt.
