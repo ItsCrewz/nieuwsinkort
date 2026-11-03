@@ -38,8 +38,8 @@ test("Bijlmer: één gezamenlijke lijst met alle bronnen", async () => {
   for (const site of ["RTL Nieuws", "NOS", "Telegraaf", "NU.nl"]) assert.ok(sectie.includes(`>${site}</a>`), site);
   const regels = [...sectie.matchAll(/<li>(.*?)<\/li>/g)].map((m) => m[1]);
   const evacuatie = regels.filter((r) => r.includes("140 gasten geëvacueerd"));
-  // De langere bronzin blijft apart als de dekking niet wederzijds voldoende is.
-  assert.ok(evacuatie.some((r) => r.includes(">RTL Nieuws</a>") && r.includes(">NOS</a>")));
+  // De evacuatiezinnen verschillen inhoudelijk en blijven daarom per bron apart.
+  assert.ok(evacuatie.every((r) => !(r.includes(">RTL Nieuws</a>") && r.includes(">NOS</a>"))));
   assert.ok(regels.some((r) => r.includes("Het easyHotel aan de Johan Cruijff Boulevard") && r.includes(">RTL Nieuws</a>") && r.includes(">Telegraaf</a>")));
   assert.ok(regels.some((r) => r.includes("ziekenhuis voor verdere controle") && r.includes(">Telegraaf</a>")));
   const { bronnenPunten } = await import("../../src/bronnenSamen");
@@ -77,8 +77,6 @@ test("oude en enkelvoudige berichten blijven werken", async () => {
 
 test("bronlabels worden gedekt door eigen tekst en unieke informatie blijft zichtbaar", async () => {
   const { bronnenPunten } = await import("../../src/bronnenSamen");
-  const stop = new Set("de het een en in van op aan voor bij met is zijn was waren om door na als dat die deze dit te uit naar over tot zich heeft hebben werd worden er ook nog al hun haar vanwege".split(" "));
-  const woorden = (s: string) => new Set(s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().match(/[a-z0-9]+/g)?.filter((w) => !stop.has(w)) ?? []);
   for (const { item, meer } of fixtures.filter((f) => f.item.bronnen.length > 1)) {
     const punten = bronnenPunten(item, meer);
     for (const bron of item.bronnen.filter((b) => b.ft || b.fd || meer?.perBron?.some((p) => p.site === b.site && p.punten.length))) {
@@ -89,11 +87,8 @@ test("bronlabels worden gedekt door eigen tekst en unieke informatie blijft zich
     for (const punt of punten) for (const label of punt.bronnen) {
       const bron = item.bronnen.find((b) => b.site === label.site)!;
       const teksten = [bron.ft?.replace(/^[^|]{1,40}\|\s*/, "") ?? "", ...(bron.fd?.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? []), ...(meer?.perBron?.find((b) => b.site === bron.site)?.punten ?? [])];
-      const inhoud = woorden(punt.tekst);
-      assert.ok(teksten.some((tekst) => { const eigen = woorden(tekst); return [...inhoud].filter((w) => [...eigen].some((v) => v === w || (v.length >= 5 && w.length >= 5 && (v.slice(0, 5) === w.slice(0, 5) || v.endsWith(w) || w.endsWith(v))))).length / inhoud.size >= 0.85; }), `${label.site}: ${punt.tekst}`);
-      const getallen = (s: string) => (s.match(/\d+(?:[.,:-]\d+)*|(?<![\p{L}])(?:één|twee|drie|vier|vijf|zes|zeven|acht|negen|tien)(?![\p{L}])/giu) ?? []).map((x) => x.toLowerCase());
-      const namen = (s: string) => (s.match(/\b[\p{L}][\p{L}\p{M}]*\b/gu) ?? []).filter((w, i) => (i > 0 && /^\p{Lu}/u.test(w)) || /^\p{Lu}{2,}$/u.test(w));
-      assert.ok(teksten.some((tekst) => getallen(punt.tekst).every((g) => getallen(tekst).includes(g)) && namen(punt.tekst).every((n) => tekst.toLowerCase().split(/[^\p{L}\p{M}]+/u).includes(n.toLowerCase()))), `${label.site}: ${punt.tekst}`);
+      const { zelfdeZin } = await import("../../src/bronnenSamen");
+      assert.ok(teksten.some((tekst) => zelfdeZin(punt.tekst, tekst)), `${label.site}: ${punt.tekst}`);
     }
   }
   const qeshm = fixtures.find((f) => f.item.kop.includes("eiland Qeshm"))!;
@@ -133,4 +128,32 @@ test("getallen blijven gekoppeld aan hun inhoudswoord en volgorde", async () => 
     ] };
     assert.deepEqual(bronnenPunten(item, null).map((p) => [p.tekst, p.bronnen.map((bron) => bron.site)]), [[a, ["A"]], [b, ["B"]]]);
   }
+});
+
+
+test("alleen bijna identieke zinnen worden samengevoegd", async () => {
+  const { bronnenPunten } = await import("../../src/bronnenSamen");
+  const basis = fixtures.find((f) => f.item.bronnen.length > 1)!.item;
+  for (const [a, b] of [
+    ["2 mensen overleden en 3 mensen gewond", "2 mensen gewond en 3 mensen overleden"],
+    ["Rusland beschuldigt Oekraïne van een aanval op een energiecentrale", "Oekraïne beschuldigt Rusland van een aanval op een energiecentrale"],
+    ["Het kabinet vergaderde gisteren over de opvang van asielzoekers", "Het kabinet vergaderde vandaag over de opvang van asielzoekers"],
+    ["In Amsterdam is vandaag een groot gebouw geopend", "In Rotterdam is vandaag een groot gebouw geopend"],
+    ["De verdachte is niet aangehouden maar wel verhoord", "De verdachte is aangehouden maar niet verhoord"],
+  ]) {
+    const item = { ...basis, kop: "Ander bericht", ai: "", samenvatting: "", bronnen: [
+      { site: "A", href: "https://a.example", ft: a }, { site: "B", href: "https://b.example", ft: b },
+    ] };
+    assert.deepEqual(bronnenPunten(item, null).map((p) => [p.tekst, p.bronnen.map((bron) => bron.site)]), [[a, ["A"]], [b, ["B"]]]);
+  }
+  const a = "Het kabinet trekt extra geld uit voor de opvang van asielzoekers.";
+  const vraag = "Trekt het kabinet extra geld uit voor de opvang van asielzoekers?";
+  const fd = "Tijdens het begrotingsdebat spreken de partijen over de plannen.";
+  const item = { ...basis, kop: "Ander bericht", ai: "", samenvatting: "", bronnen: [
+    { site: "A", href: "https://a.example", ft: a }, { site: "B", href: "https://b.example", ft: vraag, fd },
+  ] };
+  assert.deepEqual(bronnenPunten(item, null).map((p) => [p.tekst, p.bronnen.map((bron) => bron.site)]), [[a, ["A"]], [fd, ["B"]]]);
+  const zin = "Het kabinet trekt extra geld uit voor de opvang";
+  const gelijk = { ...item, bronnen: [{ site: "A", href: "https://a.example", ft: zin }, { site: "B", href: "https://b.example", ft: '“HET KABINET TREKT EXTRA GELD UIT VOOR DE OPVANG” - NOS' }] };
+  assert.deepEqual(bronnenPunten(gelijk, null).map((p) => [p.tekst, p.bronnen.map((bron) => bron.site)]), [[zin, ["A", "B"]]]);
 });

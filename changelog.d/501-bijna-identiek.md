@@ -1,0 +1,1 @@
+- Bronpunten worden alleen bij bijna identieke zinnen samengevoegd.
