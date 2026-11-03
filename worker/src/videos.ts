@@ -23,7 +23,7 @@ export const REDDIT_SUBS = ["thenetherlands", "Netherlands", "worldnews", "europ
 export const redditUrl = (s: string) => `https://www.reddit.com/r/${s}/top/.rss?t=day`;
 export const DUMPERT_URL = "https://www.dumpert.nl/toppers";
 
-export type Video = { gisteren?: boolean; titel: string; ai: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number; soort?: Soort };
+export type Video = { titel: string; ai: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number; soort?: Soort };
 
 export function kortGetal(n: number | undefined | null, eenheid: string) {
   if (n == null) return "";

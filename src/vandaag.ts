@@ -46,9 +46,10 @@ export function alleenVandaag(data: any, now: number) {
       if (!keep) oud[key]++;
       return keep;
     });
-    if (key === "items" || !vandaag) out[key] = gefilterd;
+    if (key === "items") out[key] = gefilterd;
     else {
-      const video = selecteerVideodag(lijst, now, (x: any) => x?.t);
+      const genGisteren = Number.isFinite(gen) && ams(gen).iso === ams(midnight(now) - 1).iso;
+      const video = vandaag ? selecteerVideodag(lijst, now, (x: any) => x?.t) : genGisteren ? selecteerVideodag(lijst.filter((x: any) => !vanVandaag(x?.t, now)), now, (x: any) => x?.t) : [];
       out[key] = gefilterd.length ? gefilterd.filter((x: any) => !x.gisteren) : video;
       oud[key] = lijst.length - out[key].length;
     }
