@@ -38,8 +38,9 @@ test("Bijlmer: één gezamenlijke lijst met alle bronnen", async () => {
   for (const site of ["RTL Nieuws", "NOS", "Telegraaf", "NU.nl"]) assert.ok(sectie.includes(`>${site}</a>`), site);
   const regels = [...sectie.matchAll(/<li>(.*?)<\/li>/g)].map((m) => m[1]);
   const evacuatie = regels.filter((r) => r.includes("140 gasten geëvacueerd"));
-  assert.equal(evacuatie.length, 1);
-  assert.ok(evacuatie[0].includes(">RTL Nieuws</a>") && evacuatie[0].includes(">NOS</a>"));
+  // De langere bronzin blijft apart als de dekking niet wederzijds voldoende is.
+  assert.ok(evacuatie.some((r) => r.includes(">RTL Nieuws</a>") && r.includes(">NOS</a>")));
+  assert.ok(regels.some((r) => r.includes("Het easyHotel aan de Johan Cruijff Boulevard") && r.includes(">RTL Nieuws</a>") && r.includes(">Telegraaf</a>")));
   assert.ok(regels.some((r) => r.includes("ziekenhuis voor verdere controle") && r.includes(">Telegraaf</a>")));
   const { bronnenPunten } = await import("../../src/bronnenSamen");
   const punten = bronnenPunten(item, meer);
@@ -118,4 +119,18 @@ test("verschillende getallen en ontkenningen blijven afzonderlijke punten", asyn
     { tekst: item.bronnen[1].ft, bronnen: ["B"] },
     { tekst: item.bronnen[2].ft, bronnen: ["C"] },
   ]);
+});
+
+test("getallen blijven gekoppeld aan hun inhoudswoord en volgorde", async () => {
+  const { bronnenPunten } = await import("../../src/bronnenSamen");
+  const basis = fixtures.find((f) => f.item.bronnen.length > 1)!.item;
+  for (const [a, b] of [
+    ["Bij het ongeluk zijn 2 mensen overleden en 3 mensen gewond geraakt", "Bij het ongeluk zijn 3 mensen overleden en 2 mensen gewond geraakt"],
+    ["Bij het ongeluk vielen 3 doden en meerdere slachtoffers", "Bij het ongeluk vielen 3 gewonden en meerdere slachtoffers"],
+  ]) {
+    const item = { ...basis, kop: "Ander bericht", ai: "", samenvatting: "", bronnen: [
+      { site: "A", href: "https://a.example", ft: a }, { site: "B", href: "https://b.example", ft: b },
+    ] };
+    assert.deepEqual(bronnenPunten(item, null).map((p) => [p.tekst, p.bronnen.map((bron) => bron.site)]), [[a, ["A"]], [b, ["B"]]]);
+  }
 });

@@ -5,21 +5,29 @@ const stop = new Set("de het een en in van op aan voor bij met is zijn was waren
 const schoon = (s: string) => s.replace(/[\u200b-\u200f\u2060\ufeff\ufffd]/g, "").replace(/\s+/g, " ").trim();
 const woorden = (s: string) => new Set(s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().match(/[a-z0-9]+/g)?.filter((w) => !stop.has(w)) ?? []);
 const matchWoord = (a: string, b: string) => a === b || (a.length >= 5 && b.length >= 5 && (a.slice(0, 5) === b.slice(0, 5) || a.endsWith(b) || b.endsWith(a)));
-const getallen = (s: string) => new Set(s.match(/\d+(?:[.,:-]\d+)*/g) ?? []);
-const feiten = (s: string) => new Set((s.match(/\d+(?:[.,:-]\d+)*|(?<![\p{L}])(?:één|twee|drie|vier|vijf|zes|zeven|acht|negen|tien)(?![\p{L}])/giu) ?? []).map((w) => w.toLowerCase()));
+// Bewaar de volgorde en de koppeling tussen elk getal en het volgende inhoudswoord.
+const getalparen = (s: string) => {
+  const tokens = s.toLowerCase().match(/\d+(?:[.,:]\d+)*|[\p{L}\p{M}]+/gu) ?? [];
+  const telwoord = /^(?:een|twee|drie|vier|vijf|zes|zeven|acht|negen|tien|elf|twaalf|dertien|veertien|vijftien|zestien|zeventien|achttien|negentien|twintig|honderd|duizend|miljoen|miljard)$/;
+  return tokens.flatMap((token, i) => {
+    if (!/^\d/.test(token) && (token === "een" || !telwoord.test(token.normalize("NFD").replace(/[\u0300-\u036f]/g, "")))) return [];
+    const volgend = (tokens.slice(i + 1).find((w) => !stop.has(w)) ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return [[token, volgend.length >= 5 ? volgend.slice(0, 5) : volgend]];
+  });
+};
 const namen = (s: string) => new Set((s.match(/\b[\p{L}][\p{L}\p{M}]*\b/gu) ?? []).filter((w, i) => (i > 0 && /^\p{Lu}/u.test(w)) || (/^\p{Lu}{2,}$/u.test(w))).map((w) => w.toLowerCase()));
 const ontkenning = (s: string) => (s.toLowerCase().match(/\b(?:niet|geen|ontkent|ontkennen|ontkende|ontkend)\b/g) ?? []).sort().join(" ");
+const veilig = (a: string, b: string) => ontkenning(a) === ontkenning(b) && JSON.stringify(getalparen(a)) === JSON.stringify(getalparen(b));
 const dekt = (punt: string, tekst: string) => {
-  const inhoud = woorden(punt), eigen = woorden(tekst), ns = namen(tekst), gs = feiten(tekst);
-  return ontkenning(punt) === ontkenning(tekst) && inhoud.size > 0 && [...inhoud].filter((w) => [...eigen].some((v) => matchWoord(w, v))).length / inhoud.size >= 0.85
-    && [...feiten(punt)].every((w) => gs.has(w)) && [...namen(punt)].every((w) => ns.has(w) || new RegExp(`(?:^|[^\\p{L}])${w}(?:$|[^\\p{L}])`, "iu").test(tekst));
+  const inhoud = woorden(punt), eigen = woorden(tekst), ns = namen(tekst);
+  return veilig(punt, tekst) && inhoud.size > 0 && [...inhoud].filter((w) => [...eigen].some((v) => matchWoord(w, v))).length / inhoud.size >= 0.85
+    && [...namen(punt)].every((w) => ns.has(w) || new RegExp(`(?:^|[^\\p{L}])${w}(?:$|[^\\p{L}])`, "iu").test(tekst));
 };
 // De kortste bewering moet door de langere tekst worden gedragen.
 const gelijk = (a: string, b: string) => {
   const wa = woorden(a), wb = woorden(b);
   const [kort, lang] = wa.size <= wb.size ? [wa, wb] : [wb, wa];
-  const [ks, ls] = wa.size <= wb.size ? [a, b] : [b, a];
-  if (ontkenning(a) !== ontkenning(b) || [...getallen(ks)].some((n) => !getallen(ls).has(n))) return false;
+  if (!veilig(a, b)) return false;
   const gemeen = [...kort].filter((w) => [...lang].some((v) => matchWoord(w, v))).length;
   return gemeen >= 3 && gemeen / kort.size >= 0.6;
 };
@@ -42,7 +50,7 @@ export function bronnenPunten(item: Item, meer: Meer | null): BronnenPunt[] {
   const groepen: { kandidaten: typeof kandidaten; volgorde: number }[] = [];
   kandidaten.sort((a, b) => woorden(a.tekst).size - woorden(b.tekst).size || a.tekst.length - b.tekst.length || a.volgorde - b.volgorde);
   for (const kandidaat of kandidaten) {
-    const groep = groepen.find((g) => gelijk(g.kandidaten[0].tekst, kandidaat.tekst));
+    const groep = groepen.find((g) => g.kandidaten.every((k) => gelijk(k.tekst, kandidaat.tekst) && dekt(k.tekst, kandidaat.tekst) && dekt(kandidaat.tekst, k.tekst)));
     if (groep) { groep.kandidaten.push(kandidaat); groep.volgorde = Math.min(groep.volgorde, kandidaat.volgorde); }
     else groepen.push({ kandidaten: [kandidaat], volgorde: kandidaat.volgorde });
   }
