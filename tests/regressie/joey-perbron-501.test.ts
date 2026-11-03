@@ -40,7 +40,7 @@ test("Bijlmer: één gezamenlijke lijst met alle bronnen", async () => {
   const easy = regels.filter((r) => r.includes("Het easyHotel aan de Johan Cruijff Boulevard"));
   assert.equal(easy.length, 1);
   assert.ok(easy[0].includes(">RTL Nieuws</a>") && easy[0].includes(">Telegraaf</a>"));
-  assert.equal(regels.filter((r) => /140 (hotel)?gasten.*ge[ëe]vacueerd/i.test(r)).length, 1);
+  assert.ok(regels.some((r) => r.includes("ziekenhuis voor verdere controle") && r.includes(">Telegraaf</a>")));
   const { bronnenPunten } = await import("../../src/bronnenSamen");
   const punten = bronnenPunten(item, meer);
   assert.equal(new Set(punten.map((p) => p.tekst.toLowerCase().replace(/[^a-z0-9]/g, ""))).size, punten.length);
@@ -71,4 +71,42 @@ test("oude en enkelvoudige berichten blijven werken", async () => {
   assert.ok(html.includes("<h1"));
   const item = { ...fixtures[0].item, bronnen: fixtures[0].item.bronnen.map(({ site, href }) => ({ site, href })) };
   assert.ok(!(await render(item, null)).includes('aria-label="Dit zeggen de bronnen"'));
+});
+
+
+test("bronlabels worden gedekt door eigen tekst en unieke informatie blijft zichtbaar", async () => {
+  const { bronnenPunten } = await import("../../src/bronnenSamen");
+  const stop = new Set("de het een en in van op aan voor bij met is zijn was waren om door na als dat die deze dit te uit naar over tot zich heeft hebben werd worden er ook nog al hun haar vanwege".split(" "));
+  const woorden = (s: string) => new Set(s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().match(/[a-z0-9]+/g)?.filter((w) => !stop.has(w)) ?? []);
+  for (const { item, meer } of fixtures.filter((f) => f.item.bronnen.length > 1)) {
+    const punten = bronnenPunten(item, meer);
+    for (const bron of item.bronnen.filter((b) => b.ft || b.fd || meer?.perBron?.some((p) => p.site === b.site && p.punten.length))) {
+      assert.ok(punten.some((p) => p.bronnen.some((b) => b.site === bron.site)), `${item.kop}: ${bron.site}`);
+    }
+    const genormaliseerd = punten.map((p) => p.tekst.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, ""));
+    assert.equal(new Set(genormaliseerd).size, punten.length, item.kop);
+    for (const punt of punten) for (const label of punt.bronnen) {
+      const bron = item.bronnen.find((b) => b.site === label.site)!;
+      const teksten = [bron.ft?.replace(/^[^|]{1,40}\|\s*/, "") ?? "", ...(bron.fd?.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? []), ...(meer?.perBron?.find((b) => b.site === bron.site)?.punten ?? [])];
+      const inhoud = woorden(punt.tekst);
+      assert.ok(teksten.some((tekst) => { const eigen = woorden(tekst); return [...inhoud].filter((w) => eigen.has(w)).length / inhoud.size >= 0.75; }), `${label.site}: ${punt.tekst}`);
+    }
+  }
+  const crash = fixtures.find((f) => f.item.kop.startsWith("Privévliegtuig viel"))!;
+  const learjet = bronnenPunten(crash.item, crash.meer).filter((p) => p.tekst.includes("Learjet 60"));
+  assert.equal(learjet.length, 1);
+  assert.deepEqual(learjet[0].bronnen.map((b) => b.site), ["Telegraaf"]);
+  const binance = fixtures.find((f) => f.item.kop.startsWith("Noord-Korea ontkent"))!;
+  assert.ok(bronnenPunten(binance.item, binance.meer).some((p) => p.bronnen.some((b) => b.site === "NU.nl") && p.tekst.includes("Kim Yo-jong")));
+});
+
+test("verschillende getallen en ontkenningen blijven afzonderlijke punten", async () => {
+  const { bronnenPunten } = await import("../../src/bronnenSamen");
+  const basis = fixtures.find((f) => f.item.bronnen.length > 1)!.item;
+  const item = { ...basis, kop: "Een andere kop voor dit bericht", ai: "", samenvatting: "", bronnen: [
+    { site: "A", href: "https://a.example", ft: "De rechtbank veroordeelt vandaag tien mensen tot 12 maanden cel" },
+    { site: "B", href: "https://b.example", ft: "De rechtbank veroordeelt vandaag tien mensen tot 21 maanden cel" },
+    { site: "C", href: "https://c.example", ft: "De rechtbank veroordeelt vandaag niet tien mensen tot 12 maanden cel" },
+  ] };
+  assert.equal(bronnenPunten(item, null).length, 3);
 });

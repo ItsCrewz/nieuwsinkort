@@ -194,5 +194,50 @@
       "ruw": true
     },
     "meer": null
+  },
+  {
+    "item": {
+      "cat": "buitenland",
+      "kop": "Privévliegtuig viel mogelijk al uit elkaar in Florida",
+      "ai": "De National Transportation Safety Board (NTSB) onderzocht een crash in een woonwijk in Florida. Alle negen inzittenden kwamen bij de crash om.",
+      "samenvatting": "Het privévliegtuig is zondag neergestort in een woonwagenpark. Het toestel is mogelijk al in de lucht uit elkaar gevallen.",
+      "punten": [],
+      "tijd": "05:59",
+      "bronnen": [
+        {
+          "site": "AD",
+          "href": "https://www.ad.nl/buitenland/neergestort-vliegtuig-in-vs-met-negen-inzittenden-viel-mogelijk-in-de-lucht-al-uit-elkaar~a5853d38/",
+          "ft": "Neergestort vliegtuig in VS met negen inzittenden viel mogelijk in de lucht al uit elkaar",
+          "fd": "Het privévliegtuig dat zondag neerstortte in een woonwijk in de Amerikaanse staat Florida is mogelijk al in de lucht uit elkaar gevallen voordat het met hoge snelheid de grond raakte. Dat heeft de Amerikaanse National Transportation Safety Board (NTSB) maandag vastgesteld op basis van onderzoek."
+        },
+        {
+          "site": "RTL Nieuws",
+          "href": "https://www.rtl.nl/nieuws/buitenland/artikel/5662595/vliegtuig-viel-mogelijk-al-voor-de-crash-uit-elkaar",
+          "ft": "Privévliegtuig viel mogelijk al voor de crash in Florida uit elkaar",
+          "fd": "Het vliegtuig dat zondag neerstortte in een woonwijk in de Amerikaanse staat Florida is mogelijk al in de lucht uit elkaar gevallen voordat het met hoge snelheid de grond raakte. Dat stelde de Amerikaanse National Transportation Safety Board (NTSB) maandag op basis van onderzoek."
+        },
+        {
+          "site": "NU.nl",
+          "href": "https://www.nu.nl/buitenland/6415293/vliegtuig-dat-neerstortte-in-florida-viel-mogelijk-al-in-de-lucht-uit-elkaar.html",
+          "ft": "Vliegtuig dat neerstortte in Florida viel mogelijk al in de lucht uit elkaar",
+          "fd": "Het vliegtuigje dat zondag crashte in een woonwagenpark in de Amerikaanse staat Florida, was mogelijk al in de lucht uit elkaar gevallen. Bij de crash zijn alle negen inzittenden omgekomen."
+        },
+        {
+          "site": "Telegraaf",
+          "href": "https://www.telegraaf.nl/buitenland/neergestorte-privejet-viel-mogelijk-uit-elkaar-voor-crash-in-florida/163995292.html",
+          "ft": "Neergestorte privéjet viel mogelijk uit elkaar voor crash in Florida",
+          "fd": "De Amerikaanse National Transportation Safety Board (NTSB) stelde maandag op basis van onderzoek dat de Learjet 60 die zondag neerstortte in een woonwijk in de staat Florida, mogelijk al in de lucht uit elkaar was gevallen voordat hij met hoge snelheid de grond raakte."
+        }
+      ],
+      "beelden": [
+        "https://images.ad.nl/Y2Y1OGUyOTUwZTE3MzYzOTI2ZmUvZGlvLzI3OTc5MzI2MC9maXQtd2lkdGgvNDAw/a-fireball-rises-into-the-sky-after-a-learjet-crashed-in-a-residential-area-in-palm-beach-county-florida-us-november-1-2026-in-this-still-image-obtained-from-social-media-video-aki-kuusisto-via-reuters-this-image-has-been-supplied-by-a-third-party-mandatory-credit-verification-road-layout-business-signage-and-buildings-matched-archive-and-satellite-images-date-verified-by-timestamp-on-dashcam",
+        "https://redactie.rtl.nl/sites/default/files/content/images/2026/11/03/ANP-574470750.jpg?itok=nK5FYchL&width=1024&height=576&impolicy=semi_dynamic",
+        "https://images.nu.nl/m/enkx8g7au0ep_wd1280.jpg",
+        "https://prod-img.telegraaf.nl/public/incoming/chz2rv-collage-flexible-20261103-1.jpg/alternates/BASE_SIXTEEN_NINE/collage-flexible-20261103%201.jpg"
+      ],
+      "t": 1793681959000,
+      "uur": true
+    },
+    "meer": null
   }
 ]
