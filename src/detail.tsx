@@ -7,7 +7,7 @@ import { Beelden } from "./beelden";
 import { veiligeUrl } from "./url";
 import { bronnenTekst, detailInhoud, fotos } from "./leesverder";
 import { uitgebreidOntdubbeld } from "./uitgebreid";
-import { nieuwePunten } from "./dubbel";
+import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
@@ -60,7 +60,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
   const sites = (item.bronnen ?? []).map((b) => b.site);
   const o = uitgebreidOntdubbeld(zonderBronvermelding(item), meer && { ...meer, uitleg: meer.uitleg?.map((p) => stripBronvermelding(p, sites)) });
-  const uitleg = o.uitgebreid;
+  const uitleg = item.ruw ? o.uitgebreid.filter((p) => !zelfdeRuweTekst(p, item.kop)) : o.uitgebreid;
   const per = (meer?.perBron ?? []).filter((b) => b.punten?.length);
   // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg getoond wordt; de alineas staan dan al onder Uitgebreid
   const uit = o.uitleg && uitleg.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
@@ -126,7 +126,9 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
   }, [item]);
   // punten alleen als ze iets nieuws zeggen (#488)
   const tekst = zonderBronvermelding(item);
-  const { paragraphs, bronnen } = detailInhoud(tekst);
+  const { paragraphs: alleAlineas, bronnen } = detailInhoud(tekst);
+  const intro = item.ruw && zelfdeRuweTekst(tekst.ai, item.kop) ? "" : tekst.ai;
+  const paragraphs = item.ruw && (zelfdeRuweTekst(tekst.samenvatting, tekst.ai) || zelfdeRuweTekst(tekst.samenvatting, item.kop)) ? [] : alleAlineas;
   const punten = nieuwePunten(tekst.punten, tekst.ai, tekst.samenvatting);
   return (
     <article className={`detail cat-${item.cat}`}>
@@ -143,9 +145,9 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
         </div>
         <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
-        {tekst.ai ? (
+        {intro ? (
           <p className="d-lead bn">
-            <BionicText text={tekst.ai} on={bionic} />
+            <BionicText text={intro} on={bionic} />
           </p>
         ) : null}
       </header>
