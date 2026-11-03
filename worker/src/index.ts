@@ -4,7 +4,7 @@ import { somStand, kopieStand, verschilStand, telOp, groqTokens, type LlmState }
 // De Pages Function /data.json voegt dit samen met de data.json van de routine.
 // Free plan: de cron zelf doet bijna niets (10 ms CPU); het werk gebeurt in Durable Objects (30 s CPU per verzoek)
 // en het ophalen wordt verdeeld over meerdere Fetcher-DO's (elk max 50 externe verzoeken).
-import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
+import { publicatieTijd, vanVandaag, nieuwsteTijd, videoVanaf, selecteerVideodag } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
@@ -91,7 +91,7 @@ async function runInsta(j: Job, _since: number, t0: number, ig?: IgCache): Promi
   const now = Date.now();
   const entries: Entry[] = posts.map((p) => ({ t: (p.text.split("\n")[0] || `Post van @${p.user}`).slice(0, 160), l: `https://www.instagram.com/p/${p.code}/`, d: p.t || null, s: p.text.slice(0, 600), img: p.img }));
   const videos: Video[] = [];
-  for (const p of posts.filter((p) => p.video && vanVandaag(p.t, now)).slice(0, j.max ?? 3)) {
+  for (const p of posts.filter((p) => p.video && (vanVandaag(p.t, now) || (p.t >= videoVanaf(now) && !!ig?.map[p.code] && now - ig.map[p.code][1] < IG_TTL_MS))).sort((a, b) => Number(vanVandaag(b.t, now)) - Number(vanVandaag(a.t, now))).slice(0, j.max ?? 3)) {
     try {
       // MP4-adres per post 20 uur in DO-opslag van de Fetcher (ondertekend adres is enkele dagen geldig; geen KV-writes): alleen nieuwe reels opvragen
       const c = ig?.map[p.code];
@@ -164,7 +164,7 @@ async function runX(j: Job, _since: number, t0: number): Promise<Res> {
   const { posts, via, err } = await xPosts(user);
   const now = Date.now();
   const entries = posts.filter((p) => !p.mp4).map(xEntry); // tekst/foto-posts naar het nieuws, video's naar Filmpjes
-  const videos = posts.filter((p) => p.mp4 && vanVandaag(p.t, now)).slice(0, j.max ?? 3).map((p) => xVideo(p, j.label || user, hhmm));
+  const videos = posts.filter((p) => p.mp4 && p.t >= videoVanaf(now)).slice(0, j.max ?? 3).map((p) => xVideo(p, j.label || user, hhmm));
   return {
     url: j.url, ok: true, status: 200, ms: Date.now() - t0, via, ...(err ? { err } : {}), total: entries.length, videos,
     newest: entries.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null),
@@ -259,8 +259,8 @@ async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
       base.total = all.length;
       base.newest = all.reduce<number | null>((m, e) => (e.d && e.d <= now && (m == null || e.d > m) ? e.d : m), null);
       base.entries = all.flatMap((e) => { const d = publicatieTijd(e.d, now); return d != null && vanVandaag(d, now) ? [{ ...e, d }] : []; });
-      if (/youtube\.com\/feeds/.test(j.url)) base.videos = parseYouTube(body, j.label || "YouTube", since, hhmm);
-      if (j.kind === "reddit") base.videos = parseRedditVideos(body, j.sub || "", since, hhmm);
+      if (/youtube\.com\/feeds/.test(j.url)) base.videos = parseYouTube(body, j.label || "YouTube", videoVanaf(now), hhmm);
+      if (j.kind === "reddit") base.videos = parseRedditVideos(body, j.sub || "", videoVanaf(now), hhmm);
     }
     base.ms = Date.now() - t0;
     return base;
@@ -295,6 +295,7 @@ export class Fetcher extends DurableObject<Env> {
       if (r.ok) { await this.ctx.storage.put(key, { at: Date.now(), entries: r.entries || [], videos: r.videos || [], newest: r.newest ?? null }); return r; }
       const c: any = await this.ctx.storage.get(key);
       if (c && c.at >= since) return { ...r, cachedAt: c.at, entries: c.entries, videos: c.videos, newest: c.newest };
+      if (c && c.at >= videoVanaf(Date.now())) return { ...r, videos: c.videos };
     } catch { /* opslag optioneel */ }
     return r;
   }
@@ -549,7 +550,9 @@ export class Runner extends DurableObject<Env> {
     const terugval = gehaald.map((r) => {
       if (r.ok) return r;
       const j = all.find((x) => x.url === r.url), c = tcCache.get(r.url);
-      return j && jobGroep(j) !== "core" && c && c.at >= since ? { ...c.r, cachedAt: c.at, terugvalFout: r.err || "geen antwoord" } as Res : r;
+      if (j && jobGroep(j) !== "core" && c && c.at >= since) return { ...c.r, cachedAt: c.at, terugvalFout: r.err || "geen antwoord" } as Res;
+      if (c && c.at >= videoVanaf(now)) return { ...r, videos: c.r.videos };
+      return r;
     });
     const results = [...terugval, ...vd.uitCache];
     const R = new Map(results.map((r) => [r.url, r]));
@@ -748,7 +751,7 @@ export class Runner extends DurableObject<Env> {
     const shown = clusters.filter((k) => !geweigerd.has(k.key) && (sumOf(k) || (k.cat === "politiek" ? politiekLos.includes(k) : (noAI || opgegeven(k) || slechtGecachet(k) || !bruikbareInvoer(k.c.slice(0, 4))) && extractief(k.c[0], isNL(k)))));
     // ---- filmpjes + dumpert
     let dumpert = (R.get(DUMPERT_URL)?.videos || []) as (Video & { _pub: number })[];
-    dumpert = dumpert.filter((v) => vanVandaag(v._pub, now)).slice(0, 25);
+    dumpert = selecteerVideodag(dumpert, now, (v) => v._pub).slice(0, 25);
     const statD = new Map<string, any>((stat?.dumpert || []).map((v: any) => [v.href, v]));
     const kortAi = (s: string) => (s.length > 140 ? s.slice(0, 137).replace(/\s+\S*$/, "") + "…" : s);
     const dOut = dumpert.map(({ _score, _pub, ...v }) => ({ ...v, t: publicatieTijd(_pub, now), tijd: hhmm(publicatieTijd(_pub, now)!), ai: statD.get(v.href)?.ai || kortAi(v.ai) }));
@@ -760,7 +763,7 @@ export class Runner extends DurableObject<Env> {
     // YouTube-kanalen van partijen/overheid (bronnen.json, Politiek): max 2 per kanaal
     const polHref = new Set<string>(); // kanalen uit de rubriek Politiek: terugvalgroep van de filmpje-indeling (#459)
     for (const f of srcFeeds) if (f.g === "politiek") for (const u of f.urls) if (/youtube\.com\/feeds/.test(u)) for (const v of (R.get(u)?.videos || []).slice(0, 2)) { polHref.add(v.href); fv.push({ ...v, ai: kortAi(v.ai) }); }
-    const ytIds = [...new Set([...dOut, ...fv, ...(stat?.filmpjes || []), ...(stat?.dumpert || [])].map(ytVideoId).filter((id): id is string => !!id))];
+    const ytIds = [...new Set([...dOut, ...fv.filter((v) => vanVandaag(v._pub, now)), ...(stat?.filmpjes || []), ...(stat?.dumpert || [])].map(ytVideoId).filter((id): id is string => !!id))];
     const ytKanaalBlokkades = ytGeblokkeerdeShorts(fv);
     const ytNieuw = ytNieuweControles(ytIds.filter((id) => !ytKanaalBlokkades.includes(id)), st.ytEmbed);
     let ytControles = 0;
@@ -1003,12 +1006,13 @@ export class Runner extends DurableObject<Env> {
     // Beste kopie blijft (in de site afspeelbaar, beste kwaliteit, populairst); wat al bij Dumpert staat valt hier weg.
     const dD = dedupVideos(dOut as any[]);
     dOut.splice(0, dOut.length, ...(dD.list as any[]));
-    const dF = dedupVideos(fv.filter((v) => vanVandaag(v._pub, now)).map((v) => ({ ...v, _pub: publicatieTijd(v._pub, now)! })).sort((a, b) => (b._score || 0) - (a._score || 0)).map((v) => ({ ...v, soort: soortVan(v) })), dOut);
+    const filmDag = selecteerVideodag(fv, now, (v) => v._pub);
+    const dF = dedupVideos(filmDag.map((v) => ({ ...v, _pub: publicatieTijd(v._pub, now)! })).sort((a, b) => (b._score || 0) - (a._score || 0)).map((v) => ({ ...v, soort: soortVan(v) })), filmDag.some((v) => !v.gisteren) ? dOut.filter((v) => !v.gisteren) : dOut);
     const uniek = dF.list;
     const fKeuze = selecteerFilmpjes(uniek);
     // Onderwerpgroep per filmpje (#459): alleen nieuwe filmpjes naar de AI, één call per run, bewaard in DO-opslag (geen KV); zonder budget geldt de kanaalregel (niet bewaard)
     const fgRoute = tabAiRoute(tier(), quotaOut || runCapped || usage.neurons >= runBudget, !!tijdelijk, !!env.AI, !!(env.GROQ_API_KEY || env.MISTRAL_API_KEY));
-    const fg = await groepeerFilmpjes(fKeuze as FilmIn[], leesOpslag(await opslag.get("filmgroep").catch(() => { console.error("filmgroep lezen mislukt"); return undefined; })), now, fgRoute !== "geen", async (nieuw) => {
+    const fg = await groepeerFilmpjes(fKeuze as FilmIn[], leesOpslag(await opslag.get("filmgroep").catch(() => { console.error("filmgroep lezen mislukt"); return undefined; })), now, fgRoute !== "geen" && !fKeuze.some((v) => v.gisteren), async (nieuw) => {
       if (fgRoute === "extern") usage.llm!.cloudflare = false;
       try { return await deelIn(env.AI, modelNu(), nieuw, usage); } catch (e) { telAanroepFout(usage, e); await aiFoutAf(e); throw e; } finally { await cfStand(); }
     }, (v) => (polHref.has(v.href) ? "Politiek" : undefined));

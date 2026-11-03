@@ -11,6 +11,18 @@ export function vanVandaag(d: number | null | undefined, now: number) {
   const t = publicatieTijd(d, now);
   return t != null && t >= midnight(now);
 }
+// Voor video geldt de vorige Amsterdamse kalenderdag tot 10:00 als terugval.
+export function videoVanaf(now: number) {
+  const begin = midnight(now);
+  return ams(now).h < 10 ? midnight(begin - 1) : begin;
+}
+export function selecteerVideodag<T extends object>(lijst: T[], now: number, tijd: (v: T) => number | null | undefined): (T & { gisteren?: boolean })[] {
+  const vandaag = lijst.filter((v) => vanVandaag(tijd(v), now));
+  if (vandaag.length) return vandaag;
+  if (ams(now).h >= 10) return [];
+  const begin = midnight(now), vorig = videoVanaf(now);
+  return lijst.filter((v) => { const t = publicatieTijd(tijd(v), now); return t != null && t >= vorig && t < begin; }).map((v) => ({ ...v, gisteren: true }));
+}
 export const nieuwsteTijd = (leden: { d: number }[]) => Math.max(...leden.map((lid) => lid.d));
 
 export function alleenVandaag(data: any, now: number) {
@@ -23,8 +35,9 @@ export function alleenVandaag(data: any, now: number) {
   const out = { ...data, oud };
   for (const key of ["items", "filmpjes", "dumpert"] as const) {
     const lijst = Array.isArray(data[key]) ? data[key] : [];
-    out[key] = lijst.filter((x: any) => {
+    const gefilterd = lijst.filter((x: any) => {
       let keep = false;
+      if (key !== "items" && x?.gisteren) { oud[key]++; return false; }
       if (vandaag && x && Object.prototype.hasOwnProperty.call(x, "t")) { const t = publicatieTijd(x.t, now); keep = t != null && t >= dagBegin; }
       else if (vandaag) {
         const m = /^(\d{2}):(\d{2})$/.exec(x?.tijd || "");
@@ -33,6 +46,12 @@ export function alleenVandaag(data: any, now: number) {
       if (!keep) oud[key]++;
       return keep;
     });
+    if (key === "items" || !vandaag) out[key] = gefilterd;
+    else {
+      const video = selecteerVideodag(lijst, now, (x: any) => x?.t);
+      out[key] = gefilterd.length ? gefilterd.filter((x: any) => !x.gisteren) : video;
+      oud[key] = lijst.length - out[key].length;
+    }
   }
   if (!vandaag) out.dag_samenvatting = "";
   return out;

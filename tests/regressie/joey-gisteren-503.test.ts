@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import * as dag from "../../src/vandaag";
+const { alleenVandaag } = dag;
+
+const ms = (s: string) => Date.parse(s);
+const oud = { id: "oud", t: ms("2026-11-02T22:40:00Z") };
+const vandaag = { id: "nieuw", t: ms("2026-11-03T05:00:00Z") };
+const test = (nu: string, lijst: typeof oud[]) => dag.selecteerVideodag(lijst, ms(nu), (v) => v.t);
+const zeven = "2026-11-03T06:00:00Z";
+const data = (tijd: string, filmpjes: unknown[], dumpert: unknown[]) => ({ gegenereerd: tijd, items: [], filmpjes, dumpert });
+const vroeg = alleenVandaag(data(zeven, [oud], [oud]), ms(zeven));
+assert.deepEqual(vroeg.filmpjes, [{ ...oud, gisteren: true }]);
+assert.deepEqual(test(zeven, [oud]), [{ ...oud, gisteren: true }]);
+assert.deepEqual(test(zeven, [oud, vandaag]), [vandaag]);
+assert.deepEqual(test("2026-11-03T09:30:00Z", [oud]), []);
+assert.deepEqual(vroeg.dumpert, [{ ...oud, gisteren: true }]);
+const gemengd = alleenVandaag(data(zeven, [oud, vandaag], [oud]), ms(zeven));
+assert.deepEqual(gemengd.filmpjes, [vandaag]);
+assert.deepEqual(gemengd.dumpert, [{ ...oud, gisteren: true }]);
+assert.deepEqual(alleenVandaag(data("2026-11-03T08:50:00Z", vroeg.filmpjes, vroeg.dumpert), ms("2026-11-03T09:30:00Z")).dumpert, []);
+const grens = [{ id: "gisteren", t: ms("2026-11-02T22:40:00Z") }, { id: "eergisteren", t: ms("2026-11-01T22:40:00Z") }];
+assert.deepEqual(test("2026-11-02T23:30:00Z", grens), [{ ...grens[0], gisteren: true }]);
+assert.equal(test("2026-11-03T08:59:00Z", [oud]).length, 1);
+assert.equal(test("2026-11-03T09:00:00Z", [oud]).length, 0);
+assert.equal(test("2026-07-03T07:59:00Z", [{ id: "zomer", t: ms("2026-07-02T21:40:00Z") }]).length, 1);
+assert.equal(test("2026-07-03T08:00:00Z", [{ id: "zomer", t: ms("2026-07-02T21:40:00Z") }]).length, 0);
+console.log("✓ videoterugval per Amsterdamse kalenderdag");
