@@ -12,13 +12,13 @@ const MAX_CALLS = 30;
 const PER_ALARM_MS = 8 * 60e3;
 export const MAX_ALARMS_PER_UUR = 3;
 
-type V = { titel: string; href: string; embed?: string; bron?: string; soort?: string };
+type V = { gisteren?: boolean; titel: string; href: string; embed?: string; bron?: string; soort?: string };
 const isYT = (v: V) => /youtube\.com|youtu\.be/.test(`${v.embed || ""} ${v.href}`);
 
 /** Filmpjes in de volgorde waarin de site ze toont (eerste kaart van elke feed eerst). */
 export function volgorde(d: any): V[] {
-  const f: V[] = (d?.filmpjes || []).map((v: V) => ({ ...v, soort: soortVan(v) }));
-  const feeds = [f.filter((v) => v.soort !== "journaal"), f.filter((v) => v.soort === "journaal"), (d?.dumpert || []) as V[]];
+  const f: V[] = (d?.filmpjes || []).filter((v: V) => !v.gisteren).map((v: V) => ({ ...v, soort: soortVan(v) }));
+  const feeds = [f.filter((v) => v.soort !== "journaal"), f.filter((v) => v.soort === "journaal"), ((d?.dumpert || []) as V[]).filter((v) => !v.gisteren)];
   const out: V[] = [], gezien = new Set<string>();
   for (let i = 0; feeds.some((l) => i < l.length); i++)
     for (const l of feeds) { const v = l[i]; if (v?.href && !gezien.has(videoSlug(v as any))) { gezien.add(videoSlug(v as any)); out.push(v); } }

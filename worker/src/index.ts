@@ -1,3 +1,4 @@
+import { videomoment, videoToegestaan, zonderGisteren } from "./videomoment";
 import { berekenBody, etag } from "../../functions/data.json";
 import { somStand, kopieStand, verschilStand, telOp, groqTokens, type LlmState } from "./llm";
 // nieuwsinkort-uur: elke 5 minuten (06:00–23:00 Amsterdam; zwaardere bronnen elke 15 of 30 minuten, zie tier.ts) feeds ophalen, samenvatten met Workers AI en in KV zetten.
@@ -8,7 +9,7 @@ import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
-import { maakTel, voegTellerToe, legeRun, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoud, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
+import { maakTel, voegTellerToe, legeRun, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoudVandaag, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
@@ -387,7 +388,7 @@ export class Runner extends DurableObject<Env> {
           const uurData = uur as any;
           if (Array.isArray(uurData?.items)) uurData.items = uurData.items.filter((i: any) => !isWeigering(i));
           const body = await berekenBody(stat, uur, sv);
-          const tag = await etag(body), h = `${ams().iso}|${tag}`;
+          const tag = await etag(body), h = `${ams().iso}|${await etag(await berekenBody(zonderGisteren(stat), zonderGisteren(uurData), sv))}`;
           // alleen schrijven als de etag anders is (of de vorige write 24 uur of ouder is)
           if (moetSchrijven(ks["data-vooraf"], h, Date.now(), DAG_MS)) {
             await env.NIEUWS.put("data-vooraf", `${ams().iso}\n${tag}\n${body}`);
@@ -994,7 +995,7 @@ export class Runner extends DurableObject<Env> {
 
     const ytGeblokkeerd = ytBlokkades(ytIds, ytKanaalBlokkades, st.ytEmbed);
     const ytGeblokkeerdSet = new Set(ytGeblokkeerd);
-    const ytToegestaan = (v: Video) => { const id = ytVideoId(v); return !id || !ytGeblokkeerdSet.has(id); };
+    const ytToegestaan = (v: Video) => videoToegestaan(ytVideoId(v), ytGeblokkeerdSet, st.ytEmbed!);
     const ytWeggelaten = dOut.filter((v) => !ytToegestaan(v)).length + fv.filter((v) => !ytToegestaan(v)).length;
     dOut.splice(0, dOut.length, ...dOut.filter(ytToegestaan));
     fv.splice(0, fv.length, ...fv.filter(ytToegestaan));
@@ -1027,6 +1028,17 @@ export class Runner extends DurableObject<Env> {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys, ytGeblokkeerd,
       meta: { tier: bronTier, xFouten: xDiagnose, ytStoring, bronnenOvergeslagen: vd.overgeslagen, fetcherHoofd, kvWrites: 0, kvWritesRun: 0, kvWritesDag: 0, publiceerInterval: 10 as number | string, kvSleutels: [] as string[], kvWritesOg: 0, ogTreffers: ogLinks.length - ogOnbekend.length, ogNieuw: ogOnbekend.length, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runInterval: interval, runsLeft: Math.round(runsLeft * 100) / 100, runVol: runCapped, aiWachtend: bundel.uitgesteld ? bundel.wachtend : 0, aiGebundeld: bundel.uitgesteld, dubbeleFilmpjes: dF.removed + dD.removed, filmGroepNieuw: fg.nieuw, filmGroepAi: fg.aiCall, filmGroepUitgesteld: fg.uitgesteld, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, somAfgekeurd: usage.somAfgekeurd || 0, somHerpoging: usage.somHerpoging || 0, somOpgegeven: usage.somOpgegeven || 0, somOpgegevenOpen: Object.keys(st.somAfgekeurd!).length, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
+    // De inhoudshash volgt uitsluitend de oorspronkelijke selectie van vandaag.
+    const momenten: [string, { dag: string; lijst: any[] }][] = [];
+    for (const tab of ["filmpjes", "dumpert"] as const) {
+      const sleutel = `video-moment:${tab}`;
+      try {
+        const vorig = await opslag.get<{ dag: string; lijst: any[] }>(sleutel);
+        const keuze = videomoment(out[tab], vorig, now, ytToegestaan);
+        if (keuze.bewaar) momenten.push([sleutel, keuze.bewaar]);
+        out[tab] = keuze.lijst as typeof out["dumpert"] & typeof out["filmpjes"];
+      } catch { console.error("videomoment lezen mislukt"); }
+    }
     // oude samenvattingen (niet meer in de feeds) opruimen
     for (const [k, t] of Object.entries(st.somAfgekeurd!)) if (now - t >= 24 * 3600e3) delete st.somAfgekeurd![k];
     const live = new Set(clusters.map((k) => k.key));
@@ -1035,7 +1047,7 @@ export class Runner extends DurableObject<Env> {
     for (const [h, id] of Object.entries(st.hashes)) if (!st.sums[id] || now - st.sums[id].at >= 24 * 3600e3) delete st.hashes[h];
     // ---- KV alleen bij wijziging (of hartslag van 50 minuten); state staat primair in DO-opslag (#452)
     const ks: KvStand = (await opslag.get("kvstand")) || {}, wijz: KvStand = {};
-    const uurH = await hash(`${A.iso}\n${uurInhoud(out)}`), meerH = await hash(JSON.stringify({ datum: A.iso, items: meer }));
+    const uurH = await hash(`${A.iso}\n${uurInhoudVandaag(out)}`), meerH = await hash(JSON.stringify({ datum: A.iso, items: meer }));
     // publicatie hooguit elke PUBLICEER_MIN_MS (en bij veel writes vandaag langzamer, zie publiceerInterval); hartslag blijft 50 minuten
     const kvDag = await leesKvDag(this.ctx.storage, U), pubInt = publiceerInterval(kvDag);
     const schrijfUur = moetPubliceren(ks.uur, uurH, now, pubInt), schrijfMeer = moetPubliceren(ks.meer, meerH, now, Math.max(pubInt, MEER_MIN_MS)), schrijfStateKv = moetSchrijven(ks.state, undefined, now);
@@ -1047,7 +1059,7 @@ export class Runner extends DurableObject<Env> {
         const H: any = schrijfUur ? out : await env.NIEUWS.get("uur", "json");
         if (Array.isArray(H?.items)) H.items = H.items.filter((i: any) => !isWeigering(i));
         if (H) {
-          const body = await berekenBody(stat, H, sv, Date.now()), tag = await etag(body), h = `${A.iso}|${tag}`;
+          const body = await berekenBody(stat, H, sv, Date.now()), tag = await etag(body), h = `${A.iso}|${await etag(await berekenBody(zonderGisteren(stat), zonderGisteren(H), sv, Date.now()))}`;
           if (moetPubliceren(ks["data-vooraf"], h, now, pubInt)) voorafNieuw = { h, waarde: `${A.iso}\n${tag}\n${body}` };
         }
       } catch { console.error("data-vooraf berekenen mislukt"); }
@@ -1078,6 +1090,9 @@ export class Runner extends DurableObject<Env> {
       const gepland = await opslag.getAlarm(), over = Date.now() + 60e3;
       if (gepland === null || gepland > over) await opslag.setAlarm(over);
     });
+    if (schrijfUur && uurGelukt) for (const [sleutel, moment] of momenten) {
+      await opslag.put(sleutel, moment).catch(() => console.error("videomoment schrijven mislukt"));
+    }
     if (stateOpgeslagen) this.llmBewaar = null; else await this.bewaarLlm(); // state niet weggeschreven: Groq-verbruik toch bijschrijven
     if (voorafNieuw && uurGelukt && ams().iso === A.iso) {
       try { await kvPut("data-vooraf", voorafNieuw.waarde, voorafNieuw.h); } catch { console.error("KV-schrijffout data-vooraf"); }

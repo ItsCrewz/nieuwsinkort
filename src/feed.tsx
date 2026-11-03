@@ -1094,6 +1094,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
           <div className="meta">
             {v.bron}
             {v.tijd ? <time className="tnum">{v.tijd}</time> : null}
+            {v.gisteren ? <span>gisteren</span> : null}
             {v.populariteit ? <span className="tnum">{v.populariteit}</span> : null}
           </div>
           <h2 className="f-title">{v.titel}</h2>

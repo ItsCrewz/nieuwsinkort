@@ -37,7 +37,7 @@ export function merge(S: any, H: any) {
   const vandaag = dag();
   if (!H || dag(H.gegenereerd) !== vandaag) return S; // uur-data van gisteren: niet gebruiken
   const sOk = S && dag(S.gegenereerd) === vandaag;
-  const base = sOk ? S : { items: [], filmpjes: [], dumpert: [] };
+  const base = sOk ? { ...S } : { items: [], filmpjes: [], dumpert: [] };
   const geblokkeerd = new Set<string>(Array.isArray(H.ytGeblokkeerd) ? H.ytGeblokkeerd : []);
   const toegestaan = (v: any) => {
     const id = youtubeId(v.embed || "") || youtubeId(v.href || "");
@@ -52,11 +52,24 @@ export function merge(S: any, H: any) {
     nieuw.length = 150;
   }
   const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
+  // Selecteer de dag vóór de keuze tussen routine en uurdata.
+  const nu = Date.now();
+  for (const key of ["filmpjes", "dumpert"] as const) {
+    const selectie = (lijst: any[]) => {
+      const bekend = lijst.filter((v: any) => typeof v?.t === "number" || v?.gisteren);
+      const gekozen = alleenVandaag({ gegenereerd: H.gegenereerd, [key]: bekend }, nu)[key];
+      return [...gekozen, ...lijst.filter((v: any) => typeof v?.t !== "number" && !v?.gisteren)];
+    };
+    const samen = selectie([...(base[key] || []), ...(H[key] || [])]);
+    const vandaagVideo = samen.some((v: any) => !v.gisteren);
+    base[key] = selectie(base[key] || []).filter((v: any) => !!v.gisteren !== vandaagVideo);
+    H = { ...H, [key]: selectie(H[key] || []).filter((v: any) => !!v.gisteren !== vandaagVideo) };
+  }
   const sV = new Set<string>((base.filmpjes || []).map((v: any) => v.href));
   const sTijd = sOk ? new Date(S.gegenereerd).toLocaleTimeString("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }) : "00:00";
   // Nieuwe filmpjes van het uur (na de routine), plus alle Instagram-reels (die zijn altijd van nieuwsaccounts).
   // Per soort (Shorts/Journaals) apart begrensd, zodat de ene soort de andere niet wegdrukt.
-  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.bron === "Instagram" || (v.tijd || "") >= sTijd));
+  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.gisteren || v.bron === "Instagram" || (v.tijd || "") >= sTijd));
   const extraF = [...extra.filter((v: any) => v.soort !== "journaal").slice(0, 12), ...extra.filter((v: any) => v.soort === "journaal").slice(0, 10)];
   const { meta, meerKeys, ...h } = H;
   // "Lees verder": ook berichten van de routine krijgen hun extra tekst (sleutel = eerste bron met tekst in KV "meer")
@@ -74,7 +87,7 @@ export function merge(S: any, H: any) {
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
     items: [...nieuw, ...(base.items || [])].map(metMeer),
     filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
-    dumpert: ((H.dumpert || []).length >= 5 ? H.dumpert : base.dumpert || H.dumpert || []).filter(toegestaan),
+    dumpert: ((H.dumpert || []).length >= 5 || !(base.dumpert || []).length ? H.dumpert || [] : base.dumpert).filter(toegestaan),
     bronstats: h.bronstats || base.bronstats,
     gegenereerd: hNieuwer ? H.gegenereerd : S.gegenereerd,
     routine_gegenereerd: sOk ? S.gegenereerd : null,
@@ -98,9 +111,12 @@ export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => 
       if (vooraf && (vooraf.slice(0, 10) === dag() || (ams().h < 6 && vooraf.slice(0, 10) === dag(new Date(Date.now() - 24 * 3600e3).toISOString()))) && vooraf[10] === "\n") {
         const einde = vooraf.indexOf("\n", 11);
         if (einde > 11) {
-          const tag = vooraf.slice(11, einde);
+          const data = JSON.parse(vooraf.slice(einde + 1));
+          const gefilterd = alleenVandaag(data, Date.now());
+          const body = JSON.stringify({ ...data, ...(Array.isArray(data.filmpjes) ? { filmpjes: gefilterd.filmpjes } : {}), ...(Array.isArray(data.dumpert) ? { dumpert: gefilterd.dumpert } : {}) });
+          const tag = await etag(body);
           if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
-          return new Response(vooraf.slice(einde + 1), { headers: { ...HDR, ETag: tag } });
+          return new Response(body, { headers: { ...HDR, ETag: tag } });
         }
       }
     } catch { console.error("data.json: KV vooraf lezen mislukt"); }

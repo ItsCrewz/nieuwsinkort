@@ -106,6 +106,11 @@ export function uurInhoud(out: any): string {
   return JSON.stringify({ ...rest, tab_samenvatting: tabs, bronstats: bs, weer: w });
 }
 
+/** Gisteren-terugval verandert de publicatiehash van vandaag niet. */
+export function uurInhoudVandaag(out: any): string {
+  return uurInhoud({ ...out, filmpjes: out.filmpjes.filter((v: any) => !v.gisteren), dumpert: out.dumpert.filter((v: any) => !v.gisteren) });
+}
+
 // ---------------------------------------------------------------- state in DO-opslag
 /** Grote onderdelen van `state` krijgen een eigen sleutel (waarde max 2 MB); de rest staat in `st:rest`. */
 export const STATE_DELEN = ["sums", "links", "hashes", "art", "artJ", "diep", "ytEmbed", "llm"] as const;

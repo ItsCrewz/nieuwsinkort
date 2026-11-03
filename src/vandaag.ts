@@ -11,6 +11,18 @@ export function vanVandaag(d: number | null | undefined, now: number) {
   const t = publicatieTijd(d, now);
   return t != null && t >= midnight(now);
 }
+// Voor video geldt de vorige Amsterdamse kalenderdag tot 10:00 als terugval.
+export function videoVanaf(now: number) {
+  const begin = midnight(now);
+  return ams(now).h < 10 ? midnight(begin - 1) : begin;
+}
+export function selecteerVideodag<T extends object>(lijst: T[], now: number, tijd: (v: T) => number | null | undefined): (T & { gisteren?: boolean })[] {
+  const vandaag = lijst.filter((v) => vanVandaag(tijd(v), now));
+  if (vandaag.length) return vandaag;
+  if (ams(now).h >= 10) return [];
+  const begin = midnight(now), vorig = videoVanaf(now);
+  return lijst.filter((v) => { const t = publicatieTijd(tijd(v), now); return t != null && t >= vorig && t < begin; }).map((v) => ({ ...v, gisteren: true }));
+}
 export const nieuwsteTijd = (leden: { d: number }[]) => Math.max(...leden.map((lid) => lid.d));
 
 export function alleenVandaag(data: any, now: number) {
@@ -23,8 +35,9 @@ export function alleenVandaag(data: any, now: number) {
   const out = { ...data, oud };
   for (const key of ["items", "filmpjes", "dumpert"] as const) {
     const lijst = Array.isArray(data[key]) ? data[key] : [];
-    out[key] = lijst.filter((x: any) => {
+    const gefilterd = lijst.filter((x: any) => {
       let keep = false;
+      if (key !== "items" && x?.gisteren) { oud[key]++; return false; }
       if (vandaag && x && Object.prototype.hasOwnProperty.call(x, "t")) { const t = publicatieTijd(x.t, now); keep = t != null && t >= dagBegin; }
       else if (vandaag) {
         const m = /^(\d{2}):(\d{2})$/.exec(x?.tijd || "");
@@ -33,7 +46,25 @@ export function alleenVandaag(data: any, now: number) {
       if (!keep) oud[key]++;
       return keep;
     });
+    if (key === "items") out[key] = gefilterd;
+    else {
+      const genGisteren = Number.isFinite(gen) && ams(gen).iso === ams(midnight(now) - 1).iso;
+      const video = vandaag ? selecteerVideodag(lijst, now, (x: any) => x?.t) : genGisteren ? selecteerVideodag(lijst.filter((x: any) => !vanVandaag(x?.t, now)), now, (x: any) => x?.t) : [];
+      out[key] = gefilterd.length ? gefilterd.filter((x: any) => !x.gisteren) : video;
+      oud[key] = lijst.length - out[key].length;
+    }
   }
   if (!vandaag) out.dag_samenvatting = "";
   return out;
+}
+
+/** Houd de huidige data bij gelijke generatietijd alleen als de videolijsten ook gelijk zijn. */
+export function kiesNieuweData<T extends { gegenereerd?: string; filmpjes?: unknown[]; dumpert?: unknown[] }>(vorig: T | null, nieuw: T): T {
+  return vorig && vorig.gegenereerd && vorig.gegenereerd === nieuw.gegenereerd && JSON.stringify([vorig.filmpjes, vorig.dumpert]) === JSON.stringify([nieuw.filmpjes, nieuw.dumpert]) ? vorig : nieuw;
+}
+
+export function verwijderGisteren<T extends { filmpjes?: { gisteren?: boolean }[]; dumpert?: { gisteren?: boolean }[] }>(data: T, now: number): T {
+  if (ams(now).h < 10) return data;
+  const filmpjes = data.filmpjes?.filter((v) => !v.gisteren), dumpert = data.dumpert?.filter((v) => !v.gisteren);
+  return filmpjes?.length === data.filmpjes?.length && dumpert?.length === data.dumpert?.length ? data : { ...data, filmpjes, dumpert };
 }
