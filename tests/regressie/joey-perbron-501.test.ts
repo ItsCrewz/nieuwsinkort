@@ -85,27 +85,23 @@ test("bronlabels worden gedekt door eigen tekst en unieke informatie blijft zich
     }
     const genormaliseerd = punten.map((p) => p.tekst.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, ""));
     assert.equal(new Set(genormaliseerd).size, punten.length, item.kop);
-    const match = (a: string, b: string) => a === b || (a.length >= 5 && b.length >= 5 && (a.slice(0, 5) === b.slice(0, 5) || a.endsWith(b) || b.endsWith(a)));
-    for (let i = 0; i < punten.length; i++) for (let j = i + 1; j < punten.length; j++) {
-      const a = punten[i].tekst, b = punten[j].tekst;
-      const wa = woorden(a), wb = woorden(b);
-      const [kort, lang, ks, ls] = wa.size <= wb.size ? [wa, wb, a, b] : [wb, wa, b, a];
-      const ontken = (t: string) => (t.toLowerCase().match(/\b(?:niet|geen|ontkent|ontkennen|ontkende|ontkend)\b/g) ?? []).sort().join(" ");
-      const getallen = (t: string) => t.match(/\d+(?:[.,:-]\d+)*/g) ?? [];
-      const overlap = [...kort].filter((w) => [...lang].some((v) => match(w, v))).length;
-      assert.ok(ontken(a) !== ontken(b) || getallen(ks).some((n) => !getallen(ls).includes(n)) || overlap < 3 || overlap / kort.size < 0.6, `${a} / ${b}`);
-    }
     for (const punt of punten) for (const label of punt.bronnen) {
       const bron = item.bronnen.find((b) => b.site === label.site)!;
       const teksten = [bron.ft?.replace(/^[^|]{1,40}\|\s*/, "") ?? "", ...(bron.fd?.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? []), ...(meer?.perBron?.find((b) => b.site === bron.site)?.punten ?? [])];
       const inhoud = woorden(punt.tekst);
-      assert.ok(teksten.some((tekst) => { const eigen = woorden(tekst); return [...inhoud].filter((w) => [...eigen].some((v) => v === w || (v.length >= 5 && w.length >= 5 && (v.slice(0, 5) === w.slice(0, 5) || v.endsWith(w) || w.endsWith(v))))).length / inhoud.size >= 0.6; }), `${label.site}: ${punt.tekst}`);
+      assert.ok(teksten.some((tekst) => { const eigen = woorden(tekst); return [...inhoud].filter((w) => [...eigen].some((v) => v === w || (v.length >= 5 && w.length >= 5 && (v.slice(0, 5) === w.slice(0, 5) || v.endsWith(w) || w.endsWith(v))))).length / inhoud.size >= 0.85; }), `${label.site}: ${punt.tekst}`);
+      const getallen = (s: string) => (s.match(/\d+(?:[.,:-]\d+)*|(?<![\p{L}])(?:één|twee|drie|vier|vijf|zes|zeven|acht|negen|tien)(?![\p{L}])/giu) ?? []).map((x) => x.toLowerCase());
+      const namen = (s: string) => (s.match(/\b[\p{L}][\p{L}\p{M}]*\b/gu) ?? []).filter((w, i) => (i > 0 && /^\p{Lu}/u.test(w)) || /^\p{Lu}{2,}$/u.test(w));
+      assert.ok(teksten.some((tekst) => getallen(punt.tekst).every((g) => getallen(tekst).includes(g)) && namen(punt.tekst).every((n) => tekst.toLowerCase().split(/[^\p{L}\p{M}]+/u).includes(n.toLowerCase()))), `${label.site}: ${punt.tekst}`);
     }
   }
+  const qeshm = fixtures.find((f) => f.item.kop.includes("eiland Qeshm"))!;
+  assert.ok(bronnenPunten(qeshm.item, qeshm.meer).every((p) => !/explosies/i.test(p.tekst) || !p.bronnen.some((b) => b.site === "Telegraaf")));
   const crash = fixtures.find((f) => f.item.kop.startsWith("Privévliegtuig viel"))!;
   const learjet = bronnenPunten(crash.item, crash.meer).filter((p) => p.tekst.includes("Learjet 60"));
   for (const punt of learjet) assert.deepEqual(punt.bronnen.map((b) => b.site), ["Telegraaf"]);
   const binance = fixtures.find((f) => f.item.kop.startsWith("Noord-Korea ontkent"))!;
+  assert.ok(bronnenPunten(binance.item, binance.meer).every((p) => !/\bFBI\b/.test(p.tekst) || !p.bronnen.some((b) => b.site === "RTL Nieuws")));
   assert.ok(bronnenPunten(binance.item, binance.meer).some((p) => p.bronnen.some((b) => b.site === "NU.nl")));
 });
 

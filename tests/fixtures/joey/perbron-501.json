@@ -239,5 +239,43 @@
       "uur": true
     },
     "meer": null
+  },
+  {
+    "item": {
+      "cat": "buitenland",
+      "kop": "Verenigde Staten voeren aanvallen uit op eiland Qeshm",
+      "ai": "De Verenigde Staten voeren aanvallen uit op het Iraanse eiland Qeshm en gebieden bij de Straat van Hormuz. De Iraanse minister Abbas Araghchi noemde de onderhandelingen maandag zeer intensief.",
+      "samenvatting": "De Verenigde Staten vallen het Iraanse eiland Qeshm aan. Er zijn vijf explosies gehoord in de buurt van de Straat van Hormuz. Dit gebeurt tijdens indirecte onderhandelingen tussen de VS en Iran.",
+      "punten": [],
+      "tijd": "06:26",
+      "bronnen": [
+        {
+          "site": "de Volkskrant",
+          "href": "https://www.volkskrant.nl/buitenland/vs-voeren-reeks-aanvallen-uit-op-iraans-eiland-qeshm-vijf-explosies-gehoord~b7a280d3/",
+          "ft": "VS voeren reeks aanvallen uit op Iraans eiland Qeshm, vijf explosies gehoord",
+          "fd": ""
+        },
+        {
+          "site": "AD",
+          "href": "https://www.ad.nl/buitenland/live-midden-oosten-vs-voeren-reeks-aanvallen-uit-op-iraans-eiland-qeshm-vijf-explosies-gehoord~ac528ac3/",
+          "ft": "LIVE Midden-Oosten | VS voeren reeks aanvallen uit op Iraans eiland Qeshm, vijf explosies gehoord",
+          "fd": "De Verenigde Staten hebben een reeks aanvallen uitgevoerd op het Iraanse eiland Qeshm en omliggende gebieden nabij de Straat van Hormuz. De aanvallen gebeurden terwijl de VS en Iran indirecte onderhandelingen voeren, die de Iraanse minister van Buitenlandse Zaken Abbas Araghchi maandag nog ‘zeer int"
+        },
+        {
+          "site": "Telegraaf",
+          "href": "https://www.telegraaf.nl/buitenland/live-vs-voeren-discrete-beperkte-aanvallen-uit-op-iraans-eiland-qeshm-en-omliggende-gebieden-bij-straat-van-hormuz/163994504.html",
+          "ft": "LIVE | ’VS voeren ’discrete, beperkte aanvallen’ uit op Iraans eiland Qeshm en omliggende gebieden bij Straat van Hormuz’",
+          "fd": "De spanningen in het Midden-Oosten blijven oplopen. De Amerikaanse president Donald Trump beweert dat Iran zwaar is verzwakt, maar een einde aan de oorlog blijft onzeker. Volg de laatste ontwikkelingen in het Midden-Oosten in ons liveblog."
+        }
+      ],
+      "beelden": [
+        "https://image.volkskrant.nl/279365194/feature-crop/320/320/emirates",
+        "https://images.ad.nl/MjBkNDI1ZWQ3NGFiMWY4NDc0NTUvZGlvLzI3ODg4OTIxOS9maXQtd2lkdGgvNDAw/a-sign-affixed-to-a-petrol-and-diesel-fuel-pump-reads-this-pump-is-pre-pay-only-at-a-bp-petrol-station-in-cranbrook-south-east-england-on-october-13-2026-having-started-the-year-at-around-140-pence-a-litre-uk-diesel-has-shot-higher-since-the-start-of-the-us-iran-conflict-at-the-end-of-february-photo-by-ben-stansall-afp",
+        "https://prod-img.telegraaf.nl/public/incoming/nge1ea-anp-573294300.jpg/alternates/BASE_SIXTEEN_NINE/ANP-573294300.jpg"
+      ],
+      "t": 1793683563000,
+      "uur": true
+    },
+    "meer": null
   }
 ]
