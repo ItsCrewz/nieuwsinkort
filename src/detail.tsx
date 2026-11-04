@@ -11,6 +11,7 @@ import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
+import { artikelUrl, deel } from "./delen";
 
 function monoOf(site: string) {
   return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
@@ -112,7 +113,9 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   );
 }
 
-export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
+export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: () => void; bionic: boolean; dag: string }) {
+  const [deelStatus, setDeelStatus] = useState("");
+  const url = artikelUrl(item, dag);
   const kopRef = useRef<HTMLHeadingElement>(null);
   // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
   useEffect(() => {
@@ -136,6 +139,9 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
         <Icon name="back" className="sm" />
         Terug naar het nieuws
       </button>
+      <button type="button" className="deel-knop" aria-label="Deel dit bericht" onClick={async () => setDeelStatus(await deel(navigator, item.kop, url))}>Deel dit bericht</button>
+      <span className="deel-melding" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
+      {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
       <header className="d-head">
         <div className="meta">
           {CAT_LABEL[item.cat] ?? item.cat}

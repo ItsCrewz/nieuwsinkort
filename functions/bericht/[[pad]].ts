@@ -1,0 +1,39 @@
+import { artikelId, artikelPad, linkId, parsePad } from "../../src/artikelid";
+import { berichtHtml, deelScript } from "../../src/berichthtml";
+import { dagdata, etag } from "../../src/dagdata";
+import { ams } from "../../src/tijd";
+
+interface Env { NIEUWS?: { get(key: string, type: "json" | "text"): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
+interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
+type CacheMetDefault = CacheStorage & { default?: Cache };
+const basis = { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=86400" };
+const redirect = (status: number, locatie: string, cache: string) => new Response(null, { status, headers: { ...basis, Location: locatie, "Cache-Control": cache, ...(status === 302 ? { "X-Robots-Tag": "noindex" } : {}) } });
+export async function onRequestGet({ request, env, waitUntil }: Ctx): Promise<Response> {
+  const u = new URL(request.url), pad = parsePad(u.pathname), nu = ams();
+  const geldig = pad && /^\d{4}-\d{2}-\d{2}$/.test(pad.dag) && !Number.isNaN(Date.parse(`${pad.dag}T00:00:00Z`)) && new Date(`${pad.dag}T00:00:00Z`).toISOString().slice(0, 10) === pad.dag;
+  if (!pad || !geldig || pad.dag > nu.iso) return new Response("Niet gevonden", { status: 404, headers: basis });
+  const gisteren = new Date(Date.UTC(nu.y, nu.m - 1, nu.d - 1)).toISOString().slice(0, 10);
+  if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, "/", "public, max-age=86400");
+  const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
+  const sleutel = new Request(`${u.origin}${u.pathname}`);
+  const bestaand = await cache?.match(sleutel);
+  if (bestaand) {
+    if (request.headers.get("If-None-Match") === bestaand.headers.get("ETag")) return new Response(null, { status: 304, headers: bestaand.headers });
+    return bestaand;
+  }
+  const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env }, false);
+  if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
+  const dag = await data.json() as { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
+  const items = dag.gegenereerd && ams(Date.parse(dag.gegenereerd)).iso === pad.dag ? dag.items || [] : [];
+  const item = items.find((i) => artikelId(i) === pad.id) || items.find((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id));
+  if (!item) return redirect(302, "/", "no-store");
+  const canoniek = artikelPad(item, pad.dag);
+  if (u.pathname !== canoniek) return redirect(301, canoniek, "no-store");
+  const html = berichtHtml(item, pad.dag), tag = await etag(html);
+  const hash = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(deelScript)))));
+  const headers = { ...basis, "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'sha256-${hash}'; frame-ancestors 'none'`, "Cache-Control": "public, max-age=300, stale-while-revalidate=600", ETag: tag };
+  const response = new Response(html, { headers });
+  if (cache) waitUntil(cache.put(sleutel, response.clone()));
+  if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers });
+  return response;
+}
