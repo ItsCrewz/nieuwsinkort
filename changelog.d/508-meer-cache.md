@@ -1,0 +1,1 @@
+- Voorkom dat oude uitgebreide tekst bij verzamelartikelen berichten over andere onderwerpen toont (#508).
