@@ -1,0 +1,1 @@
+- Terugvegen in een artikel: veeg van links naar rechts om terug te gaan naar de lijst (zelfde scrollpositie); de pagina volgt de vinger en veert terug bij een te korte veeg. Niet vanaf de linkerrand, niet in video's, embeds of horizontaal scrollbare blokken en niet bij tekstselectie; respecteert beperkte beweging.
