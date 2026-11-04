@@ -1,5 +1,5 @@
 // Terugvegen in een artikel (links → rechts, zoals op social media): pure gebaarlogica + hook die de pagina de vinger laat volgen.
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 export const RAND = 20; // px: linkerrand is van het iOS-terugvegen van Safari
 export const START = 10; // px: pas daarna beslissen we wat het gebaar is
@@ -45,7 +45,7 @@ const rustig = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").m
 export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () => void) {
   const terug = useRef(onBack);
   terug.current = onBack;
-  useEffect(() => {
+  useLayoutEffect(() => {
     let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" = "uit";
     const el = () => ref.current;
     const zet = (x: number, anim: boolean) => {
