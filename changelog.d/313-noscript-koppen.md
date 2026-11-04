@@ -1,0 +1,1 @@
+- Zonder JavaScript toont de startpagina nu de dagsamenvatting en de eerste 10 koppen met bronlink (zelfde inhoud als data.json) in `<noscript>`; met JavaScript verandert er niets (#313).
