@@ -1,0 +1,2 @@
+- Animaties 1/5 (fundament, #536): motion-tokens (`--dur-*`, `--ease-*`, `--stap`, `--schuif`), één centraal reduced-motion-blok voor het hele document en `src/beweging.ts` als enige reduced-motion-check in JS (#536).
+- Kaart-entree in de nieuwsfeed is gestaffeld en sneller (240 ms, max. 330 ms) en raakt de eerste kaart en de briefing-kop (LCP) niet meer; terug uit een artikel speelt hij niet opnieuw af (#536).

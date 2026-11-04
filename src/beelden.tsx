@@ -4,6 +4,7 @@
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { beeldViaProxy } from "./beeldhost";
+import { scrollGedrag } from "./beweging";
 
 // ---------------------------------------------------------------- vooruit laden
 // Tijdens scrollen laden we de eerste foto van de volgende 3 berichten (in de scrollrichting) al helemaal in,
@@ -136,7 +137,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     const el = track.current;
     if (!el) return;
     const n = (k + list.length) % list.length;
-    el.scrollTo({ left: n * el.clientWidth, behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    el.scrollTo({ left: n * el.clientWidth, behavior: scrollGedrag() });
   };
   if (!list.length) return null;
   const multi = list.length > 1;

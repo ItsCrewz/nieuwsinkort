@@ -20,7 +20,10 @@
   --accent:#d6331f; --accent-soft:#fbe9e6;
   --warn:#a15c00; --warn-bg:#fdf5e8; --rood:#b3261e; --rood-bg:#fcecea; --oranje:#b35400; --oranje-bg:#fdf0e6;
   --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --ease:cubic-bezier(.2,0,0,1); --ease-out:cubic-bezier(.3,0,.8,.15);
+  --dur-1:120ms; --dur-2:180ms; --dur-3:240ms; --dur-4:320ms;
+  --ease-standaard:cubic-bezier(.2,0,0,1); --ease-in:cubic-bezier(.05,.7,.1,1); --ease-uit:cubic-bezier(.3,0,.8,.15); --ease-veer:cubic-bezier(.3,1.4,.5,1);
+  --stap:30ms; --schuif:8px;
+  --ease:var(--ease-standaard); --ease-out:var(--ease-uit);
   --fast:140ms; --base:200ms; --page:260ms;
   color-scheme:light;
 }
@@ -393,10 +396,13 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .page-in{animation:up var(--page) var(--ease) both}
 .skel{background:var(--rule-2);border-radius:3px;animation:pulse 1.2s ease-in-out infinite}
 
+/* Reduced motion, centraal voor het hele document: tokens op nul en duur .01ms (animationend/finished gaan nog af), geen herhaling, geen smooth scroll, geen view transitions. */
 @media (prefers-reduced-motion:reduce){
-  .app *,.app,.app *::before,.app *::after{animation:none !important;transition:none !important}
-  .feed-scroll{scroll-behavior:auto}
+  :root{--dur-1:.01ms;--dur-2:.01ms;--dur-3:.01ms;--dur-4:.01ms;--stap:0ms;--schuif:0px;--fast:.01ms;--base:.01ms;--page:.01ms}
+  *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;transition-delay:0s !important;scroll-behavior:auto !important}
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none !important}
 }
+
 
 
 /* ---------- Smal (container queries op .shell) ---------- */
@@ -468,9 +474,15 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 
 .nc{height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;padding:14px 32px;container:nc / size}
 .nc-in{position:relative;width:100%;max-width:820px;margin:0 auto;height:100%;max-height:760px;align-self:center;display:flex;flex-direction:column;justify-content:space-between;gap:18px;
-  background:var(--card);border:1px solid var(--card-line);border-radius:20px;padding:clamp(24px,6cqh,56px) clamp(22px,6cqw,56px);overflow:hidden;
-  transition:opacity 380ms var(--ease),transform 460ms var(--ease)}
-.nc:not(.seen) .nc-in{opacity:0;transform:translateY(18px) scale(.985)}
+  background:var(--card);border:1px solid var(--card-line);border-radius:20px;padding:clamp(24px,6cqh,56px) clamp(22px,6cqw,56px);overflow:hidden}
+/* Kaart-entree: de kaart zelf staat er al; alleen de inhoud schuift gestaffeld in (opacity/transform). 'wacht' en 'in' zetten we met JS (NewsFeed) alleen op kaarten die bij het mounten buiten beeld lagen, dus de eerste kaart en alles zonder JS blijven direct zichtbaar. */
+.nc-body > *{--k:0}
+.nc-body > :nth-child(2){--k:1}
+.nc-body > :nth-child(3){--k:2}
+.nc-body > :nth-child(n+4){--k:3}
+.nc.wacht .nc-body > *{opacity:0}
+.nc.in .nc-body > *{animation:kaart-in var(--dur-3) var(--ease-in) backwards;animation-delay:calc(var(--k) * var(--stap))}
+@keyframes kaart-in{from{opacity:0;transform:translate3d(0,var(--schuif),0)}}
 .nc-body{display:flex;flex-direction:column;gap:18px;min-height:0}
 /* Nooit tekst half afsnijden: niets in de kaart mag krimpen (flex-shrink maakte de kop halve regels).
    Past het niet, dan verkleint fitCard() de foto, haalt punten weg en kort de samenvatting
@@ -588,7 +600,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .row-img img.in{opacity:1}
 .row-img.multi{box-shadow:4px -4px 0 -1px var(--card,#fff),4px -4px 0 0 var(--rule)}
 @media (min-width:720px){.row-img{width:120px;height:90px}}
-@media (prefers-reduced-motion:reduce){.bl-slide img,.row-img img{transition:none}}
 .f-ook{font-size:0.78125rem;line-height:1.4;color:rgba(255,255,255,.72);margin-top:-2px}
 .brief-note{margin-top:10px;font-size:0.84375rem;line-height:1.5;color:var(--muted)}
 
@@ -612,7 +623,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 @keyframes svspin{to{transform:rotate(360deg)}}
 .sv-fout{margin:4px 0 14px;font-size:0.9375rem;line-height:1.45;overflow-wrap:anywhere}
 .sv-sheet .f-btn{background:#111;color:#fff;align-self:flex-start}
-@media (prefers-reduced-motion:reduce){.sv-sheet,.sv-wrap{animation:none}.sv-dot{animation-duration:2.4s}}
 :root[data-theme="dark"] .sv-sheet{background:#1c1c1e;color:#f2f2f2}:root[data-theme="dark"] .sv-x{color:#f2f2f2}:root[data-theme="dark"] .sv-titel{color:rgba(255,255,255,.6)}:root[data-theme="dark"] .sv-bron{color:rgba(255,255,255,.5)}:root[data-theme="dark"] .sv-laden{color:rgba(255,255,255,.7)}:root[data-theme="dark"] .sv-dot{border-color:rgba(255,255,255,.2);border-top-color:var(--accent)}:root[data-theme="dark"] .sv-sheet .f-btn{background:#fff;color:#111}
 /* samenvatting staat al klaar: klein groen bolletje */
 .sv-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:6px;vertical-align:middle;box-shadow:0 0 0 2px rgba(34,197,94,.25);flex:none}
@@ -655,7 +665,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .d-meer-laden span{display:block;height:14px;border-radius:7px;background:var(--rule);opacity:.6;animation:mlaad 1.2s ease-in-out infinite alternate}
 .d-meer-laden span:nth-child(2){width:92%}.d-meer-laden span:nth-child(3){width:70%}
 @keyframes mlaad{to{opacity:.25}}
-@media (prefers-reduced-motion:reduce){.d-meer-laden span{animation:none}}
 
 .vcard-open{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;cursor:pointer;z-index:1}
 .v-ext{position:relative;z-index:2}

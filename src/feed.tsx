@@ -8,10 +8,10 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
+import { rustig, scrollGedrag } from "./beweging";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
-const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
@@ -1283,7 +1283,7 @@ export function Feed({
   }, [pool]);
 
   const close = useCallback(() => {
-    if (!motionOK()) return onClose();
+    if (rustig()) return onClose();
     setClosing(true);
     window.setTimeout(onClose, 220);
   }, [onClose]);
@@ -1341,7 +1341,7 @@ export function Feed({
     const n = Math.max(0, Math.min(items.length - 1, i));
     if (n !== activeRef.current) richting.current = n < activeRef.current ? -1 : 1;
     startDirect(n);
-    s.scrollTo({ top: n * s.clientHeight, behavior: motionOK() ? "smooth" : "auto" });
+    s.scrollTo({ top: n * s.clientHeight, behavior: scrollGedrag() });
   }, [items.length, startDirect]);
 
   const ytFout = useCallback((i: number, code: unknown) => {
