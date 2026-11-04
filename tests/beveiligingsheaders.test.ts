@@ -42,8 +42,7 @@ t("statische bestanden krijgen passende cacheheaders", () => {
     assert.ok(regel >= 0, pad);
     assert.match(headers.split("\n")[regel + 1], /Cache-Control: public, max-age=86400(?:,|$)/);
   }
-  assert.match(headers, /\/assets\/\*
-  Cache-Control: public, max-age=31536000, immutable/);
+  assert.match(headers, /\/assets\/\*\n  Cache-Control: public, max-age=31536000, immutable/);
 });
 
 t("Cloudflare Analytics-bronnen staan alleen in de bedoelde CSP-richtlijnen", () => {
