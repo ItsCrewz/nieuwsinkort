@@ -1,0 +1,1 @@
+- Voorkom samenvoegen van verschillende wedstrijden en rechtszaken en behoud routine-inhoud bij dubbele berichten (#509).

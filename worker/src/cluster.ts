@@ -1,6 +1,7 @@
 // Clusteren van nieuwskandidaten uit feeds: pure module (geen Worker-API's), getest in tests/cluster.test.ts.
 // Conservatief: liever twee losse berichten dan twee verschillende verhalen samen.
 import { sportCat } from "./sportcat";
+import { kostenBotst, wedstrijdTeams, zelfdeVerhaal } from "../../src/verhaaldubbel";
 
 export const STOP = new Set(("de het een en van in op te voor met is zijn er dat die bij uit aan om ook als naar over na door nog niet wel maar dan was wordt worden heeft hebben meer dit deze tot kan nu zo al wat hoe waar wie ze hij zij we je jij u the a an of to in on for with and is are was be at by from as it its this that after over new says will has have can how why what who "
   // hulpwerkwoorden: zeggen niets over het verhaal ("Kamer wil ..." / "Kamer wilt ...")
@@ -68,13 +69,7 @@ const raceAfstanden = (t: string) => {
 /** twee titels met elk afstanden maar zonder één gedeelde afstand gaan over verschillende races (500 m ≠ 1.500 m) (#443) */
 const afstandBotst = (a?: number[], b?: number[]) => !!a?.length && !!b?.length && !a.some((x) => b.includes(x));
 
-/** sleutel die alleen een rubriekstaart en ".nl" weghaalt ("AD Formule 1" = "AD", "NU.nl Voetbal" = "NU.nl"); "The Verge" en "The Decoder" blijven verschillend (anders dan uitgever()) */
-const bronSleutel = (site: string) => site.trim().toLowerCase().replace(/\s+(voetbal|football|formule 1|f1|auto|sport)$/, "").replace(/\.nl$/, "");
-/** één bron per uitgever ("AD" = "AD Formule 1"): de eerste blijft, volgorde behouden (#443) */
-export function eenPerUitgever<T extends { site: string }>(bronnen: T[]): T[] {
-  const gezien = new Set<string>();
-  return bronnen.filter((b) => { const u = bronSleutel(b.site); if (gezien.has(u)) return false; gezien.add(u); return true; });
-}
+export { eenPerUitgever } from "../../src/uitgever";
 
 export type Cand = { cat: string; site: string; href: string; t: string; s: string; d: number; img?: string };
 /** tok/tokS: titeltokens resp. titel + begin van de beschrijving (alleen extra bewijs); nmT/nm: eigennamen (hoofdletter midden in de zin) in de titel resp. titel + beschrijving */
@@ -177,8 +172,17 @@ export function cluster(cands: Cand[]): Cluster[] {
     // per lid vergelijken (max), niet met de unie: een groot cluster mag geen lagere Jaccard geven
     // de eigennamen-regel mag geen twee losse verhalen verbinden (een overzichtsbericht over twee wedstrijden is een brug): alleen als de geraakte clusters ook onderling bij elkaar horen
     // verschillende races (500 m / 1.500 m) horen nooit in één cluster, ook niet via een live-blog over beide als brug (#443)
-    const pas = (k: Cluster) => !k.leden.some((l) => afstandBotst(lid.afst, l.afst));
-    let raak = out.filter((k) => pas(k) && k.leden.some((l) => gelijk(lid, l, false) > 0));
+    const teams = wedstrijdTeams(c.t);
+    const pas = (k: Cluster) => !k.c.some((x) => {
+      const andere = wedstrijdTeams(x.t);
+      if (teams.length === 2 && andere.length === 2 && !teams.every((t) => andere.includes(t))) return true;
+      if ((teams.length === 2 || andere.length === 2) && /\b(?:transfer|trainer|ontslag)\b/i.test(`${c.t} ${x.t}`)) return true;
+      if (/\b(?:verkiezing|rechtszaak)\b/i.test(c.t) && /\b(?:verkiezing|rechtszaak)\b/i.test(x.t) && /verkiezing/i.test(c.t) !== /verkiezing/i.test(x.t)) return true;
+      if (/advocaatkosten/i.test(`${c.t} ${x.t}`) && /rechtszaak/i.test(`${c.t} ${x.t}`) && !zelfdeVerhaal({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d })) return true;
+      if (kostenBotst({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d })) return true;
+      return false;
+    }) && !k.leden.some((l) => afstandBotst(lid.afst, l.afst)) ;
+    let raak = out.filter((k) => pas(k) && (k.leden.some((l) => gelijk(lid, l, false) > 0) || k.c.every((x) => zelfdeVerhaal({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d }))));
     let nieuweKern: string[] = [];
     // goedkope voorcheck: de naamregel eist ≥2 eigennamen en ≥1 naam in de titel
     if (!raak.length && lid.nm!.size >= 2 && lid.nmT!.size > 0) {
@@ -190,7 +194,13 @@ export function cluster(cands: Cand[]): Cluster[] {
     // (clusters die onderling over verschillende races gaan blijven los)
     const [k, ...kand] = raak;
     const rest: Cluster[] = [];
-    for (const r of kand) if (!r.leden.some((x) => k.leden.concat(...rest.map((y) => y.leden)).some((y) => afstandBotst(x.afst, y.afst)))) rest.push(r);
+    const verhaal = (x: Cand) => ({ kop: x.t, tekst: x.s, tijd: x.d });
+    const viaVerhaal = (v: Cluster) => v.c.every((x) => zelfdeVerhaal(verhaal(c), verhaal(x)));
+    for (const r of kand) if ([k, ...rest].every((v) =>
+      r.leden.every((x) => v.leden.every((y) => !afstandBotst(x.afst, y.afst))) &&
+      (!(viaVerhaal(r) || viaVerhaal(v)) || r.c.every((x) => v.c.every((y) => zelfdeVerhaal(verhaal(x), verhaal(y))))) &&
+      (teams.length <= 2 || r.leden.every((x) => v.leden.every((y) => gelijk(x, y) > 0)))
+    )) rest.push(r);
     for (const r of rest) { k.c.push(...r.c); k.leden.push(...r.leden); for (const x of r.tok) k.tok.add(x); for (const x of r.tokS) k.tokS.add(x); for (const x of r.kern || []) (k.kern ||= new Set()).add(x); }
     if (rest.length) out = out.filter((x) => !rest.includes(x));
     if (nieuweKern.length) { k.kern ||= new Set(); for (const x of nieuweKern) k.kern.add(x); }
