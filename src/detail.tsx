@@ -131,6 +131,12 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
   const intro = item.ruw && zelfdeRuweTekst(tekst.ai, item.kop) ? "" : tekst.ai;
   const paragraphs = item.ruw && (zelfdeRuweTekst(tekst.samenvatting, tekst.ai) || zelfdeRuweTekst(tekst.samenvatting, item.kop)) ? [] : alleAlineas;
   const punten = nieuwePunten(tekst.punten, tekst.ai, tekst.samenvatting);
+  const videobron = bronnen.find((b) => {
+    try {
+      const url = new URL(b.href);
+      return /^https?:$/.test(url.protocol) && /^\/video\/[^/]+/.test(url.pathname);
+    } catch { return false; }
+  });
   return (
     <article className={`detail cat-${item.cat}`}>
       <button type="button" className="back" onClick={onBack}>
@@ -146,6 +152,7 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
         </div>
         <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
+        {videobron ? <a className="btn ghost d-more" href={veiligeUrl(videobron.href)} target="_blank" rel="noopener noreferrer">Bekijk video bij {videobron.site}</a> : null}
         {intro ? (
           <p className="d-lead bn">
             <BionicText text={intro} on={bionic} />
