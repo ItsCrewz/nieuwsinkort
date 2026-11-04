@@ -1,9 +1,10 @@
-import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
 import { useEffect, useRef, useState } from "react";
 import type { Bron, Item, Meer } from "./types";
 import { BionicText, host } from "./ui";
 import { Icon } from "./icons";
+import { toonBekendmaking } from "./bekendmaking";
+import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Beelden } from "./beelden";
 import { veiligeUrl } from "./url";
 import { bronnenTekst, detailInhoud, fotos } from "./leesverder";
@@ -126,7 +127,7 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
     document.title = `${item.kop} · Nieuws in het kort`;
   }, [item]);
   // punten alleen als ze iets nieuws zeggen (#488)
-  const tekst = zonderBronvermelding(item);
+  const tekst = zonderBronvermelding(toonBekendmaking(item));
   const { paragraphs: alleAlineas, bronnen } = detailInhoud(tekst);
   const intro = item.ruw && zelfdeRuweTekst(tekst.ai, item.kop) ? "" : tekst.ai;
   const paragraphs = item.ruw && (zelfdeRuweTekst(tekst.samenvatting, tekst.ai) || zelfdeRuweTekst(tekst.samenvatting, item.kop)) ? [] : alleAlineas;

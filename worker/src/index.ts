@@ -829,7 +829,7 @@ export class Runner extends DurableObject<Env> {
         const rest = desc.slice((zin || knip).length).replace(/^[\s.!?,:;…-]+/, "");
         const ai = rest ? firstSentence(rest) : "";
         if (k.cat === "politiek") items.push({ cat: k.cat, kop, ai, samenvatting: rest.slice(0, 700), punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true });
-        else items.push({ cat: k.cat, ...extractief(k.c[0], isNL(k))!, punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true }); // extractief, alle rubrieken; Engels met "(Engels)"
+        else items.push({ cat: k.cat, ...extractief(k.c[0], isNL(k), bron.some((b: { site: string; href: string }) => /offici[eë]le bekendmakingen/iu.test(b.site) || /officielebekendmakingen\.nl/iu.test(b.href)))!, punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true }); // extractief, alle rubrieken; Engels met "(Engels)"
       }
     }
     for (let i = items.length - 1; i >= 0; i--) if (isWeigering(items[i])) items.splice(i, 1);
