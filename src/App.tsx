@@ -1217,7 +1217,7 @@ export default function App() {
               dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
               onBack={() => {
-                if (openedInside) window.history.back();
+                if (openedInside || window.history.state?.binnen) window.history.back();
                 else window.location.hash = "#/";
               }}
             />
