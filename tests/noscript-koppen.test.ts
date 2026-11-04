@@ -19,4 +19,11 @@ import { metNoscript, noscriptHtml } from "../scripts/noscript-html.mjs";
   const gevuld = metNoscript(index, "<p>$&</p>");
   assert.ok(gevuld.includes("<noscript><p>$&</p></noscript>") && gevuld.includes('<div id="root"></div>'));
 
+  // Overeenkomst met het statische data.json (= /data.json?statisch=1): zelfde samenvatting, zelfde eerste 10 koppen in dezelfde volgorde.
+  const stat = JSON.parse(readFileSync("public/data.json", "utf8"));
+  const uitNoscript = noscriptHtml(stat);
+  const verwacht = stat.items.filter((i: any) => typeof i?.kop === "string" && i.kop.trim()).slice(0, 10).map((i: any) => i.kop);
+  const gevonden = [...uitNoscript.matchAll(/<li>(?:<a href="[^"]*">)?(.*?)(?:<\/a>)?(?: \([^)]*\))?<\/li>/g)].map((m) => m[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'"));
+  assert.deepEqual(gevonden, verwacht, "koppen = eerste 10 van het statische data.json");
+  if (stat.dag_samenvatting) assert.ok(uitNoscript.includes("<h2>In het kort</h2>"), "dagsamenvatting aanwezig");
 }
