@@ -26,4 +26,22 @@ test("verminderde beweging navigeert zonder overgang", async ({ page }) => {
   await page.locator(".detail .back").click();
   await expect(page.locator(".detail")).toHaveCount(0);
   expect(await page.evaluate(() => window.overgangen)).toBe(0);
+  expect(await page.evaluate(() => document.getAnimations().filter((a) => a.effect?.getComputedTiming().duration > 0.01).length)).toBe(0);
+});
+
+test("zonder View Transition krijgt de lijst bij sluiten parallax", async ({ page }) => {
+  await page.addInitScript(() => {
+    document.startViewTransition = undefined;
+    window.parallax = 0;
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (frames, opties) {
+      if (this.matches(".nf, main.wrap") && JSON.stringify(frames).includes("-24px")) window.parallax++;
+      return animate.call(this, frames, opties);
+    };
+  });
+  await page.goto("#/");
+  await page.locator(".nc-title a").first().click();
+  await expect(page.locator(".detail")).toBeVisible();
+  await page.locator(".detail .back").click();
+  await expect.poll(() => page.evaluate(() => window.parallax)).toBe(1);
 });

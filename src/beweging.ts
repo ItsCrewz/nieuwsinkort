@@ -24,10 +24,15 @@ export function animeer(el: Element, frames: Keyframe[] | PropertyIndexedKeyfram
 
 type VT = { startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<unknown> } };
 
+export function kanOvergang(): boolean {
+  const d = typeof document !== "undefined" ? (document as unknown as VT & Document) : null;
+  return !!d && !d.hidden && !rustig() && typeof d.startViewTransition === "function" && !d.querySelector?.(".sheet-root,.menu,[role=dialog]");
+}
+
 /** Voert update uit, met een View Transition als de browser die kent en reduced motion uit staat (anders direct). `soort` komt als data-overgang op <html> voor de ::view-transition-regels. */
 export async function metOvergang(update: () => void | Promise<void>, soort: Overgang = "wissel"): Promise<void> {
   const d = typeof document !== "undefined" ? (document as unknown as VT & Document) : null;
-  if (!d || d.hidden || rustig() || typeof d.startViewTransition !== "function" || d.querySelector?.(".sheet-root,.menu,[role=dialog]")) { await update(); return; }
+  if (!d || !kanOvergang() || !d.startViewTransition) { await update(); return; }
   const root = d.documentElement;
   root.dataset.overgang = soort;
   try { await d.startViewTransition(update).finished; }

@@ -241,6 +241,8 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 
 /* ---------- Detail ---------- */
 .detail{max-width:660px;margin:0 auto;padding:32px 0 8px}
+.detail.veegt{position:relative}
+.detail.veegt::before{content:"";position:absolute;top:0;bottom:0;right:100%;width:24px;background:linear-gradient(to left,rgb(0 0 0 / .18),transparent);pointer-events:none}
 .back{display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:0.875rem;color:var(--muted)}
 .back:hover{color:var(--ink)}
 .back .ic{transition:transform var(--f) var(--e)}

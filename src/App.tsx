@@ -1,6 +1,6 @@
 import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
-import { animeer, metOvergang } from "./beweging";
+import { animeer, kanOvergang, metOvergang } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
 import { rustig, scrollGedrag, DUUR } from "./beweging";
 import { ams } from "./tijd";
@@ -1096,7 +1096,7 @@ export default function App() {
         if (nummer !== volgnummer) return;
       }
       const update = () => flushSync(() => { setFocusKey(back); setRoute(next); });
-      if ((openen || sluiten) && !video && !veeg) {
+      if ((openen || sluiten) && !video && !veeg && kanOvergang()) {
         void metOvergang(update, openen ? "open" : "terug");
       }
       else {
@@ -1261,6 +1261,7 @@ export default function App() {
               bionic={bionic}
               onBack={(opties) => {
                 geveegd.current = !!opties?.geveegd;
+                if (geveegd.current) setTimeout(() => { geveegd.current = false; }, 1000);
                 if (openedInside || window.history.state?.binnen) window.history.back();
                 else window.location.hash = "#/";
               }}
