@@ -22,11 +22,19 @@ async function openArtikel(page) {
   await expect(kop).toBeVisible();
   await kop.click();
   await expect(page.locator("article.detail")).toBeVisible();
+  await expect(page.locator("article.detail .d-lead").first()).toBeVisible();
+}
+
+// Startpunt op de leadtekst: een vast y-punt raakt soms een afbeelding in een horizontaal scrollbaar blok (laadvolgorde), en dat negeert de hook bewust.
+async function startY(page) {
+  const b = await page.locator("article.detail .d-lead").first().boundingBox();
+  return Math.round(b.y + Math.min(b.height / 2, 12));
 }
 
 test("veeg naar rechts sluit het artikel", async ({ page }) => {
   await openArtikel(page);
-  const g = await veeg(page, [60, 400], [300, 410]);
+  const y = await startY(page);
+  const g = await veeg(page, [60, y], [300, y + 10]);
   await g.eind();
   await expect(page.locator("article.detail")).toHaveCount(0);
   await expect(page.locator(".nc-title a").first()).toBeVisible();
@@ -34,7 +42,8 @@ test("veeg naar rechts sluit het artikel", async ({ page }) => {
 
 test("korte veeg veert terug en laat het artikel staan", async ({ page }) => {
   await openArtikel(page);
-  const g = await veeg(page, [60, 400], [110, 402], 4);
+  const y = await startY(page);
+  const g = await veeg(page, [60, y], [110, y + 2], 4);
   await expect.poll(() => page.locator("article.detail").evaluate((e) => e.style.transform)).toContain("translateX");
   await g.eind();
   await expect.poll(() => page.locator("article.detail").evaluate((e) => e.style.transform)).toBe("");
@@ -43,7 +52,8 @@ test("korte veeg veert terug en laat het artikel staan", async ({ page }) => {
 
 test("veeg vanaf de linkerrand wordt genegeerd (iOS-randgebaar)", async ({ page }) => {
   await openArtikel(page);
-  const g = await veeg(page, [5, 400], [300, 405]);
+  const y = await startY(page);
+  const g = await veeg(page, [5, y], [300, y + 5]);
   expect(await page.locator("article.detail").evaluate((e) => e.style.transform)).toBe("");
   await g.eind();
   await expect(page.locator("article.detail")).toBeVisible();
