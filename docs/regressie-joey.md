@@ -4,6 +4,7 @@ Bewaar bij nieuwe meldingen het echte voorbeeld als fixture met uitsluitend item
 
 | Datum melding | Melding | Issue / PR | Testbestand en testnaam | Status |
 | --- | --- | --- | --- | --- |
+| 4 november 2026 | Feyenoord en Borsato dubbel: liveblog en artikel | #509 | `tests/regressie/joey-dubbel-509.test.ts`: “Feyenoord: gepubliceerde kaarten”, “Borsato: gepubliceerde kaarten”, “Borsato: comeback en column blijven apart”, “Feyenoord: trainer blijft apart”, “feedclustering” | Gedekt met echte gepubliceerde items. |
 | 1 november 2026 | Florida-privéjet onder Nederland | #476 / #477 | `tests/regio.test.ts`: “Florida-item (kop, ai en omschrijving) is buitenland” | Gedekt met echte kop, RTL-link en eerste zin feedomschrijving. |
 | 1 november 2026 | Florida-privéjet: kapotte AI-samenvatting | #476 / #477 | `tests/somcheck.test.ts`: “Florida-antwoord wordt afgekeurd (kern gelijk aan kop)”; `tests/kv-opslag.test.ts`: “#476 afgekeurde AI-som (geen externe keten): extractief ruw, markering in DO-opslag, volgende runs geen AI meer voor dat cluster” | Gedekt met echte AI-uitvoer; de integratietest gebruikt een testlink. |
 | 1 november 2026 | Wolf Bram vijf keer apart | #469 / #472 | `tests/cluster-eigennamen.test.ts`: “wolf Bram: vijf bronnen worden één cluster, in elke volgorde” | Gedekt met `tests/fixtures/wolf-bram-feeds.json`, vijf echte feedberichten. |

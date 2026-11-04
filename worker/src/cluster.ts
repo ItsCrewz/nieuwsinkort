@@ -1,6 +1,7 @@
 // Clusteren van nieuwskandidaten uit feeds: pure module (geen Worker-API's), getest in tests/cluster.test.ts.
 // Conservatief: liever twee losse berichten dan twee verschillende verhalen samen.
 import { sportCat } from "./sportcat";
+import { zelfdeVerhaal } from "../../src/verhaaldubbel";
 
 export const STOP = new Set(("de het een en van in op te voor met is zijn er dat die bij uit aan om ook als naar over na door nog niet wel maar dan was wordt worden heeft hebben meer dit deze tot kan nu zo al wat hoe waar wie ze hij zij we je jij u the a an of to in on for with and is are was be at by from as it its this that after over new says will has have can how why what who "
   // hulpwerkwoorden: zeggen niets over het verhaal ("Kamer wil ..." / "Kamer wilt ...")
@@ -178,7 +179,7 @@ export function cluster(cands: Cand[]): Cluster[] {
     // de eigennamen-regel mag geen twee losse verhalen verbinden (een overzichtsbericht over twee wedstrijden is een brug): alleen als de geraakte clusters ook onderling bij elkaar horen
     // verschillende races (500 m / 1.500 m) horen nooit in één cluster, ook niet via een live-blog over beide als brug (#443)
     const pas = (k: Cluster) => !k.leden.some((l) => afstandBotst(lid.afst, l.afst));
-    let raak = out.filter((k) => pas(k) && k.leden.some((l) => gelijk(lid, l, false) > 0));
+    let raak = out.filter((k) => pas(k) && (k.leden.some((l) => gelijk(lid, l, false) > 0) || k.c.every((x) => zelfdeVerhaal({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d }))));
     let nieuweKern: string[] = [];
     // goedkope voorcheck: de naamregel eist ≥2 eigennamen en ≥1 naam in de titel
     if (!raak.length && lid.nm!.size >= 2 && lid.nmT!.size > 0) {
