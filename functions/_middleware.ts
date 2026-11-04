@@ -7,21 +7,29 @@ const APEX = "nieuwsinkort.nl";
 const PAGES = "nieuwsinkort.pages.dev";
 
 // Pure keuze: doeladres bij www of productie-pages.dev, anders null (apex, previews en andere hosts blijven ongemoeid).
-export const wwwDoel = (rawUrl: string): string | null => {
+// Op pages.dev alleen HTML-paginaverzoeken (GET/HEAD): de uur-Worker POST naar /samenvatting en haalt /data.json op via dit adres; een 301 zou de body wissen en een hop kosten.
+export const isPaginaVerzoek = (method: string, pad: string): boolean => {
+  if (method !== "GET" && method !== "HEAD") return false;
+  if (/^\/(samenvatting|meer|media|data\.json|version\.json)(\/|$)/i.test(pad)) return false;
+  const laatste = pad.split("/").pop() || "";
+  return !laatste.includes(".") || /\.html?$/i.test(laatste);
+};
+
+export const wwwDoel = (rawUrl: string, method = "GET"): string | null => {
   let u: URL;
   try { u = new URL(rawUrl); } catch { return null; }
   const h = u.hostname.toLowerCase();
-  if (h !== WWW && h !== PAGES) return null;
+  if (h !== WWW && !(h === PAGES && isPaginaVerzoek(method.toUpperCase(), u.pathname))) return null;
   return `https://${APEX}${u.pathname}${u.search}`;
 };
 
-// Pure keuze: preview-host (subdomein van pages.dev-project) → noindex.
+// Pure keuze: preview-host (subdomein van pages.dev-project) of productie-pages.dev (niet-paginaverzoeken) → noindex.
 export const isPreview = (rawUrl: string): boolean => {
-  try { return new URL(rawUrl).hostname.toLowerCase().endsWith("." + PAGES); } catch { return false; }
+  try { const h = new URL(rawUrl).hostname.toLowerCase(); return h === PAGES || h.endsWith("." + PAGES); } catch { return false; }
 };
 
 export const onRequest = async ({ request, next }: Ctx): Promise<Response> => {
-  const doel = wwwDoel(request.url);
+  const doel = wwwDoel(request.url, request.method);
   if (!doel) {
     const r = await next();
     if (!isPreview(request.url)) return r;

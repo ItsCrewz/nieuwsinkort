@@ -41,3 +41,7 @@ t("sitemap: apex met lastmod, zonder changefreq", () => {
   assert.match(s, /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/);
   assert.ok(!s.includes("changefreq"));
 });
+await t("JSON-LD: inLanguage alleen op WebSite, niet op NewsMediaOrganization", () => {
+  const ld = JSON.parse(readFileSync("index.html", "utf8").match(/ld\+json">([\s\S]*?)<\/script>/)![1]);
+  for (const n of ld["@graph"]) assert.equal("inLanguage" in n, n["@type"] === "WebSite", n["@type"]);
+});

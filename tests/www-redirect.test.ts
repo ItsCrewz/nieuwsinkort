@@ -36,6 +36,32 @@ await t("pages.dev (productie) → 301 met pad en query", async () => {
   assert.equal(door, 0);
   assert.equal((await draai("https://NieuwsInKort.pages.dev/")).r.headers.get("location"), "https://nieuwsinkort.nl/");
 });
+await t("pages.dev: POST /samenvatting niet geredirect, body bereikt handler, wel noindex", async () => {
+  let body = "";
+  const next = async () => { body = "bereikt"; return new Response("ok"); };
+  const r = await onRequest({ request: new Request("https://nieuwsinkort.pages.dev/samenvatting", { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } }), next });
+  assert.equal(r.status, 200);
+  assert.equal(body, "bereikt");
+  assert.equal(r.headers.get("x-robots-tag"), "noindex");
+});
+await t("pages.dev: GET API-/functieroutes en assets niet geredirect, wel noindex", async () => {
+  for (const p of ["/data.json", "/version.json", "/samenvatting", "/meer?id=1", "/media/dumpert/a/b.m3u8", "/media/beeld/x/y.png", "/bronnen.json", "/assets/a.js"]) {
+    const { r, door } = await draai("https://nieuwsinkort.pages.dev" + p);
+    assert.equal(r.status, 200, p);
+    assert.equal(door, 1, p);
+    assert.equal(r.headers.get("x-robots-tag"), "noindex", p);
+  }
+});
+await t("pages.dev: HEAD op pagina 301, POST op pagina niet", async () => {
+  const next = async () => new Response("ok");
+  assert.equal((await onRequest({ request: new Request("https://nieuwsinkort.pages.dev/dumpert", { method: "HEAD" }), next })).status, 301);
+  assert.equal((await onRequest({ request: new Request("https://nieuwsinkort.pages.dev/", { method: "POST", body: "x" }), next })).status, 200);
+  assert.equal((await draai("https://nieuwsinkort.pages.dev/index.html?a=1")).r.headers.get("location"), "https://nieuwsinkort.nl/index.html?a=1");
+});
+await t("www: POST wordt nog steeds geredirect (ongewijzigd)", async () => {
+  const r = await onRequest({ request: new Request("https://www.nieuwsinkort.nl/samenvatting", { method: "POST", body: "x" }), next: async () => new Response("ok") });
+  assert.equal(r.status, 301);
+});
 await t("preview-host: geen redirect, wel noindex en overige headers behouden", async () => {
   const next = async () => new Response("ok", { status: 200, headers: { "Strict-Transport-Security": "max-age=1", "X-Test": "a" } });
   for (const u of ["https://abc123.nieuwsinkort.pages.dev/x?y=1", "https://nik-515.nieuwsinkort.pages.dev/"]) {
