@@ -1,0 +1,1 @@
+- Voorkom dat de verhaalregel verschillende clusters via een tussenliggende kostenclaim samenvoegt (#509).

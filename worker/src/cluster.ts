@@ -193,7 +193,13 @@ export function cluster(cands: Cand[]): Cluster[] {
     // (clusters die onderling over verschillende races gaan blijven los)
     const [k, ...kand] = raak;
     const rest: Cluster[] = [];
-    for (const r of kand) if ([k, ...rest].every((v) => r.leden.every((x) => v.leden.every((y) => !afstandBotst(x.afst, y.afst)))) && (!(teams.length > 0) || [k, ...rest].every((v) => r.leden.every((x) => v.leden.every((y) => gelijk(x, y) > 0))))) rest.push(r);
+    const verhaal = (x: Cand) => ({ kop: x.t, tekst: x.s, tijd: x.d });
+    const viaVerhaal = (v: Cluster) => v.c.every((x) => zelfdeVerhaal(verhaal(c), verhaal(x)));
+    for (const r of kand) if ([k, ...rest].every((v) =>
+      r.leden.every((x) => v.leden.every((y) => !afstandBotst(x.afst, y.afst))) &&
+      (!(viaVerhaal(r) || viaVerhaal(v)) || r.c.every((x) => v.c.every((y) => zelfdeVerhaal(verhaal(x), verhaal(y))))) &&
+      (teams.length <= 2 || r.leden.every((x) => v.leden.every((y) => gelijk(x, y) > 0)))
+    )) rest.push(r);
     for (const r of rest) { k.c.push(...r.c); k.leden.push(...r.leden); for (const x of r.tok) k.tok.add(x); for (const x of r.tokS) k.tokS.add(x); for (const x of r.kern || []) (k.kern ||= new Set()).add(x); }
     if (rest.length) out = out.filter((x) => !rest.includes(x));
     if (nieuweKern.length) { k.kern ||= new Set(); for (const x of nieuweKern) k.kern.add(x); }
