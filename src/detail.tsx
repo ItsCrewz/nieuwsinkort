@@ -1,3 +1,4 @@
+import { Foutgrens } from "./foutgrens";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
 import { useEffect, useRef, useState } from "react";
 import type { Bron, Item, Meer } from "./types";
@@ -190,7 +191,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
           </ol>
         </section>
       ) : null}
-      <MeerTekst item={item} bionic={bionic} />
+      <Foutgrens code="CLIENT_UITGEBREID"><MeerTekst item={item} bionic={bionic} /></Foutgrens>
       <section className="d-sec" aria-label="Bronnen">
         <h2 className="d-h">Bronnen</h2>
         {bronnen.length ? (

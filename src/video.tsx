@@ -1,3 +1,4 @@
+import { Foutgrens } from "./foutgrens";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
@@ -247,7 +248,7 @@ export function VideoGrid({
       )}
       </div>
       {video && touch ? (
-        <Suspense fallback={null}>
+        <Foutgrens code="CLIENT_FILMPJES"><Suspense fallback={null}>
           <Feed
             key={cat}
             list={feedList}
@@ -260,7 +261,7 @@ export function VideoGrid({
               setSoort(g as Soort);
             }}
           />
-        </Suspense>
+        </Suspense></Foutgrens>
       ) : null}
     </>
   );
