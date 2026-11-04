@@ -13,8 +13,14 @@ export function relevantePunten(punten: string[], kop: string, intro = "", samen
 
 // Een kort-overzicht bevat meerdere zelfstandige berichten; zonder betrouwbare grenzen geen artikeltekst gebruiken.
 export function verzamelUrl(url: string): boolean {
-  return /\/kort-[^/?#]*-en-meer\/?(?:[?#]|$)/i.test(url);
+  try { return /\/kort-[^/]*-en-meer\/?$/i.test(new URL(url).pathname); } catch { return false; }
 }
 export function invoerBijKop(tekst: string, url: string): string {
-  return verzamelUrl(url) ? tekst.split(/(?<=[.!?])\s+/u)[0] : tekst;
+  if (!verzamelUrl(url)) return tekst;
+  const zinnen = tekst.matchAll(/[.!?]\s+/gu);
+  for (const grens of zinnen) {
+    const begin = tekst.slice(0, grens.index + 1);
+    if (!/(?:\b(?:bijv|o\.a|n\.v)\.)$/iu.test(begin)) return begin;
+  }
+  return tekst;
 }

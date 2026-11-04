@@ -929,7 +929,7 @@ export class Runner extends DurableObject<Env> {
     // "meer" per bericht: AI-uitleg + kernpunten per bron, anders (zonder AI) het begin van het artikel zelf.
     const meer: Record<string, any> = {};
     for (const m of mc) {
-      const d = st.diep[m.key];
+      const d = m.bronnen.some((b) => verzamelUrl(b.href)) ? undefined : st.diep[m.key];
       const art = artVan(m);
       const href = (site: string) => m.bronnen.find((b) => b.site === site)?.href || "";
       const uittreksel = art.slice(0, 2).map((b) => {

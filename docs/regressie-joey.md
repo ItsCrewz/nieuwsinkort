@@ -4,6 +4,7 @@ Bewaar bij nieuwe meldingen het echte voorbeeld als fixture met uitsluitend item
 
 | Datum melding | Melding | Issue / PR | Testbestand en testnaam | Status |
 | --- | --- | --- | --- | --- |
+| 4 november 2026 | Oude meer-cache toont Delft en NorthC bij Ahold | #508 | `tests/regressie/joey-meer-cache-508.test.ts`: “Worker en client negeren oude meer-cache voor Ahold” | Gedekt met echte itemdata en vooraf gevulde cache. |
 | 4 november 2026 | Punten bij Ahold gaan over andere berichten | #508 | `tests/regressie/joey-punten-508.test.ts`: “Ahold: punten van andere berichten verdwijnen”; “schoorsteenbrand: relevant punt blijft” | Gedekt met echte itemdata. |
 | 1 november 2026 | Florida-privéjet onder Nederland | #476 / #477 | `tests/regio.test.ts`: “Florida-item (kop, ai en omschrijving) is buitenland” | Gedekt met echte kop, RTL-link en eerste zin feedomschrijving. |
 | 1 november 2026 | Florida-privéjet: kapotte AI-samenvatting | #476 / #477 | `tests/somcheck.test.ts`: “Florida-antwoord wordt afgekeurd (kern gelijk aan kop)”; `tests/kv-opslag.test.ts`: “#476 afgekeurde AI-som (geen externe keten): extractief ruw, markering in DO-opslag, volgende runs geen AI meer voor dat cluster” | Gedekt met echte AI-uitvoer; de integratietest gebruikt een testlink. |
