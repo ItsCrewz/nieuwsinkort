@@ -1,0 +1,1 @@
+- Test voor het detailscherm (`src/detail.tsx`) toegevoegd: kop, tekst, punten, bronnen en lege velden (#389).
