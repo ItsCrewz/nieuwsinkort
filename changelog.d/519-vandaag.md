@@ -1,0 +1,1 @@
+- Een lichte pagina `/vandaag` toont alle berichten van vandaag als gewone links, ook zonder JavaScript.
