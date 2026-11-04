@@ -80,13 +80,14 @@ export function merge(S: any, H: any) {
     const k = (i.bronnen || []).map((b: any) => norm(b.href)).find((x: string) => mk.has(x));
     return k ? { ...i, meer: k } : i;
   };
+  const routineItems = (base.items || []).map(metMeer);
   return {
     ...base,
     datum: H.datum || base.datum,
     dag_samenvatting: (hNieuwer && H.dag_samenvatting) || base.dag_samenvatting || H.dag_samenvatting || "",
     tab_samenvatting: H.tab_samenvatting,
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
-    items: ontdubbelVerhalen([...nieuw, ...(base.items || [])].map(metMeer)),
+    items: ontdubbelVerhalen([...nieuw.map(metMeer), ...routineItems], new Set(routineItems)),
     filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
     dumpert: ((H.dumpert || []).length >= 5 || !(base.dumpert || []).length ? H.dumpert || [] : base.dumpert).filter(toegestaan),
     bronstats: h.bronstats || base.bronstats,
