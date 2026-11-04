@@ -1,0 +1,109 @@
+{
+ "bron": "live data.json 4 nov 2026 13:05 (items 12, 13, 44, 46, 67)",
+ "items": [
+  {
+   "cat": "nl",
+   "kop": "Marco Borsato voor de rechter over advocaatkosten",
+   "ai": "Marco Borsato (59) staat voor de rechter over ruim 390.000 euro. Dit gaat over kosten voor advocaten en deskundigen.",
+   "samenvatting": "Marco Borsato voert een rechtszaak over de vergoeding van advocaatkosten. Het gaat om meer dan 390.000 euro. Dit is niet de zedenzaak waar hij vorig jaar werd vrijgesproken.",
+   "punten": [],
+   "tijd": "12:51",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5662630/marco-borsato-voor-de-rechter-advocaatkosten-vergoeding-liveblog"
+    }
+   ],
+   "beelden": [
+    "https://redactie.rtl.nl/sites/default/files/content/images/2026/11/04/ANP-574617645.jpg?itok=abespLfQ&offsetX=0&offsetY=162&cropWidth=1998&cropHeight=1124&width=1024&height=576&impolicy=dynamic"
+   ],
+   "t": 1793793110000,
+   "uur": true
+  },
+  {
+   "cat": "nl",
+   "kop": "Marco Borsato vraagt vier ton aan advocaatkosten terug",
+   "ai": "De 59-jarige zanger Marco Borsato vraagt ruim vier ton aan verdedigingskosten terug bij de rechtbank in Utrecht. De uitspraak volgt op 27 november.",
+   "samenvatting": "Marco Borsato vraagt ruim vier ton aan kosten voor zijn verdediging terug. Hij vindt deze hoge kosten noodzakelijk voor de waarheid.",
+   "punten": [
+    "De rechtbank doet op 27 november uitspraak"
+   ],
+   "tijd": "12:47",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5662909/marco-borsato-verdedigt-hoge-advocaatkosten-rechtbank"
+    }
+   ],
+   "beelden": [
+    "https://redactie.rtl.nl/sites/default/files/content/images/2026/11/04/marco%20B.jpg?itok=Xc0GC77a&width=1024&height=576&impolicy=semi_dynamic"
+   ],
+   "t": 1793792876000,
+   "uur": true
+  },
+  {
+   "cat": "showbizz",
+   "kop": "Marco Borsato denkt aan comeback na jaren stilte",
+   "ai": "De 59-jarige Marco Borsato is weer begonnen met zangles. Hij denkt hierdoor voorzichtig aan een terugkeer op het podium.",
+   "samenvatting": "Borsato heeft jaren niet opgetreden. Nu begint het weer te kriebelen om weer te gaan zingen.",
+   "punten": [],
+   "tijd": "12:14",
+   "bronnen": [
+    {
+     "site": "Linda.nl",
+     "href": "https://www.linda.nl/media/beetje-bijblijven/marco-borsato-comeback-zangles/"
+    }
+   ],
+   "beelden": [
+    "https://www.linda.nl/lindanl-assets/uploads/2026/11/04114944/ANP-574617161-Cropped-1024x576.jpg"
+   ],
+   "t": 1793790893000,
+   "uur": true,
+   "meer": "linda.nl/media/beetje-bijblijven/marco-borsato-comeback-zangles"
+  },
+  {
+   "cat": "nl",
+   "kop": "Angela de Jong schrijft over terugkeer Marco Borsato",
+   "ai": "Angela de Jong schrijft dat Marco Borsato werkt aan zijn terugkeer. Zij noemt een frame over een gekwetste vrouw.",
+   "samenvatting": "Marco Borsato werkt aan zijn terugkeer. Angela de Jong schrijft dat hij nu als slachtoffer wordt gezien. Een gekwetste vrouw die wraak wilde, is volgens haar het frame.",
+   "punten": [],
+   "tijd": "12:12",
+   "bronnen": [
+    {
+     "site": "AD",
+     "href": "https://www.ad.nl/binnenland/wie-vanmorgen-goed-naar-marco-borsato-luisterde-weet-al-precies-hoe-het-verdergaat~a9fe7254/"
+    }
+   ],
+   "beelden": [
+    "https://images.ad.nl/ZDRjYzQwZTk3NjM2NWY1YTYxMTcvZGlvLzI2MjQ0OTAyOC9maXQtd2lkdGgvNDAw/07-04-2025-angela-de-jong-foto-shody-careman"
+   ],
+   "t": 1793790720000,
+   "uur": true
+  },
+  {
+   "cat": "nl",
+   "kop": "Marco Borsato eist 391.000 euro van de staat",
+   "ai": "Zanger Marco Borsato vraagt 391.000 euro aan de Nederlandse Staat. Hij staat hiervoor vandaag opnieuw voor de rechter.",
+   "samenvatting": "Marco Borsato wil 391.000 euro terug van de Nederlandse Staat. Dit geld is voor zijn advocaatkosten. Hij werd eind 2025 vrijgesproken van ontucht met een minderjarig meisje.",
+   "punten": [],
+   "tijd": "12:00",
+   "bronnen": [
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/achterklap/6415217/marco-borsato-vraagt-nederlandse-staat-391000-euro-voor-advocaatkosten.html"
+    },
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/video/dan-is-marco-borsato-zijn-portemonnee-zo-weer-gevuld/164055789.html"
+    }
+   ],
+   "beelden": [
+    "https://images.nu.nl/m/r55x8bha2s07_wd1280.jpg",
+    "https://prod-img.telegraaf.nl/public/incoming/ebmdtt-440.jpeg/alternates/BASE_SIXTEEN_NINE/440.jpeg",
+    "https://prod-img.telegraaf.nl/public/incoming/y2xd9x-marco-borsato.jpg/alternates/BASE_SIXTEEN_NINE/Marco%20Borsato.jpg"
+   ],
+   "t": 1793790000000,
+   "uur": true
+  }
+ ]
+}
