@@ -19,8 +19,7 @@ try {
   assert.ok(vandaagHtml([], dag).includes("nog geen berichten"), "lege dag");
   assert.equal((html.match(/<link rel="canonical"/g) || []).length, 1);
 
-  let reads = 0;
-  const env = { ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => { reads++; return `${dag}\ntag\n${JSON.stringify({ gegenereerd: "2026-11-04T10:00:00Z", items: [a] })}`; } } };
+  const env = { ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify({ gegenereerd: "2026-11-04T10:00:00Z", items: [a] })}` } };
   let r = await onRequestGet({ request: new Request("https://nieuwsinkort.nl/vandaag?x=1"), env, waitUntil: () => {} });
   assert.equal(r.status, 200); assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("strict-transport-security"), "max-age=86400");
   assert.ok(!r.headers.get("content-security-policy")!.includes("script-src") && r.headers.get("content-security-policy")!.includes("default-src 'none'"), "geen scripts toegestaan");
