@@ -14,6 +14,7 @@ import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
 import { artikelUrl, deel } from "./delen";
+import { useTerugvegen } from "./terugvegen";
 
 function monoOf(site: string) {
   return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
@@ -119,6 +120,8 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
   const [deelStatus, setDeelStatus] = useState("");
   const url = artikelUrl(item, dag);
   const kopRef = useRef<HTMLHeadingElement>(null);
+  const artRef = useRef<HTMLElement>(null);
+  useTerugvegen(artRef, onBack);
   // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
   useEffect(() => {
     kopRef.current?.focus({ preventScroll: true });
@@ -142,7 +145,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
     } catch { return false; }
   });
   return (
-    <article className={`detail cat-${item.cat}`}>
+    <article className={`detail cat-${item.cat}`} ref={artRef}>
       <button type="button" className="back" onClick={onBack}>
         <Icon name="back" className="sm" />
         Terug naar het nieuws
