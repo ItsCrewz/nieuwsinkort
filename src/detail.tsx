@@ -12,6 +12,7 @@ import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
+import { useTerugvegen } from "./terugvegen";
 
 function monoOf(site: string) {
   return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
@@ -115,6 +116,8 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
 
 export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
   const kopRef = useRef<HTMLHeadingElement>(null);
+  const artRef = useRef<HTMLElement>(null);
+  useTerugvegen(artRef, onBack);
   // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
   useEffect(() => {
     kopRef.current?.focus({ preventScroll: true });
@@ -132,7 +135,7 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
   const paragraphs = item.ruw && (zelfdeRuweTekst(tekst.samenvatting, tekst.ai) || zelfdeRuweTekst(tekst.samenvatting, item.kop)) ? [] : alleAlineas;
   const punten = nieuwePunten(tekst.punten, tekst.ai, tekst.samenvatting);
   return (
-    <article className={`detail cat-${item.cat}`}>
+    <article className={`detail cat-${item.cat}`} ref={artRef}>
       <button type="button" className="back" onClick={onBack}>
         <Icon name="back" className="sm" />
         Terug naar het nieuws
