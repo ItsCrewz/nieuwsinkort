@@ -1,1 +1,0 @@
-- Bronpunten blijven afzonderlijk als aantallen of hun aangrenzende inhoudswoorden verschillen, zodat bronlabels zorgvuldig worden toegekend (#501).
