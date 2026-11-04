@@ -1,0 +1,1 @@
+- SEO-basis: `nieuwsinkort.pages.dev` stuurt permanent (301) door naar nieuwsinkort.nl en previews krijgen `X-Robots-Tag: noindex` (#515); beschrijving in OG/Twitter gelijkgetrokken met de meta description, organisatie-JSON-LD met logo als ImageObject en `lastmod` in de sitemap (#516).

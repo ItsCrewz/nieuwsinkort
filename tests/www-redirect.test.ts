@@ -21,12 +21,39 @@ await t("www-root en hoofdletters", async () => {
   assert.equal((await draai("http://www.nieuwsinkort.nl/?q=1")).r.headers.get("location"), "https://nieuwsinkort.nl/?q=1");
 });
 await t("apex, pages.dev en andere hosts ongemoeid", async () => {
-  for (const u of ["https://nieuwsinkort.nl/", "https://nieuwsinkort.pages.dev/x?y=1", "https://www.nieuwsinkort.nl.evil.nl/", "https://xwww.nieuwsinkort.nl/"]) {
+  for (const u of ["https://nieuwsinkort.nl/", "https://www.nieuwsinkort.nl.evil.nl/", "https://xwww.nieuwsinkort.nl/"]) {
     const { r, door } = await draai(u);
     assert.equal(r.status, 200, u);
     assert.equal(door, 1, u);
   }
   assert.equal(wwwDoel("geen url"), null);
+});
+await t("pages.dev (productie) → 301 met pad en query", async () => {
+  const { r, door } = await draai("https://nieuwsinkort.pages.dev/a/b?x=1&y=%20a");
+  assert.equal(r.status, 301);
+  assert.equal(r.headers.get("location"), "https://nieuwsinkort.nl/a/b?x=1&y=%20a");
+  assert.equal(r.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(door, 0);
+  assert.equal((await draai("https://NieuwsInKort.pages.dev/")).r.headers.get("location"), "https://nieuwsinkort.nl/");
+});
+await t("preview-host: geen redirect, wel noindex en overige headers behouden", async () => {
+  const next = async () => new Response("ok", { status: 200, headers: { "Strict-Transport-Security": "max-age=1", "X-Test": "a" } });
+  for (const u of ["https://abc123.nieuwsinkort.pages.dev/x?y=1", "https://nik-515.nieuwsinkort.pages.dev/"]) {
+    const r = await onRequest({ request: new Request(u), next });
+    assert.equal(r.status, 200, u);
+    assert.equal(r.headers.get("x-robots-tag"), "noindex", u);
+    assert.equal(r.headers.get("strict-transport-security"), "max-age=1");
+    assert.equal(r.headers.get("x-test"), "a");
+    assert.equal(await r.text(), "ok");
+  }
+  assert.equal(wwwDoel("https://abc.nieuwsinkort.pages.dev/"), null);
+});
+await t("apex, www-doel en vreemde pages.dev-hosts krijgen geen noindex", async () => {
+  for (const u of ["https://nieuwsinkort.nl/", "https://evilnieuwsinkort.pages.dev/", "https://nieuwsinkort.pages.dev.evil.nl/"]) {
+    const { r } = await draai(u);
+    assert.equal(r.status, 200, u);
+    assert.equal(r.headers.get("x-robots-tag"), null, u);
+  }
 });
 await t("_routes.json: geldig, binnen 100 regels, functieroutes niet uitgesloten", () => {
   const j = JSON.parse(readFileSync("public/_routes.json", "utf8"));
