@@ -1,0 +1,1 @@
+- Nieuwe statische pagina `/over` (`public/over.html`) over de site: wat het is, AI-gebruik, bronnen, fouten en privacy; link in de voetregel en in de sitemap.

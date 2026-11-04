@@ -45,3 +45,17 @@ await t("JSON-LD: inLanguage alleen op WebSite, niet op NewsMediaOrganization", 
   const ld = JSON.parse(readFileSync("index.html", "utf8").match(/ld\+json">([\s\S]*?)<\/script>/)![1]);
   for (const n of ld["@graph"]) assert.equal("inLanguage" in n, n["@type"] === "WebSite", n["@type"]);
 });
+t("/over: statische pagina met lang, canonical, title, description en één h1; geen script", () => {
+  const o = readFileSync("public/over.html", "utf8");
+  assert.match(o, /<html lang="nl">/);
+  assert.deepEqual([...o.matchAll(/<link rel="canonical" href="([^"]*)"/g)].map((m) => m[1]), ["https://nieuwsinkort.nl/over"]);
+  assert.equal(o.match(/<title>/g)?.length, 1);
+  assert.equal(o.match(/<meta name="description"/g)?.length, 1);
+  assert.equal(o.match(/<h1>/g)?.length, 1);
+  assert.ok(!o.includes("<script"), "geen inline script (CSP)");
+  assert.ok(o.includes('href="/bronnen.json"'));
+  assert.ok(!/vanzelf mee/.test(o) && /niet opnieuw gemaakt/.test(o), "bewaarde samenvattingen worden niet opnieuw gemaakt (docs/ai-budget.md)");
+  assert.ok(!o.includes("@") && !o.includes("mailto"), "geen verzonnen contactadres");
+  assert.match(readFileSync("src/App.tsx", "utf8"), /href="\/over"/);
+  assert.match(readFileSync("public/sitemap.xml", "utf8"), /<loc>https:\/\/nieuwsinkort\.nl\/over<\/loc>/);
+});
