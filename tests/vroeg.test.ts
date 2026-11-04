@@ -22,3 +22,17 @@ await t("vroeg: een afgewezen promise wordt ongewijzigd teruggegeven", async () 
   await assert.rejects(r!, /netwerk/);
   assert.equal(neemVroegeData(w), null);
 });
+
+await t("laadData valt eenmaal terug op statische data bij fout of ongeldige JSON", async () => {
+  const { laadData } = await import("../src/vroeg");
+  for (const respons of [new Response("fout", { status: 503 }), new Response("geen json")]) {
+    const paden: string[] = [];
+    const ophalen = (async (pad: string | URL | Request, opties?: RequestInit) => {
+      paden.push(String(pad));
+      assert.equal(opties?.cache, "no-cache");
+      return Response.json({ items: [] });
+    }) as typeof fetch;
+    assert.deepEqual(await laadData(Promise.resolve(respons), ophalen), { items: [] });
+    assert.deepEqual(paden, ["/data.json?statisch=1"]);
+  }
+});

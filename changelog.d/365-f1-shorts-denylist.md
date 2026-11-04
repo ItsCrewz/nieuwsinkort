@@ -1,0 +1,1 @@
+- Shorts van FORMULA 1 verdwijnen uit Filmpjes omdat ze niet ingebed kunnen worden; langere video's blijven beschikbaar (#365).

@@ -1,0 +1,1 @@
+- Start voorgeladen video's tijdens het swipegebaar en laat de poster vloeiend verdwijnen; de debugoverlay toont de starttijden (#254).

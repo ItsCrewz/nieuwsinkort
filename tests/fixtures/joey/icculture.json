@@ -1,0 +1,25 @@
+{
+  "_bron": "data.json live 02-11 11:17 (iCulture, 1 bron) + /meer-uitleg van dat item",
+  "item": {
+    "cat": "tech",
+    "kop": "Apple brengt nieuwe MacBook-adapters en reisset uit",
+    "ai": "Apple lanceert nieuwe stroomadapters voor de MacBook. Ook komt er een nieuwe reisset beschikbaar via iCulture.",
+    "samenvatting": "De nieuwe adapters hebben een nieuw soort aansluiting. Ook de nieuwe reisset gebruikt deze aansluiting.",
+    "punten": [],
+    "tijd": "10:14",
+    "bronnen": [
+      {
+        "site": "iCulture",
+        "href": "https://www.iculture.nl/nieuws/apple-macbook-opladers-ac-connector-2/"
+      }
+    ]
+  },
+  "meer": {
+    "uitleg": [
+      "Apple brengt nieuwe stroomadapters voor de MacBook uit. Deze adapters hebben een nieuwe aansluiting. De naam van deze aansluiting is AC Connector 2.",
+      "Oude stekkertjes en verlengkabels passen niet meer op de nieuwe adapters. Dit komt door een verandering in de vorm van de aansluiting. Apple zegt dat dit komt door nieuwe wet- en regelgeving.",
+      "De nieuwe adapters zijn er in twee maten: 70 watt en 140 watt. De 70-watt adapter is voor de meeste MacBooks. De 140-watt adapter is voor krachtigere modellen.",
+      "Er is ook een nieuwe reisset beschikbaar. Deze set bevat een gevlochten verlengkabel. Je kunt deze kopen via iCulture. De kabel maakt het opladen flexibeler."
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+- Voeg kostenclaims alleen samen als de kostenclaim in beide koppen de hoofdgebeurtenis is en het om dezelfde zaak gaat; bewaak onderlinge bedragcompatibiliteit ook bij toetreding via titel- of naamregel (#509).

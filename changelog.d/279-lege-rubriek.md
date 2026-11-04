@@ -1,0 +1,1 @@
+- Een lege rubriek meldt dat er nog geen berichten zijn; filterknoppen verschijnen alleen als nieuwsfilters berichten uitsluiten (#279).

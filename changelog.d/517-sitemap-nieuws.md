@@ -1,0 +1,1 @@
+- Een nieuwssitemap (`/sitemap-nieuws.xml`) wijst zoekmachines naar de berichtpagina's van vandaag.

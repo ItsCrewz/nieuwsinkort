@@ -1,0 +1,31 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { ytEmbedGeblokkeerd, ytEmbedStatus, ytCombineer, ytNieuweControles, ruimYtCache, ytVideoId } from "../worker/src/videos";
+
+const fixture = (naam: string) => readFileSync(`tests/fixtures/youtube-embed-${naam}.html`, "utf8");
+assert.equal(ytEmbedGeblokkeerd(fixture("geblokkeerd")), true);
+assert.equal(ytEmbedGeblokkeerd(fixture("speelbaar")), false);
+assert.equal(ytEmbedGeblokkeerd("<html>fout</html>"), null);
+assert.equal(ytEmbedGeblokkeerd('{"playabilityStatus":{"status":"UNPLAYABLE"}}'), null);
+assert.equal(ytEmbedGeblokkeerd('{"playabilityStatus":{"status":"LOGIN_REQUIRED"}}'), null);
+assert.equal(ytVideoId({ embed: "https://www.youtube-nocookie.com/embed/gmkJBKiE77Q?x=1" }), "gmkJBKiE77Q");
+assert.equal(ytVideoId({ href: "https://www.dumpert.nl/item/123" }), null);
+const nu = 10 * 86400e3;
+const ids = Array.from({ length: 20 }, (_, i) => `id${i}`);
+const cache = { id0: { geblokkeerd: true, at: nu }, id1: { geblokkeerd: false, at: nu } };
+assert.deepEqual(ytNieuweControles([...ids, "id2"], cache), ids.slice(2, 17));
+const oud = { abcdefghij0: { geblokkeerd: true, at: nu - 2 * 86400e3 }, abcdefghij1: { geblokkeerd: false, at: nu - 7 * 86400e3 }, abcdefghij2: { geblokkeerd: false, at: nu - 6 * 86400e3 } };
+assert.deepEqual(Object.keys(ruimYtCache(oud, nu)), ["abcdefghij2"]);
+const veel = Object.fromEntries(Array.from({ length: 310 }, (_, i) => [String(i).padStart(11, "0"), { geblokkeerd: false, at: nu - i }]));
+const beperkt = ruimYtCache(veel, nu);
+assert.equal(Object.keys(beperkt).length, 300);
+assert.equal(beperkt["00000000309"], undefined);
+
+assert.equal(ytEmbedGeblokkeerd(fixture("consent")), null);
+assert.equal(ytEmbedStatus(fixture("consent")), null);
+assert.equal(ytCombineer("gmkJBKiE77Q", { status: 200, json: { geblokkeerd: null } }, { status: 200 }).uitkomst, "onbekend");
+assert.equal(ytCombineer("gmkJBKiE77Q", { status: 200, json: { geblokkeerd: false } }, { status: 403 }).uitkomst, "geblokkeerd");
+assert.equal(ytCombineer("gmkJBKiE77Q", { status: 200, json: { geblokkeerd: true } }, { status: 200 }).uitkomst, "geblokkeerd");
+assert.equal(ytCombineer("gmkJBKiE77Q", { status: 200, json: { geblokkeerd: false } }, { status: 200 }).uitkomst, "speelbaar");
+assert.deepEqual(ytCombineer("gmkJBKiE77Q", { status: 302, json: { reden: "redirect", redirectHost: "consent.youtube.com" } }, { status: 200 }), { id: "gmkJBKiE77Q", http: 302, uitkomst: "onbekend", reden: "redirect", status: null, titel: "", host: "", redirectHost: "consent.youtube.com", oembed: 200 });
+assert.deepEqual(Object.keys(ruimYtCache({ abcdefghij0: { geblokkeerd: null, at: nu - 3600e3 }, abcdefghij1: { geblokkeerd: null, at: nu - 3599e3 } }, nu)), ["abcdefghij1"]);

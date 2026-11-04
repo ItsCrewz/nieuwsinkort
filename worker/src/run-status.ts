@@ -3,7 +3,10 @@ export interface RunStatus { faalReeks: number; laatsteFout: string | null; laat
 interface Storage { get<T>(key: string): Promise<T | undefined>; put(key: string, value: RunStatus): Promise<void> }
 interface KV { put(key: string, value: string): Promise<void> }
 
-export async function bewaakteRun(run: () => Promise<unknown>, storage: Storage, kv: KV): Promise<Response> {
+/** Beleid voor de KV-kopie (#452): `laatsteOk` verandert bij elke geslaagde run, dus zonder beleid is dat een KV-write per run. */
+export interface KvBeleid { mag(nieuw: RunStatus, oud: RunStatus): Promise<boolean>; gedaan(): Promise<void> }
+
+export async function bewaakteRun(run: () => Promise<unknown>, storage: Storage, kv: KV, kvBeleid?: KvBeleid): Promise<Response> {
   let response: Response;
   try {
     response = Response.json(await run());
@@ -19,7 +22,10 @@ export async function bewaakteRun(run: () => Promise<unknown>, storage: Storage,
       : { ...oud, faalReeks: oud.faalReeks + 1, laatsteFout: nu };
     if (JSON.stringify(status) !== JSON.stringify(oud)) {
       await storage.put("run-status", status);
-      await kv.put("run-status", JSON.stringify(status));
+      if (!kvBeleid || await kvBeleid.mag(status, oud)) {
+        await kv.put("run-status", JSON.stringify(status));
+        await kvBeleid?.gedaan();
+      }
     }
   } catch {
     console.error("run-status opslaan mislukt");

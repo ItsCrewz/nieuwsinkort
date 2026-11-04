@@ -92,3 +92,13 @@ t("meerKeys: routine-berichten krijgen meer-sleutel; bestaande meer blijft; meta
 });
 
 console.log(`\n${n} tests geslaagd`);
+
+t("grote uurupdate houdt maximaal 150 nieuwste berichten van vandaag", () => {
+  const nu = Date.now();
+  const items = Array.from({ length: 200 }, (_, i) => item(String(i), `https://nos.nl/${i}`, { t: nu - i * 1000 }));
+  items.push(item("gisteren", "https://nos.nl/oud", { t: nu - 86400000 }));
+  const out = merge({ gegenereerd: GISTEREN }, { gegenereerd: UUR, items: items.reverse() });
+  assert.equal(out.items.length, 150);
+  assert.equal(out.items[0].kop, "0");
+  assert.equal(out.items[149].kop, "149");
+});

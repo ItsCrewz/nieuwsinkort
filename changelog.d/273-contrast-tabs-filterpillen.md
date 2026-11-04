@@ -1,0 +1,1 @@
+- Verbeter het contrast van inactieve rubriektabs en filteraantallen in het lichte thema (#273).

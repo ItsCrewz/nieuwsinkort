@@ -116,13 +116,15 @@ for (const f of feeds) {
   const id = norm(naam);
   const s = g.get(id) || { id, naam, alias: new Set(), hosts: new Set(), soort: new Set(), feeds: 0, urls: [] };
   s.feeds++;
-  s.urls.push({ url: f.url, ...(f.ua ? { ua: f.ua } : {}), ...(f.max != null ? { max: f.max } : {}) });
+  s.urls.push({ url: f.url, ...(f.ua ? { ua: f.ua } : {}), ...(f.max != null ? { max: f.max } : {}), ...(f.pad ? { pad: f.pad } : {}) });
   s.alias.add(norm(f.naam));
   s.alias.add(norm(naam.replace(/\s*\(X\)$/, "")));
   const xh = /x\.com\/([A-Za-z0-9_]+)/.exec(f.url || "");
   if (xh) s.alias.add(norm(`X (@${xh[1]})`));
   const h = hostOf(f.url);
   if (h && !GENERIC_HOSTS.test(h)) s.hosts.add(h);
+  // HN-links wijzen naar news.ycombinator.com; de feed zelf staat op hnrss.org (generiek), dus host expliciet houden
+  if (/^https:\/\/hnrss\.org\//.test(f.url || "")) s.hosts.add("ycombinator.com");
   const so = soort(f);
   if (so) s.soort.add(so);
   g.set(id, s);

@@ -1,0 +1,1 @@
+- Videofeed wit na tik: CSS-bestand heeft een nieuwe bestandsnaam (`-c.css`) omdat de edge de oude URL als HTML had gecachet (#419).

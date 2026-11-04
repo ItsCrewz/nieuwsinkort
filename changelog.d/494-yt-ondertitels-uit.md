@@ -1,0 +1,1 @@
+- YouTube-filmpjes starten standaard zonder ondertiteling (#494).
