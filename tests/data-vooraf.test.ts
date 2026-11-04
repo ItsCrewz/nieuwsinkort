@@ -13,8 +13,8 @@ assert.equal(body, verwacht);
 const tag = await etag(body);
 const dag = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
 let assets = 0;
-const env = { ASSETS: { fetch: async () => { assets++; return Response.json(S); } }, NIEUWS: { get: async (key: string, type: "json" | "text") => {
-  if (key === "data-vooraf") { assert.equal(type, "text"); return `${dag}\n${tag}\n${body}`; }
+const env = { ASSETS: { fetch: async () => { assets++; return Response.json(S); } }, NIEUWS: { get: async (key: string, opts: { type: "json" | "text"; cacheTtl?: number }) => {
+  if (key === "data-vooraf") { assert.equal(opts.type, "text"); assert.equal(opts.cacheTtl, 60); return `${dag}\n${tag}\n${body}`; }
   throw new Error("onverwacht KV-verzoek");
 } } };
 let r = await onRequestGet({ request: new Request("https://site.test/data.json"), env });
@@ -74,3 +74,22 @@ try {
   Date.now = origineleTijd;
 }
 console.log("✓ vooraf berekenen, snel pad, 304 en terugval");
+
+// #297: verwerkt vooraf-antwoord wordt per isolate 30 s hergebruikt, maar nooit bij andere KV-tekst of na afloop
+{
+  const echteTijd = Date.now;
+  try {
+    let t0 = Date.parse("2026-11-04T10:00:00Z");
+    Date.now = () => t0;
+    const d = "2026-11-04";
+    const maak = (titel: string) => { const b = JSON.stringify({ gegenereerd: new Date(t0).toISOString(), items: [{ titel }], filmpjes: [], dumpert: [] }); return b; };
+    let tekst = `${d}\nx\n${maak("een")}`;
+    const kv = { ASSETS: { fetch: async () => { throw new Error("geen assets"); } }, NIEUWS: { get: async () => tekst } };
+    const vraag = () => onRequestGet({ request: new Request("https://site.test/data.json"), env: kv });
+    const a = await vraag(); const aBody = await a.text();
+    t0 += 10e3; const b = await vraag();
+    assert.equal(await b.text(), aBody); assert.equal(b.headers.get("etag"), a.headers.get("etag"));
+    tekst = `${d}\nx\n${maak("twee")}`;
+    const c = await vraag(); assert.notEqual(c.headers.get("etag"), a.headers.get("etag")); assert.ok((await c.text()).includes("twee"));
+  } finally { Date.now = echteTijd; }
+}
