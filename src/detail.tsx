@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Bron, Item, Meer } from "./types";
 import { BionicText, host } from "./ui";
 import { Icon } from "./icons";
+import { toonBekendmaking } from "./bekendmaking";
+import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Beelden } from "./beelden";
 import { veiligeUrl } from "./url";
 import { bronnenTekst, detailInhoud, fotos } from "./leesverder";
@@ -53,7 +55,7 @@ function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
 function zonderBronvermelding(item: Item): Item {
   const sites = (item.bronnen ?? []).map((b) => b.site);
   const schoon = (t: string) => item.ruw && /^(?:null|undefined)$/i.test(t.trim()) ? "" : stripBronvermelding(t, sites);
-  return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: (item.punten ?? []).map(schoon) };
+  return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten((item.punten ?? []).map(schoon), item.kop, item.ai, item.samenvatting) : (item.punten ?? []).map(schoon) };
 }
 
 function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
@@ -128,11 +130,17 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
     document.title = `${item.kop} · Nieuws in het kort`;
   }, [item]);
   // punten alleen als ze iets nieuws zeggen (#488)
-  const tekst = zonderBronvermelding(item);
+  const tekst = zonderBronvermelding(toonBekendmaking(item));
   const { paragraphs: alleAlineas, bronnen } = detailInhoud(tekst);
   const intro = item.ruw && zelfdeRuweTekst(tekst.ai, item.kop) ? "" : tekst.ai;
   const paragraphs = item.ruw && (zelfdeRuweTekst(tekst.samenvatting, tekst.ai) || zelfdeRuweTekst(tekst.samenvatting, item.kop)) ? [] : alleAlineas;
   const punten = nieuwePunten(tekst.punten, tekst.ai, tekst.samenvatting);
+  const videobron = bronnen.find((b) => {
+    try {
+      const url = new URL(b.href);
+      return /^https?:$/.test(url.protocol) && /^\/video\/[^/]+/.test(url.pathname);
+    } catch { return false; }
+  });
   return (
     <article className={`detail cat-${item.cat}`}>
       <button type="button" className="back" onClick={onBack}>
@@ -151,6 +159,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
         </div>
         <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
+        {videobron ? <a className="btn ghost d-more" href={veiligeUrl(videobron.href)} target="_blank" rel="noopener noreferrer">Bekijk video bij {videobron.site}</a> : null}
         {intro ? (
           <p className="d-lead bn">
             <BionicText text={intro} on={bionic} />

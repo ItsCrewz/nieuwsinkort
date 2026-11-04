@@ -1,0 +1,19 @@
+{
+  "cat": "auto",
+  "kop": "Pick‑up rijdt onverwacht carpool‑lane op",
+  "ai": "Een pick‑up gaat plotseling de carpool‑lane op van de snelweg.",
+  "samenvatting": "De pick‑up rijdt onverwacht de carpool‑lane op. Het gebeurt op de genoemde snelweg.",
+  "punten": [],
+  "tijd": "11:30",
+  "bronnen": [
+    {
+      "site": "Autoblog.nl",
+      "href": "https://www.autoblog.nl/video/auto-rijdt-doorgetrokken-streep-over-lanceert-motor"
+    }
+  ],
+  "beelden": [
+    "https://webp.ab.cdn.pxr.nl/videofeed/previews/2026-11-03t122955-auto-rijdt-doorgetrokken-streep-over-lanceert-motor.png?width=1200"
+  ],
+  "t": 1793788200000,
+  "uur": true
+}
