@@ -1,3 +1,5 @@
+import { artikelId, artikelSlug } from "./artikelid";
+import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -47,15 +49,7 @@ let feedPushed = false;
 let introDone = false;
 
 // ---------------------------------------------------------------- helpers
-function slugify(s: string) {
-  return s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
-}
+const slugify = artikelSlug;
 const itemKey = (i: Item) => slugify(i.kop) || i.bronnen?.[0]?.href || i.kop;
 
 function bronLabel(bronnen: Bron[]) {
@@ -1208,7 +1202,7 @@ export default function App() {
 
   // Detail: eerst in de gefilterde lijst (met alleen de actieve bronnen), anders het origineel (directe link).
   const selectedItem = route.selected
-    ? data.items.find((i) => itemKey(i) === route.selected) ?? raw.items.find((i) => itemKey(i) === route.selected) ?? null
+    ? data.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
     : null;
 
   if (selectedItem) {
@@ -1218,6 +1212,7 @@ export default function App() {
           <Suspense fallback={null}>
             <DetailView
               item={selectedItem}
+              dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
               onBack={() => {
                 if (openedInside) window.history.back();

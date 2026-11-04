@@ -13,6 +13,7 @@ import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
+import { artikelUrl, deel } from "./delen";
 import { useTerugvegen } from "./terugvegen";
 
 function monoOf(site: string) {
@@ -115,7 +116,9 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   );
 }
 
-export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
+export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: () => void; bionic: boolean; dag: string }) {
+  const [deelStatus, setDeelStatus] = useState("");
+  const url = artikelUrl(item, dag);
   const kopRef = useRef<HTMLHeadingElement>(null);
   const artRef = useRef<HTMLElement>(null);
   useTerugvegen(artRef, onBack);
@@ -147,6 +150,9 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
         <Icon name="back" className="sm" />
         Terug naar het nieuws
       </button>
+      <button type="button" className="deel-knop" aria-label="Deel dit bericht" onClick={async () => setDeelStatus(await deel(navigator, item.kop, url))}>Deel dit bericht</button>
+      <span className="deel-melding" style={{ marginLeft: 8 }} aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
+      {deelStatus === "handmatig" ? <input className="deel-invoer" style={{ display: "block", width: "100%" }} aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
       <header className="d-head">
         <div className="meta">
           {CAT_LABEL[item.cat] ?? item.cat}
