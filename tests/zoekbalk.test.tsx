@@ -1,0 +1,24 @@
+import assert from "node:assert/strict";
+import { createElement, createRef } from "react";
+import { renderToStaticMarkup } from "react-dom/server.browser";
+import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
+
+const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
+assert.match(leeg, /Geen berichten gevonden voor ‘niets’/);
+assert.match(leeg, /Wis zoekopdracht/);
+const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "niets", onChange: () => {}, aantal: 0 }));
+assert.match(balk, /aria-live="polite"/);
+assert.match(balk, /0 resultaten/);
+let waarde = "tekst";
+let gesloten = false;
+const formulier = ZoekFormulier({ query: waarde, onChange: (v) => { waarde = v; }, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
+const invoer = formulier.props.children[0];
+assert.equal(invoer.props["aria-label"], "Zoek in het nieuws");
+assert.equal(invoer.props.type, "search");
+const event = { key: "Escape", preventDefault() {}, stopPropagation() {} };
+invoer.props.onKeyDown(event);
+assert.equal(waarde, "");
+const leegFormulier = ZoekFormulier({ query: waarde, onChange: () => {}, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
+leegFormulier.props.children[0].props.onKeyDown(event);
+assert.equal(gesloten, true);
+console.log("zoekbalk: tests geslaagd");
