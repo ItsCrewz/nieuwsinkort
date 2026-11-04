@@ -111,3 +111,17 @@ await t("er is maar één prefers-reduced-motion-check in de JS-bronnen", () => 
 });
 
 console.log(`\n${n} tests OK`);
+
+await t("rubriekwissel/shimmer (#538): richting, keyframes alleen transform, 300ms vertraging, reduced motion statisch", async () => {
+  const { wisselRichting } = await import("../src/tabs");
+  assert.equal(wisselRichting("alles", "nl"), 1);
+  assert.equal(wisselRichting("dumpert", "filmpjes"), -1);
+  assert.equal(wisselRichting("nl", "nl"), 0);
+  const kf = /@keyframes glans\{([^@]*?\}?)\}\n/.exec(css)![1];
+  assert.match(kf, /transform/);
+  assert.doesNotMatch(kf, /opacity|left|width|margin/);
+  assert.match(css, /\.skel::after[^{]*\{[^}]*animation:glans 1\.4s var\(--ease-standaard\) 300ms infinite/);
+  assert.match(css, /\.skel::after,\.d-meer-laden span::after\{display:none\}/);
+  assert.doesNotMatch(css, /animation:pulse|animation:ml /);
+  assert.match(css, /\.seg-ind\{[^}]*transition:transform var\(--dur-3\) var\(--ease-in\)/);
+});
