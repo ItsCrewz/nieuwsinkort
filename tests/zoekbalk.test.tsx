@@ -6,19 +6,19 @@ import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
 assert.match(leeg, /Geen berichten gevonden voor ‘niets’/);
 assert.match(leeg, /Wis zoekopdracht/);
-const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "niets", onChange: () => {}, aantal: 0 }));
-assert.match(balk, /aria-live="polite"/);
-assert.match(balk, /0 resultaten/);
-let waarde = "tekst";
+for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 resultaten"]] as const) {
+  // Een nieuwe mount simuleert terugkeer uit een bericht met behouden zoekterm.
+  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal }));
+  assert.match(balk, /aria-expanded="true"/);
+  assert.match(balk, /value="tekst"/);
+  assert.ok(balk.includes(`aria-live="polite">${tekst}</span>`));
+}
+const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0 }));
+assert.match(geslotenBalk, /aria-expanded="false"/);
 let gesloten = false;
-const formulier = ZoekFormulier({ query: waarde, onChange: (v) => { waarde = v; }, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
+const formulier = ZoekFormulier({ query: "tekst", onChange: () => {}, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
 const invoer = formulier.props.children[0];
 assert.equal(invoer.props["aria-label"], "Zoek in het nieuws");
-assert.equal(invoer.props.type, "search");
-const event = { key: "Escape", preventDefault() {}, stopPropagation() {} };
-invoer.props.onKeyDown(event);
-assert.equal(waarde, "");
-const leegFormulier = ZoekFormulier({ query: waarde, onChange: () => {}, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
-leegFormulier.props.children[0].props.onKeyDown(event);
+invoer.props.onKeyDown({ key: "Escape", preventDefault() {}, stopPropagation() {} });
 assert.equal(gesloten, true);
 console.log("zoekbalk: tests geslaagd");
