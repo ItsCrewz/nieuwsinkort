@@ -1,0 +1,1 @@
+- Bronpunten voegen alleen bijna identieke zinnen samen; alleen bekende bronnamen en ANP worden als toevoeging verwijderd.

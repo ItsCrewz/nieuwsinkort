@@ -684,3 +684,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   .srcrow::after,.pb-site::after{content:" (" attr(href) ")";font-size:10pt;font-weight:400;overflow-wrap:anywhere}
   .pb{padding:0}
 }
+
+.bronpunten li{overflow-wrap:anywhere;margin-bottom:12px}
+.bronpunt-links{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:0.875rem}
+.bronpunt-links a{color:var(--accent)}

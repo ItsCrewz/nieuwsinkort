@@ -11,6 +11,7 @@ import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
+import { bronnenPunten } from "./bronnenSamen";
 
 function monoOf(site: string) {
   return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
@@ -57,11 +58,11 @@ function zonderBronvermelding(item: Item): Item {
 
 function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   const { meer, laden } = useMeer(item);
-  if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
+
   const sites = (item.bronnen ?? []).map((b) => b.site);
   const o = uitgebreidOntdubbeld(zonderBronvermelding(item), meer && { ...meer, uitleg: meer.uitleg?.map((p) => stripBronvermelding(p, sites)) });
   const uitleg = item.ruw ? o.uitgebreid.filter((p) => !zelfdeRuweTekst(p, item.kop)) : o.uitgebreid;
-  const per = (meer?.perBron ?? []).filter((b) => b.punten?.length);
+  const punten = bronnenPunten(item, meer);
   // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg getoond wordt; de alineas staan dan al onder Uitgebreid
   const uit = o.uitleg && uitleg.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
   return (
@@ -78,26 +79,16 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
           </div>
         </section>
       ) : null}
-      {per.length ? (
-        <section className="d-sec" aria-label="Wat elke bron meldt">
-          <h2 className="d-h">Wat elke bron meldt</h2>
-          <div className="perbron">
-            {per.map((b, n) => (
-              <div className="pb" key={b.site + n}>
-                <a className="pb-site" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
-                  {b.site}
-                  <Icon name="ext" className="sm" />
-                </a>
-                <ul className="bn">
-                  {b.punten.map((p, k) => (
-                    <li key={k}>
-                      <BionicText text={p} on={bionic} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+      {laden ? <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div> : null}
+      {punten.length ? (
+        <section className="d-sec" aria-label="Dit zeggen de bronnen">
+          <h2 className="d-h">Dit zeggen de bronnen</h2>
+          <ul className="bn bronpunten">
+            {punten.map((p, n) => <li key={n}>
+              <BionicText text={p.tekst} on={bionic} />
+              <div className="bronpunt-links">{p.bronnen.map((b) => <a key={b.site} href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">{b.site}</a>)}</div>
+            </li>)}
+          </ul>
         </section>
       ) : null}
       {uit.map((b, n) => (
