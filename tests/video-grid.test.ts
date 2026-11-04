@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToStaticMarkup } from "react-dom/server.browser";
 import { VideoGrid } from "../src/video";
 import type { Video } from "../src/types";
 
