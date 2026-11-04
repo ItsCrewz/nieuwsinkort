@@ -31,10 +31,15 @@ export function kostenGelijk(a: Verhaal, b: Verhaal): boolean {
 }
 /** twee kostenclaims met onderling afwijkend bedrag of een andere zaak: nooit in één cluster, ook niet via titel- of naamregel */
 export const kostenBotst = (a: Verhaal, b: Verhaal) => kostenclaim(a) && kostenclaim(b) && !kostenGelijk(a, b);
+// kostenbedrag in de kop ("claimen ruim vier ton kosten voor X"): het werkwoord doet er niet toe, het bedrag in de kop mét kosten en advocaten in de tekst wel
+const kostenKop = (v: Verhaal) => bedrag(v.kop) !== undefined && /\bkosten\b|advocaatkosten|advocatenkosten|verdedigingskosten/i.test(v.kop) && /advocat|verdediging/i.test(`${v.kop} ${v.tekst || ""}`);
 export function zelfdeVerhaal(a: Verhaal, b: Verhaal): boolean {
   if (!a.tijd || !b.tijd || Math.abs(a.tijd - b.tijd) > 12 * 3600e3) return false;
   const na = namen(a.kop), nb = namen(b.kop);
-  if ([...na].filter((n) => nb.has(n)).length < 2) return false;
+  const gedeeld = [...na].filter((n) => nb.has(n)).length;
+  // zelfde persoon, zelfde bedrag aan kosten, in beide koppen: één naam is genoeg (de ene kop noemt vaak alleen de achternaam)
+  if (gedeeld === 1 && kostenKop(a) && kostenKop(b)) return kostenGelijk(a, b);
+  if (gedeeld < 2) return false;
   const ta = `${a.kop} ${a.tekst || ""}`, tb = `${b.kop} ${b.tekst || ""}`;
   if (kostenclaim(a) && kostenclaim(b)) return kostenGelijk(a, b);
   const wedstrijd = (kop: string) => /\b(?:verliest|verloor)\s+(?:(?:ruim|thuis|uit|opnieuw|nipt|met\s+[0-9]+[-–][0-9]+)\s+)*(?:van|tegen)\s+[A-Z]/.test(kop) && !/transfer|trainer|ontslag/i.test(kop);
