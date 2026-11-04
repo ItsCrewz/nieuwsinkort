@@ -1,0 +1,1 @@
+- Micro-interacties (#539, animatie 4/5): één tikfeedback (`scale(.97)`) voor knoppen, hover alleen bij `(hover:hover)`, zon/maan-icoon dat draait, deel-icoon dat naar een vinkje morpht met een toast, teller die met de scrollrichting schuift, badge-pop bij het bronnenfilter en carrousel-stippen zonder `width`-animatie.

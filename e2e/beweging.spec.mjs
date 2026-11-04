@@ -106,3 +106,14 @@ test("terug uit een artikel: doelkaart speelt de entree niet opnieuw", async ({ 
   await expect(kaart).not.toHaveClass(/wacht|\bin\b/);
   expect(await kaartAnimaties(page)).toBe(0);
 });
+
+test("thema-icoon wisselt en reduced motion laat niets lopen", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await blokkeer(page);
+  await page.goto("#/");
+  const knop = page.locator(".topbar .iconbtn").last();
+  const voor = await page.evaluate(() => document.documentElement.dataset.theme);
+  await knop.click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).not.toBe(voor);
+  expect(await traag(page)).toEqual([]);
+});

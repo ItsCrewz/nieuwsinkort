@@ -1,4 +1,5 @@
 import { Foutgrens } from "./foutgrens";
+import { DUUR, rustig } from "./beweging";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
 import { useEffect, useRef, useState } from "react";
 import type { Bron, Item, Meer } from "./types";
@@ -120,11 +121,15 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
 
 export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: () => void; bionic: boolean; dag: string }) {
   const [deelStatus, setDeelStatus] = useState("");
+  const [meldingUit, setMeldingUit] = useState(false);
   const url = artikelUrl(item, dag);
   useEffect(() => {
     if (deelStatus !== "gekopieerd") return;
-    const t = setTimeout(() => setDeelStatus(""), 3000);
-    return () => clearTimeout(t);
+    // na 2 s fadet de toast weg (--dur-2), daarna pas leeg; reduced motion: direct
+    setMeldingUit(false);
+    const t1 = setTimeout(() => setMeldingUit(true), 2000);
+    const t2 = setTimeout(() => { setDeelStatus(""); setMeldingUit(false); }, 2000 + (rustig() ? 0 : DUUR[2]));
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [deelStatus]);
   const kopRef = useRef<HTMLHeadingElement>(null);
   const artRef = useRef<HTMLElement>(null);
@@ -154,10 +159,11 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
   // Buiten .shell renderen: container-type:inline-size maakt daar het blok voor position:fixed van, dan scrolt de knop mee.
   const deelBlok = (
     <>
-        <button type="button" className="deel-knop" aria-label="Deel dit bericht" onClick={async () => { setDeelStatus(await deel(navigator, item.kop, url)); }}>
-          <Icon name="share" />
+        <button type="button" className={`deel-knop ${deelStatus === "gekopieerd" ? "ok" : ""}`} aria-label="Deel dit bericht" onClick={async () => { setDeelStatus(await deel(navigator, item.kop, url)); }}>
+          <Icon name="share" className="i-deel" />
+          <Icon name="vink" className="i-vink" />
         </button>
-        <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
+        <span className={`deel-melding ${deelStatus === "gekopieerd" ? `ok${meldingUit ? " uit" : ""}` : ""}`} role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
         {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
     </>
   );

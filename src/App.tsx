@@ -711,6 +711,10 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   const [idx, setIdx] = useState(-1); // -1 = de "vandaag"-kaart met samenvatting en weer
   const idxRef = useRef(idx);
   idxRef.current = idx;
+  // teller schuift mee met de scrollrichting (alleen na de eerste wissel)
+  const vorigeIdx = useRef(idx);
+  const telRichting = useRef("");
+  if (vorigeIdx.current !== idx) { telRichting.current = idx > vorigeIdx.current ? "vw" : "terug"; vorigeIdx.current = idx; }
   const total = sorted.length;
   // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
   const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
@@ -839,7 +843,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
               <Icon name="chevup" />
             </button>
             <span className="tnum" aria-live="polite">
-              {Math.max(1, idx + 1)}/{total}
+              <span key={Math.max(1, idx + 1)} className={`nf-n ${telRichting.current}`}>{Math.max(1, idx + 1)}/{total}</span>
             </span>
             <button type="button" className="nf-btn" aria-label="Volgend bericht" onClick={() => go(idx + 1)}>
               <Icon name="chevdown" />
@@ -959,6 +963,7 @@ function TopBar({
   onSources: () => void;
   filtered: number;
 }) {
+  const [gewisseld, setGewisseld] = useState(false); // iconen animeren pas na de eerste wissel, niet bij laden
   return (
     <header className="topbar">
       <div className="bar">
@@ -991,10 +996,13 @@ function TopBar({
           >
             <Icon name="sliders" />
             <span className="srcbtn-l">Bronnen</span>
-            {filtered ? <span className="badge tnum">{filtered}</span> : null}
+            {filtered ? <span key={filtered} className="badge pop tnum">{filtered}</span> : null}
           </button>
-          <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
-            <Icon name={theme === "dark" ? "sun" : "moon"} />
+          <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={() => { setGewisseld(true); onTheme(); }}>
+            <span className={`ti ${gewisseld ? "wissel" : ""}`}>
+              <Icon name="sun" className={theme === "dark" ? "aan" : ""} />
+              <Icon name="moon" className={theme === "dark" ? "" : "aan"} />
+            </span>
           </button>
         </div>
       </div>
