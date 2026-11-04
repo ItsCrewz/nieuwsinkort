@@ -1,3 +1,4 @@
+import { toonBekendmaking } from "./bekendmaking";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
@@ -645,7 +646,8 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   }, []);
   const bronnen = item.bronnen ?? [];
   const first = bronnen[0];
-  const sum = item.ai || item.samenvatting;
+  const tekst = toonBekendmaking(item);
+  const sum = tekst.ai || tekst.samenvatting;
   const punten = (item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
   return (

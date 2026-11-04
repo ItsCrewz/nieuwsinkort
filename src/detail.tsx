@@ -1,3 +1,4 @@
+import { toonBekendmaking } from "./bekendmaking";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
 import { useEffect, useRef, useState } from "react";
 import type { Bron, Item, Meer } from "./types";
@@ -125,7 +126,7 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
     document.title = `${item.kop} · Nieuws in het kort`;
   }, [item]);
   // punten alleen als ze iets nieuws zeggen (#488)
-  const tekst = zonderBronvermelding(item);
+  const tekst = zonderBronvermelding(toonBekendmaking(item));
   const { paragraphs: alleAlineas, bronnen } = detailInhoud(tekst);
   const intro = item.ruw && zelfdeRuweTekst(tekst.ai, item.kop) ? "" : tekst.ai;
   const paragraphs = item.ruw && (zelfdeRuweTekst(tekst.samenvatting, tekst.ai) || zelfdeRuweTekst(tekst.samenvatting, item.kop)) ? [] : alleAlineas;

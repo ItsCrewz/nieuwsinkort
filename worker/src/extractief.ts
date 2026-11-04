@@ -1,3 +1,5 @@
+import { bekendmakingFallback, isBekendmakingLabel } from "../../src/bekendmaking";
+
 // Deterministische samenvatting zonder AI (pure functies): opschonen van feedtekst, zinnen splitsen en inkorten.
 // Gebruikt door de uur-Worker als de AI op is of een aanroep mislukt, zodat de site nooit leeg raakt (ruw: true).
 
@@ -91,6 +93,7 @@ export function extractief(c: { t?: string; s?: string }, nl: boolean): Extracti
     const ai = `(Engels) ${zin || "Engelstalig bericht, lees het via de bron."}`;
     return { kop, ai, samenvatting: ai };
   }
+  if (isBekendmakingLabel(d)) return { kop, ai: bekendmakingFallback, samenvatting: bekendmakingFallback };
   const samenvatting = eersteZinnen(d, 50, 3);
   const ai = knip(zinnen(samenvatting)[0] || samenvatting, 240);
   return { kop, ai: ai || kop, samenvatting: samenvatting || kop };

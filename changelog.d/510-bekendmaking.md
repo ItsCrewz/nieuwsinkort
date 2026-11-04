@@ -1,0 +1,1 @@
+- Toon bij bekendmakingen zonder inhoud een duidelijke verwijzing naar de bron in plaats van alleen een soortlabel (#510).
