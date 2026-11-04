@@ -35,6 +35,16 @@ t("CSP staat alleen het exacte thema-script en de benodigde mediabronnen toe", (
   assert.ok(!headers.includes("/data.json"));
 });
 
+t("statische bestanden krijgen passende cacheheaders", () => {
+  const headers = readFileSync("public/_headers", "utf8");
+  for (const pad of ["/fonts/*", "/favicon.svg", "/favicon-32.png", "/apple-touch-icon.png", "/icon-192.png", "/icon-512.png"]) {
+    const regel = headers.split("\n").findIndex((r) => r === pad);
+    assert.ok(regel >= 0, pad);
+    assert.match(headers.split("\n")[regel + 1], /Cache-Control: public, max-age=86400(?:,|$)/);
+  }
+  assert.match(headers, /\/assets\/\*\n {2}Cache-Control: public, max-age=31536000, immutable/);
+});
+
 t("Cloudflare Analytics-bronnen staan alleen in de bedoelde CSP-richtlijnen", () => {
   const headers = readFileSync("public/_headers", "utf8");
   const csp = /Content-Security-Policy: (.+)/.exec(headers)![1];

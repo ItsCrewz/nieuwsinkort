@@ -1,3 +1,4 @@
+import { Foutgrens } from "./foutgrens";
 import { artikelId, artikelSlug } from "./artikelid";
 import { rustig, scrollGedrag } from "./beweging";
 import { ams } from "./tijd";
@@ -1016,6 +1017,7 @@ function Footer() {
       </div>
       <p>Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron.</p>
       <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk kwartier bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
+      <p><a href="/over">Over deze site</a></p>
     </footer>
   );
 }
@@ -1175,9 +1177,9 @@ export default function App() {
       <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
-        <Suspense fallback={null}>
+        <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>
           <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
-        </Suspense>
+        </Suspense></Foutgrens>
       ) : null}
     </>
   );
@@ -1233,7 +1235,7 @@ export default function App() {
               dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
               onBack={() => {
-                if (openedInside) window.history.back();
+                if (openedInside || window.history.state?.binnen) window.history.back();
                 else window.location.hash = "#/";
               }}
             />
@@ -1267,9 +1269,9 @@ export default function App() {
   const filterLeeg = <LeegMelding aantal={basisItems.length} onAanpassen={() => setFsheet(true)} onReset={flt.reset} />;
   const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
   const filterBlad = fsheet ? (
-    <Suspense fallback={null}>
+    <Foutgrens code="CLIENT_FILTER_SHEET"><Suspense fallback={null}>
       <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={() => setFsheet(false)} />
-    </Suspense>
+    </Suspense></Foutgrens>
   ) : null;
   if (!isVideo) {
     return (
@@ -1285,7 +1287,7 @@ export default function App() {
           </div>
           {filterBlad}
           <div id="rubriek-paneel" className="nf-panel" role="tabpanel">
-          <NewsFeed
+          <Foutgrens key={view} code="CLIENT_FEED"><NewsFeed
             key={view}
             items={zoekUitkomst}
             keepOrder={flt.f.sort !== "nieuw"}
@@ -1304,7 +1306,7 @@ export default function App() {
                 </Front>
               </div>
             }
-          />
+          /></Foutgrens>
           </div>
         </main>
       </Frame>
@@ -1335,7 +1337,7 @@ export default function App() {
         ) : null}
         <div id="rubriek-paneel" role="tabpanel">
         {isVideo ? (
-          <Suspense fallback={null}>
+          <Foutgrens key={view} code="CLIENT_VIDEO"><Suspense fallback={null}>
             <VideoGrid
               key={view}
               cat={view}
@@ -1347,7 +1349,7 @@ export default function App() {
               onOpen={(slug) => openFeed(view, slug)}
               onCloseFeed={() => closeFeed(view)}
             />
-          </Suspense>
+          </Suspense></Foutgrens>
         ) : (
           <NewsList
             key={view}

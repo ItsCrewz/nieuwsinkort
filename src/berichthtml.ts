@@ -1,13 +1,34 @@
-import { artikelId, artikelPad } from "./artikelid";
+// Serverpagina /bericht/…: de echte app-HTML (index.html) met per bericht eigen title/description/OG/JSON-LD in de head,
+// zodat de gedeelde link exact dezelfde weergave opent als in de app. Binnen #root staat tekst voor crawlers; React vervangt die bij het starten.
+import { artikelPad } from "./artikelid";
 import { veiligeUrl } from "./url";
 
-export const deelScript = `document.querySelector('#delen').addEventListener('click',async()=>{const u=document.querySelector('#link').value,t=document.querySelector('h1').textContent,m=document.querySelector('#melding'),i=document.querySelector('#link');if(navigator.share&&(!navigator.canShare||navigator.canShare({url:u}))){try{await navigator.share({title:t,url:u});return}catch(e){if(e.name==='AbortError')return}}try{await navigator.clipboard.writeText(u);m.textContent='Link gekopieerd'}catch(e){i.hidden=false;i.focus();i.select();m.textContent='Kopieer handmatig'}});`;
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 type Bericht = { id?: string; kop: string; ai?: string; samenvatting?: string; punten?: string[]; bronnen?: { site: string; href: string }[]; ruw?: boolean; cat?: string; t?: number | string };
-export function berichtHtml(item: Bericht, dag: string): string {
-  const url = `https://nieuwsinkort.nl${artikelPad(item, dag)}`, title = item.kop, tekst = item.ruw || item.cat === "politiek" ? "" : item.ai || "", desc = tekst.slice(0, 160);
+// Vervang de content van één meta-tag (op name of property); bestaat hij niet, dan wordt hij vlak voor </head> toegevoegd.
+function zetMeta(html: string, attr: "name" | "property", sleutel: string, waarde: string): string {
+  const tag = `<meta ${attr}="${sleutel}" content="${esc(waarde)}" />`;
+  const re = new RegExp(`<meta\\s+${attr}="${sleutel}"[^>]*>`, "i");
+  return re.test(html) ? html.replace(re, () => tag) : html.replace("</head>", () => `${tag}</head>`);
+}
+export function berichtHtml(sjabloon: string, item: Bericht, dag: string): string {
+  const url = `https://nieuwsinkort.nl${artikelPad(item, dag)}`, title = item.kop, indexeer = !item.ruw && item.cat !== "politiek";
+  const tekst = indexeer ? item.ai || "" : "", desc = tekst.slice(0, 160) || "Het nieuws van vandaag in het kort.";
   const bronnen = (item.bronnen || []).filter((b) => veiligeUrl(b.href));
   const tms = item.t ? new Date(item.t).getTime() : NaN, datum = Number.isFinite(tms) ? new Date(tms).toISOString() : `${dag}T00:00:00+01:00`; // ongeldige t mag de pagina niet breken
   const json = JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: title.slice(0, 110), datePublished: datum, dateModified: datum, inLanguage: "nl", mainEntityOfPage: url, publisher: { "@type": "NewsMediaOrganization", name: "Nieuws in het kort", url: "https://nieuwsinkort.nl" }, image: "https://nieuwsinkort.nl/og-image.png", isBasedOn: bronnen.map((b) => b.href), citation: bronnen.map((b) => b.href) }).replace(/</g, "\\u003c");
-  return `<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} – Nieuws in het kort</title><meta name="description" content="${esc(desc)}"><link rel="canonical" href="${esc(url)}"><meta name="robots" content="${item.ruw || item.cat === "politiek" ? "noindex" : "max-image-preview:large"}"><meta property="og:type" content="article"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(url)}"><meta property="og:image" content="https://nieuwsinkort.nl/og-image.png"><meta property="article:published_time" content="${esc(datum)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="https://nieuwsinkort.nl/og-image.png"><script type="application/ld+json">${json}</script><style>body{font:1.1rem system-ui;max-width:45rem;margin:3rem auto;padding:0 1rem;line-height:1.6}a,button{color:#174aaa}input{width:100%}</style></head><body><main><h1>${esc(title)}</h1>${tekst ? `<p>${esc(tekst)}</p>` : ""}${!item.ruw && item.cat !== "politiek" && item.samenvatting ? `<p>${esc(item.samenvatting)}</p>` : ""}${!item.ruw && item.cat !== "politiek" && item.punten?.length ? `<ul>${item.punten.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}<h2>Bronnen</h2><ul>${bronnen.map((b) => `<li><a href="${esc(b.href)}" rel="noopener nofollow">${esc(b.site)}</a></li>`).join("")}</ul><p><a href="/#/bericht/${artikelId(item)}">Open in Nieuws in het kort</a></p><p><a href="/">Naar het nieuws van vandaag</a></p><button id="delen" type="button" aria-label="Deel dit bericht">Deel dit bericht</button> <span id="melding" aria-live="polite"></span><input id="link" aria-label="Link om handmatig te kopiëren" value="${esc(url)}" readonly></main><script>${deelScript}</script></body></html>`;
+  let h = sjabloon.replace(/<title>[\s\S]*?<\/title>/, () => `<title>${esc(title)} – Nieuws in het kort</title>`)
+    .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${esc(url)}" />`)
+    .replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, () => `<script type="application/ld+json">${json}</script>`);
+  h = zetMeta(h, "name", "description", desc);
+  h = zetMeta(h, "name", "robots", indexeer ? "max-image-preview:large" : "noindex");
+  h = zetMeta(h, "property", "og:type", "article");
+  h = zetMeta(h, "property", "og:title", title);
+  h = zetMeta(h, "property", "og:description", desc);
+  h = zetMeta(h, "property", "og:url", url);
+  h = zetMeta(h, "property", "article:published_time", datum);
+  h = zetMeta(h, "name", "twitter:title", title);
+  h = zetMeta(h, "name", "twitter:description", desc);
+  const body = `<article><h1>${esc(title)}</h1>${tekst ? `<p>${esc(tekst)}</p>` : ""}${indexeer && item.samenvatting ? `<p>${esc(item.samenvatting)}</p>` : ""}${indexeer && item.punten?.length ? `<ul>${item.punten.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}<h2>Bronnen</h2><ul>${bronnen.map((b) => `<li><a href="${esc(b.href)}" rel="noopener nofollow">${esc(b.site)}</a></li>`).join("")}</ul><p><a href="/">Naar het nieuws van vandaag</a></p></article>`;
+  return h.replace('<div id="root"></div>', () => `<div id="root">${body}</div>`);
 }
