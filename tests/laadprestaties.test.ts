@@ -50,6 +50,12 @@ const t = (name: string, fn: () => void | Promise<void>) => {
     assert.match(css, /font-display:swap/);
     assert.match(html, /window\.__vroegData = fetch\("\/data\.json", \{ cache: "no-cache" \}\)/);
   });
+  t("laadvolgorde (#408): data.json-fetch eerst, dan de bundel, beide in de head", () => {
+    const html = readFileSync("index.html", "utf8"), head = html.split("</head>")[0];
+    const fetchAt = head.indexOf("window.__vroegData = fetch("), bundel = head.indexOf('<script type="module" src="/src/main.tsx"></script>');
+    assert.ok(fetchAt >= 0 && bundel > fetchAt, "bundel hoort na de vroege fetch, in de head");
+    assert.ok(!html.split("</head>")[1].includes('type="module"'));
+  });
   t("YouTube-thumbnails: preconnect met crossorigin staat in de head", () => {
     const html = readFileSync("index.html", "utf8");
     assert.match(html.split("</head>")[0], /<link rel="preconnect" href="https:\/\/i\.ytimg\.com" crossorigin\s*\/>/);

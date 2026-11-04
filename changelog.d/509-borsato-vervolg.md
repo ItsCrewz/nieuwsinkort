@@ -1,0 +1,1 @@
+- Voeg twee berichten over dezelfde advocaatkosten-claim samen ook als de ene kop alleen de achternaam noemt en een ander werkwoord gebruikt ("claimen ... kosten voor Borsato"); zelfde bedrag in beide koppen is vereist (#509).

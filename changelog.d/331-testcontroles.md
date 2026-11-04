@@ -1,0 +1,1 @@
+- Voeg een gzip-budget voor de hoofdbundel en het CSS-bestand (de CSS staat ook inline) toe aan `npm run check`, een offline bron-URL-controle (`npm run check:bronlinks`) en een screenreader-checklist toe (#331).

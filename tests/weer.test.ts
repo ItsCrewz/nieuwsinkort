@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import { buildWeer, KNMI_VERW, OM_URL } from "../worker/src/weer";
-import { simpelWeer } from "../worker/src/ai";
+import { simpelWeer, isPromptEcho } from "../worker/src/ai";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 let n = 0;
@@ -55,6 +55,13 @@ await t("weer: simpelWeer-prompt is landelijk, invoer max 1500 tekens, één aan
   const prompt = JSON.stringify(gezien[0]);
   assert.ok(!/Haarlem/i.test(prompt) && /heel Nederland/.test(prompt));
   assert.ok(JSON.stringify(gezien[0].messages.at(-1).content).length < 1900);
+});
+await t("weer: prompt-echo als modeluitvoer wordt afgewezen (#378)", async () => {
+  const echo = "Herschrijf het boekje voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf voor volwassenen in eenvoudig Nederlands (B1): korte zinnen.";
+  const ai: any = { run: async () => ({ response: echo, usage: { prompt_tokens: 10, completion_tokens: 5 } }) };
+  assert.equal(await simpelWeer(ai, "m", "KNMI-tekst", { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0 }), "");
+  assert.ok(isPromptEcho(echo) && isPromptEcho("Schrijf voor volwassenen in eenvoudig Nederlands (B1) en kort."));
+  assert.ok(!isPromptEcho("Vandaag is het droog, in het noorden mistig. Morgen wordt het zonnig."));
 });
 
 // ---- foutpaden (#172): buildWeer krijgt van de Worker null bij onbereikbare bron, HTTP-fout of ongeldige JSON; hier alleen huidig gedrag vastleggen

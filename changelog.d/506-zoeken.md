@@ -1,0 +1,1 @@
+- Zoek berichten op woorden, bronnen en rubrieken (#506).

@@ -27,5 +27,8 @@ __pycache__/
 .DS_Store
 npm-debug.log*
 
+# Playwright-uitvoer
+test-results/
+playwright-report/
 # coverage-uitvoer
 coverage/

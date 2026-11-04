@@ -1,0 +1,1 @@
+- Docs: Lighthouse best practices-meting en de resterende ERR_CONNECTION_CLOSED van Dumpert-thumbnails vastgelegd (#294); geen codewijziging.

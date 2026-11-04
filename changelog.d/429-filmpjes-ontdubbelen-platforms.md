@@ -1,0 +1,1 @@
+- Filmpjes: dezelfde video van één uitgever op YouTube én Instagram (bijv. NU.nl) wordt nu ontdubbeld op titel/caption-gelijkenis binnen 6 uur; YouTube blijft, Instagram komt in `ook` (#429).

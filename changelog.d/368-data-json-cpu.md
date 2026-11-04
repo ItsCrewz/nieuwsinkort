@@ -1,0 +1,1 @@
+- Verlaag de rekentijd van `/data.json`, begrens grote uurupdates en gebruik bij een laadfout de statische data (#368).
