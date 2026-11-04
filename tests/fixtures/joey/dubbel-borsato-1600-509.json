@@ -1,0 +1,49 @@
+{
+ "borsato": [
+  {
+   "cat": "nl",
+   "kop": "Marco Borsato vraagt vier ton aan advocaatkosten terug",
+   "ai": "De 59-jarige zanger Marco Borsato vraagt ruim vier ton aan verdedigingskosten terug bij de rechtbank in Utrecht. De uitspraak volgt op 27 november.",
+   "samenvatting": "Marco Borsato vraagt ruim vier ton aan kosten voor zijn verdediging terug. Hij vindt deze hoge kosten noodzakelijk voor de waarheid.",
+   "punten": [
+    "De rechtbank doet op 27 november uitspraak"
+   ],
+   "tijd": "14:00",
+   "bronnen": [
+    {
+     "site": "RTL Nieuws",
+     "href": "https://www.rtl.nl/boulevard/artikel/5662909/marco-borsato-verdedigt-hoge-advocaatkosten-rechtbank"
+    },
+    {
+     "site": "NU.nl",
+     "href": "https://www.nu.nl/achterklap/6415385/borsato-noemt-hoge-advocaatkosten-onvermijdelijk-onherstelbare-schade.html"
+    }
+   ],
+   "beelden": [
+    "https://redactie.rtl.nl/sites/default/files/content/images/2026/11/04/marco%20B.jpg?itok=Xc0GC77a&width=1024&height=576&impolicy=semi_dynamic",
+    "https://images.nu.nl/m/qd7xpcrak2cx_wd1280.jpg"
+   ],
+   "t": 1793797256000,
+   "uur": true
+  },
+  {
+   "cat": "nl",
+   "kop": "Advocaten claimen ruim vier ton kosten voor Borsato",
+   "ai": "Het advocatenkantoor Knoops declareerde ruim vier ton aan kosten. Dit gebeurde woensdag in de rechtbank in Utrecht.",
+   "samenvatting": "De advocaten van Marco Borsato vinden de kosten van ruim vier ton noodzakelijk. Het Openbaar Ministerie vindt het bedrag te hoog. De rechtbank beslist over de vergoeding.",
+   "punten": [],
+   "tijd": "13:58",
+   "bronnen": [
+    {
+     "site": "Telegraaf",
+     "href": "https://www.telegraaf.nl/binnenland/ruim-vier-ton-advocatenkosten-in-strafzaak-marco-borsato-noodzakelijk-en-onvermijdelijk/164057574.html"
+    }
+   ],
+   "beelden": [
+    "https://prod-img.telegraaf.nl/public/incoming/peg1nw-borsato.jpg/alternates/BASE_SIXTEEN_NINE/Borsato.jpg"
+   ],
+   "t": 1793797135000,
+   "uur": true
+  }
+ ]
+}

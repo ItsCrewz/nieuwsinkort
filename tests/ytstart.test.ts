@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ytStartBesluit, ytSkipBesluit, ytStatusNaam, ytEchteFout, geluidMag, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint } from "../src/ytstart";
+import { ytStartBesluit, ytSkipBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint } from "../src/ytstart";
 
 for (const actief of [true, false]) {
   const url = new URL(ytEmbedUrl("abc123", actief, "https://voorbeeld.nl"));
@@ -36,8 +36,19 @@ assert.equal(ytStartBesluit({ ...basis, gespeeld: true, status: 2, nu: 2500 }), 
 assert.equal(ytStartBesluit({ ...basis, actief: false, nu: 2500 }), "wacht");
 assert.equal(ytStartBesluit({ ...basis, fout: true, nu: 2500 }), "wacht");
 for (const code of [100, 101, 150, 152]) { assert.equal(ytEchteFout(code), true); assert.equal(autoplayGeblokkeerd("onError", code), false); }
-for (const soort of ["onAutoplayBlocked", "NotAllowedError", "timeout"]) assert.equal(autoplayGeblokkeerd(soort), true);
-assert.equal(autoplayGeblokkeerd("onError", 5), true);
+for (const soort of ["onAutoplayBlocked", "NotAllowedError"]) assert.equal(autoplayGeblokkeerd(soort), true);
+// De 1,5 s-timeout en een niet-echte onError zijn geen geluidsweigering (#437): alleen de hint.
+assert.equal(autoplayGeblokkeerd("timeout"), false);
+assert.equal(autoplayGeblokkeerd("onError", 5), false);
+// Geluid per bron: een YouTube-blokkade raakt native slides niet en andersom.
+for (const kind of ["hls", "mp4"]) {
+  assert.equal(geluidVoorSlide(kind, true, true, false, true), true);
+  assert.equal(geluidVoorSlide(kind, true, true, true, false), false);
+}
+assert.equal(geluidVoorSlide("youtube", true, true, true, false), true);
+assert.equal(geluidVoorSlide("youtube", true, true, false, true), false);
+assert.equal(geluidVoorSlide("mp4", true, false, false, false), false);
+assert.equal(geluidVoorSlide("mp4", false, true, false, false), false);
 assert.equal(geluidMag(true, true, false), true);
 assert.equal(geluidMag(true, false, false), false);
 assert.equal(geluidMag(true, true, true), false);

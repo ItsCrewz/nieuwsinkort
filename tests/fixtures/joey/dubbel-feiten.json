@@ -1,0 +1,80 @@
+[
+  {
+    "cat": "auto",
+    "kop": "Europa voert digitaal batterijpaspoort in voor elektrische fietsen",
+    "ai": "Vanaf februari 2027 moeten nieuwe e-bike batterijen in de Europese Unie een digitaal batterijpaspoort hebben. Dit kan ook gevolgen hebben voor gebruikers in Amerika.",
+    "samenvatting": "De Europese Unie introduceert een nieuw systeem voor batterijen van elektrische fietsen. Elke batterij krijgt een digitale identiteit met informatie over de herkomst.",
+    "punten": [
+      "Batterijen worden gevolgd bij reparatie en recycling",
+      "Het systeem helpt bij het opnieuw verkopen van batterijen"
+    ],
+    "tijd": "10:21",
+    "bronnen": [
+      {
+        "site": "Electrek",
+        "href": "https://electrek.co/2026/11/02/how-europes-battery-passport-could-have-a-big-impact-on-us-e-bikes/"
+      }
+    ],
+    "t": 1793611260000,
+    "uur": true,
+    "meer": "electrek.co/2026/11/02/how-europes-battery-passport-could-have-a-big-impact-on-us-e-bikes",
+    "meerData": {
+      "uitleg": [
+        "De Europese Unie voert een nieuw systeem in voor batterijen. Vanaf 18 februari 2027 moeten nieuwe e-bike batterijen een digitaal paspoort hebben. Dit paspoort is een digitale identiteit voor de batterij.",
+        "Deze regels komen uit de Batterijverordening van 2023. Ze gelden voor batterijen in auto's, fietsen en scooters. Je scant een QR-code om de informatie te zien.",
+        "Het paspoort toont details over de maker en de chemie. Ook zie je de capaciteit en de koolstofvoetafdruk. Belangrijk is de informatie over de levensduur en slijtage.",
+        "Dit helpt bij de aankoop van tweedehands fietsen. Nu is de staat van de batterij vaak een raadsel. Met het paspoort zie je hoeveel laadcycli de batterij al heeft gehad.",
+        "De regels zijn Europees, maar ze kunnen ook Amerika beïnvloeden. Veel e-bikes worden daar verkocht. Het systeem maakt reparatie en recycling makkelijker."
+      ],
+      "perBron": [
+        {
+          "site": "Electrek",
+          "punten": [
+            "Nieuwe e-bike batterijen krijgen vanaf 2027 een digitaal paspoort.",
+            "Je scant een QR-code voor informatie over de batterij.",
+            "Het paspoort toont details over maker, chemie en capaciteit.",
+            "Informatie over slijtage helpt bij de aankoop van tweedehands fietsen."
+          ],
+          "href": "https://electrek.co/2026/11/02/how-europes-battery-passport-could-have-a-big-impact-on-us-e-bikes/"
+        }
+      ]
+    }
+  },
+  {
+    "cat": "auto",
+    "kop": "Productie van populaire Polestar 2 stopt",
+    "ai": "Het merk Polestar stopt met de productie van de Polestar 2. Dit model was relatief succesvol in Nederland.",
+    "samenvatting": "De productie van de Polestar 2 is gestopt. Dit was het enige succesvolle model van het merk in Nederland.",
+    "punten": [],
+    "tijd": "10:05",
+    "bronnen": [
+      {
+        "site": "Autoblog.nl",
+        "href": "https://www.autoblog.nl/nieuws/de-productie-van-de-populairste-polestar-is-gestopt"
+      }
+    ],
+    "t": 1793610300000,
+    "uur": true,
+    "meer": "autoblog.nl/nieuws/de-productie-van-de-populairste-polestar-is-gestopt",
+    "meerData": {
+      "uitleg": [
+        "Het merk Polestar stopt met de productie van de Polestar 2. Het laatste exemplaar is in China van de band gerold. De auto werd in 2020 gelanceerd. Hij is zes jaar geproduceerd.",
+        "In Nederland was dit model relatief succesvol. Er zijn 13.496 auto's verkocht. Het topjaar was 2020 met 2.953 verkopen. Daarna daalde het aantal elk jaar.",
+        "Wereldwijd zijn er zo'n 200.000 Polestar 2's verkocht. De auto heeft een vaste plek in het straatbeeld. Je kunt de auto nog wel bestellen. Er is nog voorraad.",
+        "Een opvolger is in aantocht. Die wordt ontworpen door Philipp Römers. Hij komt van Volkswagen. De nieuwe auto lijkt op de Polestar 4. De onthulling is nog niet bekend."
+      ],
+      "perBron": [
+        {
+          "site": "Autoblog.nl",
+          "punten": [
+            "Productie van de Polestar 2 stopt in China.",
+            "In Nederland zijn 13.496 exemplaren verkocht.",
+            "De auto is nog te bestellen uit voorraad.",
+            "Philipp Römers ontwerpt de nieuwe opvolger."
+          ],
+          "href": "https://www.autoblog.nl/nieuws/de-productie-van-de-populairste-polestar-is-gestopt"
+        }
+      ]
+    }
+  }
+]

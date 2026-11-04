@@ -1,15 +1,20 @@
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Bron, Item, Meer } from "./types";
 import { BionicText, host } from "./ui";
 import { Icon } from "./icons";
+import { toonBekendmaking } from "./bekendmaking";
+import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Beelden } from "./beelden";
 import { veiligeUrl } from "./url";
 import { bronnenTekst, detailInhoud, fotos } from "./leesverder";
-import { uitgebreidAlineas } from "./uitgebreid";
-import { AiVermelding, isAiSamenvatting, isAiUitgebreid } from "./ai-vermelding";
+import { uitgebreidOntdubbeld } from "./uitgebreid";
+import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
+import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
+import { artikelUrl, deel } from "./delen";
+import { useTerugvegen } from "./terugvegen";
 
 function monoOf(site: string) {
   return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
@@ -47,26 +52,36 @@ function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
   return st;
 }
 
+// Bron (nieuwssite) nooit als verkoper of kanaal tonen (#488): de teksten van het bericht zonder "via <bron>"-vermeldingen.
+function zonderBronvermelding(item: Item): Item {
+  const sites = (item.bronnen ?? []).map((b) => b.site);
+  const schoon = (t: string) => item.ruw && /^(?:null|undefined)$/i.test(t.trim()) ? "" : stripBronvermelding(t, sites);
+  return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten((item.punten ?? []).map(schoon), item.kop, item.ai, item.samenvatting) : (item.punten ?? []).map(schoon) };
+}
+
 function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   const { meer, laden } = useMeer(item);
   if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
-  const uitleg = uitgebreidAlineas(item, meer);
+  const sites = (item.bronnen ?? []).map((b) => b.site);
+  const o = uitgebreidOntdubbeld(zonderBronvermelding(item), meer && { ...meer, uitleg: meer.uitleg?.map((p) => stripBronvermelding(p, sites)) });
+  const uitleg = item.ruw ? o.uitgebreid.filter((p) => !zelfdeRuweTekst(p, item.kop)) : o.uitgebreid;
   const per = (meer?.perBron ?? []).filter((b) => b.punten?.length);
-  // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg is; de alineas staan dan al onder Uitgebreid
-  const uit = meer?.uitleg?.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
+  // het artikel zelf (met link naar de bron) alleen als er geen AI-uitleg getoond wordt; de alineas staan dan al onder Uitgebreid
+  const uit = o.uitleg && uitleg.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
   return (
     <>
-      <section className="d-sec d-meer" aria-label="Uitgebreid">
-        <h2 className="d-h">Uitgebreid</h2>
-        <div className="d-body bn">
-          {uitleg.map((p, n) => (
-            <p key={n}>
-              <BionicText text={p} on={bionic} />
-            </p>
-          ))}
-        </div>
-        <AiVermelding tonen={isAiUitgebreid(item, meer)} />
-      </section>
+      {uitleg.length ? (
+        <section className="d-sec d-meer" aria-label="Uitgebreid">
+          <h2 className="d-h">Uitgebreid</h2>
+          <div className="d-body bn">
+            {uitleg.map((p, n) => (
+              <p key={n}>
+                <BionicText text={p} on={bionic} />
+              </p>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {per.length ? (
         <section className="d-sec" aria-label="Wat elke bron meldt">
           <h2 className="d-h">Wat elke bron meldt</h2>
@@ -90,31 +105,54 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
         </section>
       ) : null}
       {uit.map((b, n) => (
-        <section className="d-sec d-meer" key={b.href + n} aria-label={`Bron: ${b.site}`}>
+        <div className="d-sec d-meer" key={b.href + n} role="group" aria-label={`Bron: ${b.site}`}>
           <a className="btn ghost d-more" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
             Lees het hele artikel bij {b.site}
             <Icon name="ext" />
           </a>
-        </section>
+        </div>
       ))}
     </>
   );
 }
 
-export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () => void; bionic: boolean }) {
+export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: () => void; bionic: boolean; dag: string }) {
+  const [deelStatus, setDeelStatus] = useState("");
+  const url = artikelUrl(item, dag);
+  const kopRef = useRef<HTMLHeadingElement>(null);
+  const artRef = useRef<HTMLElement>(null);
+  useTerugvegen(artRef, onBack);
+  // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
+  useEffect(() => {
+    kopRef.current?.focus({ preventScroll: true });
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onBack();
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [item, onBack]);
   useEffect(() => {
     document.title = `${item.kop} · Nieuws in het kort`;
-    return () => {
-      document.title = "Nieuws in het kort";
-    };
   }, [item]);
-  const { paragraphs, punten, bronnen } = detailInhoud(item);
+  // punten alleen als ze iets nieuws zeggen (#488)
+  const tekst = zonderBronvermelding(toonBekendmaking(item));
+  const { paragraphs: alleAlineas, bronnen } = detailInhoud(tekst);
+  const intro = item.ruw && zelfdeRuweTekst(tekst.ai, item.kop) ? "" : tekst.ai;
+  const paragraphs = item.ruw && (zelfdeRuweTekst(tekst.samenvatting, tekst.ai) || zelfdeRuweTekst(tekst.samenvatting, item.kop)) ? [] : alleAlineas;
+  const punten = nieuwePunten(tekst.punten, tekst.ai, tekst.samenvatting);
+  const videobron = bronnen.find((b) => {
+    try {
+      const url = new URL(b.href);
+      return /^https?:$/.test(url.protocol) && /^\/video\/[^/]+/.test(url.pathname);
+    } catch { return false; }
+  });
   return (
-    <article className={`detail cat-${item.cat}`}>
+    <article className={`detail cat-${item.cat}`} ref={artRef}>
       <button type="button" className="back" onClick={onBack}>
         <Icon name="back" className="sm" />
         Terug naar het nieuws
       </button>
+      <button type="button" className="deel-knop" aria-label="Deel dit bericht" onClick={async () => setDeelStatus(await deel(navigator, item.kop, url))}>Deel dit bericht</button>
+      <span className="deel-melding" style={{ marginLeft: 8 }} aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
+      {deelStatus === "handmatig" ? <input className="deel-invoer" style={{ display: "block", width: "100%" }} aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
       <header className="d-head">
         <div className="meta">
           {CAT_LABEL[item.cat] ?? item.cat}
@@ -122,14 +160,14 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
           {item.ruw ? <span>nog niet samengevat</span> : null}
           {bronnen.length ? <span>{bronnenTekst(bronnen.length)}</span> : null}
         </div>
-        <h1 className="d-title">{item.kop}</h1>
+        <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
-        {item.ai ? (
+        {videobron ? <a className="btn ghost d-more" href={veiligeUrl(videobron.href)} target="_blank" rel="noopener noreferrer">Bekijk video bij {videobron.site}</a> : null}
+        {intro ? (
           <p className="d-lead bn">
-            <BionicText text={item.ai} on={bionic} />
+            <BionicText text={intro} on={bionic} />
           </p>
         ) : null}
-        <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
       </header>
       {paragraphs.length ? (
         <div className="d-body bn">
@@ -140,7 +178,6 @@ export function DetailView({ item, onBack, bionic }: { item: Item; onBack: () =>
           ))}
         </div>
       ) : null}
-      <AiVermelding tonen={paragraphs.length > 0 && isAiSamenvatting(item)} />
       {punten.length ? (
         <section className="d-sec" aria-label="Belangrijkste punten">
           <h2 className="d-h">Belangrijkste punten</h2>

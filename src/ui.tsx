@@ -65,7 +65,7 @@ export function FocusSwitch({ value, onChange }: { value: boolean; onChange: (v:
       title="Focus-lezen: het begin van elk woord vet, zodat je sneller leest"
       onClick={() => onChange(!value)}
     >
-      <span className="focus-label">Focus-lezen</span>
+      <span className="focus-label">Focus</span>
       <span className="sw" aria-hidden="true">
         <span className="sw-k" />
       </span>

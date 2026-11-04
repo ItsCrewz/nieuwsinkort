@@ -1,4 +1,4 @@
-// Kleine, regex-gebaseerde feed-parser (geen DOMParser in Workers). RSS 2.0, Atom, SRU, een paar JSON-API's.
+// Kleine, regex-gebaseerde feed-parser (geen DOMParser in Workers). RSS 2.0, Atom, SRU, Google-news-sitemaps, een paar JSON-API's.
 export type Entry = { t: string; l: string; d: number | null; s: string; img?: string };
 
 const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", hellip: "…", ndash: "–", mdash: "—", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", euro: "€", eacute: "é", euml: "ë", iuml: "ï", ouml: "ö", uuml: "ü", aacute: "á", egrave: "è" };
@@ -44,7 +44,24 @@ export function igTime(link: string): number | null {
   return t > 1.3e12 && t < Date.now() + 864e5 ? t : null;
 }
 
-export function parseFeed(body: string, url: string): Entry[] {
+// Google-news-sitemap (<urlset>): titel en tijd uit <news:...>, anders <lastmod>; `pad` houdt alleen links met dat padstuk over (ook voor RSS/Atom in parseFeed)
+function parseSitemap(body: string, url: string, pad?: string): Entry[] {
+  const out: Entry[] = [];
+  for (const b of body.match(/<url>[\s\S]*?<\/url>/gi) || []) {
+    const l = absUrl(decode(tag(b, ["loc"])), url);
+    const t = stripHtml(tag(b, ["news:title"]));
+    if (!l || !t || (pad && !new URL(l).pathname.includes(pad))) continue;
+    out.push({ t, l, d: date(tag(b, ["news:publication_date", "lastmod"])), s: stripHtml(tag(b, ["news:keywords"])).slice(0, 600) });
+  }
+  return out;
+}
+
+// Met `pad` gezet: alleen een geldige link waarvan het pathname `pad` bevat
+function padOk(l: string, pad: string): boolean {
+  try { return new URL(l).pathname.includes(pad); } catch { return false; }
+}
+
+export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const head = body.slice(0, 400).trim();
   if (head[0] === "{" || head[0] === "[") return parseJson(body, url);
   const out: Entry[] = [];
@@ -58,6 +75,7 @@ export function parseFeed(body: string, url: string): Entry[] {
     }
     return out;
   }
+  if (/<urlset[\s>]/i.test(body.slice(0, 2000))) return parseSitemap(body, url, pad);
   const kg = /kg\.meowing\.de|kittygram/i.test(url);
   const blocks = body.match(/<item[\s>][\s\S]*?<\/item>|<entry[\s>][\s\S]*?<\/entry>/gi) || [];
   for (const b of blocks) {
@@ -67,7 +85,9 @@ export function parseFeed(body: string, url: string): Entry[] {
     if (alt) l = decode(alt[1]);
     if (!l) l = decode(tag(b, ["link"]));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
+    const leeg = !l.trim(); // absUrl("") geeft anders de feed-URL zelf
     l = absUrl(l, url);
+    if (pad && (leeg || !padOk(l, pad))) continue;
     let d = date(tag(b, ["pubDate", "published", "dc:date", "updated", "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
     const raw = tag(b, ["description", "media:description", "summary", "content:encoded", "content"]);

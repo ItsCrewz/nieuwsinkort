@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import "./sportcat.test";
 import "./showcat.test";
+import { valideer } from "../src/valideer";
 import { Runner } from "../worker/src/index";
 import { nietAlsNieuws } from "../worker/src/showcat";
 
@@ -14,7 +15,7 @@ await t("showbizz: RTL Boulevard-site telt als nieuws, YouTube niet; algemene fe
   assert.equal(nietAlsNieuws("showbizz", "YouTube", "https://www.rtl.nl/boulevard/rss.xml"), false);
   assert.equal(nietAlsNieuws("politiek", "YouTube", "https://www.youtube.com/feeds/videos.xml?channel_id=x"), false);
   const nu = Date.now();
-  const e = (l: string, t: string, m: number) => ({ t, l, s: "", d: nu - m * 60e3 });
+  const e = (l: string, t: string, m: number) => ({ t, l, s: "De betrokkenen geven vandaag meer uitleg over het onderwerp en verwachten binnenkort verdere ontwikkelingen.", d: nu - m * 60e3 });
   const feed = (url: string, entries: any[]) => ({ url, ok: true, entries, videos: [] });
   const nl = [e("https://www.nu.nl/binnenland/1/kabinet-praat-over-begroting.html", "Kabinet praat over de begroting van volgend jaar", 20), e("https://www.rtl.nl/nieuws/politiek/artikel/2/x", "Kamer debatteert over zorgpremie", 21)];
   const feeds: Record<string, any> = {
@@ -36,10 +37,14 @@ await t("showbizz: RTL Boulevard-site telt als nieuws, YouTube niet; algemene fe
   globalThis.fetch = (async (u: any) => String(u).includes("/bronnen.json") ? Response.json(bronnen) : new Response("nee", { status: 404 })) as any;
   try {
     const data = new Map<string, unknown>();
-    const ctx: any = { storage: { get: async (k: string) => data.get(k), put: async (k: string, v: unknown) => { data.set(k, v); }, setAlarm: async () => {} }, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() };
+    const ctx: any = { storage: { get: async (k: string) => data.get(k), put: async (k: string, v: unknown) => { data.set(k, v); }, setAlarm: async () => {}, getAlarm: async () => null, delete: async (k: string) => { data.delete(k); } }, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() };
     await new Runner(ctx, runEnv).run(true);
   } finally { globalThis.fetch = echte; }
   const uur = JSON.parse(kv.get("uur") || "{}");
+  const contract = valideer(uur);
+  assert.ok(uur.items.length > 0);
+  assert.equal(contract.afgewezen, 0);
+  assert.deepEqual(contract.data.items, uur.items);
   const cat = (frag: string) => uur.items.find((i: any) => (i.bronnen || []).some((b: any) => b.href.includes(frag)))?.cat;
   assert.equal(cat("halle-berry"), "showbizz");
   assert.equal(cat("wilfred-genee"), "showbizz");

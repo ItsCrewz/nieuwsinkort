@@ -58,10 +58,10 @@ t("aiFout: Error, string, object met message en undefined", () => {
   assert.equal(aiFout(null), "overig");
 });
 
-t("neuronFactor: leeg of undefined geeft 1", () => {
-  assert.equal(neuronFactor(), 1);
-  assert.equal(neuronFactor(undefined), 1);
-  assert.equal(neuronFactor(""), 1);
+t("neuronFactor: leeg of undefined geeft 1,12", () => {
+  assert.equal(neuronFactor(), 1.12);
+  assert.equal(neuronFactor(undefined), 1.12);
+  assert.equal(neuronFactor(""), 1.12);
 });
 
 t("neuronFactor: getal en numerieke string, begrensd op 0,5 tot 5", () => {
@@ -72,13 +72,13 @@ t("neuronFactor: getal en numerieke string, begrensd op 0,5 tot 5", () => {
   assert.equal(neuronFactor("100"), 5);
 });
 
-t("neuronFactor: 0, negatief en ongeldig geven 1", () => {
-  assert.equal(neuronFactor(0), 1);
-  assert.equal(neuronFactor("0"), 1);
-  assert.equal(neuronFactor(-2), 1);
-  assert.equal(neuronFactor("abc"), 1);
-  assert.equal(neuronFactor(NaN), 1);
-  assert.equal(neuronFactor(Infinity), 1);
+t("neuronFactor: 0, negatief en ongeldig geven 1,12", () => {
+  assert.equal(neuronFactor(0), 1.12);
+  assert.equal(neuronFactor("0"), 1.12);
+  assert.equal(neuronFactor(-2), 1.12);
+  assert.equal(neuronFactor("abc"), 1.12);
+  assert.equal(neuronFactor(NaN), 1.12);
+  assert.equal(neuronFactor(Infinity), 1.12);
 });
 
 t("schatTokens: lege string 0, naar boven afgerond bij 3,5 tekens per token", () => {

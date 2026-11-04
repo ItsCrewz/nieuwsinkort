@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { parseRedditVideos, parseYouTube, soortVan, selecteerFilmpjes, ytGeblokkeerdeShorts, ytBlokkades, YT_NIEUWS } from "../worker/src/videos";
+import { parseDumpert, parseRedditVideos, parseYouTube, soortVan, selecteerFilmpjes, ytGeblokkeerdeShorts, ytBlokkades, YT_NIEUWS } from "../worker/src/videos";
 import { videoKeys } from "../src/dedup";
+import { vanVandaag } from "../src/vandaag";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 let n = 0;
@@ -84,6 +85,51 @@ await t("Sport- en autokanalen en NOS Sport-Short", async () => {
   assert.equal(videos.length, 1);
   assert.equal(videos[0].embed, "https://www.youtube-nocookie.com/embed/abcdefghijk?autoplay=1&rel=0");
   assert.equal(soortVan(videos[0]), "short");
+});
+
+// ---- Dumpert: toppers + latest uit dezelfde pagina (#394)
+const dItem = (id: number, pub: string, extra: Record<string, unknown> = {}) => ({
+  id: `${id}_abc`, title: `Clip ${id}`, description: "<p>tekst</p>", published_at: pub, nsfw: false, partner_content: false, secret: false,
+  thumbnail: `https://media.dumpert.nl/${id}/thumb.png`, stats: { views_today: 100 + id, kudos_today: id % 50 },
+  media: [{ mediatype: "VIDEO", variants: [{ version: "tablet", uri: `https://media.dumpert.nl/${id}/480/index.m3u8` }] }], ...extra,
+});
+const dHtml = (lijsten: Record<string, unknown[]>) => {
+  const state = Object.fromEntries(Object.entries(lijsten).map(([k, items]) => [k, { data: { result: { data: { items } } } }]));
+  return `<script>window.__DUMPERT_CONTEXT__ = JSON.parse(${JSON.stringify(JSON.stringify({ state }))});</script>`;
+};
+const TOP = "getItemsList-list=toppers,nsfwActive=true,page=0", LAT = "getItemsList-list=latest,nsfwActive=true,page=0";
+const dNu = Date.parse("2026-10-31T10:00:00Z"), dHhmm = (t: number) => new Date(t).toISOString().slice(11, 16);
+const gisteren = (id: number) => ({ ...dItem(id, "2026-10-30T15:00:00Z") });
+await t("Dumpert: toppers van gisteren + latest van vandaag levert items van vandaag", async () => {
+  const html = dHtml({ [TOP]: [gisteren(1), gisteren(2)], [LAT]: [dItem(10, "2026-10-31T09:30:00Z"), dItem(11, "2026-10-31T08:00:00Z")] });
+  const alle = parseDumpert(html, dHhmm);
+  assert.equal(alle.length, 4);
+  const vandaag = alle.filter((v) => vanVandaag(v._pub, dNu));
+  assert.deepEqual(vandaag.map((v) => v.href).sort(), ["https://www.dumpert.nl/item/10_abc", "https://www.dumpert.nl/item/11_abc"]);
+});
+await t("Dumpert: item in beide lijsten komt één keer voor, toppers wint", async () => {
+  const top = dItem(5, "2026-10-31T07:00:00Z", { title: "Uit toppers" });
+  const lat = dItem(5, "2026-10-31T07:00:00Z", { title: "Uit latest" });
+  const alle = parseDumpert(dHtml({ [TOP]: [top], [LAT]: [lat, dItem(6, "2026-10-31T07:30:00Z")] }), dHhmm);
+  assert.equal(alle.length, 2);
+  assert.equal(alle.find((v) => v.href.endsWith("/5_abc"))!.titel, "Uit toppers");
+});
+await t("Dumpert: nsfw, partner en secret in latest vallen weg; geen views_today ook", async () => {
+  const alle = parseDumpert(dHtml({ [TOP]: [], [LAT]: [
+    dItem(20, "2026-10-31T09:00:00Z", { nsfw: true }), dItem(21, "2026-10-31T09:00:00Z", { partner_content: true }),
+    dItem(22, "2026-10-31T09:00:00Z", { secret: true }), dItem(23, "2026-10-31T09:00:00Z", { stats: { views_today: 0 } }),
+    dItem(24, "2026-10-31T09:00:00Z", { media: [] }), dItem(25, "2026-10-31T09:00:00Z"),
+  ] }), dHhmm);
+  assert.deepEqual(alle.map((v) => v.href), ["https://www.dumpert.nl/item/25_abc"]);
+});
+await t("Dumpert: ontbrekende latest-lijst werkt, ontbrekende toppers gebruikt latest, beide weg geeft fout", async () => {
+  assert.equal(parseDumpert(dHtml({ [TOP]: [gisteren(1)] }), dHhmm).length, 1);
+  assert.equal(parseDumpert(dHtml({ [LAT]: [dItem(10, "2026-10-31T09:30:00Z")] }), dHhmm).length, 1);
+  assert.throws(() => parseDumpert(dHtml({ overig: [] }), dHhmm), /geen toppers-lijst/);
+});
+await t("Dumpert: sortering op kudos vandaag blijft over beide lijsten", async () => {
+  const alle = parseDumpert(dHtml({ [TOP]: [dItem(3, "2026-10-30T15:00:00Z")], [LAT]: [dItem(40, "2026-10-31T09:00:00Z")] }), dHhmm);
+  assert.deepEqual(alle.map((v) => v._score), [40, 3]);
 });
 
 console.log(`\n${n} video-tests geslaagd`);

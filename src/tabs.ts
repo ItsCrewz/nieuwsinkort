@@ -8,6 +8,7 @@ export const CATS: { id: Cat; label: string; slug: string }[] = [
   { id: "voetbal", label: "Voetbal", slug: "voetbal" },
   { id: "f1", label: "Formule 1", slug: "formule-1" },
   { id: "auto", label: "Auto", slug: "auto" },
+  { id: "sport", label: "Sport", slug: "sport" },
   { id: "tech", label: "Tech & AI", slug: "tech" },
   { id: "haarlem", label: "Haarlem", slug: "haarlem" },
   { id: "showbizz", label: "Showbizz", slug: "showbizz" },

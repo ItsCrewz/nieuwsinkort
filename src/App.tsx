@@ -1,27 +1,37 @@
+import { artikelId, artikelSlug } from "./artikelid";
+import { ams } from "./tijd";
+import { toonBekendmaking } from "./bekendmaking";
+import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
+import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
+import { sorteerOpGroep } from "./filmgroep";
 import { useVoorladen } from "./usevoorladen";
 import { videoSlug } from "./slug";
 import { zaaiSamenvattingen } from "./samenvattingcache";
 import { schoon } from "./schoon";
+import { valideer } from "./valideer";
+import { debug } from "./debug";
 import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
-import { AiVermelding, isAiSamenvatting } from "./ai-vermelding";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
-import { parseHash, viewHash, type Route } from "./route";
+import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
+import { kiesNieuweData, verwijderGisteren } from "./vandaag";
+import { zoekItems, normaliseer } from "./zoek";
+import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -31,7 +41,6 @@ const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m
 
 
 const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
-const BIONIC_KEY = "dagelijks-nieuws-focus-lezen-v2";
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
@@ -40,15 +49,7 @@ let feedPushed = false;
 let introDone = false;
 
 // ---------------------------------------------------------------- helpers
-function slugify(s: string) {
-  return s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
-}
+const slugify = artikelSlug;
 const itemKey = (i: Item) => slugify(i.kop) || i.bronnen?.[0]?.href || i.kop;
 
 function bronLabel(bronnen: Bron[]) {
@@ -214,7 +215,7 @@ function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   );
 }
 
-function Briefing({ text, bionic, sources, time, note, ai = true }: { text: string; bionic: boolean; sources: number; time: string; note?: string; ai?: boolean }) {
+function Briefing({ text, bionic, sources, time, note }: { text: string; bionic: boolean; sources: number; time: string; note?: string }) {
   return (
     <section className="brief" aria-label="In het kort">
       <h2 className="kicker">In het kort</h2>
@@ -225,7 +226,6 @@ function Briefing({ text, bionic, sources, time, note, ai = true }: { text: stri
       ) : (
         <p className="brief-text muted">De samenvatting van vandaag komt er zo aan.</p>
       )}
-      <AiVermelding tonen={!!text && ai} />
       {sources > 0 ? (
         <p className="brief-meta">
           Samengevat uit {bronnenTekst(sources)}
@@ -347,6 +347,8 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               type="button"
               className={`tab cat-${o.id}`}
               role="tab"
+              data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
+              aria-controls="rubriek-paneel"
               aria-selected={view === o.value}
               tabIndex={view === o.value ? 0 : -1}
               onKeyDown={(e) => {
@@ -381,6 +383,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
                       type="button"
                       role="menuitem"
                       className="menu-item"
+                      data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
                       onClick={() => {
                         setOpen(false);
                         onChange(o.value);
@@ -461,7 +464,6 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
           <BionicText text={item.ai} on={bionic} />
         </p>
       ) : null}
-      <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
       <div className="row-foot">
         <span className="src">{n > 0 ? `${bronLabel(item.bronnen)} · ${bronnenTekst(n)}` : "Geen bron"}</span>
       </div>
@@ -489,13 +491,12 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
           {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
           {item.ruw ? <span>nog niet samengevat</span> : null}
         </div>
-        <h3 className="row-title">{item.kop}</h3>
+        <h2 className="row-title">{item.kop}</h2>
         {item.ai ? (
           <p className="row-sum bn">
             <BionicText text={item.ai} on={bionic} />
           </p>
         ) : null}
-        <AiVermelding tonen={!!item.ai && isAiSamenvatting(item)} />
         <div className="row-foot">
           <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
             {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
@@ -590,13 +591,13 @@ function fitCard(el: HTMLElement) {
 
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
-// De <section> blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
+// De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
 const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean }) {
   const key = itemKey(item);
   return (
-    <section className={`nc cat-${item.cat}`} data-id={key} data-i={i} aria-label={`${i + 1} van ${total}: ${item.kop}`}>
+    <div className={`nc cat-${item.cat}`} data-id={key} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
       {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} />}
-    </section>
+    </div>
   );
 });
 
@@ -640,8 +641,9 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   }, []);
   const bronnen = item.bronnen ?? [];
   const first = bronnen[0];
-  const sum = item.ai || item.samenvatting;
-  const punten = (item.punten ?? []).slice(0, 3);
+  const tekst = toonBekendmaking(item);
+  const sum = tekst.ai || tekst.samenvatting;
+  const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
   return (
     <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
@@ -665,7 +667,6 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
           <BionicText text={sum} on={bionic} />
         </p>
       ) : null}
-      <AiVermelding tonen={!!sum && isAiSamenvatting(item)} />
       {punten.length ? (
         <ul className="nc-pts">
           {punten.map((t, k) => (
@@ -794,8 +795,8 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
 
   return (
     <div className="nf-box">
-      <div className="nf" ref={ref} tabIndex={-1} aria-label="Berichten, één per scherm">
-        <section className={kompakt ? `nc-head kompakt${samenvatting ? " samenvatting" : ""}` : "nc-head"}>{head}</section>
+      <div className="nf" ref={ref} tabIndex={-1} role="region" aria-label="Berichten, één per scherm">
+        <div className={kompakt ? `nc-head kompakt${samenvatting ? " samenvatting" : ""}` : "nc-head"}>{head}</div>
         {total === 0 ? (
           empty ?? <div className="empty">
             <Icon name="clock" />
@@ -804,9 +805,9 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
         ) : (
           sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} />)
         )}
-        <section className="nc-end">
+        <div className="nc-end">
           <Footer />
-        </section>
+        </div>
       </div>
       {total > 0 ? (
         <>
@@ -838,21 +839,24 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   );
 }
 
+let afgewezenBerichten = 0;
 // ---------------------------------------------------------------- data + thema
 function useData() {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
     try {
-      const d = schoon((await laadData(neemVroegeData())) as Data); // ook hier ontdubbelen: statische data zonder Pages Function
+      const gevalideerd = valideer(await laadData(neemVroegeData()));
+      afgewezenBerichten = gevalideerd.afgewezen;
+      const d = schoon(gevalideerd.data as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
       d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
       d.filmpjes ??= [];
       zaaiSamenvattingen(d.samenvattingen);
       d.dumpert ??= [];
       d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
-      d.filmpjes = d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) })); // Shorts of Journaals
-      setData((prev) => (prev && prev.gegenereerd && prev.gegenereerd === d.gegenereerd ? prev : d));
+      d.filmpjes = sorteerOpGroep(d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }))); // Shorts of Journaals; op onderwerpgroep (#459): Sport onderaan, ook voor de volgorde van doorlopend kijken
+      setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
       setError(false);
     } catch {
       setError(true);
@@ -860,13 +864,15 @@ function useData() {
   }, []);
   useEffect(() => {
     load();
-    // ververs als je terugkomt op het tabblad, en elke 15 minuten
+    // ververs als je terugkomt op het tabblad, en elk kwartier
     const onVis = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onVis);
     const t = window.setInterval(load, 15 * 60 * 1000);
+    const grens = window.setInterval(() => setData((d) => d && verwijderGisteren(d, Date.now())), 1000);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(t);
+      window.clearInterval(grens);
     };
   }, [load]);
   return { data, error, reload: load };
@@ -923,7 +929,9 @@ function TopBar({
   onHome,
   onSources,
   filtered,
+  zoeken,
 }: {
+  zoeken?: ReactNode;
   theme: Theme;
   onTheme: () => void;
   bionic: boolean;
@@ -953,6 +961,7 @@ function TopBar({
         </a>
         <div className="ctrls">
           <FocusSwitch value={bionic} onChange={onBionic} />
+          {zoeken}
           <button
             type="button"
             className={`srcbtn ${filtered ? "has" : ""}`}
@@ -988,7 +997,7 @@ function Footer() {
         Nieuws in het kort
       </div>
       <p>Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron.</p>
-      <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk uur bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
+      <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk kwartier bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
     </footer>
   );
 }
@@ -1002,6 +1011,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
   return (
     <div className={`app ${feed ? "app-feed" : ""}`}>
       <IconSprite />
+      {debug && <div style={{ position: "fixed", right: 4, top: 4, zIndex: 2147483647, background: "black", color: "white", padding: 4, fontSize: 10 }}>Afgewezen berichten: {afgewezenBerichten}</div>}
       <div className="shell">
         <a className="skip" href="#top" onClick={(e) => { e.preventDefault(); document.getElementById("top")?.focus(); }}>Naar de inhoud</a>
         {top}
@@ -1026,27 +1036,23 @@ export default function App() {
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
-  const [bionic, setBionic] = useState(true);
+  useLayoutEffect(() => { document.title = viewTitel(route.view); }, [route.view, route.selected]);
+  const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
+  const [zoekterm, setZoekterm] = useState("");
   const flt = useFilters();
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
     [data, flt.f, flt.vorig]
   );
-  useVoorladen(vids, data?.gegenereerd, !!route.video); // Filmpjes/Dumpert vooraf warm, na load en in idle-tijd
+  useVoorladen(vids, data?.gegenereerd, !!route.video); // thumbs vooraf in idle-tijd; video pas bij intentie (tab aanraken/focus)
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const routeRef = useRef(route);
   routeRef.current = route;
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(BIONIC_KEY);
-      if (saved === "0") setBionic(false);
-      else if (saved === "1") setBionic(true);
-    } catch {
-      /* standaard aan */
-    }
+    ruimOudeFocusKeuzeOp(browserStorage());
     const onHash = () => {
       const next = huidigeRoute();
       const prev = routeRef.current;
@@ -1069,9 +1075,14 @@ export default function App() {
     if (was === route.selected) return;
     if (route.selected) window.scrollTo(0, 0);
     else if (was) {
-      const n = document.querySelector(`[data-id="${CSS.escape(was)}"]`);
-      if (n) n.scrollIntoView({ block: "center" });
-      else window.scrollTo(0, 0);
+      const n = document.querySelector<HTMLElement>(`[data-id="${CSS.escape(was)}"]`);
+      if (n) {
+        n.scrollIntoView({ block: "center" });
+        // Focus terug op de link/kaart waarmee het artikel opende (toetsenbord en schermlezer)
+        const f = n instanceof HTMLAnchorElement ? n : n.querySelector<HTMLElement>("a[href]") ?? n;
+        if (f === n && !n.hasAttribute("tabindex")) n.tabIndex = -1;
+        f.focus({ preventScroll: true });
+      } else window.scrollTo(0, 0);
     }
   }, [route.selected]);
 
@@ -1081,11 +1092,7 @@ export default function App() {
 
   const setBionicPersist = (v: boolean) => {
     setBionic(v);
-    try {
-      localStorage.setItem(BIONIC_KEY, v ? "1" : "0");
-    } catch {
-      /* negeer */
-    }
+    bewaarFocusKeuze(browserStorage(), v);
   };
   const setView = (v: View) => {
     // Touch: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht); desktop houdt het overzicht met kopjes.
@@ -1144,9 +1151,10 @@ export default function App() {
       </div>
   );
   const isFeedView = !!data && !route.selected && route.view !== "filmpjes" && route.view !== "dumpert";
+  const zoekUitkomst = isFeedView && data && raw ? zoekItems(filterNieuws(route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view), flt.f, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm) : [];
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Suspense fallback={null}>
@@ -1160,6 +1168,7 @@ export default function App() {
     return (
       <Frame top={top}>
         <main className="wrap" id="top" tabIndex={-1}>
+          <h1 className="sr-only">Nieuws</h1>
           {error ? (
             <div className="empty" style={{ marginTop: 24 }}>
               <Icon name="alert" />
@@ -1193,7 +1202,7 @@ export default function App() {
 
   // Detail: eerst in de gefilterde lijst (met alleen de actieve bronnen), anders het origineel (directe link).
   const selectedItem = route.selected
-    ? data.items.find((i) => itemKey(i) === route.selected) ?? raw.items.find((i) => itemKey(i) === route.selected) ?? null
+    ? data.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
     : null;
 
   if (selectedItem) {
@@ -1203,6 +1212,7 @@ export default function App() {
           <Suspense fallback={null}>
             <DetailView
               item={selectedItem}
+              dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
               onBack={() => {
                 if (openedInside) window.history.back();
@@ -1247,6 +1257,7 @@ export default function App() {
     return (
       <Frame top={top} feed>
         <main className="nf-main" id="top" tabIndex={-1}>
+          <h1 className="sr-only">{alles ? "Nieuws" : view}</h1>
           <div className="nf-tabs">
             <div className="wrap">
               <Tabs data={data} view={view} onChange={setView} />
@@ -1255,11 +1266,12 @@ export default function App() {
             </div>
           </div>
           {filterBlad}
+          <div id="rubriek-paneel" className="nf-panel" role="tabpanel">
           <NewsFeed
             key={view}
-            items={uitkomst!.items}
+            items={zoekUitkomst}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={filterLeeg}
+            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
@@ -1269,12 +1281,13 @@ export default function App() {
               <div className="wrap nc-head-in">
                 {dateline}
                 <Front>
-                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing ai={!!raw.tab_samenvatting?.[view]?.ai} text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
+                  {alles ? <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} /> : <TabBriefing text={raw.tab_samenvatting?.[view]?.tekst} aantal={basisItems.length}><Briefing text={raw.tab_samenvatting?.[view]?.tekst || ""} bionic={bionic} sources={0} time="" /></TabBriefing>}
                   {alles && <WeatherBox W={raw.weer} bionic={bionic} />}
                 </Front>
               </div>
             }
           />
+          </div>
         </main>
       </Frame>
     );
@@ -1282,6 +1295,7 @@ export default function App() {
   return (
     <Frame top={top}>
       <main className="wrap" id="top" tabIndex={-1}>
+        <h1 className="sr-only">{view === "filmpjes" ? "Filmpjes" : "Dumpert"}</h1>
         <Front>
           <Briefing text={raw.dag_samenvatting} bionic={bionic} sources={kortSources} time={amsterdamTime(raw.gegenereerd)} note={briefNote} />
         </Front>
@@ -1301,6 +1315,7 @@ export default function App() {
             </button>
           </div>
         ) : null}
+        <div id="rubriek-paneel" role="tabpanel">
         {isVideo ? (
           <Suspense fallback={null}>
             <VideoGrid
@@ -1327,6 +1342,7 @@ export default function App() {
             onOpen={open}
           />
         )}
+        </div>
         <Footer />
       </main>
     </Frame>

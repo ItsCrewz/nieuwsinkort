@@ -36,6 +36,19 @@ try {
     assert.equal(aanroepen.length, 0);
   });
 
+  await t("posters: alleen beeldextensies onder dmp/media/video/, andere paden/extensies 404", async () => {
+    const POSTER = "dmp/media/video/ab12-cd/34/poster-small.jpg";
+    mockFetch(() => new Response("img", { headers: { "content-type": "image/jpeg" } }));
+    for (const p of [POSTER, "dmp/media/video/ab12/poster.PNG", "dmp/media/video/ab12/p.webp", "dmp/media/video/ab12/p.jpeg"]) assert.equal((await vraag(p)).status, 200, p);
+    assert.equal(aanroepen[0].url, `https://media.dumpert.nl/${POSTER}`);
+    assert.equal((await vraag(POSTER)).headers.get("Content-Type"), "image/jpeg");
+    const n = aanroepen.length;
+    for (const p of ["dmp/media/image/ab/p.jpg", "andere/p.jpg", "dmp/media/video/ab/p.gif", "dmp/media/video/ab/p.svg", "dmp/media/video/../x/p.jpg", "https://evil.example/p.jpg", "dmp/media/video/ab/p.jpg.html"]) {
+      assert.equal((await vraag(p)).status, 404, p);
+    }
+    assert.equal(aanroepen.length, n, "geen upstream-fetch voor geweigerde paden");
+  });
+
   await t("padsegmenten als array worden samengevoegd", async () => {
     mockFetch(() => new Response("ok"));
     const r = await vraag(["dmp", "media", "video", "ab12", "480", "index.m3u8"]);
