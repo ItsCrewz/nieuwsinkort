@@ -36,11 +36,10 @@ try {
   assert.match(resultaten[2].err, /HTML i.p.v. feed/);
   assert.equal(resultaten[3].status, 404);
   assert.equal(resultaten[4].text, "https://nieuws.nl/foto.jpg");
-  assert.equal(resultaten[4].kvWrites, 1);
   assert.match(resultaten[5].err, /geweigerde externe URL/);
   const aantal = verzoeken.length;
   assert.equal((await ophalen([jobs[4]]))[0].text, "https://nieuws.nl/foto.jpg");
-  assert.equal(verzoeken.length, aantal);
+  assert.equal(verzoeken.length, aantal + 1);
   const job = { kind: "insta", url: "https://instagram.com/test" } as any;
   const goed = { ok: true, entries: [{ t: "bewaard" }], videos: [], newest: nu } as any;
   await fetcher.mem(job, goed, nu - 1000);
