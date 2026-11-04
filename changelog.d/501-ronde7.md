@@ -1,0 +1,1 @@
+- Bronpunten behouden getaltekens, valuta en procent, knippen niet binnen getallen of afkortingen, tellen vragen nooit als bewijs en tonen een korte titel als laatste terugval (#501).

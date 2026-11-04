@@ -179,3 +179,46 @@ test("alleen bekende bronnamen en ANP worden als suffix verwijderd", async () =>
   for (const suffix of [" - NOS", " (ANP)"]) assert.deepEqual(punten(zin + suffix, zin), [[zin, ["A", "B"]]]);
   assert.deepEqual(punten(zin + " (drie gewonden)", zin + " (geen gewonden)"), [[zin + " (drie gewonden)", ["A"]], [zin + " (geen gewonden)", ["B"]]]);
 });
+
+// Review ronde 7: twee bronnen met elk een eigen titel en optioneel een feedomschrijving.
+async function tweeBronnen(a: { ft: string; fd?: string }, b: { ft: string; fd?: string }) {
+  const { bronnenPunten } = await import("../../src/bronnenSamen");
+  const basis = fixtures.find((f) => f.item.bronnen.length > 1)!.item;
+  return bronnenPunten({ ...basis, kop: "Ander bericht", ai: "", samenvatting: "", bronnen: [
+    { site: "A", href: "https://a.example", ...a }, { site: "B", href: "https://b.example", ...b },
+  ] }, null).map((p) => [p.tekst, p.bronnen.map((bron) => bron.site)]);
+}
+
+test("getaltekens, valuta en procent blijven onderscheidend", async () => {
+  for (const [a, b] of [
+    ["De economische groei bedraagt -0,5 procent dit kwartaal", "De economische groei bedraagt 0,5 procent dit kwartaal"],
+    ["De economische groei bedraagt +2 procent dit kwartaal", "De economische groei bedraagt 2 procent dit kwartaal"],
+    ["Het abonnement kost voortaan €10 per maand voor iedereen", "Het abonnement kost voortaan $10 per maand voor iedereen"],
+    ["Het abonnement kost voortaan £10 per maand voor iedereen", "Het abonnement kost voortaan 10 per maand voor iedereen"],
+    ["De werkloosheid steeg naar 4% in de afgelopen maand", "De werkloosheid steeg naar 4 in de afgelopen maand"],
+  ]) assert.deepEqual(await tweeBronnen({ ft: a }, { ft: b }), [[a, ["A"]], [b, ["B"]]]);
+});
+
+test("zinsplitser knipt niet binnen getallen of afkortingen", async () => {
+  const a = "De schade bedraagt 1.500 euro voor iedere gedupeerde bewoner.";
+  const b = "De schade bedraagt 2.500 euro voor iedere gedupeerde bewoner.";
+  const punten = await tweeBronnen({ ft: "Brand in flat Utrecht", fd: a }, { ft: "Brand in flat Zeist", fd: b });
+  assert.deepEqual(punten, [[a, ["A"]], [b, ["B"]]]);
+  const c = "Volgens dhr. Jansen is de schade bij de brand in de flat groot.";
+  const d = "De brandweer was met 2,5 man per wagen ter plaatse in Utrecht.";
+  assert.deepEqual(await tweeBronnen({ ft: "Brand in flat Utrecht", fd: `${c} ${d}` }, { ft: "Brand in flat Zeist", fd: b }), [[c, ["A"]], [d, ["A"]], [b, ["B"]]]);
+});
+
+test("een vraagtitel met bronsuffix of aanhalingsteken is geen bewijs voor een stelling", async () => {
+  const zin = "Het kabinet trekt extra geld uit voor de opvang";
+  const fd = "Tijdens het begrotingsdebat spreken de partijen over de plannen.";
+  for (const vraag of [zin + "? - NOS", `“${zin}?”`, `'${zin}?' (ANP)`]) {
+    assert.deepEqual(await tweeBronnen({ ft: zin }, { ft: vraag, fd }), [[zin, ["A"]], [fd, ["B"]]], vraag);
+  }
+});
+
+test("een bron met alleen een korte titel blijft zichtbaar", async () => {
+  const lang = "Minister van Financiën treedt af na kritiek op begroting.";
+  assert.deepEqual(await tweeBronnen({ ft: "Minister stapt op" }, { ft: "Minister weg", fd: lang }), [["Minister stapt op", ["A"]], [lang, ["B"]]]);
+  assert.deepEqual(await tweeBronnen({ ft: "Minister stapt op - NOS" }, { ft: "Minister stapt op" }), [["Minister stapt op", ["A", "B"]]]);
+});

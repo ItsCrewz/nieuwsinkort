@@ -9,15 +9,23 @@ const zonderBron = (s: string, namen: string[]) => {
   return s.replace(/^([^|]{1,80})\|\s*/, (geheel, naam: string) => bekend(naam) ? "" : geheel)
     .replace(/\s+(?:[-–—|]\s*([^|]+)|\(([^()]+)\))\s*$/, (geheel, naam: string, tussen: string) => bekend(naam ?? tussen) ? "" : geheel);
 };
-const normaliseer = (s: string, namen: string[]) => zonderBron(schoon(s), namen).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+// Tekens die betekenis dragen blijven staan: valuta, procent, een teken vóór een getal en scheiders binnen getallen.
+const normaliseer = (s: string, namen: string[]) => zonderBron(schoon(s), namen).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[−–](?=\d)/g, "-")
+  .replace(/[^\p{L}\p{N}\s€$£%+\-.,]|[+-](?!\d)|(?<!\d)[.,]|[.,](?!\d)/gu, " ").replace(/\s+/g, " ").trim();
+// Een vraag (ook met bronsuffix of afsluitend aanhalingsteken) is nooit bewijs voor een stelling.
+const isVraag = (s: string, namen: string[]) => /\?["'”’»)\s]*$/.test(zonderBron(schoon(s), namen));
 export const zelfdeZin = (a: string, b: string, extraBronnen: string[] = []) => {
-  if (a.trim().endsWith("?") !== b.trim().endsWith("?")) return false;
   const namen = [...bekendeBronnen, ...extraBronnen];
+  if (isVraag(a, namen) !== isVraag(b, namen)) return false;
   const tekst = normaliseer(a, namen);
   return tekst.length > 0 && tekst === normaliseer(b, namen);
 };
 const sleutel = (s: string) => s.trim().toLowerCase();
-const zinnen = (s: string) => s.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [];
+// Alleen echte zinsgrenzen: leesteken + spatie + hoofdletter, niet na afkortingen of initialen; zinnen zonder slotteken vallen af.
+const afkorting = /(?:\b(?:\p{L}\.){2,}|\b\p{Lu}\.|\b(?:bijv|dhr|mevr|mr|dr|drs|ir|ing|prof|ca|nr|jl|st|vs|zgn)\.)$/iu;
+const zinnen = (s: string) => s.split(/(?<=[.!?]["'”’»)]*)\s+(?=["'“‘«(]?\p{Lu})/u)
+  .reduce<string[]>((alle, deel) => (alle.length && afkorting.test(alle[alle.length - 1]) ? alle[alle.length - 1] += " " + deel : alle.push(deel), alle), [])
+  .map((z) => z.trim()).filter((z) => /[.!?]["'”’»)]*$/.test(z));
 
 /** Combineert beschikbare artikelpunten en volledige feedzinnen per uitgever. */
 export function bronnenPunten(item: Item, meer: Meer | null): BronnenPunt[] {
@@ -33,6 +41,8 @@ export function bronnenPunten(item: Item, meer: Meer | null): BronnenPunt[] {
     const teksten = [...(ai?.punten ?? []), ...zinnen(bron.fd ?? "")].map(schoon).filter(bruikbaar);
     const titel = zonderBron(schoon(bron.ft ?? ""), [...bekendeBronnen, ...namen]);
     if (!teksten.length && bruikbaar(titel)) teksten.push(titel);
+    // Laatste terugval: ook een korte titel, zodat elke bron zichtbaar blijft.
+    if (!teksten.length && /[\p{L}\p{N}]/u.test(titel)) teksten.push(titel);
     for (const tekst of teksten) if (!punten.some((p) => gelijk(p.tekst, tekst))) punten.push({ tekst, bronnen: [] });
   }
   for (const punt of punten) punt.bronnen = bronnen.filter((bron) => eigenTeksten(bron).some((tekst) => gelijk(punt.tekst, tekst)));
