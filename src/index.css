@@ -431,15 +431,14 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   .srcbtn .badge{position:absolute;top:4px;right:1px;min-width:15px;height:15px;font-size:0.59375rem;padding:0 4px}
 }
 @container (max-width: 560px){
-  .focus-label{display:none}
-  .focus{padding:0 8px}
+  .focus{gap:4px;padding:0 4px;font-size:0.75rem}
   .ctrls{gap:0}
 }
 @container (max-width: 400px){
   .brand{gap:8px;font-size:0.9375rem}
   .iconbtn{width:38px}
   .srcbtn{padding:0 8px}
-  .focus{padding:0 6px}
+  .focus{gap:0;padding:0;font-size:0.625rem}
 }
 
 /* ---------- Nieuwsfeed: één bericht per scherm (scroll-snap) ---------- */

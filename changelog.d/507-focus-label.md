@@ -1,0 +1,1 @@
+- De schakelaar voor Focus-lezen heeft ook op mobiel een zichtbaar label (#507).
