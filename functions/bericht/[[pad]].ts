@@ -8,15 +8,16 @@ interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void
 type CacheMetDefault = CacheStorage & { default?: Cache };
 const basis = { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=86400" };
 const redirect = (status: number, locatie: string, cache: string) => new Response(null, { status, headers: { ...basis, Location: locatie, "Cache-Control": cache, ...(status === 302 ? { "X-Robots-Tag": "noindex" } : {}) } });
-export async function onRequestGet({ request, env, waitUntil }: Ctx): Promise<Response> {
+export async function onRequestGet(ctx: Ctx): Promise<Response> {
+  const { request, env } = ctx;
   const u = new URL(request.url), pad = parsePad(u.pathname), nu = ams();
   const geldig = pad && /^\d{4}-\d{2}-\d{2}$/.test(pad.dag) && !Number.isNaN(Date.parse(`${pad.dag}T00:00:00Z`)) && new Date(`${pad.dag}T00:00:00Z`).toISOString().slice(0, 10) === pad.dag;
-  if (!pad || !geldig || pad.dag > nu.iso) return new Response("Niet gevonden", { status: 404, headers: basis });
+  if (!pad || !geldig || pad.dag > nu.iso) return new Response("Niet gevonden", { status: 404, headers: { ...basis, "Cache-Control": "no-store" } });
   const gisteren = new Date(Date.UTC(nu.y, nu.m - 1, nu.d - 1)).toISOString().slice(0, 10);
   if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, "/", "public, max-age=86400");
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
   const sleutel = new Request(`${u.origin}${u.pathname}`);
-  const bestaand = await cache?.match(sleutel);
+  const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   if (bestaand) {
     if (request.headers.get("If-None-Match") === bestaand.headers.get("ETag")) return new Response(null, { status: 304, headers: bestaand.headers });
     return bestaand;
@@ -33,7 +34,7 @@ export async function onRequestGet({ request, env, waitUntil }: Ctx): Promise<Re
   const hash = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(deelScript)))));
   const headers = { ...basis, "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'sha256-${hash}'; frame-ancestors 'none'`, "Cache-Control": "public, max-age=300, stale-while-revalidate=600", ETag: tag };
   const response = new Response(html, { headers });
-  if (cache) waitUntil(cache.put(sleutel, response.clone()));
+  if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers });
   return response;
 }
