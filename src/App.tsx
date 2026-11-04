@@ -1,10 +1,12 @@
 import { Foutgrens } from "./foutgrens";
+import { flushSync } from "react-dom";
+import { animeer, metOvergang } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
-import { rustig, scrollGedrag } from "./beweging";
+import { rustig, scrollGedrag, DUUR } from "./beweging";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
-import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, lazy, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
@@ -38,7 +40,10 @@ import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
 const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
-const DetailView = lazy(() => import("./detail").then((m) => ({ default: m.DetailView })));
+let detailModule: typeof import("./detail") | undefined;
+let detailBelofte: Promise<typeof import("./detail")> | undefined;
+const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m));
+const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
 
@@ -452,7 +457,7 @@ const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { ite
   const click = useOpen(key, onOpen);
   const n = item.bronnen?.length ?? 0;
   return (
-    <a className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
+    <a onPointerDown={laadDetail} onMouseEnter={laadDetail} className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
       {fotos(item).length ? <Beelden urls={fotos(item)} eager className="lead-img" /> : null}
       <div className="meta">
         {CAT_LABEL[item.cat] ?? item.cat}
@@ -484,6 +489,7 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
       href={`#/bericht/${key}`}
       style={anim ? ({ "--i": i + 1 } as React.CSSProperties) : undefined}
       onClick={click}
+      onPointerDown={laadDetail} onMouseEnter={laadDetail}
     >
       {fotos(item).length ? <Thumb urls={fotos(item)} /> : null}
       <div className="row-main">
@@ -659,7 +665,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
         </span>
       </div>
       <h2 className="nc-title">
-        <a href={`#/bericht/${key}`} onClick={click}>
+        <a href={`#/bericht/${key}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
           {item.kop}
         </a>
       </h2>
@@ -680,7 +686,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
       <div className="nc-act">
         <div className="nc-act-row">
         {meer ? (
-          <a className="btn" href={`#/bericht/${key}`} onClick={click} onTouchStart={() => prefetchMeer(item)} onMouseEnter={() => prefetchMeer(item)}>
+          <a className="btn" href={`#/bericht/${key}`} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); void prefetchMeer(item); }}>
             Lees verder
           </a>
         ) : null}
@@ -1071,20 +1077,38 @@ export default function App() {
   const routeRef = useRef(route);
   routeRef.current = route;
 
+  const geveegd = useRef(false);
   useEffect(() => {
     ruimOudeFocusKeuzeOp(browserStorage());
-    const onHash = () => {
+    let volgnummer = 0;
+    const onHash = async () => {
+      const nummer = ++volgnummer;
       const next = huidigeRoute();
       const prev = routeRef.current;
       const back = prev.selected && !next.selected ? prev.selected : null;
-      // concurrent renderen: de browser blijft frames tekenen terwijl React de nieuwe weergave bouwt
-      startTransition(() => {
-        setFocusKey(back);
-        setRoute(next);
-      });
+      const veeg = geveegd.current;
+      geveegd.current = false;
+      const openen = !prev.selected && !!next.selected;
+      const sluiten = !!back;
+      const video = [prev.view, next.view].some((v) => v === "filmpjes" || v === "dumpert");
+      if (openen && !video) {
+        try { await laadDetail(); } catch { /* Suspense toont de bestaande foutafhandeling. */ }
+        if (nummer !== volgnummer) return;
+      }
+      const update = () => flushSync(() => { setFocusKey(back); setRoute(next); });
+      if ((openen || sluiten) && !video && !veeg) {
+        void metOvergang(update, openen ? "open" : "terug");
+      }
+      else {
+        update();
+        if (sluiten && (veeg || !video)) {
+          const overzicht = document.querySelector(".nf, main.wrap");
+          if (overzicht) animeer(overzicht, [{ transform: "translateX(-24px)", opacity: 0.6 }, { transform: "translateX(0)", opacity: 1 }], { duration: DUUR[2] });
+        }
+      }
     };
     window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    return () => { volgnummer++; window.removeEventListener("hashchange", onHash); };
   }, []);
 
   // Scroll na het wisselen van pagina: naar boven bij detail, terug naar het bericht bij "terug".
@@ -1221,6 +1245,7 @@ export default function App() {
   }
 
   // Detail: eerst in de gefilterde lijst (met alleen de actieve bronnen), anders het origineel (directe link).
+  const ActiefDetail = detailModule?.DetailView ?? DetailView;
   const selectedItem = route.selected
     ? data.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
     : null;
@@ -1230,11 +1255,12 @@ export default function App() {
       <Frame top={top}>
         <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
           <Suspense fallback={null}>
-            <DetailView
+            <ActiefDetail
               item={selectedItem}
               dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
-              onBack={() => {
+              onBack={(opties) => {
+                geveegd.current = !!opties?.geveegd;
                 if (openedInside || window.history.state?.binnen) window.history.back();
                 else window.location.hash = "#/";
               }}

@@ -1,0 +1,1 @@
+- Artikelen openen en sluiten met een rustige overgang die aansluit op terugvegen (#537).

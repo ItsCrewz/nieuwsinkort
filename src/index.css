@@ -701,3 +701,16 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .zoek-leeg{padding:24px;text-align:center;overflow-wrap:anywhere}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
+
+/* Artikel en overzicht bewegen onder de stilstaande topbalk. */
+html[data-overgang] .topbar{view-transition-name:topbalk}
+html[data-overgang] .page-in{animation:none}
+html[data-overgang]::view-transition-old(topbalk),html[data-overgang]::view-transition-new(topbalk){animation:none;mix-blend-mode:normal}
+html[data-overgang="open"]::view-transition-old(root){animation:vt-open-oud var(--dur-2) var(--ease-uit) both}
+html[data-overgang="open"]::view-transition-new(root){animation:vt-open-nieuw var(--dur-3) var(--ease-in) both}
+html[data-overgang="terug"]::view-transition-old(root){animation:vt-terug-oud var(--dur-3) var(--ease-uit) both;z-index:2}
+html[data-overgang="terug"]::view-transition-new(root){animation:vt-terug-nieuw var(--dur-3) var(--ease-uit) both}
+@keyframes vt-open-oud{to{opacity:0;transform:scale(.98)}}
+@keyframes vt-open-nieuw{from{opacity:0;transform:translateX(24px)}}
+@keyframes vt-terug-oud{to{transform:translateX(100%)}}
+@keyframes vt-terug-nieuw{from{opacity:.6;transform:translateX(-24px)}}

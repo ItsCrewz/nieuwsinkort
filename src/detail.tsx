@@ -118,7 +118,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   );
 }
 
-export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: () => void; bionic: boolean; dag: string }) {
+export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string }) {
   const [deelStatus, setDeelStatus] = useState("");
   const url = artikelUrl(item, dag);
   useEffect(() => {
@@ -164,7 +164,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
   return (
     <article className={`detail cat-${item.cat}`} ref={artRef}>
       {typeof document === "undefined" ? deelBlok : createPortal(deelBlok, document.body)}
-      <button type="button" className="back" onClick={onBack}>
+      <button type="button" className="back" onClick={() => onBack()}>
         <Icon name="back" className="sm" />
         Terug naar het nieuws
       </button>
