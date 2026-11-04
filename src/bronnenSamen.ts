@@ -9,9 +9,10 @@ const zonderBron = (s: string, namen: string[]) => {
   return s.replace(/^([^|]{1,80})\|\s*/, (geheel, naam: string) => bekend(naam) ? "" : geheel)
     .replace(/\s+(?:[-–—|]\s*([^|]+)|\(([^()]+)\))\s*$/, (geheel, naam: string, tussen: string) => bekend(naam ?? tussen) ? "" : geheel);
 };
-// Tekens die betekenis dragen blijven staan: valuta, procent, een teken vóór een getal en scheiders binnen getallen.
+// Tekens die betekenis dragen blijven staan: valuta, procent, een teken vóór een getal, scheiders binnen getallen
+// en elk vraagteken als eigen token (een vraag midden in de zin is nooit gelijk aan een stelling).
 const normaliseer = (s: string, namen: string[]) => zonderBron(schoon(s), namen).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[−–](?=\d)/g, "-")
-  .replace(/[^\p{L}\p{N}\s€$£%+\-.,]|[+-](?!\d)|(?<!\d)[.,]|[.,](?!\d)/gu, " ").replace(/\s+/g, " ").trim();
+  .replace(/[^\p{L}\p{N}\s€$£%+\-.,?]|[+-](?!\d)|(?<!\d)[.,]|[.,](?!\d)/gu, " ").replace(/\?/g, " ? ").replace(/\s+/g, " ").trim();
 // Een vraag (ook met bronsuffix of afsluitend aanhalingsteken) is nooit bewijs voor een stelling.
 const isVraag = (s: string, namen: string[]) => /\?["'”’»)\s]*$/.test(zonderBron(schoon(s), namen));
 export const zelfdeZin = (a: string, b: string, extraBronnen: string[] = []) => {

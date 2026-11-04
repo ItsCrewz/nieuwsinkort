@@ -1,1 +1,2 @@
 - Bronpunten behouden getaltekens, valuta en procent, knippen niet binnen getallen of afkortingen, tellen vragen nooit als bewijs en tonen een korte titel als laatste terugval (#501).
+- Een vraagteken ergens in de zin (ook midden in een titel) voorkomt dat die zin wordt samengevoegd met of telt als bewijs voor een stelling (#501).

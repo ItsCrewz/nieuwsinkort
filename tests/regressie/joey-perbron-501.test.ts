@@ -217,6 +217,20 @@ test("een vraagtitel met bronsuffix of aanhalingsteken is geen bewijs voor een s
   }
 });
 
+// Review ronde 8: normalisatie wiste een vraagteken midden in de zin.
+test("een vraagteken midden in de zin is geen bewijs voor een stelling", async () => {
+  const stelling = "Kabinet gevallen: dit betekent het voor de verkiezingen";
+  const fd = "Tijdens het debat spreken de partijen over nieuwe verkiezingen.";
+  for (const vraag of ["Kabinet gevallen? Dit betekent het voor de verkiezingen", "Kabinet gevallen? Dit betekent het voor de verkiezingen - NOS"]) {
+    const punten = await tweeBronnen({ ft: stelling }, { ft: vraag, fd });
+    assert.ok(!punten.some(([, bronnen]) => bronnen.length > 1), vraag);
+    assert.ok(punten.some(([, bronnen]) => bronnen.includes("B")), vraag);
+  }
+  const vraag = "Kabinet gevallen? Wat betekent het voor de verkiezingen?";
+  assert.deepEqual(await tweeBronnen({ ft: vraag }, { ft: vraag + " - NOS" }), [[vraag, ["A", "B"]]]);
+  assert.ok(!(await tweeBronnen({ ft: vraag }, { ft: "Kabinet gevallen: wat betekent het voor de verkiezingen?" })).some(([, b]) => b.length > 1));
+});
+
 test("een bron met alleen een korte titel blijft zichtbaar", async () => {
   const lang = "Minister van Financiën treedt af na kritiek op begroting.";
   assert.deepEqual(await tweeBronnen({ ft: "Minister stapt op" }, { ft: "Minister weg", fd: lang }), [["Minister stapt op", ["A"]], [lang, ["B"]]]);
