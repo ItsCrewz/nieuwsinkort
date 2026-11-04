@@ -1,0 +1,1 @@
+- Toon bij nieuwsberichten met een videobron een knop naar de video bij de uitgever (#511).
