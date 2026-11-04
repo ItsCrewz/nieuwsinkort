@@ -1,0 +1,1 @@
+- Rubriektabs zijn toegankelijk met pijltjestoetsen en hebben een correcte toegankelijke naam en tablist (#274).

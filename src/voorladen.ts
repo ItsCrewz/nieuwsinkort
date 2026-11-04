@@ -30,10 +30,12 @@ const origin = (u: string) => {
 };
 const httpsUrl = (u: string) => !!origin(u);
 
-/** Apple-apparaten spelen HLS doorgaans zelf af. */
-export function planVoorladen(filmpjes: Video[], dumpert: Video[], apple: boolean, h: Hulp): Plan {
+/** Apple-apparaten spelen HLS doorgaans zelf af. Zonder `video` (Home, nog geen intentie) alleen thumbs: geen chunk, playlists, segmenten of mp4. */
+export function planVoorladen(filmpjes: Video[], dumpert: Video[], apple: boolean, h: Hulp, video = true): Plan {
   const n = THUMBS;
-  const thumbs = uniek([...filmpjes.slice(0, n), ...dumpert.slice(0, n)].map((v) => v.thumb).filter(httpsUrl));
+  // Dumpert-posters via onze proxy (media.dumpert.nl sluit rechtstreekse verbindingen soms en logt dan console-errors)
+  const thumbs = uniek([...filmpjes.slice(0, n), ...dumpert.slice(0, n)].map((v) => v.thumb).filter(httpsUrl).map(h.viaProxy));
+  if (!video) return { thumbs, preconnect: [], hlsChunk: false, hls: [], mp4: null };
   const eerste = [...filmpjes.slice(0, KIJK), ...dumpert.slice(0, KIJK)];
   const sp = eerste.map((v) => h.playerFor(v)).filter((s): s is NonNullable<Speler> => !!s);
   const hlsAll = uniek(sp.filter((s) => s.kind === "hls").map((s) => s.src));

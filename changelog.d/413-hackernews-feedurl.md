@@ -1,0 +1,1 @@
+- Hacker News: tweede feed in de bronnenlijst wijst nu naar `hnrss.org/best` in plaats van `news.ycombinator.com/rss` (419 aan Cloudflare-IP's), zodat de bronmeting niet meer „1 van 2 feeds niet bereikbaar” meldt (#413).

@@ -1,0 +1,1 @@
+- De standaard veiligheidsmarge voor het AI-budget sluit beter aan op de Cloudflare-teller (#497).

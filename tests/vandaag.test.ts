@@ -1,23 +1,31 @@
+// /vandaag: links naar dezelfde berichtpagina's, escaping, filters, lege dag en noscript-link; vaste klok, mocks, geen netwerk.
 import assert from "node:assert/strict";
-import { alleenVandaag, nieuwsteTijd, publicatieTijd, vanVandaag } from "../src/vandaag";
-import { midnight } from "../src/tijd";
+import { readFileSync } from "node:fs";
+import { artikelPad } from "../src/artikelid";
+import { onRequestGet, vandaagHtml } from "../functions/vandaag";
 
-for (const dag of ["2026-10-25T12:00:00+01:00", "2026-10-26T12:00:00+01:00", "2026-03-29T12:00:00+02:00", "2026-03-30T12:00:00+02:00"]) {
-  const now = Date.parse(dag), grens = midnight(now);
-  assert.equal(vanVandaag(grens - 1000, now), false);
-  assert.equal(vanVandaag(grens, now), true);
-}
-const now = Date.parse("2026-10-30T10:00:00+01:00");
-assert.equal(publicatieTijd(null, now), null);
-assert.equal(publicatieTijd(NaN, now), null);
-assert.equal(publicatieTijd(now + 15 * 60e3, now), now + 15 * 60e3);
-assert.equal(publicatieTijd(now + 3600e3, now), now);
-assert.equal(publicatieTijd(now + 3 * 3600e3, now), null);
-assert.equal(nieuwsteTijd([{ d: 1 }, { d: 3 }, { d: 2 }]), 3);
-const data = { gegenereerd: new Date(now).toISOString(), dag_samenvatting: "nieuws", items: [{ tijd: "23:59" }, { tijd: "10:20" }, { tijd: "00:00", t: midnight(now) }, { tijd: "09:00", t: midnight(now) - 1 }], filmpjes: [{ tijd: "09:00" }], dumpert: [{ tijd: "23:00" }] };
-const vandaag = alleenVandaag(data, now);
-assert.equal(vandaag.items.length, 2);
-assert.deepEqual(vandaag.oud, { items: 2, filmpjes: 0, dumpert: 1 });
-const oud = alleenVandaag({ ...data, gegenereerd: "2026-10-29T10:00:00+01:00" }, now);
-assert.deepEqual([oud.items.length, oud.filmpjes.length, oud.dumpert.length, oud.dag_samenvatting], [0, 0, 0, ""]);
-console.log("vandaag: geslaagd");
+const origineel = Date.now;
+Date.now = () => Date.parse("2026-11-04T12:00:00Z");
+try {
+  const dag = "2026-11-04";
+  const a = { kop: "Rook & <vuur>", cat: "nl", bronnen: [{ href: "https://nos.nl/a" }] };
+  const b = { kop: "Wereldnieuws", cat: "buitenland", bronnen: [{ href: "https://nos.nl/b" }] };
+  const ruw = { kop: "Ruw", cat: "nl", ruw: true, bronnen: [{ href: "https://nos.nl/r" }] };
+  const pol = { kop: "Partij", cat: "politiek", bronnen: [{ href: "https://nos.nl/p" }] };
+  const html = vandaagHtml([a, b, ruw, pol], dag);
+  assert.ok(html.includes(`<a href="${artikelPad(a, dag)}">Rook &amp; &lt;vuur&gt;</a>`), "link = artikelpad, kop escaped");
+  assert.ok(html.includes("<h1>Nieuws van vandaag</h1>") && html.includes("<h2>Nederland</h2>") && html.includes("<h2>Buitenland</h2>"));
+  assert.ok(!html.includes("Ruw") && !html.includes("Partij"), "ruw en politiek niet");
+  assert.ok(vandaagHtml([], dag).includes("nog geen berichten"), "lege dag");
+  assert.equal((html.match(/<link rel="canonical"/g) || []).length, 1);
+
+  const env = { ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify({ gegenereerd: "2026-11-04T10:00:00Z", items: [a] })}` } };
+  let r = await onRequestGet({ request: new Request("https://nieuwsinkort.nl/vandaag?x=1"), env, waitUntil: () => {} });
+  assert.equal(r.status, 200); assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("strict-transport-security"), "max-age=86400");
+  assert.ok(!r.headers.get("content-security-policy")!.includes("script-src") && r.headers.get("content-security-policy")!.includes("default-src 'none'"), "geen scripts toegestaan");
+  assert.ok((await r.text()).includes(artikelPad(a, dag)));
+  r = await onRequestGet({ request: new Request("https://nieuwsinkort.nl/vandaag"), env: { ASSETS: { fetch: async () => new Response("", { status: 500 }) }, NIEUWS: { get: async () => null } }, waitUntil: () => {} });
+  assert.equal(r.status, 503); assert.equal(r.headers.get("cache-control"), "no-store");
+
+  assert.ok(readFileSync("index.html", "utf8").includes('<noscript>Zet JavaScript aan om het nieuws te zien, of bekijk <a href="/vandaag">'), "noscript linkt naar /vandaag");
+} finally { Date.now = origineel; }

@@ -18,3 +18,9 @@ export function viewHash(v: View) {
   const c = CATS.find((c) => c.id === v);
   return `#/${c ? c.slug : v}`;
 }
+
+export function viewTitel(view: View): string {
+  if (view === "alles") return "Nieuws in het kort";
+  const label = CATS.find((cat) => cat.id === view)?.label ?? (view === "filmpjes" ? "Filmpjes" : "Dumpert");
+  return `${label} · Nieuws in het kort`;
+}

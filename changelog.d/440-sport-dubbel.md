@@ -1,0 +1,1 @@
+- Rubriek Sport: dezelfde race in meerdere berichten (zelfde naam en afstand, bijv. Nuis 1.500 m, Kok 500 m) wordt na de AI-stap tot één bericht samengevoegd (#440).

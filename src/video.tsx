@@ -1,71 +1,18 @@
 import { Foutgrens } from "./foutgrens";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
-import { Feed, videoSlug } from "./feed";
+import { videoSlug } from "./slug";
+import { groepeer, heeftGroepen } from "./filmgroep";
+import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort";
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
+import { ytOndertitelsBijBericht } from "./ytstart";
 
-type Player =
-  | { kind: "youtube"; src: string }
-  | { kind: "hls"; src: string }
-  | { kind: "mp4"; src: string }
-  | null;
-
-export function youtubeId(url: string): string | null {
-  const m =
-    /youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|live\/|watch\?(?:.*&)?v=)([\w-]{6,})/.exec(url) ||
-    /youtu\.be\/([\w-]{6,})/.exec(url);
-  return m ? m[1] : null;
-}
-
-export function playerFor(v: Video): Player {
-  const e = v.embed || "";
-  const yt = youtubeId(e) || youtubeId(v.href);
-  if (yt) {
-    return {
-      kind: "youtube",
-      src: `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&rel=0&playsinline=1&modestbranding=1`,
-    };
-  }
-  try { if (new URL(e).protocol !== "https:") return null; } catch { return null; }
-  if (/\.m3u8(\?|$)/i.test(e)) return { kind: "hls", src: e };
-  if (/\.mp4(\?|$)/i.test(e)) return { kind: "mp4", src: e };
-  return null;
-}
-
-// media.dumpert.nl staat geen andere sites toe (CORS). Native HLS (Safari/iOS) heeft daar geen last
-// van; hls.js (Chrome/Firefox) haalt Dumpert via onze eigen proxy /media/dumpert/... (Pages Function).
-export function viaProxy(src: string): string {
-  try {
-    const u = new URL(src);
-    if (u.hostname === "media.dumpert.nl") return `/media/dumpert${u.pathname}${u.search}`;
-  } catch {
-    /* laat staan */
-  }
-  return src;
-}
-
-// Shorts vs. Journaals: zelfde regels als worker/src/videos.ts (soortVan) en filmpjes.py (soort_van).
-const JOURNAAL_RE = /journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur/i;
-export function soortVan(v: Video): Soort {
-  if (v.soort === "short" || v.soort === "journaal") return v.soort;
-  if (JOURNAAL_RE.test(v.titel || "")) return "journaal";
-  const u = `${v.href || ""} ${v.embed || ""}`;
-  if (/youtube\.com\/shorts\//i.test(u)) return "short";
-  if (/youtube(?:-nocookie)?\.com\/(?:watch|embed|live)|youtu\.be\//i.test(u) && !/dumpert/i.test(v.bron || "")) return "journaal";
-  return "short";
-}
-export const SOORTEN: { id: Soort; label: string; leeg: string }[] = [
-  { id: "short", label: "Shorts", leeg: "Nog geen shorts vandaag." },
-  { id: "journaal", label: "Journaals", leeg: "Nog geen journaals vandaag." },
-];
-/** Eerste soort met filmpjes (Shorts eerst, zoals een TikTok-feed). */
-export function startSoort(list: Video[]): Soort {
-  return list.some((v) => soortVan(v) === "short") || !list.length ? "short" : "journaal";
-}
+// De volledige videofeed (spelers, hls.js-glue, debug-overlay) is een eigen chunk: pas laden op touch + videoroute.
+const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
 
 /** Touch (swipe-feed) of muis/trackpad (kopjes en kaarten); volgt wijzigingen van de mediaquery. */
 export function useTouch(): boolean {
@@ -88,22 +35,13 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
   const anim = enter && i < 12;
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (speelt alleen bij ${v.bron})`}
-      onClick={activate}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          activate();
-        }
-      }}
       className={`vcard cat-${cat} ${anim ? "enter" : ""}`}
       style={anim ? ({ "--i": i } as React.CSSProperties) : undefined}
     >
+      <button type="button" className="vcard-open" aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (speelt alleen bij ${v.bron})`} onClick={activate} />
       <div className={`vthumb ${cat === "filmpjes" && soortVan(v) === "short" ? "tall" : ""}`}>
         {v.thumb && !failed ? (
-          <img src={v.thumb} alt="" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+          <img src={viaProxy(v.thumb)} alt="" aria-hidden="true" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
         ) : (
           <span className="vthumb-name">{v.bron}</span>
         )}
@@ -116,7 +54,7 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
           {v.bron}
           {v.tijd ? <time className="tnum">{v.tijd}</time> : null}
         </div>
-        <h3 className="v-title">{v.titel}</h3>
+        <h2 className="v-title">{v.titel}</h2>
         {v.ai ? (
           <p className="v-ai bn">
             <BionicText text={v.ai} on={bionic} />
@@ -155,6 +93,14 @@ export function VideoGrid({
   onCloseFeed: () => void;
 }) {
   const touch = useTouch();
+  useEffect(() => {
+    if (!video || !touch) return;
+    const onReady = (e: MessageEvent) => {
+      ytOndertitelsBijBericht(e, document.querySelectorAll<HTMLIFrameElement>(".feed iframe.f-yt"));
+    };
+    window.addEventListener("message", onReady);
+    return () => window.removeEventListener("message", onReady);
+  }, [video, touch]);
   const opgeslagen = useRef(leesFeed());
   const vast = useRef<Video[] | null>(null);
   if (!video) vast.current = null;
@@ -242,6 +188,7 @@ export function VideoGrid({
               type="button"
               role="tab"
               aria-selected={soort === s.id}
+              aria-controls="video-paneel"
               onClick={() => {
                 if (soort === s.id) return;
                 setTouched(true);
@@ -255,6 +202,7 @@ export function VideoGrid({
           ))}
         </div>
       ) : null}
+      <div id="video-paneel" role="tabpanel">
       {bronFilter && bronnen.length > 1 ? (
         <div className="chips" role="group" aria-label="Filter op bron">
           {["alle", ...bronnen].map((b) => (
@@ -269,30 +217,51 @@ export function VideoGrid({
         </div>
       ) : null}
       {shown.length ? (
+        split && heeftGroepen(shown) ? (
+          <div key={`${soort}-${bron}`}>
+            {groepeer(shown).map((g, k, alle) => {
+              const vanaf = alle.slice(0, k).reduce((n, x) => n + x.list.length, 0);
+              return (
+                <section className="vgroep" key={g.groep} aria-labelledby={`vgroep-${g.groep}`}>
+                  <h2 className="kicker" id={`vgroep-${g.groep}`}>{g.groep}</h2>
+                  <div className={`vgrid ${enter ? "" : "swap"}`}>
+                    {g.list.map((v, i) => (
+                      <VideoCard key={v.href + (vanaf + i)} v={v} i={vanaf + i} cat={cat} bionic={bionic} enter={enter} onPlay={(x) => (touch ? onOpen(videoSlug(x)) : window.open(veiligeUrl(x.href), "_blank", "noopener,noreferrer"))} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        ) : (
         <div className={`vgrid ${enter ? "" : "swap"}`} key={`${soort}-${bron}`}>
           {shown.map((v, i) => (
             <VideoCard key={v.href + i} v={v} i={i} cat={cat} bionic={bionic} enter={enter} onPlay={(x) => (touch ? onOpen(videoSlug(x)) : window.open(veiligeUrl(x.href), "_blank", "noopener,noreferrer"))} />
           ))}
         </div>
+        )
       ) : (
         <div className="empty" key={soort}>
           <Icon name="film" />
           {SOORTEN.find((s) => s.id === soort)?.leeg} Kom straks nog eens kijken.
         </div>
       )}
+      </div>
       {video && touch ? (
-        <Foutgrens code="CLIENT_FILMPJES"><Feed
-          key={cat}
-          list={feedList}
-          cat={cat}
-          start={start}
-          onClose={onCloseFeed}
-          groups={groups}
-          onGroup={(g) => {
-            setBron("alle");
-            setSoort(g as Soort);
-          }}
-        /></Foutgrens>
+        <Foutgrens code="CLIENT_FILMPJES"><Suspense fallback={null}>
+          <Feed
+            key={cat}
+            list={feedList}
+            cat={cat}
+            start={start}
+            onClose={onCloseFeed}
+            groups={groups}
+            onGroup={(g) => {
+              setBron("alle");
+              setSoort(g as Soort);
+            }}
+          />
+        </Suspense></Foutgrens>
       ) : null}
     </>
   );

@@ -1,0 +1,1 @@
+- Tekst schaalt mee met de browserlettergrootte en iconen behouden afmetingen zonder CSS (#329).

@@ -1,0 +1,1 @@
+- YouTube-filmpjes starten betrouwbaarder op iOS, met een tik-hint als automatisch afspelen uitblijft en geluid na een gebruikersgebaar.

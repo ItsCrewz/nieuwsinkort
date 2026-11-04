@@ -1,0 +1,1 @@
+- Weer: een verwachting die de AI-prompt herhaalt (prompt-echo) wordt afgewezen en niet bewaard; een eerder bewaarde echo wordt bij de volgende run genegeerd, zodat de KNMI-tekst of vorige goede tekst blijft staan (#378).
