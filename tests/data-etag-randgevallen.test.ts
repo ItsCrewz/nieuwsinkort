@@ -80,6 +80,7 @@ try {
     const { env } = maakEnv({});
     const r1 = await data({ request: req("/data.json"), env });
     const r2 = await data({ request: req("/data.json"), env });
+    assert.equal(r1.headers.get("cache-control"), "public, max-age=0, s-maxage=60, stale-while-revalidate=240");
     const e1 = r1.headers.get("etag"), e2 = r2.headers.get("etag");
     assert.match(e1 || "", /^W\/"[0-9a-f]{40}"$/);
     assert.equal(e1, e2);
@@ -104,7 +105,7 @@ try {
     assert.equal(await r.text(), "");
     assert.equal(r.headers.get("etag"), tag);
     assert.equal(r.headers.get("x-content-type-options"), "nosniff");
-    assert.equal(r.headers.get("cache-control"), "public, max-age=0, must-revalidate, stale-while-revalidate=300");
+    assert.equal(r.headers.get("cache-control"), "public, max-age=0, s-maxage=60, stale-while-revalidate=240");
   });
 
   await t("afwijkende of sterke If-None-Match geeft gewoon 200 met body", async () => {

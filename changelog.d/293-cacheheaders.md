@@ -1,0 +1,1 @@
+- Beperk de gedeelde cacheduur van nieuws tot vijf minuten en geef fonts zonder hash een dag cache (#293).
