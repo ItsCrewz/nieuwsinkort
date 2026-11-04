@@ -12,21 +12,31 @@ const bedrag = (s: string): number | undefined => {
 export function wedstrijdTeams(kop: string): string[] {
   return [...kop.matchAll(/\b([A-Z][a-z]{3,})\s+(?:verliest|verloor)\s+(?:(?:ruim|thuis|uit|opnieuw|nipt|met\s+[0-9]+[-–][0-9]+)\s+)*(?:van|tegen)\s+([A-Z][a-z]{3,})/g)].flatMap((m) => [m[1], m[2]].map((x) => x.toLowerCase().replace(/^internazionale$/, "inter")));
 }
+const KOSTEN = /advocaatkosten|advocatenkosten|verdedigingskosten/i;
+// alleen een hoofdclaim telt: "eist/vraagt/claimt ... kosten of bedrag ... terug / van de staat" of "voor de rechter over advocaatkosten"; kosten als achtergrond ("terug op podium na hoge advocaatkosten") niet
+export function kostenclaim(v: Verhaal): boolean {
+  const tekst = `${v.kop} ${v.tekst || ""}`;
+  if (/\bvoor de rechter over (?:de |hoge )?(?:advocaat|advocaten|verdedigings)kosten/i.test(v.kop)) return true;
+  if (!/\b(?:eist|eisen|vraagt|claimt|wil)\b/i.test(v.kop) || !/\bterug\b|\bvan de (?:Nederlandse )?staat\b/i.test(v.kop)) return false;
+  return KOSTEN.test(v.kop) || (bedrag(v.kop) !== undefined && KOSTEN.test(tekst));
+}
+// zaakidentiteit: een andere rechtszaak (of een andere partij dan de staat) is een ander verhaal, ook bij gelijk bedrag
+const partij = (t: string) => { const m = t.match(/\b(?:rechts)?zaak\s+tegen\s+(?:de\s+|zijn\s+|haar\s+)?([a-zà-ÿ]+)/i); return m && !/^(?:nederlandse|staat|overheid|rechtbank)$/i.test(m[1]) ? m[1].toLowerCase() : undefined; };
+const andereZaak = (t: string) => /\b(?:andere|aparte|tweede|nieuwe)\s+(?:rechts)?(?:zaak|procedure)\b/i.test(t);
+export function kostenGelijk(a: Verhaal, b: Verhaal): boolean {
+  const ta = `${a.kop} ${a.tekst || ""}`, tb = `${b.kop} ${b.tekst || ""}`;
+  if (andereZaak(ta) || andereZaak(tb) || partij(ta) !== partij(tb)) return false;
+  const ba = bedrag(ta), bb = bedrag(tb);
+  return ba !== undefined && bb !== undefined && Math.abs(ba - bb) <= Math.max(ba, bb) * 0.1;
+}
+/** twee kostenclaims met onderling afwijkend bedrag of een andere zaak: nooit in één cluster, ook niet via titel- of naamregel */
+export const kostenBotst = (a: Verhaal, b: Verhaal) => kostenclaim(a) && kostenclaim(b) && !kostenGelijk(a, b);
 export function zelfdeVerhaal(a: Verhaal, b: Verhaal): boolean {
   if (!a.tijd || !b.tijd || Math.abs(a.tijd - b.tijd) > 12 * 3600e3) return false;
   const na = namen(a.kop), nb = namen(b.kop);
   if ([...na].filter((n) => nb.has(n)).length < 2) return false;
   const ta = `${a.kop} ${a.tekst || ""}`, tb = `${b.kop} ${b.tekst || ""}`;
-  const kosten = /advocaatkosten|advocatenkosten|verdedigingskosten/i;
-  const claim = (v: Verhaal, tekst: string) => {
-    const hoofd = /advocaatkosten|advocatenkosten|verdedigingskosten/i.test(v.kop) && /rechter|rechtbank|vraagt|eist|claim|vergoeding|terug/i.test(v.kop);
-    const bedragClaim = /vraagt|eist|claim|terug/i.test(v.kop) && bedrag(v.kop) !== undefined && kosten.test(tekst);
-    return hoofd || bedragClaim;
-  };
-  if (claim(a, ta) && claim(b, tb)) {
-    const ba = bedrag(ta), bb = bedrag(tb);
-    return ba !== undefined && bb !== undefined && Math.abs(ba - bb) <= Math.max(ba, bb) * 0.1;
-  }
+  if (kostenclaim(a) && kostenclaim(b)) return kostenGelijk(a, b);
   const wedstrijd = (kop: string) => /\b(?:verliest|verloor)\s+(?:(?:ruim|thuis|uit|opnieuw|nipt|met\s+[0-9]+[-–][0-9]+)\s+)*(?:van|tegen)\s+[A-Z]/.test(kop) && !/transfer|trainer|ontslag/i.test(kop);
   const wa = wedstrijdTeams(a.kop), wb = wedstrijdTeams(b.kop);
   return /wedstrijd|voetbal|champions league|eredivisie|premier league/i.test(ta) && /wedstrijd|voetbal|champions league|eredivisie|premier league/i.test(tb) && wedstrijd(a.kop) && wedstrijd(b.kop) && wa.length === 2 && wb.length === 2 && wa.every((x) => wb.includes(x));

@@ -1,7 +1,7 @@
 // Clusteren van nieuwskandidaten uit feeds: pure module (geen Worker-API's), getest in tests/cluster.test.ts.
 // Conservatief: liever twee losse berichten dan twee verschillende verhalen samen.
 import { sportCat } from "./sportcat";
-import { wedstrijdTeams, zelfdeVerhaal } from "../../src/verhaaldubbel";
+import { kostenBotst, wedstrijdTeams, zelfdeVerhaal } from "../../src/verhaaldubbel";
 
 export const STOP = new Set(("de het een en van in op te voor met is zijn er dat die bij uit aan om ook als naar over na door nog niet wel maar dan was wordt worden heeft hebben meer dit deze tot kan nu zo al wat hoe waar wie ze hij zij we je jij u the a an of to in on for with and is are was be at by from as it its this that after over new says will has have can how why what who "
   // hulpwerkwoorden: zeggen niets over het verhaal ("Kamer wil ..." / "Kamer wilt ...")
@@ -179,6 +179,7 @@ export function cluster(cands: Cand[]): Cluster[] {
       if ((teams.length === 2 || andere.length === 2) && /\b(?:transfer|trainer|ontslag)\b/i.test(`${c.t} ${x.t}`)) return true;
       if (/\b(?:verkiezing|rechtszaak)\b/i.test(c.t) && /\b(?:verkiezing|rechtszaak)\b/i.test(x.t) && /verkiezing/i.test(c.t) !== /verkiezing/i.test(x.t)) return true;
       if (/advocaatkosten/i.test(`${c.t} ${x.t}`) && /rechtszaak/i.test(`${c.t} ${x.t}`) && !zelfdeVerhaal({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d })) return true;
+      if (kostenBotst({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d })) return true;
       return false;
     }) && !k.leden.some((l) => afstandBotst(lid.afst, l.afst)) ;
     let raak = out.filter((k) => pas(k) && (k.leden.some((l) => gelijk(lid, l, false) > 0) || k.c.every((x) => zelfdeVerhaal({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d }))));
