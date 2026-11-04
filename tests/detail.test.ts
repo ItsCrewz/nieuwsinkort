@@ -17,7 +17,7 @@ const basis: Item = {
     { site: "RTL", href: "javascript:alert(1)" },
   ],
 };
-const toon = (item: Item, bionic = false) => renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic }));
+const toon = (item: Item, bionic = false) => renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic, dag: "2026-11-04" }));
 
 const html = toon(basis);
 assert.match(html, /<article class="detail cat-nl">/);
@@ -30,7 +30,7 @@ assert.match(html, /<p class="d-lead bn">Korte samenvatting\.<\/p>/);
 assert.match(html, /<p>Eerste alinea\.<\/p><p>Tweede alinea\.<\/p>/);
 assert.match(html, /aria-label="Belangrijkste punten"/);
 assert.match(html, /<li>Punt een<\/li><li>Punt twee<\/li>/);
-assert.match(html, /aria-label="Uitgebreid"/);
+assert.doesNotMatch(html, /aria-label="Uitgebreid"/);
 assert.match(html, /href="https:\/\/www\.nos\.nl\/artikel\/1"/);
 assert.match(html, /<span class="s-out">nos\.nl<\/span>/);
 assert.doesNotMatch(html, /href="javascript:/);
