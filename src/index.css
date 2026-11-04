@@ -243,6 +243,13 @@ body { margin:0; background:var(--paper); color:var(--ink); overflow-x:clip; ove
 .back:hover{color:var(--ink)}
 .back .ic{transition:transform var(--fast) var(--ease)}
 .back:hover .ic{transform:translateX(-3px)}
+/* Deelknop (#541): vast rechtsonder, altijd zichtbaar, tapdoel 48px */
+.deel-knop{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:30;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--surface);color:var(--ink);border:1px solid var(--rule);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.deel-knop:active{transform:scale(.96)}
+.deel-knop .ic{width:22px;height:22px}
+.deel-melding{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 58px);z-index:30;background:var(--ink);color:var(--paper);border-radius:8px;padding:8px 12px;font-size:.875rem}
+.deel-melding:empty{display:none}
+.deel-invoer{display:block;width:100%;margin-top:8px}
 .d-head{display:flex;flex-direction:column;gap:14px;margin-top:28px}
 .d-title{font-size:clamp(1.875rem,calc(6cqw + 1rem - 12pt),2.75rem);line-height:1.12;font-weight:600;letter-spacing:-.035em;text-wrap:balance}
 .d-lead{font-size:1.125rem;line-height:1.65;color:var(--ink-2)}
@@ -667,7 +674,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   @page{size:A4;margin:15mm}
   html,body,#root,.app,.shell{min-height:0;height:auto;overflow:visible;background:#fff;color:#000}
   .app *{color:#000!important;box-shadow:none!important;text-shadow:none!important}
-  .topbar,.dateline,.foot,nav,button,video,iframe,.feed,[data-testid="video-debug"],.d-img,.d-meer-laden{display:none!important}
+  .topbar,.dateline,.foot,nav,button,.deel-melding,video,iframe,.feed,[data-testid="video-debug"],.d-img,.d-meer-laden{display:none!important}
   .wrap,.detail{width:auto;max-width:none;margin:0;padding:0}
   .page-in{animation:none!important}
   .d-head{margin:0;gap:8px}

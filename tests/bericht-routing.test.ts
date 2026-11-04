@@ -1,15 +1,18 @@
+import { readFileSync } from "node:fs";
 // Routering, verloop en Cache API van /bericht/…: vaste klok, KV- en cachemocks, geen netwerk.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { artikelId, artikelPad, linkId } from "../src/artikelid";
 import { berichtHtml } from "../src/berichthtml";
 import { onRequestGet } from "../functions/bericht/[[pad]]";
+const sjabloon = readFileSync("index.html", "utf8");
+const csp = /Content-Security-Policy: (.+)/.exec(readFileSync("public/_headers", "utf8"))![1]; // echte CSP: de pagina draait onder dezelfde hash als de app
 
 const echteNu = Date.now;
 const zet = (iso: string) => { Date.now = () => Date.parse(iso); };
 const item = { kop: "Verdachten aangehouden", ai: "Eigen samenvatting", samenvatting: "Meer uitleg", punten: ["Punt"], cat: "nl", tijd: "10:00", bronnen: [{ site: "NOS", href: "https://nos.nl/a?x=1" }, { site: "NU.nl", href: "https://www.nu.nl/b" }] };
 const maakEnv = (dag: string, items: unknown[], tel: { reads: number }) => ({
-  ASSETS: { fetch: async () => Response.json({}) },
+  ASSETS: { fetch: async (r: Request | string) => String((r as Request).url ?? r).endsWith("/data.json") ? Response.json({}) : new Response(sjabloon, { headers: { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp } }) },
   NIEUWS: { get: async () => { tel.reads++; return `${dag}\ntag\n${JSON.stringify({ gegenereerd: `${dag}T09:00:00Z`, items })}`; } },
 });
 const bezoek = (env: any, pad: string, extra: any = {}, headers: Record<string, string> = {}) => onRequestGet({ request: new Request(`https://nieuwsinkort.nl${pad}`, { headers }), env, waitUntil: extra.waitUntil || ((p: Promise<unknown>) => void p) } as any);
@@ -32,7 +35,7 @@ try {
   const tag = r.headers.get("etag")!; assert.ok(tag);
   r = await bezoek(env, `${pad}?fbclid=abc&utm_source=x`, wu);
   assert.equal(r.status, 200); assert.equal(tel.reads, 1, "tweede aanvraag uit cache: geen KV-read"); assert.equal(puts, 1);
-  assert.ok((await r.text()).includes(`<link rel="canonical" href="https://nieuwsinkort.nl${pad}">`), "canonical zonder query");
+  assert.ok((await r.text()).includes(`<link rel="canonical" href="https://nieuwsinkort.nl${pad}" />`), "canonical zonder query");
   r = await bezoek(env, pad, wu, { "If-None-Match": tag }); assert.equal(r.status, 304); assert.equal(tel.reads, 1);
   // redirects en fouten komen nooit in de cache
   const putsVoor = puts;
@@ -90,18 +93,18 @@ try {
   // ruw en politiek: noindex en geen letterlijke feedtekst in beschrijving of body
   for (const extra of [{ ruw: true }, { cat: "politiek" }]) {
     const x = { ...item, ...extra, ai: "Letterlijke feedtekst", samenvatting: "Meer letterlijke feedtekst", punten: ["Letterlijk punt"] };
-    const h = berichtHtml(x, dag);
-    assert.ok(h.includes('<meta name="robots" content="noindex">')); assert.ok(!h.includes("Letterlijke feedtekst")); assert.ok(!h.includes("Letterlijk punt"));
+    const h = berichtHtml(sjabloon, x, dag);
+    assert.ok(/<meta name="robots" content="noindex"/.test(h)); assert.ok(!h.includes("Letterlijke feedtekst")); assert.ok(!h.includes("Letterlijk punt"));
   }
-  assert.ok(berichtHtml(item, dag).includes("max-image-preview:large"));
+  assert.ok(berichtHtml(sjabloon, item, dag).includes("max-image-preview:large"));
   // eigen logo als og:image, nooit de bronfoto; ongeldige t geeft geen crash
-  const h = berichtHtml({ ...item, t: "geen-datum", beelden: ["https://bron.nl/foto.jpg"] } as any, dag);
+  const h = berichtHtml(sjabloon, { ...item, t: "geen-datum", beelden: ["https://bron.nl/foto.jpg"] } as any, dag);
   assert.ok(h.includes('property="og:image" content="https://nieuwsinkort.nl/og-image.png"')); assert.ok(!h.includes("foto.jpg"));
   assert.ok(h.includes(`${dag}T00:00:00+01:00`));
   // headers
   r = await bezoek(maakEnv(dag, [item], { reads: 0 }), pad, wu);
   assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("x-frame-options"), "DENY");
-  assert.equal(r.headers.get("strict-transport-security"), "max-age=86400"); assert.match(r.headers.get("content-security-policy")!, /frame-ancestors 'none'/);
+  assert.equal(r.headers.get("strict-transport-security"), "max-age=86400"); assert.equal(r.headers.get("content-security-policy"), csp);
 
   // id-botsingen in echte dagdata (routine zonder id) en met worker-ids
   const echt2 = JSON.parse(readFileSync("public/data.json", "utf8")).items as any[];
