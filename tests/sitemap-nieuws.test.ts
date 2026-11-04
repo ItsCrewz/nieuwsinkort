@@ -22,8 +22,7 @@ try {
   assert.equal((nieuwsSitemap(veel, dag).match(/<url>/g) || []).length, 1000, "max 1000");
   assert.equal(nieuwsSitemap([], dag), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"></urlset>\n');
 
-  let reads = 0;
-  const data = (gegenereerd: string, items: unknown[]) => ({ ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => { reads++; return `${dag}\ntag\n${JSON.stringify({ gegenereerd, items })}`; } } });
+  const data = (gegenereerd: string, items: unknown[]) => ({ ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify({ gegenereerd, items })}` } });
   const vraag = (env: any) => onRequestGet({ request: new Request("https://nieuwsinkort.nl/sitemap-nieuws.xml?x=1"), env, waitUntil: () => {} });
   let r = await vraag(data("2026-11-04T10:00:00Z", [a]));
   assert.equal(r.status, 200); assert.equal(r.headers.get("content-type"), "application/xml; charset=utf-8");
