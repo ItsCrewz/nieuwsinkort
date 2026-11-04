@@ -27,6 +27,8 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
+import { zoekItems, normaliseer } from "./zoek";
+import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -931,7 +933,9 @@ function TopBar({
   onHome,
   onSources,
   filtered,
+  zoeken,
 }: {
+  zoeken?: ReactNode;
   theme: Theme;
   onTheme: () => void;
   bionic: boolean;
@@ -961,6 +965,7 @@ function TopBar({
         </a>
         <div className="ctrls">
           <FocusSwitch value={bionic} onChange={onBionic} />
+          {zoeken}
           <button
             type="button"
             className={`srcbtn ${filtered ? "has" : ""}`}
@@ -1039,6 +1044,7 @@ export default function App() {
   const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
+  const [zoekterm, setZoekterm] = useState("");
   const flt = useFilters();
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
@@ -1149,9 +1155,10 @@ export default function App() {
       </div>
   );
   const isFeedView = !!data && !route.selected && route.view !== "filmpjes" && route.view !== "dumpert";
+  const zoekUitkomst = isFeedView && data && raw ? zoekItems(filterNieuws(route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view), flt.f, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm) : [];
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Suspense fallback={null}>
@@ -1265,9 +1272,9 @@ export default function App() {
           <div id="rubriek-paneel" className="nf-panel" role="tabpanel">
           <NewsFeed
             key={view}
-            items={uitkomst!.items}
+            items={zoekUitkomst}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={filterLeeg}
+            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
