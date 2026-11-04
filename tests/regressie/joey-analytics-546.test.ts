@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { startAnalytics } from "../../src/analytics";
 
-function proef(adres: string, begin: string | null, opslagWerkt = true) {
+function proef(adres: string, begin: string | null, opslagWerkt = true, bestaand = false) {
   let waarde = begin;
   let nieuwAdres = "";
   const scripts: { src: string; defer: boolean; attrs: Record<string, string> }[] = [];
@@ -15,6 +15,11 @@ function proef(adres: string, begin: string | null, opslagWerkt = true) {
       removeItem: () => { if (!opslagWerkt) throw Error(); waarde = null; },
     },
     document: {
+      querySelector: (selector: string) => {
+        assert.match(selector, /script\[src\*="cloudflareinsights\.com"\]/);
+        assert.match(selector, /script\[data-cf-beacon\]/);
+        return bestaand ? {} : null;
+      },
       createElement: () => ({ src: "", defer: false, attrs: {} as Record<string, string>, style: { cssText: "" }, textContent: "", className: "", setAttribute(k: string, v: string) { this.attrs[k] = v; }, remove() {} }),
       head: { appendChild: (el: typeof scripts[number]) => scripts.push(el) },
       body: { appendChild: (el: { textContent: string }) => meldingen.push(el.textContent) },
@@ -40,3 +45,4 @@ assert.equal(aan.nieuwAdres, "/#/sport");
 assert.equal(aan.scripts.length, 1);
 assert.equal(aan.meldingen[0], "Je bezoeken worden weer meegeteld");
 assert.equal(proef("https://voorbeeld.nl/", null, false).scripts.length, 1);
+assert.equal(proef("https://voorbeeld.nl/", null, true, true).scripts.length, 0);

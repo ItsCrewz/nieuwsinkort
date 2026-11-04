@@ -23,7 +23,7 @@ export function startAnalytics(token = SITE_TOKEN): void {
       window.setTimeout(() => melding.remove(), 3000);
     }
   }
-  if (!uit && token) {
+  if (!uit && token && !document.querySelector('script[src*="cloudflareinsights.com"], script[data-cf-beacon]')) {
     const script = document.createElement("script");
     script.defer = true;
     script.src = "https://static.cloudflareinsights.com/beacon.min.js";
