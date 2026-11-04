@@ -12,3 +12,4 @@ Bewaar bij nieuwe meldingen het echte voorbeeld als fixture met uitsluitend item
 | 2 november 2026 | Kernfeit iPad mini | #488 | `tests/regressie/joey-kernfeit*` | Test wordt afzonderlijk gemaakt. |
 | 2 november 2026 | iCulture als kanaal | #488 | `tests/regressie/joey-bron*` | Test wordt afzonderlijk gemaakt. |
 | 4 november 2026 | Onverklaarde vette letterstukjes door naamloze Focus-schakelaar op mobiel | #507 | `tests/regressie/joey-focus-507.test.ts`: “Focus-lezen maakt alleen ingeschakeld woorddelen vet”; “Focus-label blijft mobiel zichtbaar” | Gedekt met de twee gemelde teksten; de labeltest faalde op de oorspronkelijke CSS. |
+| 4 november 2026 | Autoblog-filmpje niet zichtbaar | #511 | `tests/regressie/joey-autoblog-video-511.test.ts`: “Autoblog-preview biedt een veilige videolink naar de bron” | Gedekt met het echte item; de knop opent de video bij de uitgever. |
