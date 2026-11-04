@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import React from "react";
-import { FilterBalk, FilterBlad, STANDAARD, useFilters, type Filters } from "../src/filters";
+import { FilterBalk, STANDAARD, useFilters, type Filters } from "../src/filters";
+import { FilterBlad } from "../src/filters-blad";
 import type { Item } from "../src/types";
 
 const g = globalThis as any;
@@ -23,7 +24,8 @@ dispatcher.current = {
 };
 opslag.set("nieuwsinkort-filters", JSON.stringify({ tijd: "1u", cats: null, regio: null }));
 opslag.set("nieuwsinkort-laatste-bezoek", "123");
-const hook = useFilters();
+function TestFilters() { return useFilters(); }
+const hook = TestFilters();
 assert.equal(hook.f.tijd, "1u");
 assert.deepEqual(hook.f.cats, []);
 assert.equal(hook.vorig, 123);
