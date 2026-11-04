@@ -76,9 +76,10 @@ export type Extractief = { kop: string; ai: string; samenvatting: string };
 /**
  * Extractieve samenvatting van één feedbericht (titel `t`, omschrijving `s`).
  * Nederlands: ingekorte kop, eerste zin als ai, 2–3 zinnen (±50 woorden) als samenvatting.
+ * `bekendmaking`: alleen voor officielebekendmakingen; een kaal soortlabel wordt dan een eerlijke bronverwijzing.
  * Engels (nl=false): kop + eerste zin, met label "(Engels)". Null als er niets bruikbaars is.
  */
-export function extractief(c: { t?: string; s?: string }, nl: boolean): Extractief | null {
+export function extractief(c: { t?: string; s?: string }, nl: boolean, bekendmaking = false): Extractief | null {
   let t = schoon(c.t || "").replace(/\s*(…|\.\.\.)$/, "");
   let d = schoon(c.s || "");
   if (t && d.toLowerCase().startsWith(t.toLowerCase())) d = d.slice(t.length).replace(/^[\s.!?,:;…-]+/, "");
@@ -93,7 +94,7 @@ export function extractief(c: { t?: string; s?: string }, nl: boolean): Extracti
     const ai = `(Engels) ${zin || "Engelstalig bericht, lees het via de bron."}`;
     return { kop, ai, samenvatting: ai };
   }
-  if (isBekendmakingLabel(d)) return { kop, ai: bekendmakingFallback, samenvatting: bekendmakingFallback };
+  if (bekendmaking && isBekendmakingLabel(d)) return { kop, ai: bekendmakingFallback, samenvatting: bekendmakingFallback };
   const samenvatting = eersteZinnen(d, 50, 3);
   const ai = knip(zinnen(samenvatting)[0] || samenvatting, 240);
   return { kop, ai: ai || kop, samenvatting: samenvatting || kop };

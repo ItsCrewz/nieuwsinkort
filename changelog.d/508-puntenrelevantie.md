@@ -1,0 +1,1 @@
+- Filter niet-gerelateerde belangrijkste punten en begrens de invoer van herkenbare verzamelberichten (#508).

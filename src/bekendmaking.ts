@@ -9,7 +9,7 @@ export function schoneBekendmakingTekst(tekst: string): string {
     const n = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
     return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : " ";
   });
-  return t.replace(/<\/?(?:b|strong)\b[^>]*>?/giu, "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return t.replace(/<\/?(?:b|strong)\b[^>]*>?/giu, "").replace(/<\/?[a-z][^>]*>/giu, " ").replace(/\s+/g, " ").trim();
 }
 
 export const bekendmakingFallback = "Officiële bekendmaking. De volledige tekst staat bij de bron.";
