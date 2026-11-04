@@ -1,3 +1,4 @@
+import { linkId } from "../../src/artikelid";
 import { videomoment, videoToegestaan, zonderGisteren } from "./videomoment";
 import { berekenBody, etag } from "../../functions/data.json";
 import { somStand, kopieStand, verschilStand, telOp, groqTokens, type LlmState } from "./llm";
@@ -812,13 +813,14 @@ export class Runner extends DurableObject<Env> {
     const items: any[] = [];
     for (const k of shown) {
       const s = sumOf(k);
+      const id = linkId(k.c.map((c) => st.links[normLink(c.href)]).find((x) => x && st.sums[x]) || k.key);
       const buitenland = k.cat === "nl" && isBuitenland({ kop: k.c.map((c) => c.t).join(" "), ai: s?.ai, omschrijving: k.c.map((c) => (c.s || "").slice(0, 300)).join(" "), bronnen: k.c.map((c) => ({ href: c.href, buitenFeed: buitenL.has(normLink(c.href)) })) });
       const laatst = nieuwsteTijd(k.c);
       if (buitenland) k.cat = "buitenland";
       const bron = eenPerUitgever(k.c.map((c) => ({ site: c.site, href: c.href, ft: c.t.slice(0, 200), fd: (c.s || "").slice(0, 300) }))).slice(0, 6); // één link per uitgever (#443)
       const beelden = uniekeBeelden(k.c.flatMap((c) => [c.img, og.get(c.href)]));
       const bb = beelden.length ? { beelden } : {};
-      if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true });
+      if (s) items.push({ id, cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true });
       else {
         const desc = (k.c[0].s || k.c[0].t.replace(/\s*(…|\.\.\.)$/, "")).replace(/\s+/g, " ").trim();
         // kop = eerste zin van de post (partijposts hebben geen aparte titel); korte tekst = wat daarna komt, nooit twee keer hetzelfde
@@ -827,8 +829,8 @@ export class Runner extends DurableObject<Env> {
         const kop = zin || (knip.length < desc.length ? knip + "…" : knip);
         const rest = desc.slice((zin || knip).length).replace(/^[\s.!?,:;…-]+/, "");
         const ai = rest ? firstSentence(rest) : "";
-        if (k.cat === "politiek") items.push({ cat: k.cat, kop, ai, samenvatting: rest.slice(0, 700), punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true });
-        else items.push({ cat: k.cat, ...extractief(k.c[0], isNL(k))!, punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true }); // extractief, alle rubrieken; Engels met "(Engels)"
+        if (k.cat === "politiek") items.push({ id, cat: k.cat, kop, ai, samenvatting: rest.slice(0, 700), punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true });
+        else items.push({ id, cat: k.cat, ...extractief(k.c[0], isNL(k))!, punten: [], tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true, ruw: true }); // extractief, alle rubrieken; Engels met "(Engels)"
       }
     }
     for (let i = items.length - 1; i >= 0; i--) if (isWeigering(items[i])) items.splice(i, 1);
