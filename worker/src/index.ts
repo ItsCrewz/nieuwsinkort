@@ -1,3 +1,4 @@
+import { relevantePunten, verzamelUrl, invoerBijKop } from "../../src/puntenrelevantie";
 import { videomoment, videoToegestaan, zonderGisteren } from "./videomoment";
 import { berekenBody, etag } from "../../functions/data.json";
 import { somStand, kopieStand, verschilStand, telOp, groqTokens, type LlmState } from "./llm";
@@ -705,7 +706,7 @@ export class Runner extends DurableObject<Env> {
     const modelNu = () => { const m = tier() === 1 ? model : SMALL; modelsUsed.add(m); return m; };
     const toIn = (k: Cluster, id: number): In => {
       const cs = k.c.slice(0, 4);
-      return { id, cat: k.cat, bronnen: [...new Set(cs.map((c) => c.site))], titels: [...new Set(cs.map((c) => c.t))].slice(0, 3), tekst: cs.map((c) => c.s).join(" // ").slice(0, 900) };
+      return { id, cat: k.cat, bronnen: [...new Set(cs.map((c) => c.site))], titels: [...new Set(cs.map((c) => c.t))].slice(0, 3), tekst: cs.map((c) => invoerBijKop(c.s, c.href)).join(" // ").slice(0, 900) };
     };
     // bundelen (#453): nieuwe clusters wachten op een volle batch of op de 10-minutengrens; force en interval 60 gaan direct
     st.aiGezien ||= {};
@@ -818,7 +819,7 @@ export class Runner extends DurableObject<Env> {
       const bron = eenPerUitgever(k.c.map((c) => ({ site: c.site, href: c.href, ft: c.t.slice(0, 200), fd: (c.s || "").slice(0, 300) }))).slice(0, 6); // één link per uitgever (#443)
       const beelden = uniekeBeelden(k.c.flatMap((c) => [c.img, og.get(c.href)]));
       const bb = beelden.length ? { beelden } : {};
-      if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: s.punten, tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true });
+      if (s) items.push({ cat: k.cat, kop: s.kop, ai: s.ai, samenvatting: s.samenvatting, punten: bron.some((b) => verzamelUrl(b.href)) ? relevantePunten(s.punten, s.kop, s.ai, s.samenvatting) : s.punten, tijd: hhmm(laatst), bronnen: bron, ...bb, t: laatst, _t: laatst, uur: true });
       else {
         const desc = (k.c[0].s || k.c[0].t.replace(/\s*(…|\.\.\.)$/, "")).replace(/\s+/g, " ").trim();
         // kop = eerste zin van de post (partijposts hebben geen aparte titel); korte tekst = wat daarna komt, nooit twee keer hetzelfde
@@ -892,7 +893,7 @@ export class Runner extends DurableObject<Env> {
         }
       } catch (e: any) { artErr._jina = String(e?.message || e).slice(0, 80); }
     }
-    const artVan = (m: MC) => artLinks(m).map((b) => ({ ...b, al: st.art![normLink(b.href)] || [] })).filter((b) => b.al.join(" ").length >= 300);
+    const artVan = (m: MC) => artLinks(m).filter((b) => !verzamelUrl(b.href)).map((b) => ({ ...b, al: st.art![normLink(b.href)] || [] })).filter((b) => b.al.join(" ").length >= 300);
     // AI-uitleg: alleen in trap 1 en onder 65% van het dagbudget (nieuws en video-samenvattingen gaan voor),
     // per run een eerlijk deel van wat er tot die grens over is (min 120, max 700 neuronen).
     vidN = await leesVid(); // video-samenvattingen lopen door tijdens deze run; niet met de waarde van het begin rekenen
@@ -928,7 +929,7 @@ export class Runner extends DurableObject<Env> {
     // "meer" per bericht: AI-uitleg + kernpunten per bron, anders (zonder AI) het begin van het artikel zelf.
     const meer: Record<string, any> = {};
     for (const m of mc) {
-      const d = st.diep[m.key];
+      const d = m.bronnen.some((b) => verzamelUrl(b.href)) ? undefined : st.diep[m.key];
       const art = artVan(m);
       const href = (site: string) => m.bronnen.find((b) => b.site === site)?.href || "";
       const uittreksel = art.slice(0, 2).map((b) => {

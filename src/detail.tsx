@@ -1,3 +1,4 @@
+import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
 import { useEffect, useRef, useState } from "react";
 import type { Bron, Item, Meer } from "./types";
@@ -52,7 +53,7 @@ function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
 function zonderBronvermelding(item: Item): Item {
   const sites = (item.bronnen ?? []).map((b) => b.site);
   const schoon = (t: string) => item.ruw && /^(?:null|undefined)$/i.test(t.trim()) ? "" : stripBronvermelding(t, sites);
-  return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: (item.punten ?? []).map(schoon) };
+  return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten((item.punten ?? []).map(schoon), item.kop, item.ai, item.samenvatting) : (item.punten ?? []).map(schoon) };
 }
 
 function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
