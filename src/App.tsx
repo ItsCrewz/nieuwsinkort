@@ -35,6 +35,7 @@ import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems, normaliseer } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
+import { useKlok } from "./useklok";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -1059,6 +1060,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
 }
 
 export default function App() {
+  useKlok();
   const { data: raw, error, reload } = useData();
   // Rustige melding i.p.v. stil falen: bijwerken mislukt, of de AI-dagruimte is (bijna) op.
   const briefNote = [
