@@ -1,7 +1,7 @@
 import { chat, type Usage } from "./ai";
 
-export type TabArtikel = { cat: string; kop: string; ai?: string };
-export type TabSam = { tekst: string; ai: boolean; bron: string; gegenereerd: string };
+type TabArtikel = { cat: string; kop: string; ai?: string };
+type TabSam = { tekst: string; ai: boolean; bron: string; gegenereerd: string };
 type KV = { get(key: string): Promise<string | null>; put(key: string, value: string, opts: { expirationTtl: number }): Promise<unknown> };
 
 export function tabAiRoute(tier: number, beperkt: boolean, tijdelijk: boolean, cloudflare: boolean, extern: boolean): "cloudflare" | "extern" | "geen" {

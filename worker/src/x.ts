@@ -10,7 +10,7 @@ export const xUser = (u: string) => /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/(
 // Nieuwsaccounts die (soms) video posten. Hun artikelen komen al via RSS binnen: hier alleen de filmpjes.
 export const X_VIDEO: Record<string, string> = { RTLnieuws: "RTL Nieuws", telegraaf: "De Telegraaf", ADnl: "AD", PowNed: "PowNed", GeenStijl: "GeenStijl", nhnieuws: "NH Nieuws", BNR: "BNR" };
 
-export type XPost = { id: string; user: string; text: string; t: number; img?: string; mp4?: string; mp4Laag?: string; thumb?: string; dur?: number; views?: number; likes?: number };
+type XPost = { id: string; user: string; text: string; t: number; img?: string; mp4?: string; mp4Laag?: string; thumb?: string; dur?: number; views?: number; likes?: number };
 const BR_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36";
 
 function fromFx(s: any, user: string): XPost | null {

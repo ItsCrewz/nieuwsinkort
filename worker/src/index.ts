@@ -80,7 +80,7 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 
 // ---------------------------------------------------------------- fetcher-DO
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; pad?: string; alleenVideo?: boolean };
-type Res = { url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
+type Res = { url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; ytPad?: "primair" | "fallback"; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const igGet = (url: string) => haal(url, { ua: IG_UA, accept: "text/html", taal: "nl-NL,nl;q=0.9", timeout: 15000 });
@@ -240,6 +240,13 @@ async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
     // Reddit: RSS met een feedlezer-UA (Feedly) wordt wél doorgelaten; bot/browser-UA krijgt 429/403 vanaf Cloudflare
     const ua1 = j.kind === "reddit" ? FEED_UA : UA;
     let r = await get(u, 15000, ua1).catch(async () => { await sleep(1500); return get(u, 20000, ua1); }); // 1x opnieuw bij time-out/netwerkfout
+    // De officiële uploads-playlist hoort bij hetzelfde kanaal; iedere run probeert eerst de kanaalfeed.
+    const uploads = j.kind === "feed" ? /^https:\/\/www\.youtube\.com\/feeds\/videos\.xml\?channel_id=UC([A-Za-z0-9_-]+)$/.exec(j.url) : null;
+    let ytPad: Res["ytPad"] = uploads && r.ok ? "primair" : undefined;
+    if (uploads && (r.status === 404 || (r.status >= 500 && r.status < 600))) {
+      r = await get(`https://www.youtube.com/feeds/videos.xml?playlist_id=UU${uploads[1]}`, 15000, ua1);
+      if (r.ok) ytPad = "fallback";
+    }
     // 403/429: nog één keer rustig; Reddit via old.reddit, anderen met een gewone browser-UA
     if (r.status === 403 || r.status === 429) {
       if (j.kind === "reddit") {
@@ -249,10 +256,11 @@ async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
       }
       else { await sleep(1500); r = await get(u, 15000, BR_UA); }
     }
+    if (uploads && r.ok && !ytPad) ytPad = "primair";
     status = r.status;
     if (!r.ok) return { url: j.url, ok: false, status, err: `HTTP ${status}`, ms: Date.now() - t0 };
     const body = await r.text();
-    const base: Res = { url: j.url, ok: true, status, ms: 0 };
+    const base: Res = { url: j.url, ok: true, status, ms: 0, ...(ytPad ? { ytPad } : {}) };
     if (j.kind === "json") base.json = JSON.parse(body);
     else if (j.kind === "text") base.text = body.length > 400000 ? body.slice(0, 400000) : body;
     else if (j.kind === "dumpert") base.videos = parseDumpert(body, hhmm);
@@ -535,7 +543,8 @@ export class Runner extends DurableObject<Env> {
       }
       const ytSkipRes: Res[] = yk.overslaan.map((j) => ({ url: j.url, ok: false, status: 0, err: "YouTube-feedstoring", ms: 0 }));
       const ytBatches: Job[][] = [];
-      for (let i = 0; i < yk.rest.length; i += 30) ytBatches.push(yk.rest.slice(i, i + 30));
+      // Ook een netwerkherpoging en een 403/429-herpoging kosten subrequests.
+      for (let i = 0; i < yk.rest.length; i += 12) ytBatches.push(yk.rest.slice(i, i + 12));
       const ytRest = (await Promise.all(ytBatches.map((b, i) => haalBatch(b, `fy${i}`)))).flat();
       return [...yk.canary, ...ytSkipRes, ...ytRest];
     };
@@ -1030,7 +1039,7 @@ export class Runner extends DurableObject<Env> {
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
       datum: datumNL(now), gegenereerd: new Date(now).toISOString(), dag_samenvatting: kort, tab_samenvatting: tabSam, weer: W.weer, filmpjes: fOut, dumpert: dOut, items, bronstats, meerKeys, ytGeblokkeerd,
-      meta: { tier: bronTier, xFouten: xDiagnose, ytStoring, bronnenOvergeslagen: vd.overgeslagen, fetcherHoofd, kvWrites: 0, kvWritesRun: 0, kvWritesDag: 0, publiceerInterval: 10 as number | string, kvSleutels: [] as string[], kvWritesOg: 0, ogTreffers: ogLinks.length - ogOnbekend.length, ogNieuw: ogOnbekend.length, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runInterval: interval, runsLeft: Math.round(runsLeft * 100) / 100, runVol: runCapped, aiWachtend: bundel.uitgesteld ? bundel.wachtend : 0, aiGebundeld: bundel.uitgesteld, dubbeleFilmpjes: dF.removed + dD.removed, filmGroepNieuw: fg.nieuw, filmGroepAi: fg.aiCall, filmGroepUitgesteld: fg.uitgesteld, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, somAfgekeurd: usage.somAfgekeurd || 0, somHerpoging: usage.somHerpoging || 0, somOpgegeven: usage.somOpgegeven || 0, somOpgegevenOpen: Object.keys(st.somAfgekeurd!).length, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
+      meta: { tier: bronTier, xFouten: xDiagnose, ytStoring, ytFeeds: gehaaldYt.filter((r) => r.ytPad).map((r) => ({ url: r.url, pad: r.ytPad })), bronnenOvergeslagen: vd.overgeslagen, fetcherHoofd, kvWrites: 0, kvWritesRun: 0, kvWritesDag: 0, publiceerInterval: 10 as number | string, kvSleutels: [] as string[], kvWritesOg: 0, ogTreffers: ogLinks.length - ogOnbekend.length, ogNieuw: ogOnbekend.length, ytWeggelaten, ytControles, ytDiag, model, routine: stat?.gegenereerd || null, nieuweSamenvattingen: Object.values(st.sums).filter((s) => s.at === now).length, kandidaten: cands.length, clusters: clusters.length + nCovered, alInRoutine: nCovered, items: items.length, ruw: items.filter((i) => i.ruw).length, quotaOp: quotaOut, aiStand: ["", "normaal", "zuinig", "krap", "op"][quotaOut ? 4 : tier()], aiModellen: [...modelsUsed], runBudget: Math.round(runBudget), runInterval: interval, runsLeft: Math.round(runsLeft * 100) / 100, runVol: runCapped, aiWachtend: bundel.uitgesteld ? bundel.wachtend : 0, aiGebundeld: bundel.uitgesteld, dubbeleFilmpjes: dF.removed + dD.removed, filmGroepNieuw: fg.nieuw, filmGroepAi: fg.aiCall, filmGroepUitgesteld: fg.uitgesteld, dubbelVoorbeelden: [...dD.groups, ...dF.groups].slice(0, 8), metFoto: items.filter((i) => i.beelden?.length).length, ogOpgehaald: ogLinks.length, leesVerder: { berichten: mc.length, metMeer: meerKeys.length, metUitleg: meerKeys.filter((k) => meer[k].uitleg).length, nieuweUitleg: diepNieuw, uitlegStop: diepStop, uitlegRunBudget: Math.round(diepRun), neuronenUitleg: Math.round(diepN), artikelenOpgehaald: nodig.length, artikelenMetTekst: artOk, artikelenZonderTekst: artFout, viaJina: artJina, jinaGeprobeerd: jLinks.length, artikelFouten: artErr }, neuronenRun: Math.round(usage.neurons), tokensRun: { in: usage.inTok, uit: usage.outTok }, aiGeschat: usage.geschat || 0, neuronenFoutRun: Math.round(usage.foutN || 0), aiTijdelijk: tijdelijk, quotaReden: quotaReden || null, neuronFactor: FACTOR, budgetDag: U, dag: { neuronen: Math.round(st.neurons), calls: st.calls, tokensIn: st.inTok, tokensUit: st.outTok, geschat: st.geschat, neuronenFout: Math.round(st.foutN || 0) }, neuronenVandaag: Math.round(st.neurons), neuronenVideo: Math.round(vidN), aiTokens: usage.aanbieders || {}, aiCalls: usage.calls, aiFouten: usage.fails, aiFoutenAanroep: usage.fAanroep || 0, aiFoutenOutput: usage.fOutput || 0, aiLaatsteFout: usage.laatsteFout || null, aiTerugval: usage.terugval || 0, aiTerugvalGroq: usage.terugvalGroq || 0, somAfgekeurd: usage.somAfgekeurd || 0, somHerpoging: usage.somHerpoging || 0, somOpgegeven: usage.somOpgegeven || 0, somOpgegevenOpen: Object.keys(st.somAfgekeurd!).length, groqTokensVandaag: groqVandaag, feeds: results.length, feedsFout: results.filter((r) => !r.ok).map((r) => `${r.url} ${r.err}`), msOphalen: T1 - T0, msTotaal: Date.now() - T0 },
     };
     // De inhoudshash volgt uitsluitend de oorspronkelijke selectie van vandaag.
     const momenten: [string, { dag: string; lijst: any[] }][] = [];
