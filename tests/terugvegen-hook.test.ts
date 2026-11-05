@@ -135,18 +135,28 @@ await t("terugvegen-hook: unmount tijdens sluittimer navigeert niet en herstelt"
   assert.equal(n, 0);
   assert.equal(body.style.overflowX, "scroll");
 });
-await t("terugvegen-hook: sluitveeg roept na de animatie onBack één keer aan; nieuw gebaar ertussen stoort niet", async () => {
+await t("terugvegen-hook: sluitveeg roept na de animatie onBack één keer aan", async () => {
   let n = 0;
   const h = await maak(() => n++);
   veeg(200);
   touch("touchend", [], 50);
   assert.equal(h.art.style.transform, "translateX(400px)");
-  veeg(30); // negeren tijdens de sluitanimatie
-  assert.equal(h.art.style.transform, "translateX(400px)");
   loop();
   assert.equal(n, 1);
   assert.equal(h.art.style.transform, "");
   assert.equal(body.style.overflowX, "scroll");
+  await h.unmount();
+});
+await t("terugvegen-hook: nieuw gebaar tijdens de sluitanimatie annuleert de sluiting en herstelt (#658)", async () => {
+  let n = 0;
+  const h = await maak(() => n++);
+  veeg(200);
+  touch("touchend", [], 50);
+  touch("touchstart", [[100, 100]], 60);
+  assert.equal(h.art.style.transform, "");
+  assert.equal(body.style.overflowX, "scroll");
+  loop();
+  assert.equal(n, 0);
   await h.unmount();
 });
 await t("terugvegen-hook: reduced motion sluit direct", async () => {

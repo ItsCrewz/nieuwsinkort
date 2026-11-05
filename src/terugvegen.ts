@@ -45,7 +45,10 @@ const selectie = () => { const s = window.getSelection?.(); return !!s && !s.isC
 export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opties?: { geveegd?: boolean }) => void) {
   const terug = useRef(onBack);
   terug.current = onBack;
-  useLayoutEffect(() => {
+  useLayoutEffect(() => luisterTerugvegen(ref, terug), [ref]);
+}
+
+export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: { current: (opties?: { geveegd?: boolean }) => void }) {
     let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" | "sluit" = "uit";
     let timer: ReturnType<typeof setTimeout> | undefined, overflowVoor: string | null = null;
     const el = () => ref.current;
@@ -67,9 +70,8 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
     // Onderbroken veeg: artikel blijft open en veert terug (direct bij reduced motion).
     const veer = () => { if (rustig()) klaar(); else { zet(0, true, true); plan(klaar, 220); } };
     const start = (ev: TouchEvent) => {
-      if (stand === "sluit") return; // sluitanimatie loopt: onBack volgt, niets meer opstarten
       if (stand === "veeg") veer(); // tweede vinger tijdens een veeg
-      else if (timer !== undefined) klaar(); // nieuw gebaar tijdens het terugveren: eerst netjes terug naar af
+      else if (timer !== undefined) klaar(); // nieuw gebaar tijdens terugveren of sluiten: annuleert (#658) en herstelt eerst
       stand = "uit";
       const t = ev.touches[0];
       if (ev.touches.length !== 1 || !t || !magStarten(t.clientX) || selectie()) return;
@@ -117,5 +119,4 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
       document.removeEventListener("touchcancel", eind);
       klaar(); // wist ook de timer: na unmount geen reset of onBack meer
     };
-  }, [ref]);
 }
