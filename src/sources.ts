@@ -51,13 +51,46 @@ function hostOf(href: string) {
   }
 }
 
+// Na een fout hooguit drie nieuwe pogingen (met uitstel), of eerder zodra de verbinding terug is; daarna niet meer.
+export const CATALOG_RETRY_MS = [3000, 10000, 30000];
+
 export function useCatalog() {
   const [cat, setCat] = useState<Catalog | null>(null);
   useEffect(() => {
-    fetch("/bronnen.json", { cache: "no-cache" })
-      .then((r) => (r.ok ? r.json() : { groepen: [] }))
-      .then((c: Catalog) => setCat(c && Array.isArray(c.groepen) ? c : { groepen: [] }))
-      .catch(() => setCat({ groepen: [] }));
+    let weg = false;
+    let poging = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let bezig = false;
+    const leeg: Catalog = { groepen: [] };
+    const laad = () => {
+      if (weg || bezig) return;
+      bezig = true;
+      clearTimeout(timer);
+      fetch("/bronnen.json", { cache: "no-cache" })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("http"))))
+        .then((c: Catalog) => {
+          if (!(c && Array.isArray(c.groepen))) throw new Error("vorm");
+          if (!weg) setCat(c);
+          bezig = false;
+          // geladen: niet opnieuw proberen
+          weg = true;
+          window.removeEventListener("online", laad);
+        })
+        .catch(() => {
+          bezig = false;
+          if (weg) return;
+          // eerder geladen gegevens blijven staan; anders leeg tot het lukt
+          setCat((vorig) => vorig ?? leeg);
+          if (poging < CATALOG_RETRY_MS.length) timer = setTimeout(laad, CATALOG_RETRY_MS[poging++]);
+        });
+    };
+    window.addEventListener("online", laad);
+    laad();
+    return () => {
+      weg = true;
+      clearTimeout(timer);
+      window.removeEventListener("online", laad);
+    };
   }, []);
   return cat;
 }

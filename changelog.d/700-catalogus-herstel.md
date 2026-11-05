@@ -1,0 +1,1 @@
+- `useCatalog` herstelt de broncatalogus na een tijdelijke laadfout: drie nieuwe pogingen met uitstel (3, 10, 30 s) of zodra de verbinding terug is, daarna stoppen; timers en listener worden bij verlaten opgeruimd (#700).
