@@ -1,3 +1,4 @@
+import { laadDetail } from "./artikel-detail";
 import { memo,useMemo,useState,type ReactNode } from "react";
 import { intro } from "./app-status";
 import { Beelden,Thumb } from "./beelden";
@@ -29,7 +30,7 @@ export const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }
   const click = useOpen(key, onOpen);
   const n = item.bronnen?.length ?? 0;
   return (
-    <a className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
+    <a onPointerDown={laadDetail} onMouseEnter={laadDetail} className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
       {fotos(item).length ? <Beelden urls={fotos(item)} eager className="lead-img" /> : null}
       <div className="meta">
         {CAT_LABEL[item.cat] ?? item.cat}
@@ -62,6 +63,7 @@ export const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }:
       href={`#/bericht/${key}`}
       style={anim ? ({ "--i": i + 1 } as React.CSSProperties) : undefined}
       onClick={click}
+      onPointerDown={laadDetail} onMouseEnter={laadDetail}
     >
       {fotos(item).length ? <Thumb urls={fotos(item)} /> : null}
       <div className="row-main">

@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import { Suspense,lazy,startTransition,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState } from "react";
 import { useData,useTheme } from "./app-data";
 import { Footer,Frame,Front,TopBar,UUR_ACTIEF } from "./app-frame";
@@ -5,7 +6,9 @@ import { intro } from "./app-status";
 import { Briefing,Tabs } from "./app-tabs";
 import { WeatherBox } from "./app-weer";
 import { artikelId } from "./artikelid";
-import { rustig,scrollGedrag } from "./beweging";
+import { DUUR,animeer,kanOvergang,metOvergang,rustig,scrollGedrag } from "./beweging";
+import { ArtikelDetail,laadDetail } from "./artikel-detail";
+import { wisselRichting } from "./tabs";
 import { FilterBalk,filterNieuws,filterVideos,useFilters } from "./filters";
 import { bewaarFocusKeuze,browserStorage,leesFocusKeuze,ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { Foutgrens } from "./foutgrens";
@@ -33,7 +36,6 @@ const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.Sour
 
 const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
 
-const DetailView = lazy(() => import("./detail").then((m) => ({ default: m.DetailView })));
 
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
@@ -71,6 +73,15 @@ export default function App() {
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
   useLayoutEffect(() => { document.title = viewTitel(route.view); }, [route.view, route.selected]);
+  // Rubriekwissel (#538): alleen het paneel schuift 12px in, richting volgt de tabvolgorde; geen uitgaande animatie, een nieuwe wissel annuleert de lopende (animeer).
+  const vorigeView = useRef(route.view);
+  useLayoutEffect(() => {
+    const van = vorigeView.current;
+    vorigeView.current = route.view;
+    const r = wisselRichting(van, route.view);
+    const paneel = r && !route.selected ? document.getElementById("rubriek-paneel") : null;
+    if (paneel) animeer(paneel, [{ opacity: 0, transform: `translateX(${r * 12}px)` }, { opacity: 1, transform: "none" }], { duration: DUUR[3], easing: "cubic-bezier(.05,.7,.1,1)" });
+  }, [route.view, route.selected]);
   const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
@@ -85,20 +96,39 @@ export default function App() {
   const routeRef = useRef(route);
   routeRef.current = route;
 
+  const geveegd = useRef(false);
   useEffect(() => {
     ruimOudeFocusKeuzeOp(browserStorage());
-    const onHash = () => {
+    let volgnummer = 0;
+    const onHash = async () => {
+      const nummer = ++volgnummer;
       const next = huidigeRoute();
       const prev = routeRef.current;
       const back = prev.selected && !next.selected ? prev.selected : null;
-      // concurrent renderen: de browser blijft frames tekenen terwijl React de nieuwe weergave bouwt
-      startTransition(() => {
-        setFocusKey(back);
-        setRoute(next);
-      });
+      const veeg = geveegd.current;
+      geveegd.current = false;
+      const openen = !prev.selected && !!next.selected;
+      const sluiten = !!back;
+      const video = [prev.view, next.view].some((v) => v === "filmpjes" || v === "dumpert");
+      if (openen && !video) {
+        try { await laadDetail(); } catch { /* Suspense toont de bestaande foutafhandeling. */ }
+        if (nummer !== volgnummer) return;
+      }
+      const update = () => { setFocusKey(back); setRoute(next); };
+      if (kanOvergang(prev, next, veeg)) {
+        void metOvergang(() => flushSync(update), openen ? "open" : "terug");
+      }
+      else {
+        if (sluiten && (veeg || !video)) {
+          flushSync(update);
+          const overzicht = document.querySelector(".nf, main.wrap");
+          if (overzicht) animeer(overzicht, [{ transform: "translateX(-24px)", opacity: 0.6 }, { transform: "translateX(0)", opacity: 1 }], { duration: DUUR[2] });
+        }
+        else startTransition(update);
+      }
     };
     window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    return () => { volgnummer++; window.removeEventListener("hashchange", onHash); };
   }, []);
 
   // Scroll na het wisselen van pagina: naar boven bij detail, terug naar het bericht bij "terug".
@@ -244,11 +274,13 @@ export default function App() {
       <Frame top={top}>
         <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
           <Suspense fallback={null}>
-            <DetailView
+            <ArtikelDetail
               item={selectedItem}
               dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
-              onBack={() => {
+              onBack={(opties) => {
+                geveegd.current = !!opties?.geveegd;
+                if (geveegd.current) setTimeout(() => { geveegd.current = false; }, 1000);
                 if (openedInside || window.history.state?.binnen) window.history.back();
                 else window.location.hash = "#/";
               }}

@@ -6,7 +6,7 @@ Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq voor tran
 
 - Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Productiedomein: https://nieuwsinkort.nl; www.nieuwsinkort.nl geeft een 301 naar de apex (`functions/_middleware.ts`).
 
-De metadata in `index.html` beschrijft de website en nieuwsorganisatie met JSON-LD; het logo verwijst naar `public/icon-512.png`.
+De metadata in `index.html` beschrijft de website en nieuwsorganisatie met JSON-LD; het logo verwijst naar `public/icon-512.png`; favicon en app-iconen: zie [architectuur](docs/architectuur.md) (#597).
 
 ## Stack
 
@@ -49,7 +49,7 @@ Bij uitputting van de AI-ruimte of een tijdelijke AI-fout maakt `worker/src/extr
 
 ## Vooraf laden
 
-Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de eerste Filmpjes en Dumpert-video's op, zodat een klik op die tabs niet hoeft te wachten: thumbnails, de hls.js-chunk, het begin van geschikte streams en de eerste bytes van de eerste mp4. Dit gebeurt op alle verbindingen, ook bij mobiele data en Save-Data. Zie `src/voorladen.ts`; de richtwaarde voor het dataverbruik is ≈1,55 MB.
+Na het laden van de homepage warmt de site in idle-tijd thumbnails op. Bij aanwijzen, aanraken of focussen van een videotab volgen de hls.js-chunk (behalve op Apple), het begin van geschikte streams en de eerste bytes van de eerste mp4. Een HLS-speler laadt hls.js ook zelf als dat nodig is. Dit gebeurt op alle verbindingen, ook bij mobiele data en Save-Data. Zie `src/voorladen.ts`; de richtwaarde voor het dataverbruik is ≈1,55 MB.
 
 ## Lokaal draaien
 

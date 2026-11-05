@@ -2,8 +2,9 @@
 import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
+import { ICOON_TAGS } from "../src/icoontags";
 
-interface Env { NIEUWS?: { get(key: string, type: "json" | "text"): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
+interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
 type CacheMetDefault = CacheStorage & { default?: Cache };
 type Item = { id?: string; kop: string; ruw?: boolean; cat?: string; bronnen?: { href: string }[] };
@@ -16,7 +17,7 @@ export function vandaagHtml(items: Item[], dag: string): string {
     const rij = lijst.filter((i) => i.cat === cat).slice(0, 200);
     return rij.length ? `<h2>${naam}</h2><ul>${rij.map((i) => `<li><a href="${esc(artikelPad(i, dag))}">${esc(i.kop)}</a></li>`).join("")}</ul>` : "";
   }).join("");
-  return `<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nieuws van vandaag – Nieuws in het kort</title><meta name="description" content="Alle nieuwsberichten van vandaag in het kort, per rubriek."><link rel="canonical" href="https://nieuwsinkort.nl/vandaag"><style>body{font:1.1rem system-ui;max-width:45rem;margin:3rem auto;padding:0 1rem;line-height:1.6}a{color:#174aaa}</style></head><body><main><h1>Nieuws van vandaag</h1>${delen || "<p>Er zijn nog geen berichten voor vandaag.</p>"}<p><a href="/">Naar Nieuws in het kort</a></p></main></body></html>`;
+  return `<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nieuws van vandaag – Nieuws in het kort</title><meta name="description" content="Alle nieuwsberichten van vandaag in het kort, per rubriek."><link rel="canonical" href="https://nieuwsinkort.nl/vandaag">${ICOON_TAGS}<style>body{font:1.1rem system-ui;max-width:45rem;margin:3rem auto;padding:0 1rem;line-height:1.6}a{color:#174aaa}</style></head><body><main><h1>Nieuws van vandaag</h1>${delen || "<p>Er zijn nog geen berichten voor vandaag.</p>"}<p><a href="/">Naar Nieuws in het kort</a></p></main></body></html>`;
 }
 export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const u = new URL(ctx.request.url);

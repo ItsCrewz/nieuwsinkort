@@ -1,3 +1,4 @@
+import { laadDetail } from "./artikel-detail";
 import { memo,useCallback,useLayoutEffect,useMemo,useRef } from "react";
 import { Beelden } from "./beelden";
 import { toonBekendmaking } from "./bekendmaking";
@@ -130,7 +131,7 @@ export function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number
         </span>
       </div>
       <h2 className="nc-title">
-        <a href={`#/bericht/${key}`} onClick={click}>
+        <a href={`#/bericht/${key}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
           {item.kop}
         </a>
       </h2>
@@ -151,7 +152,7 @@ export function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number
       <div className="nc-act">
         <div className="nc-act-row">
         {meer ? (
-          <a className="btn" href={`#/bericht/${key}`} onClick={click} onTouchStart={() => prefetchMeer(item)} onMouseEnter={() => prefetchMeer(item)}>
+          <a className="btn" href={`#/bericht/${key}`} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); void prefetchMeer(item); }}>
             Lees verder
           </a>
         ) : null}
