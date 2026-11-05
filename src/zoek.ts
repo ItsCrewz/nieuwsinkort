@@ -7,7 +7,7 @@ export function normaliseer(tekst: string): string {
 
 export function zoekItems(items: Item[], query: string): Item[] {
   const woorden = normaliseer(query).split(" ").filter(Boolean);
-  if (!woorden.length) return items;
+  if (!woorden.length) return query.trim() ? [] : items;
   return items.filter((item) => {
     const tekst = normaliseer([item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).join(" "));
     return woorden.every((woord) => tekst.includes(woord));
