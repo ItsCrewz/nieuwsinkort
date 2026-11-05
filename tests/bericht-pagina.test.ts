@@ -13,6 +13,17 @@ try {
   assert.ok(html.includes("&lt;script&gt;")); assert.ok(!html.includes("javascript:alert"));
   assert.ok(html.includes(`https://nieuwsinkort.nl${pad}`)); assert.ok(html.includes('property="og:image"'));
   const json = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)![1]); assert.equal(json["@type"], "NewsArticle");
+  const sjabloonMetTijd = sjabloon.replace("</head>", '<meta content="oud" property="article:published_time" /></head>');
+  for (const t of [undefined, "ongeldig", ""]) {
+    const zonderTijd = berichtHtml(sjabloonMetTijd, { ...item, t }, dag);
+    assert.doesNotMatch(zonderTijd, /property="article:published_time"/);
+    assert.match(zonderTijd, /property="og:title" content="Nieuws &lt;script&gt;"/);
+    assert.match(zonderTijd, /name="twitter:description" content="Een eigen samenvatting"/);
+  }
+  for (const [t, verwacht] of [["2026-01-15T12:00:00+01:00", "2026-01-15T11:00:00.000Z"], ["2026-07-15T12:00:00+02:00", "2026-07-15T10:00:00.000Z"]]) {
+    const metTijd = berichtHtml(sjabloonMetTijd, { ...item, t }, dag);
+    assert.deepEqual([...metTijd.matchAll(/<meta property="article:published_time" content="([^"]*)"/g)].map((m) => m[1]), [verwacht]);
+  }
   let reads = 0;
   const env = { ASSETS: { fetch: async (r: Request | string) => String((r as Request).url ?? r).endsWith("/data.json") ? Response.json({}) : new Response(sjabloon, { headers: { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp } }) }, NIEUWS: { get: async () => { reads++; return `${dag}\ntag\n${JSON.stringify({ gegenereerd: new Date(Date.now()).toISOString(), items: [item] })}`; } } };
   const bezoek = (path: string) => onRequestGet({ request: new Request(`https://nieuwsinkort.nl${path}`), env, waitUntil: () => {} });
