@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { preloadBeeld, bronUrl, naarRechtstreeks } from "../src/beelden";
+import { preloadBeeld, bronUrl, naarRechtstreeks, indexNaVerwijderen } from "../src/beelden";
 
 class NepImage {
   static beelden: NepImage[] = [];
@@ -105,3 +105,10 @@ try {
   else Reflect.deleteProperty(globalThis, "Image");
 }
 console.log("preloadBeeld: laad- en cachetests geslaagd");
+// Carrousel: index blijft geldig na verwijderen (#625)
+assert.equal(indexNaVerwijderen(2, 0, 2), 1, "eerdere foto weg: index schuift mee (Foto 2 van 2)");
+assert.equal(indexNaVerwijderen(1, 1, 2), 1, "actieve weg: volgende foto neemt de plek in");
+assert.equal(indexNaVerwijderen(2, 2, 2), 1, "laatste actieve weg: klemt op nieuwe laatste");
+assert.equal(indexNaVerwijderen(0, 1, 1), 0, "latere foto weg: index blijft");
+assert.equal(indexNaVerwijderen(0, 0, 0), 0, "alles weg: geen negatieve index");
+console.log("indexNaVerwijderen: geslaagd");
