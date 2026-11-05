@@ -4,6 +4,7 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
   const [open, setOpen] = useState(!!query);
   const knop = useRef<HTMLButtonElement>(null);
   const invoer = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (query) setOpen(true); }, [query]);
   useEffect(() => { if (open) invoer.current?.focus(); }, [open]);
   const sluit = () => { onChange(""); setOpen(false); knop.current?.focus(); };
   return (

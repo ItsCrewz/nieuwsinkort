@@ -23,3 +23,29 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(opslag);
   expect(verzoeken).toEqual([]);
 });
+
+test("zoekresultaten blijven bij teruggaan en herladen", async ({ page }) => {
+  await page.goto("/?nietmeten=1#/alles");
+  const eerste = page.locator(".nc-title a").first();
+  await expect(eerste).toBeVisible();
+  const titel = await eerste.innerText();
+  const term = titel.match(/[\p{L}]{4,}/u)[0];
+  await page.getByRole("button", { name: "Zoek", exact: true }).click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill(term);
+  await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(term);
+  const resultaat = page.locator(".nc-title a").first();
+  const resultaatTitel = await resultaat.innerText();
+  await resultaat.click();
+  await expect(page).toHaveURL(/#\/bericht\//);
+  await page.goBack();
+  await expect(invoer).toHaveValue(term);
+  await expect(page.locator(".nc-title a").first()).toHaveText(resultaatTitel);
+  await expect(page.locator(".nc-title a").first()).toBeInViewport();
+  await page.reload();
+  await expect(invoer).toHaveValue(term);
+  await expect(page.locator(".nc-title a").first()).toHaveText(resultaatTitel);
+  expect(new URL(page.url()).searchParams.get("nietmeten")).toBe("1");
+  await invoer.press("Escape");
+  expect(new URL(page.url()).searchParams.has("q")).toBe(false);
+});
