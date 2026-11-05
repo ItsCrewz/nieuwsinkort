@@ -1100,11 +1100,12 @@ export default function App() {
         void metOvergang(() => flushSync(update), openen ? "open" : "terug");
       }
       else {
-        startTransition(update);
         if (sluiten && (veeg || !video)) {
+          flushSync(update);
           const overzicht = document.querySelector(".nf, main.wrap");
           if (overzicht) animeer(overzicht, [{ transform: "translateX(-24px)", opacity: 0.6 }, { transform: "translateX(0)", opacity: 1 }], { duration: DUUR[2] });
         }
+        else startTransition(update);
       }
     };
     window.addEventListener("hashchange", onHash);

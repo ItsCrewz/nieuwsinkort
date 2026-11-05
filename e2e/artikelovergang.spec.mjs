@@ -32,10 +32,10 @@ test("verminderde beweging navigeert zonder overgang", async ({ page }) => {
 test("zonder View Transition krijgt de lijst bij sluiten parallax", async ({ page }) => {
   await page.addInitScript(() => {
     document.startViewTransition = undefined;
-    window.parallax = 0;
+    window.parallax = [];
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (frames, opties) {
-      if (this.matches(".nf, main.wrap") && JSON.stringify(frames).includes("-24px")) window.parallax++;
+      if (JSON.stringify(frames).includes("-24px")) window.parallax.push({ lijst: this.matches(".nf"), detail: !!this.closest(".detail") });
       return animate.call(this, frames, opties);
     };
   });
@@ -43,7 +43,7 @@ test("zonder View Transition krijgt de lijst bij sluiten parallax", async ({ pag
   await page.locator(".nc-title a").first().click();
   await expect(page.locator(".detail")).toBeVisible();
   await page.locator(".detail .back").click();
-  await expect.poll(() => page.evaluate(() => window.parallax)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.parallax)).toEqual([{ lijst: true, detail: false }]);
 });
 
 test("tabwissel en browser-terug behouden inhoud zonder overgang", async ({ page }) => {
@@ -113,6 +113,12 @@ test("terugvegen sluit het artikel zonder overgang", async ({ browser, baseURL }
   const page = await context.newPage();
   await page.addInitScript(() => {
     window.overgangen = 0;
+    window.parallax = [];
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (frames, opties) {
+      if (JSON.stringify(frames).includes("-24px")) window.parallax.push({ lijst: this.matches(".nf"), detail: !!this.closest(".detail") });
+      return animate.call(this, frames, opties);
+    };
     const start = document.startViewTransition?.bind(document);
     if (start) document.startViewTransition = (...args) => { window.overgangen++; return start(...args); };
   });
@@ -131,5 +137,6 @@ test("terugvegen sluit het artikel zonder overgang", async ({ browser, baseURL }
   await expect(page.locator("article.detail")).toHaveCount(0);
   await expect(page.locator(".nc-title a").first()).toBeVisible();
   expect(await page.evaluate(() => window.overgangen)).toBe(1);
+  expect(await page.evaluate(() => window.parallax)).toEqual([{ lijst: true, detail: false }]);
   await context.close();
 });

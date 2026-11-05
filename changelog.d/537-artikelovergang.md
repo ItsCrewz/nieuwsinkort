@@ -1,1 +1,2 @@
 - Artikelen openen en sluiten met een rustige overgang die aansluit op terugvegen (#537).
+- Bij terugvegen en zonder View Transition animeert de lijst pas nadat deze weer zichtbaar is.
