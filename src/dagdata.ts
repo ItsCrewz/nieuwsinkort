@@ -142,11 +142,15 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   if (u.searchParams.has("statisch") || !env.NIEUWS) {
     return new Response(stat.body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
   }
-  const S: any = await stat.json();
+  // Onleesbare of onbruikbare statische data (geen object) is geen reden om te falen: dan telt alleen de uurdata.
+  let S: any = null;
+  try { const j = await stat.json(); if (j && typeof j === "object" && !Array.isArray(j)) S = j; } catch { console.error("data.json: statische data onleesbaar"); }
   let H: any = null;
   try { H = await env.NIEUWS.get("uur", kvOpt("json")); } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
   let out: any = S;
   try { out = merge(S, H); } catch { console.error("data.json: merge mislukt"); out = S; }
+  // Zonder bruikbare statische data moet de uurdata van vandaag het dragen; anders een gecontroleerde 503.
+  if (!S && !(out && typeof out === "object" && Array.isArray(out.items))) return new Response(JSON.stringify({ fout: "Data tijdelijk niet beschikbaar" }), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
   try { out = alleenVandaag(out, Date.now()); } catch { console.error("data.json: dagfilter mislukt"); }
   try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
   // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
