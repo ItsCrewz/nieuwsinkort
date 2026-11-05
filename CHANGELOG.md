@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Zoeken ondersteunt aaneengesloten woordgroepen tussen dubbele aanhalingstekens (#634).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
