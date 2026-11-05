@@ -1,0 +1,1 @@
+- Ongebruikte CSS verwijderd: Tailwind-preflight ingekort tot wat de app rendert (geen `--tw-*`-defaults), een ongebruikte custom property (`--ease-veer`) en overschreven `.nc-act`-declaraties; CSS-gzip 12119 → 11335 B, uiterlijk ongewijzigd (#577).
