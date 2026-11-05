@@ -44,5 +44,5 @@ for (const [eerste, tweede] of [
 }
 
 const item = { ...JSON.parse(readFileSync("tests/fixtures/joey/delhaize.json", "utf8")).item, ai: "Importheffingen van de EU treffen de VS.", samenvatting: "", punten: ["Importheffingen van de VS treffen de EU."] };
-const html = renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false, dag: "2026-11-03" }));
+const html = renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false }));
 assert.ok(html.includes("Importheffingen van de VS treffen de EU."));

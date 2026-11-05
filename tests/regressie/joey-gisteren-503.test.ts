@@ -88,5 +88,5 @@ try {
 } finally { Date.now = oudeKlok; }
 const leeg = data(zeven, [], []);
 assert.equal(kiesNieuweData(met, leeg), leeg);
-assert.equal(verwijderGisteren(met as Parameters<typeof verwijderGisteren>[0], ms("2026-11-03T08:59:00Z")), met);
-assert.deepEqual(verwijderGisteren(met as Parameters<typeof verwijderGisteren>[0], ms("2026-11-03T09:00:00Z")).filmpjes, []);
+assert.equal(verwijderGisteren(met, ms("2026-11-03T08:59:00Z")), met);
+assert.deepEqual(verwijderGisteren(met, ms("2026-11-03T09:00:00Z")).filmpjes, []);

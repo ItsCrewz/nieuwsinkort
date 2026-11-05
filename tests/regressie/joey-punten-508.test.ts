@@ -6,7 +6,7 @@ import { DetailView } from "../../src/detail";
 import type { Item } from "../../src/types";
 
 const [ahold, normaal] = JSON.parse(readFileSync("tests/fixtures/joey/punten-ahold-508.json", "utf8")) as Item[];
-const toon = (item: Item) => renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false, dag: "2026-11-03" }));
+const toon = (item: Item) => renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false }));
 assert.doesNotMatch(toon(ahold), /festival over kunst|capaciteit van datacenters/);
 console.log("ok - Ahold: punten van andere berichten verdwijnen");
 assert.match(toon(normaal), /niet duidelijk hoe de brand is ontstaan/);

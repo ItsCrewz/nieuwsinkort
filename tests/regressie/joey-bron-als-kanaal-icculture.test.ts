@@ -37,7 +37,7 @@ await t("beide prompts verbieden de bron als verkoper, aanbieder of kanaal", asy
 });
 
 await t("bestaand item: de detailpagina toont de zin zonder 'via iCulture' (client, geen nieuwe samenvatting nodig)", () => {
-  const h = renderToStaticMarkup(createElement(DetailView, { item: fx.item, onBack: () => {}, bionic: false, dag: "2026-11-03" }));
+  const h = renderToStaticMarkup(createElement(DetailView, { item: fx.item, onBack: () => {}, bionic: false }));
   assert.ok(h.includes("Ook komt er een nieuwe reisset beschikbaar."), "zin blijft, zonder bron");
   assert.ok(!h.includes("beschikbaar via iCulture"));
   assert.ok(h.includes("iculture.nl/nieuws/apple-macbook-opladers-ac-connector-2"), "de bronlink blijft");
