@@ -12,11 +12,12 @@ g.Date = class extends echteDatum {
   constructor(...args: any[]) { super(...(args.length ? args : [nu]) as [any]); }
   static now() { return nu; }
 };
-const venster = new EventTarget() as EventTarget & { matchMedia: () => { matches: boolean }; setTimeout: (fn: () => void, ms: number) => number };
+const venster = new EventTarget() as EventTarget & { matchMedia: () => { matches: boolean }; setTimeout: (fn: () => void, ms: number) => number; clearTimeout: (id?: number) => void };
 let minderBeweging = false;
 let timer: { fn: () => void; ms: number } | undefined;
 venster.matchMedia = () => ({ matches: minderBeweging });
 venster.setTimeout = (fn, ms) => (timer = { fn, ms }, 1);
+venster.clearTimeout = () => {};
 g.window = venster;
 const focus: string[] = [];
 const vorig = { focus: () => focus.push("vorig") };
@@ -27,9 +28,11 @@ const intern = (React as any).__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
 let closing = false;
 let effect: (() => () => void) | undefined;
 const paneel = {};
+let refs: any[] = [];
+let refIndex = 0;
 intern.current = {
   useState: () => [closing, (v: boolean) => { closing = v; }],
-  useRef: (() => { let index = 0; return () => ({ current: index++ % 2 === 0 ? paneel : { focus: () => focus.push("sluiten") } }); })(),
+  useRef: (initial: unknown) => { const i = refIndex++; return refs[i] ?? (refs[i] = { current: initial === null ? (i === 0 ? paneel : { focus: () => focus.push("sluiten") }) : initial }); },
   useEffect: (fn: () => () => void) => { effect = fn; },
 };
 const groepen: SourceGroup[] = [{
@@ -44,7 +47,7 @@ const groepen: SourceGroup[] = [{
 const calls: unknown[] = [];
 let gesloten = 0;
 const props = { groups: groepen, weer: [{ site: "KNMI", href: "javascript:alert(1)" }], off: new Set(["b"]), setMany: (keys: string[], on: boolean) => calls.push([keys, on]), reset: () => calls.push("reset"), onClose: () => { gesloten++; } };
-const render = () => SourcesSheet(props) as any;
+const render = () => { refIndex = 0; return SourcesSheet(props) as any; };
 function vind(node: any, pred: (n: any) => boolean): any[] {
   if (node == null || typeof node !== "object") return [];
   return [...(pred(node) ? [node] : []), ...React.Children.toArray(node.children ?? node.props?.children).flatMap((kind) => vind(kind, pred))];
@@ -86,12 +89,14 @@ const sheet = nodes(geslotenRoot, "div").find((n) => n.props.className === "shee
 sheet.props.onAnimationEnd({ target: {} });
 assert.equal(gesloten, 1);
 sheet.props.onAnimationEnd({ target: paneel });
-assert.equal(gesloten, 2);
+assert.equal(gesloten, 1);
 opruimen();
 assert.equal(body.style.overflow, "auto");
 assert.deepEqual(focus, ["sluiten", "vorig"]);
 minderBeweging = true;
+refs = [];
+closing = false;
 const scrim = nodes(render(), "button").find((n) => n.props.className === "scrim");
 scrim.props.onClick();
-assert.equal(gesloten, 3);
+assert.equal(gesloten, 2);
 console.log("sheet: tests geslaagd");

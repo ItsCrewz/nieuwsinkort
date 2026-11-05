@@ -104,6 +104,8 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 | --- | --- | --- |
 | `index` | React, `App.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
 | `sheet` | `SourcesSheet` | bij openen van Bronnen |
+
+Het bronnenvenster rondt sluiten eenmaal af via het animatie-einde of een vangnet na 360 ms. Bij ontkoppelen wordt de timer gewist; bij verminderde beweging sluit het venster direct en wordt de focus hersteld.
 | `filters-blad` | `FilterBlad` | bij openen van het filterblad |
 | `detail` | `DetailView` (`#/bericht/...`) | bij openen van een bericht |
 | `video` | `VideoGrid` (Filmpjes/Dumpert-overzicht) | op een videoroute |
