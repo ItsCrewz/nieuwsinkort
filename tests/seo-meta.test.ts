@@ -27,6 +27,7 @@ t("JSON-LD is geldige JSON met verplichte velden", () => {
   assert.equal(ld["@context"], "https://schema.org");
   const per = (type: string) => ld["@graph"].find((n: any) => n["@type"] === type);
   const site = per("WebSite"), org = per("NewsMediaOrganization");
+  assert.equal(site.name, "Nieuws in het kort");
   assert.equal(site.url, "https://nieuwsinkort.nl/");
   assert.equal(org.name, "Nieuws in het kort");
   assert.equal(org.url, "https://nieuwsinkort.nl/");
@@ -66,6 +67,7 @@ const controleer = (h: string) => {
   const m = (a: string, n: string) => k.match(new RegExp(`<meta ${a}="${n}" content="([^"]*)"`))?.[1];
   assert.equal(k.match(/<title>([^<]*)<\/title>/)?.[1], TITEL);
   assert.equal(m("property", "og:title"), TITEL);
+  assert.equal(m("property", "og:site_name"), "Nieuws in het kort");
   assert.equal(m("name", "twitter:title"), TITEL);
   assert.equal(m("name", "description"), DESC);
   assert.equal(m("property", "og:description"), DESC);
@@ -78,4 +80,5 @@ t("een gerenderde /bericht-pagina houdt een eigen, afwijkende title", () => {
   const titel = h.match(/<title>([^<]*)<\/title>/)![1];
   assert.equal(titel, "Kabinet presenteert nieuw plan – Nieuws in het kort");
   assert.notEqual(titel, TITEL);
+  assert.match(h, /<meta property="og:site_name" content="Nieuws in het kort"\s*\/>/);
 });
