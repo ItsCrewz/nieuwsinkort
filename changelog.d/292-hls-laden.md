@@ -1,0 +1,1 @@
+- Verduidelijkt en controleert dat hls.js pas bij een videotab of HLS-speler laadt, niet bij het openen van de homepage (#292).
