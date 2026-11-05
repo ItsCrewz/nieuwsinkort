@@ -111,6 +111,33 @@ test("videofeed geopend vóór de uitgestelde CSS: geen opnieuw infaden", async 
   vrij();
   await expect.poll(() => duur(page, ".f-btn"), { timeout: 10000 }).not.toBe("0s");
   await page.waitForTimeout(500);
-  expect(await page.evaluate(() => document.getAnimations().filter((a) => a.animationName === "fadein" || a.animationName === "nfs").length)).toBe(0);
+expect(await page.evaluate(() => document.getAnimations().filter((a) => (a.animationName === "fadein" || a.animationName === "nfs") && a.playState === "running").length)).toBe(0);
   expect(await page.evaluate(() => [...window.__op])).toEqual(["1"]);
+});
+
+// Animaties van gebruikersinteractie tijdens een traag CSS-verzoek (artikelovergang, kaartentree) mogen niet worden geannuleerd.
+// Via CDP lopen alle animaties 100x trager, zodat ze het vrijgeven van de sheet overleven zonder dat de test van timing afhangt.
+test("interactie-animatie tijdens vertraagd CSS-verzoek loopt normaal door", async ({ page }) => {
+  await blokkeerExtern(page);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Animation.enable");
+  await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.01 });
+  const vrij = await houdUitgesteld(page);
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  expect(await duur(page, ".nc-title a")).toBe("0s"); // sheet is er echt nog niet
+  // routewissel: .page-in { animation: up } (kritiek) start door een gebruikersactie, zonder View Transition
+  await page.evaluate(() => { location.hash = "#/dumpert"; });
+  await expect.poll(() => page.evaluate(() => document.getAnimations().some((a) => a.animationName === "up" || a.animationName === "fadein"))).toBe(true);
+  const n = await page.evaluate(() => {
+    window.__ia = document.getAnimations().filter((a) => !a.effect?.pseudoElement && a.effect?.getComputedTiming().iterations !== Infinity);
+    window.__ia.forEach((a) => { a.finished.catch(() => { a.__geannuleerd = true; }); });
+    return window.__ia.length;
+  });
+  expect(n).toBeGreaterThan(0);
+  vrij();
+  await expect.poll(() => duur(page, ".nc-title a, .back, .iconbtn"), { timeout: 10000 }).not.toBe("0s");
+  await page.waitForTimeout(300);
+  const staat = await page.evaluate(() => window.__ia.map((a) => [a.animationName, a.playState, !!a.__geannuleerd]));
+  expect(staat.filter((s) => s[2] || s[1] === "idle")).toEqual([]);
 });
