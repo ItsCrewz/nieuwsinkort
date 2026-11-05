@@ -9,7 +9,7 @@ function beeld(url: string, alleenPreview = false): string {
   } catch { return ""; }
 }
 
-function video(url: string): { embed: string; thumb: string; short?: boolean } | undefined {
+export function video(url: string): { embed: string; thumb: string; short?: boolean } | undefined {
   try {
     const u = new URL(decode(url));
     if (u.protocol !== "https:" && u.protocol !== "http:") return;

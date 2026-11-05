@@ -6,6 +6,7 @@
 // Whisper. Per alarm hooguit MAX_CALLS verzoeken (free plan: 50 subrequests) en PER_ALARM neuronen; daarna
 // eventueel een volgend alarm (max 3 per uur) zodat het werk over het uur verspreid wordt.
 import { videoSlug } from "../../src/slug";
+import { haal } from "./haal";
 import { soortVan } from "./videos";
 
 const MAX_CALLS = 30;
@@ -31,7 +32,7 @@ const sha1 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest(
 /** `vorig` = hash en tijd van de laatst geschreven `sv-klaar` (bewaart de Runner in DO-opslag); de nieuwe hash komt terug in `svKlaar`. */
 export async function vooraf(env: { NIEUWS: KVNamespace; SITE: string; BUDGET?: string }, perAlarm: number, vorig?: { h: string; at: number } | null) {
   const T0 = Date.now();
-  const d: any = await (await fetch(`${env.SITE}/data.json?vooraf=${T0}`, { signal: AbortSignal.timeout(15000) })).json();
+  const d: any = await (await haal(`${env.SITE}/data.json?vooraf=${T0}`, { timeout: 15000 })).json();
   const lijst = volgorde(d);
   const ids = lijst.map((v) => videoSlug(v as any));
   const cache = await Promise.all(ids.map((id) => env.NIEUWS.get(`vs:${id}`, "json").catch(() => null)));

@@ -2,6 +2,7 @@
 //  1. api.fxtwitter.com/2/profile/<naam>/statuses  (FxEmbed, open JSON-API; laatste ±20 posts, met MP4-varianten)
 //  2. terugval: syndication.twitter.com timeline-profile (de officiële embed-tijdlijn, __NEXT_DATA__)
 // Reposts van anderen slaan we over: alleen wat het account zelf post.
+import { haal } from "./haal";
 import type { Entry } from "./parse";
 import { kortGetal, type Video } from "./videos";
 
@@ -26,14 +27,14 @@ function fromFx(s: any, user: string): XPost | null {
   };
 }
 export async function xFx(user: string): Promise<XPost[]> {
-  const r = await fetch(`https://api.fxtwitter.com/2/profile/${user}/statuses`, { headers: { "User-Agent": "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)" }, signal: AbortSignal.timeout(12000) });
+  const r = await haal(`https://api.fxtwitter.com/2/profile/${user}/statuses`, { ua: "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)", timeout: 12000 });
   if (!r.ok) throw new Error(`fxtwitter HTTP ${r.status}`);
   const j: any = await r.json();
   if (j?.code !== 200) throw new Error(`fxtwitter ${j?.code || "?"}`);
   return ((j.results || []) as any[]).map((s) => fromFx(s, user)).filter(Boolean) as XPost[];
 }
 export async function xSyndication(user: string): Promise<XPost[]> {
-  const r = await fetch(`https://syndication.twitter.com/srv/timeline-profile/screen-name/${user}`, { headers: { "User-Agent": BR_UA, Accept: "text/html" }, signal: AbortSignal.timeout(12000) });
+  const r = await haal(`https://syndication.twitter.com/srv/timeline-profile/screen-name/${user}`, { ua: BR_UA, accept: "text/html", timeout: 12000 });
   if (!r.ok) throw new Error(`syndication HTTP ${r.status}`);
   const h = await r.text();
   const m = /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/.exec(h);

@@ -279,13 +279,13 @@ export function kvPoort(env: Env): Poort {
       const video = +(await env.NIEUWS.get(`vid-neurons:${r.datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
       if (r.nieuws + video + r.reserve + r.marge + r.schatting > r.budget) return "budget";
       const uurKey = `vs-uur:${r.uur}`;
-      const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0;
+      const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0; // bewust stil: de Whisper-rem is hier best-effort, de budgetcontrole hierboven blijft gelden
       if (nUur >= MAX_WHISPER_UUR) return "druk";
-      await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => {});
+      await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
       await optel(env, `vid-neurons:${r.datum}`, r.schatting);
       return "ok";
     }),
-    async verreken(datum, delta) { await addNeurons(env, `vid-neurons:${datum}`, delta).catch(() => { console.error("samenvatting: KV schrijven mislukt"); }); },
+    async verreken(datum, delta) { await addNeurons(env, `vid-neurons:${datum}`, delta).catch(() => { console.error("samenvatting: verrekening verloren"); }); },
   };
 }
 
@@ -335,7 +335,7 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
     if (e instanceof PoortFout) return nietBeschikbaar();
     throw e;
   } finally {
-    await poort.geefVrij(id, tok).catch(() => {});
+    await poort.geefVrij(id, tok).catch(() => { console.error("samenvatting: slot vrijgeven mislukt"); });
   }
 };
 
@@ -423,7 +423,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
     if (p.length < 2) {
       why.push("samenvatting leeg");
       const out = { ok: false, code: "fout", fout: MSG.fout };
-      await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => {});
+      await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
       return uit(out);
     }
     const out = { ok: true, punten: p, bron, sec, model: resultaat.model, neuronen: Math.round(u.neurons * 10) / 10, gemaakt: new Date().toISOString(), ...(pre ? { vooraf: true } : {}) };
@@ -442,7 +442,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
     if (soort === "tijdelijk") return json({ ok: false, code: "fout", fout: MSG.fout }, 503); // rate-limit: niet cachen, later opnieuw
     why.push(m.slice(0, 120));
     const out = { ok: false, code: "fout", fout: MSG.fout };
-    await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => {});
+    await env.NIEUWS.put(key, JSON.stringify(out), { expirationTtl: FOUT_TTL }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
     return uit(out, 500);
   }
 }
@@ -450,7 +450,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
 let kvKeten: Promise<unknown> = Promise.resolve();
 function opKv<T>(f: () => Promise<T>): Promise<T> {
   const r = kvKeten.then(f, f);
-  kvKeten = r.catch(() => {});
+  kvKeten = r.catch(() => {}); // bewust stil: de aanroeper krijgt de fout via r, de keten mag niet breken
   return r;
 }
 export const addNeurons = (env: Env, k: string, n: number) => opKv(() => optel(env, k, n));

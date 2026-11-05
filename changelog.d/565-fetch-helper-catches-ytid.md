@@ -1,0 +1,1 @@
+- Worker: gedeelde `haal()` (`worker/src/haal.ts`) voor `get`, `igGet`, X en vooraf-data (zelfde headers en time-outs); stille catches in Worker en Functions gelogd of van commentaar voorzien; foutmelding bij verrekenen in `samenvatting.ts` gecorrigeerd; test `tests/youtube-id-regex.test.ts` legt de verschillen tussen de YouTube-ID-regexes vast (#565).

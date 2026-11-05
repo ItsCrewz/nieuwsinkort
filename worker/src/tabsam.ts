@@ -25,7 +25,7 @@ export async function maakTabSam(kv: KV, tab: string, items: TabArtikel[], now: 
     if (cached?.sam?.tekst && cached.sam.ai === true && leeftijd >= 0 && (cached.hash === hash || leeftijd < 6 * 3600e3)) return { sam: cached.sam, geschreven: false };
   } catch { /* zonder cache verder */ }
   let tekst = "", bron = "extractief";
-  if (maak) try { ({ tekst, bron } = await maak()); } catch { /* extractieve terugval */ }
+  if (maak) try { ({ tekst, bron } = await maak()); } catch { console.error("tabsam: AI mislukt"); /* extractieve terugval */ }
   const ai = !!tekst;
   if (!tekst) tekst = items.slice(0, 3).map((i) => (i.ai || i.kop).trim().split(/(?<=[.!?])\s/)[0].slice(0, 160).replace(/[.!?…]*$/, ".")).join(" ");
   const sam = { tekst, ai, bron, gegenereerd: new Date(now).toISOString() };

@@ -20,6 +20,7 @@ import { YT_NIEUWS, ytUrl, REDDIT_SUBS, redditUrl, DUMPERT_URL, parseDumpert, pa
 import { summarize, inHetKort, simpelWeer, isPromptEcho, verdiep, telAanroepFout, type Usage, type In, type Sum, type Diep } from "./ai";
 import { artikelTekst, jinaTekst } from "./artikel";
 import { externeUrl, externeFetch } from "./url";
+import { haal } from "./haal";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
 import { vooraf, MAX_ALARMS_PER_UUR } from "./vooraf";
 import { tierVan, jobGroep, verdeelJobs, ytControleMag, type TierCache } from "./tier";
@@ -82,7 +83,7 @@ type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" 
 type Res = { url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
-const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
+const igGet = (url: string) => haal(url, { ua: IG_UA, accept: "text/html", taal: "nl-NL,nl;q=0.9", timeout: 15000 });
 
 // Instagram: profiel-embed -> entries (bronstats) + van vandaag de video's met hun MP4 (max 3 per account).
 async function runInsta(j: Job, _since: number, t0: number, ig?: IgCache): Promise<Res> {
@@ -105,7 +106,7 @@ async function runInsta(j: Job, _since: number, t0: number, ig?: IgCache): Promi
         if (mp4 && ig) { ig.map[p.code] = [mp4, now]; ig.vuil = true; }
       }
       if (mp4) videos.push(igVideo(p, mp4, j.label || user, hhmm));
-    } catch { /* deze video overslaan */ }
+    } catch { console.error("insta: video overslaan na fout"); /* de rest van het profiel gaat door */ }
   }
   return {
     url: j.url, ok: true, status: 200, ms: Date.now() - t0, total: entries.length, videos,
@@ -183,7 +184,7 @@ async function get(url: string, timeout = 15000, ua = UA): Promise<Response> {
   const accept = /\/sru\?/.test(url) ? "application/xml, text/xml" : "application/rss+xml, application/atom+xml, application/xml, text/xml, application/json, text/html;q=0.8, */*;q=0.5";
   // ORI-elastic zonder query geeft willekeurige documenten: nieuwste eerst
   if (/openraadsinformatie\.nl\/.*\/_search$/.test(url)) url += "?size=50&sort=start_date:desc&_source=name,start_date,last_discussed_at,date_modified,@type";
-  return fetch(url, { headers: { "User-Agent": ua, Accept: accept, "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8" }, signal: AbortSignal.timeout(timeout), redirect: "follow" });
+  return haal(url, { ua, accept, taal: "nl-NL,nl;q=0.9,en;q=0.8", timeout, redirect: "follow" });
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let redlibN = 0;
@@ -197,7 +198,7 @@ async function viaRedlib(url: string): Promise<Response | null> {
       if (!r.ok) continue;
       const atom = redlibToAtom(await r.text(), host);
       if (atom) return new Response(atom, { status: 200, headers: { "x-via": `redlib:${host}` } });
-    } catch { /* volgende instance */ }
+    } catch { /* bewust stil: onbereikbare redlib-instance, de volgende wordt geprobeerd */ }
   }
   return null;
 }
@@ -298,7 +299,7 @@ export class Fetcher extends DurableObject<Env> {
       if (r.ok) { await this.ctx.storage.put(key, { at: Date.now(), entries: r.entries || [], videos: r.videos || [], newest: r.newest ?? null }); return r; }
       const c: any = await this.ctx.storage.get(key);
       if (c && c.at >= since) return { ...r, cachedAt: c.at, entries: c.entries, videos: c.videos, newest: c.newest };
-    } catch { /* opslag optioneel */ }
+    } catch { console.error("fetcher: DO-opslag mislukt"); /* opslag is optioneel, het ophaalresultaat blijft */ }
     return r;
   }
 }
@@ -809,7 +810,7 @@ export class Runner extends DurableObject<Env> {
       let nieuwOg = false;
       for (const r of rs) if (ogSet.has(r?.url) && typeof r.text === "string" && (r.ok || r.status === 404 || r.status === 403)) { ogCache[ogSl(r.url)] = [r.text, now]; nieuwOg = true; }
       if (nieuwOg) { ogCache = ruimOg(ogCache, now); await opslag.put("ogcache", ogCache).catch(() => console.error("ogcache schrijven mislukt")); }
-    } catch { /* zonder og-foto's verder */ }
+    } catch { console.error("og: foto-ophalen mislukt"); /* zonder og-foto's verder */ }
     for (const u of ogLinks) { const c = ogVers(ogCache, ogSl(u), now); if (c?.[0]) og.set(u, c[0]); }
     const items: any[] = [];
     for (const k of shown) {
