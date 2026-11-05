@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Herstel de videopositie via de geschiedenis als sessieopslag niet beschikbaar is of ongeldige gegevens bevat (#732).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
