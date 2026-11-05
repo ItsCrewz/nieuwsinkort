@@ -1,10 +1,28 @@
 import { useEffect, useRef, useState } from "react";
+import { staatFocusInInvoer } from "./zoekfocus";
 
 export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange: (query: string) => void; aantal: number }) {
   const [open, setOpen] = useState(!!query);
   const knop = useRef<HTMLButtonElement>(null);
   const invoer = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) invoer.current?.focus(); }, [open]);
+  useEffect(() => {
+    const toets = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        e.preventDefault();
+        e.stopPropagation();
+        onChange("");
+        setOpen(false);
+        knop.current?.focus();
+      } else if (e.key === "/" && !open && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing &&
+        window.matchMedia("(hover: hover) and (pointer: fine)").matches && !staatFocusInInvoer(document.activeElement as HTMLElement | null)) {
+        e.preventDefault();
+        setOpen(true);
+      }
+    };
+    document.addEventListener("keydown", toets);
+    return () => document.removeEventListener("keydown", toets);
+  }, [open, onChange]);
   const sluit = () => { onChange(""); setOpen(false); knop.current?.focus(); };
   return (
     <div className="zoek-container">
