@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Herken artikelbeelden in meta-attributen met witruimte rond het gelijkteken (#734).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
