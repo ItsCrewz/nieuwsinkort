@@ -180,6 +180,19 @@ export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: stri
     .map(({ item }) => item);
   return { items: out, tijd, auto, per, nieuwSinds: vorig ? per.sinds : 0 };
 }
+// Vernieuw relatieve videovensters ook als de server dezelfde data terugstuurt.
+export function useVideoKlok(tijd: Tijd): number {
+  const [tik, setTik] = useState(0);
+  useEffect(() => {
+    if (tijd !== "1u" && tijd !== "3u") return;
+    const ververs = () => setTik((n) => n + 1);
+    const timer = window.setInterval(ververs, 60_000);
+    const zichtbaar = () => { if (document.visibilityState === "visible") ververs(); };
+    document.addEventListener("visibilitychange", zichtbaar);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zichtbaar); };
+  }, [tijd]);
+  return tik;
+}
 /** Filmpjes: alleen het tijdfilter (de rest gaat over berichten). Automatisch = Vandaag, of Alles als er vandaag nog bijna niets is. */
 export function filterVideos(list: Video[], f: Filters, vorig: number, gen: string | undefined): Video[] {
   if (f.tijd === "alles") return list;
