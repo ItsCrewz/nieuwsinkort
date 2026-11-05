@@ -42,19 +42,19 @@ export function negeerDoel(el: Element | null, grens: Element | null = null): bo
 const selectie = () => { const s = window.getSelection?.(); return !!s && !s.isCollapsed && s.toString().length > 0; };
 
 // Pagina volgt de vinger; los te vroeg = terugveren, anders onBack (history.back via de bestaande sluitroute).
-export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () => void) {
+export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opties?: { geveegd?: boolean }) => void) {
   const terug = useRef(onBack);
   terug.current = onBack;
   useLayoutEffect(() => {
     let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" = "uit";
     const el = () => ref.current;
-    const zet = (x: number, anim: boolean) => {
+    const zet = (x: number, anim: boolean, veer = false) => {
       const e = el();
       if (!e) return;
-      e.style.transition = anim ? "transform .2s" : "none";
+      e.style.transition = anim ? `transform var(--dur-2) var(${veer ? "--ease-veer" : "--ease-uit"})` : "none";
       e.style.transform = x ? `translateX(${x}px)` : "";
     };
-    const klaar = () => { const e = el(); if (e) { e.style.transition = ""; e.style.transform = ""; } document.body.style.overflowX = ""; };
+    const klaar = () => { const e = el(); if (e) { e.style.transition = ""; e.style.transform = ""; e.classList.remove("veegt"); } document.body.style.overflowX = ""; };
     const start = (ev: TouchEvent) => {
       stand = "uit";
       const t = ev.touches[0];
@@ -72,6 +72,7 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
         if (b === "wacht") return;
         if (b === "nee") { stand = "uit"; return; }
         stand = "veeg";
+        el()?.classList.add("veegt");
         document.body.style.overflowX = "hidden";
       }
       if (ev.cancelable) ev.preventDefault();
@@ -83,11 +84,11 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
       if (was !== "veeg") return;
       const breed = window.innerWidth;
       if (ev.type !== "touchcancel" && sluit(dx, breed, ev.timeStamp - t0)) {
-        if (rustig()) { klaar(); terug.current(); return; }
+        if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
         zet(breed, true);
-        setTimeout(() => { terug.current(); klaar(); }, 200);
+        setTimeout(() => { terug.current({ geveegd: true }); klaar(); }, 180);
       } else if (rustig()) klaar();
-      else { zet(0, true); setTimeout(klaar, 220); }
+      else { zet(0, true, true); setTimeout(klaar, 200); }
     };
     document.addEventListener("touchstart", start, { passive: true });
     document.addEventListener("touchmove", beweeg, { passive: false });

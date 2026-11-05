@@ -38,7 +38,7 @@ img,video{max-width:100%;height:auto}
   --w:#a15c00; --wb:#fdf5e8; --rd:#b3261e; --rb:#fcecea; --o:#b35400; --ob:#fdf0e6;
   --sn:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --dur-1:120ms; --dur-2:180ms; --dur-3:240ms; --dur-4:320ms;
-  --ease-standaard:cubic-bezier(.2,0,0,1); --ease-in:cubic-bezier(.05,.7,.1,1); --ease-uit:cubic-bezier(.3,0,.8,.15);
+  --ease-standaard:cubic-bezier(.2,0,0,1); --ease-in:cubic-bezier(.05,.7,.1,1); --ease-uit:cubic-bezier(.3,0,.8,.15); --ease-veer:cubic-bezier(.3,1.4,.5,1);
   --stap:30ms; --schuif:8px;
   --e:var(--ease-standaard); --eo:var(--ease-uit);
   --f:140ms; --bs:200ms; --pg:260ms;
@@ -61,7 +61,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 
 .app{
   font-family:var(--sn); font-size:1rem; line-height:1.6; font-weight:400; color:var(--ink); background:var(--p); min-height:100vh;
-  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
 }
 .app,.app *{box-sizing:border-box}
 :where(.app) :where(h1,h2,h3,p,ul,ol,dl,dd){margin:0}
@@ -258,6 +258,8 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 
 /* ---------- Detail ---------- */
 .detail{max-width:660px;margin:0 auto;padding:32px 0 8px}
+.detail.veegt{position:relative}
+.detail.veegt::before{content:"";position:absolute;inset:0 100% 0 auto;width:24px;background:linear-gradient(to left,rgba(0,0,0,.18),transparent);pointer-events:none}
 .back{display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:0.875rem;color:var(--muted)}
 .back:hover{color:var(--ink)}
 .back .ic{transition:transform var(--f) var(--e)}
@@ -285,6 +287,7 @@ li:last-child > .srcrow,.srcrow:last-child{border-bottom:0}
 .srcrow:hover .s-title{text-decoration:underline;text-underline-offset:3px}
 .mono{flex:none;display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:var(--r2);font-size:0.625rem;font-weight:600;overflow:hidden}
 .mono img{width:16px;height:16px}
+.mono.m::before{content:attr(data-m)}
 .s-title{font-size:0.9375rem;font-weight:500}
 .s-out{flex:1;min-width:0;font-size:0.8125rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .srcrow .ic{color:var(--muted)}
@@ -292,8 +295,8 @@ li:last-child > .srcrow,.srcrow:last-child{border-bottom:0}
 /* ---------- Verticale video-feed ---------- */
 .feed{position:fixed;inset:0;z-index:60;height:100vh;height:100dvh;background:#000;color:#fff;animation:fadein 240ms var(--e) backwards;overscroll-behavior:contain;touch-action:pan-y}
 .feed.out{animation:fadeout 180ms var(--eo) both}
-.feed-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
-.feed-scroll::-webkit-scrollbar{display:none}
+.feed-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;outline:0}
+.feed-scroll::-webkit-scrollbar,.nf::-webkit-scrollbar,.nc-in.fit-scroll::-webkit-scrollbar,.bl-track::-webkit-scrollbar{display:none}
 .fslide{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;justify-content:center;contain:size layout style}
 .fcol{position:relative;aspect-ratio:9/16;height:100%;width:min(100%,calc(100dvh * 9 / 16));background:#000;overflow:hidden;container-type:size}
 .f-poster,.f-media{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border:0;display:block}
@@ -367,7 +370,7 @@ iframe.f-media{opacity:1}
 .sh-intro{font-size:0.875rem;line-height:1.55;color:var(--muted);margin-top:4px;max-width:46ch}
 .sh-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0 10px}
 .sh-state{font-size:0.8125rem;color:var(--muted)}
-.sh-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 24px 40px;-webkit-overflow-scrolling:touch}
+.sh-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 24px 40px}
 .sh-group{padding-top:24px}
 .sh-group .kicker{color:var(--ink);font-size:0.875rem}
 .sh-ghead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 2px}
@@ -481,8 +484,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .app-feed .tabs{position:relative;top:auto;margin:0 -32px;border-bottom:0}
 .app-feed .filternote{border-bottom:0}
 .nf-box{position:relative;flex:1;min-height:0}
-.nf{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;outline:none;-webkit-overflow-scrolling:touch}
-.nf::-webkit-scrollbar{display:none}
+.nf{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;outline:none}
 .nc-head{min-height:100%;scroll-snap-align:start;padding-bottom:72px}
 .nc-head .dateline{padding-left:0;padding-right:0;padding-top:28px}
 .nc-head .front{padding-bottom:0}
@@ -514,7 +516,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nc-in > *, .nc-body > *{flex:none}
 .nc-in.fit-nopts .nc-pts{display:none}
 .nc-in.fit-scroll{overflow-y:auto;overscroll-behavior:contain;justify-content:flex-start;scrollbar-width:none}
-.nc-in.fit-scroll::-webkit-scrollbar{display:none}
 .nc-img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:var(--seg);flex:none;max-height:38cqh}
 .nc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:0.84375rem;line-height:1.4;color:var(--muted)}
 .nc-meta > * + *::before{content:"·";margin-right:8px;color:var(--muted)}
@@ -595,8 +596,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .skip:focus{top:8px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border-width:0}
 .bl{position:relative;border-radius:12px;overflow:hidden;background:var(--seg);isolation:isolate;flex:none}
-.bl-track{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
-.bl-track::-webkit-scrollbar{display:none}
+.bl-track{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x pan-y}
 .bl-slide{flex:0 0 100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;overflow:hidden}
 .bl-slide img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 260ms var(--e);-webkit-user-drag:none;user-select:none}
 .bl-slide img.in{opacity:1}
@@ -634,7 +634,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .sv-x:hover{background:rgba(0,0,0,.06)}
 .sv-x .ic{width:20px;height:20px}
 .sv-titel{margin:2px 0 10px;font-size:0.84375rem;line-height:1.4;color:rgba(0,0,0,.6);overflow-wrap:anywhere}
-.sv-body{overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.sv-body{overflow-y:auto;min-height:0;overscroll-behavior:contain}
 .sv-punten{margin:0;padding:0 0 0 20px;display:flex;flex-direction:column;gap:9px}
 .sv-punten li{font-size:1rem;line-height:1.45;overflow-wrap:anywhere}
 .sv-punten li::marker{color:var(--a)}
@@ -719,3 +719,15 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .zoek-leeg{padding:24px;text-align:center;overflow-wrap:anywhere}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
+
+/* Artikel en overzicht bewegen onder de stilstaande topbalk. */
+html[data-overgang] .topbar{view-transition-name:topbalk}
+html[data-overgang] .page-in{animation:none}
+html[data-overgang]::view-transition-old(topbalk),html[data-overgang]::view-transition-new(topbalk){animation:none;mix-blend-mode:normal}
+html[data-overgang="open"]::view-transition-old(root){animation:voo var(--dur-2) var(--eo) both}
+html[data-overgang="open"]::view-transition-new(root){animation:von var(--dur-3) var(--ease-in) both}
+html[data-overgang="terug"]::view-transition-old(root){animation:glans var(--dur-3) var(--eo) both;z-index:2}
+html[data-overgang="terug"]::view-transition-new(root){animation:vtn var(--dur-3) var(--eo) both}
+@keyframes voo{to{opacity:0;transform:scale(.98)}}
+@keyframes von{from{opacity:0;transform:translateX(24px)}}
+@keyframes vtn{from{opacity:.6;transform:translateX(-24px)}}
