@@ -85,7 +85,7 @@ export function useFilters() {
 }
 
 // ------------------------------------------------------------- tijd
-// Berichten hebben alleen "HH:MM" (Amsterdam); gegenereerd bepaalt de referentiedag.
+// Zonder publicatietijd bepaalt "HH:MM" (Amsterdam) met gegenereerd de referentiedag.
 // Tot 20 minuten vooruit blijft op die dag, zodat de toekomstmarge van de Worker past.
 const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const minVan = (d: Date) => {
@@ -144,7 +144,7 @@ export const TIJDEN: Exclude<Tijd, "auto">[] = ["sinds", "vandaag", "3u", "1u", 
 export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: string | undefined, alles: boolean): Uitkomst {
   const g = genVan(gen);
   const basis = zonderTijd(items, f, alles);
-  const ts = basis.map((it) => tijdstip(it.tijd, g));
+  const ts = basis.map((it) => typeof it.t === "number" && Number.isFinite(it.t) ? it.t : tijdstip(it.tijd, g));
   const tel = (t: Exclude<Tijd, "auto">) => {
     if (t === "alles") return basis.length;
     if (t === "sinds" && !vorig) return basis.length;
