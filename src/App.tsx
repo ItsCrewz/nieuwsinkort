@@ -870,12 +870,16 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
 
 let afgewezenBerichten = 0;
 // ---------------------------------------------------------------- data + thema
-function useData() {
+export function useData() {
+  const volgnummer = useRef(0);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
+    const aanvraag = ++volgnummer.current;
     try {
-      const gevalideerd = valideer(await laadData(neemVroegeData()));
+      const antwoord = await laadData(neemVroegeData());
+      if (aanvraag !== volgnummer.current) return;
+      const gevalideerd = valideer(antwoord);
       afgewezenBerichten = gevalideerd.afgewezen;
       const d = schoon(gevalideerd.data as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
@@ -888,7 +892,7 @@ function useData() {
       setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
       setError(false);
     } catch {
-      setError(true);
+      if (aanvraag === volgnummer.current) setError(true);
     }
   }, []);
   useEffect(() => {
@@ -899,6 +903,7 @@ function useData() {
     const t = window.setInterval(load, 15 * 60 * 1000);
     const grens = window.setInterval(() => setData((d) => d && verwijderGisteren(d, Date.now())), 1000);
     return () => {
+      volgnummer.current++;
       document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(t);
       window.clearInterval(grens);
