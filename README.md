@@ -49,7 +49,7 @@ Bij uitputting van de AI-ruimte of een tijdelijke AI-fout maakt `worker/src/extr
 
 ## Vooraf laden
 
-Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de eerste Filmpjes en Dumpert-video's op, zodat een klik op die tabs niet hoeft te wachten: thumbnails, de hls.js-chunk, het begin van geschikte streams en de eerste bytes van de eerste mp4. Dit gebeurt op alle verbindingen, ook bij mobiele data en Save-Data. Zie `src/voorladen.ts`; de richtwaarde voor het dataverbruik is ≈1,55 MB.
+Na het laden van de homepage warmt de site in idle-tijd thumbnails op. Bij aanwijzen, aanraken of focussen van een videotab volgen de hls.js-chunk (behalve op Apple), het begin van geschikte streams en de eerste bytes van de eerste mp4. Een HLS-speler laadt hls.js ook zelf als dat nodig is. Dit gebeurt op alle verbindingen, ook bij mobiele data en Save-Data. Zie `src/voorladen.ts`; de richtwaarde voor het dataverbruik is ≈1,55 MB.
 
 ## Lokaal draaien
 
