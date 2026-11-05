@@ -29,8 +29,7 @@ assert.deepEqual(parseHash("#/dumpert/a/b"), { view: "dumpert", selected: null, 
 assert.deepEqual(parseHash("#/bericht/"), { view: "alles", selected: "", video: null });
 assert.deepEqual(parseHash("#/bericht/a%20b"), { view: "alles", selected: "a b", video: null });
 assert.equal(parseHash("#/bericht/a/b").selected, "a/b");
-// Ongeldige percent-codering gooit nu een URIError
-assert.throws(() => parseHash("#/bericht/%E0%A4%A"), URIError);
+assert.deepEqual(parseHash("#/bericht/%E0%A4%A"), leeg);
 // viewHash
 assert.equal(viewHash("nl"), "#/nederland");
 assert.equal(viewHash("f1"), "#/formule-1");
