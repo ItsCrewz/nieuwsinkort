@@ -93,3 +93,48 @@ console.log("✓ vooraf berekenen, snel pad, 304 en terugval");
     const c = await vraag(); assert.notEqual(c.headers.get("etag"), a.headers.get("etag")); assert.ok((await c.text()).includes("twee"));
   } finally { Date.now = echteTijd; }
 }
+
+// #297: respons (body + ETag) van de geheugencache is identiek aan het oude pad zonder cache; 30 s en dagwissel verwerken opnieuw
+{
+  const echteTijd = Date.now, echteParse = JSON.parse;
+  try {
+    let t0 = Date.parse("2026-11-04T10:00:00Z");
+    Date.now = () => t0;
+    const iso = (m: number) => new Date(t0 - m * 60e3).toISOString();
+    const data = {
+      gegenereerd: iso(5), datum: "woensdag 4 november",
+      items: [{ titel: "Een", bronnen: [{ naam: "NOS", href: "https://nos.nl/a", ft: "x" }] }, { titel: "Twee", bronnen: [] }],
+      filmpjes: [{ href: "https://v.test/1", t: t0 - 60e3, tijd: "09:59" }, { href: "https://v.test/2", t: t0 - 30 * 3600e3, tijd: "04:00", gisteren: true }],
+      dumpert: [{ href: "https://d.test/1", t: t0 - 120e3, tijd: "09:58" }],
+    };
+    const payload = JSON.stringify(data);
+    // oude pad: parse, dagfilter, stringify, etag; geen geheugen
+    const oud = async (nu: number) => {
+      const d = echteParse(payload), g = alleenVandaag(d, nu);
+      const b = JSON.stringify({ ...d, ...(Array.isArray(d.filmpjes) ? { filmpjes: g.filmpjes } : {}), ...(Array.isArray(d.dumpert) ? { dumpert: g.dumpert } : {}) });
+      return { b, tag: await etag(b) };
+    };
+    let parses = 0;
+    JSON.parse = ((s: string, ...a: any[]) => { if (s === payload) parses++; return (echteParse as any)(s, ...a); }) as typeof JSON.parse;
+    let tekst = `2026-11-04\nx\n${payload}`;
+    const kv = { ASSETS: { fetch: async () => { throw new Error("geen assets"); } }, NIEUWS: { get: async () => tekst } };
+    const vraag = () => onRequestGet({ request: new Request("https://site.test/data.json"), env: kv });
+    const verwacht = await oud(t0);
+    const a = await vraag(), aBody = await a.text();
+    assert.equal(aBody, verwacht.b); assert.equal(a.headers.get("etag"), verwacht.tag); assert.equal(parses, 1);
+    t0 += 10e3; // binnen 30 s: uit geheugen, nog steeds identiek aan het oude pad
+    const b = await vraag();
+    assert.equal(await b.text(), (await oud(t0)).b); assert.equal(b.headers.get("etag"), (await oud(t0)).tag); assert.equal(parses, 1);
+    t0 += 21e3; // 31 s na vullen: opnieuw verwerken
+    const c = await vraag();
+    assert.equal(parses, 2); assert.equal(await c.text(), (await oud(t0)).b);
+    // dagwissel binnen 30 s: 23:59:50 -> 00:00:05 Amsterdam, zelfde KV-tekst (vooraf van gisteren geldt 's nachts nog)
+    t0 = Date.parse("2026-11-04T22:59:50Z");
+    parses = 0;
+    await vraag(); assert.equal(parses, 1);
+    t0 += 15e3;
+    const d = await vraag();
+    assert.equal(parses, 2); assert.equal(await d.text(), (await oud(t0)).b);
+  } finally { Date.now = echteTijd; JSON.parse = echteParse; }
+}
+console.log("✓ #297 geheugencache identiek, 30 s en dagwissel");
