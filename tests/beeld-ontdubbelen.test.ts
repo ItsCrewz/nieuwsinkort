@@ -47,4 +47,17 @@ t("beelden: NU.nl-thumbnail groter, entities, youtube-link weg", () => {
   assert.equal(_ub(["https://www.youtube.com/v/PX1W02kWuJo?version=3"]).length, 0);
 });
 
+t("zelfde bestandsnaam in andere artikelmap blijft behouden (#649)", () => {
+  const a = "https://cdn.voorbeeld.nl/2026/11/artikel-a/persfoto-stadhuis.jpg";
+  const b = "https://cdn.voorbeeld.nl/2026/11/artikel-b/persfoto-stadhuis.jpg";
+  assert.notEqual(beeldKey(a), beeldKey(b));
+  assert.deepEqual(uniekeBeelden([a, b]), [a, b]);
+  assert.equal(uniekeBeelden([a, b], 1).length, 1);
+  // dezelfde foto in twee maatmappen blijft één foto
+  assert.equal(beeldKey("https://cdn.voorbeeld.nl/2026/11/artikel-a/1200x675/persfoto-stadhuis.jpg"), beeldKey("https://www.voorbeeld.nl/2026/11/artikel-a/600x338/persfoto-stadhuis.jpg"));
+  assert.equal(beeldKey("https://res.cloudinary.com/x/image/upload/w_800,h_450,c_fill/v1/abc/persfoto.jpg"), beeldKey("https://res.cloudinary.com/x/image/upload/w_1200,h_675,c_fill/v1/abc/persfoto.jpg"));
+  // NOS: maat als bestandsnaam, id in de map
+  assert.notEqual(beeldKey("https://cdn.nos.nl/image/2026-10-28/1234/1200x675a.jpg"), beeldKey("https://cdn.nos.nl/image/2026-10-28/5678/1200x675a.jpg"));
+});
+
 console.log(`\n${n} tests geslaagd`);
