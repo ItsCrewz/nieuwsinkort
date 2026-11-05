@@ -23,3 +23,8 @@ createRoot(document.getElementById("root")!).render(
 );
 
 requestAnimationFrame(() => requestAnimationFrame(() => startAnalytics()));
+
+// Beweging-CSS (transities, animaties, View Transitions) pas na de eerste paint: houdt de kritieke CSS onder budget. Layout blijft in index.css.
+const laadBeweging = () => { import("./uitgesteld.css").catch(() => {}); };
+const naPaint = () => (window.requestIdleCallback ? window.requestIdleCallback(laadBeweging, { timeout: 1500 }) : window.setTimeout(laadBeweging, 200));
+requestAnimationFrame(() => requestAnimationFrame(() => (document.readyState === "complete" ? naPaint() : window.addEventListener("load", naPaint, { once: true }))));
