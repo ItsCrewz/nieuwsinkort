@@ -1,3 +1,4 @@
+import { begrensCache, dagCache, geldigeDag } from "./cache-dag";
 // Lichte server-HTML met links naar alle berichtpagina's van vandaag: zonder JavaScript hebben crawlers anders geen interne links.
 import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
@@ -21,17 +22,17 @@ export function vandaagHtml(items: Item[], dag: string): string {
 export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const u = new URL(ctx.request.url);
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
-  const sleutel = new Request(`${u.origin}${u.pathname}`);
+  const sleutel = new Request(`${u.origin}${u.pathname}?cache-dag=${dagCache().periode}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
-  if (bestaand) return bestaand;
+  if (bestaand) return begrensCache(bestaand);
   const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
   if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
   let html = vandaagHtml([], "");
   try {
     const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) html = vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso);
+    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd)) && geldigeDag(ams(Date.parse(dag.gegenereerd)).iso)) html = vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso);
   } catch { console.error("vandaag: data lezen mislukt"); }
-  const response = new Response(html, { headers: { ...HDR, "Cache-Control": "public, max-age=300, stale-while-revalidate=600" } });
+  const response = new Response(html, { headers: { ...HDR, "Cache-Control": dagCache().header } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   return response;
 }

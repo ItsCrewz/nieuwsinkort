@@ -1,3 +1,4 @@
+import { begrensCache, dagCache, geldigeDag } from "./cache-dag";
 // News-sitemap met de berichtpagina's van de huidige dag (zelfde bron en URL's als /bericht/…); verlopen berichten vallen er vanzelf uit.
 import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
@@ -24,17 +25,17 @@ export function nieuwsSitemap(items: Item[], dag: string): string {
 export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const u = new URL(ctx.request.url);
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
-  const sleutel = new Request(`${u.origin}${u.pathname}`);
+  const sleutel = new Request(`${u.origin}${u.pathname}?cache-dag=${dagCache().periode}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de sitemap niet breken
-  if (bestaand) return bestaand;
+  if (bestaand) return begrensCache(bestaand);
   const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
   let xml = leeg("");
   if (!data.ok) return new Response(xml, { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
   try {
     const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) xml = nieuwsSitemap(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso);
+    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd)) && geldigeDag(ams(Date.parse(dag.gegenereerd)).iso)) xml = nieuwsSitemap(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso);
   } catch { console.error("sitemap-nieuws: data lezen mislukt"); }
-  const response = new Response(xml, { headers: { ...HDR, "Cache-Control": "public, max-age=300" } });
+  const response = new Response(xml, { headers: { ...HDR, "Cache-Control": dagCache().header } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   return response;
 }

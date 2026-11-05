@@ -31,7 +31,7 @@ try {
   // Cache API: eerste aanvraag leest KV en schrijft de cache, de tweede niet; query telt niet mee
   let r = await bezoek(env, pad, wu); await Promise.all(pending);
   assert.equal(r.status, 200); assert.equal(tel.reads, 1); assert.equal(puts, 1);
-  assert.equal(r.headers.get("cache-control"), "public, max-age=300, stale-while-revalidate=600");
+  assert.equal(r.headers.get("cache-control"), "public, max-age=300, must-revalidate");
   const tag = r.headers.get("etag")!; assert.ok(tag);
   r = await bezoek(env, `${pad}?fbclid=abc&utm_source=x`, wu);
   assert.equal(r.status, 200); assert.equal(tel.reads, 1, "tweede aanvraag uit cache: geen KV-read"); assert.equal(puts, 1);

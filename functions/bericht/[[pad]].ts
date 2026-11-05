@@ -1,3 +1,4 @@
+import { begrensCache, dagCache } from "../cache-dag";
 import { artikelId, artikelPad, linkId, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
@@ -16,11 +17,12 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const gisteren = new Date(Date.UTC(nu.y, nu.m - 1, nu.d - 1)).toISOString().slice(0, 10);
   if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, "/", "public, max-age=86400");
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
-  const sleutel = new Request(`${u.origin}${u.pathname}`);
+  const sleutel = new Request(`${u.origin}${u.pathname}?cache-dag=${dagCache().periode}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   if (bestaand) {
-    if (request.headers.get("If-None-Match") === bestaand.headers.get("ETag")) return new Response(null, { status: 304, headers: bestaand.headers });
-    return bestaand;
+    const begrensd = begrensCache(bestaand);
+    if (request.headers.get("If-None-Match") === begrensd.headers.get("ETag")) return new Response(null, { status: 304, headers: begrensd.headers });
+    return begrensd;
   }
   const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env }, false);
   if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
@@ -35,7 +37,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return redirect(302, `/#/bericht/${artikelId(item)}`, "no-store");
   const html = berichtHtml(await sjabloon.text(), item, pad.dag), tag = await etag(html);
   const headers = new Headers(sjabloon.headers);
-  for (const [k, v] of Object.entries({ ...basis, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300, stale-while-revalidate=600", ETag: tag })) headers.set(k, v);
+  for (const [k, v] of Object.entries({ ...basis, "Content-Type": "text/html; charset=utf-8", "Cache-Control": dagCache().header, ETag: tag })) headers.set(k, v);
   headers.delete("Content-Length"); headers.delete("Content-Encoding");
   const response = new Response(html, { headers });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
