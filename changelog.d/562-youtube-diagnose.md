@@ -1,0 +1,2 @@
+- Voeg een handmatig diagnosescript toe voor de storing in bestaande YouTube-feeds (#562).
+- Probeer bij een YouTube-feedstoring de officiële uploads-playlist en vermeld het gebruikte pad in de runmetadata (#562).
