@@ -13,14 +13,14 @@ export const BUITEN_WOORD =/\b(VS|V\.S\.|Amerika\w*|Trump|Biden|China|Chin\w+|Ru
 // een Amerikaanse staat of de Verenigde Staten niet. Alleen VS, geen andere landen, wereldsteden of bijvoeglijke naamwoorden ("Amerikaanse investeerder").
 export const BUITEN_LOCATIE =/\b(Verenigde Staten|Amerikaanse staat|Florida|Californi(?:ë|e)|Texas|Louisiana|Alabama|Arizona|Nevada|Ohio|Oklahoma|Minnesota|Michigan|Tennessee|Hawaii|Los Angeles|Chicago|Miami|Las Vegas|New York)(?![\p{L}\d])/u;
 // Hoofdlettergevoelig: eigennamen; "NS" alleen als los woord.
-export const NL_ANKER = /\b(Nederland\w*|Nederlander\w*|Nederlandse?|kabinet|Tweede Kamer|Eerste Kamer|Den Haag|Haagse|Amsterdam\w*|Rotterdam\w*|Utrecht\w*|Eindhoven|Groningen|Haarlem|Jetten|KNMI|ProRail|Rijkswaterstaat|Wekdienst|Schiphol|NS)\b/;
+const NL_ANKER = /\b(Nederland\w*|Nederlander\w*|Nederlandse?|kabinet|Tweede Kamer|Eerste Kamer|Den Haag|Haagse|Amsterdam\w*|Rotterdam\w*|Utrecht\w*|Eindhoven|Groningen|Haarlem|Jetten|KNMI|ProRail|Rijkswaterstaat|Wekdienst|Schiphol|NS)\b/;
 
 // Buitenlandse bedrijven en markten zijn alleen bij economisch nieuws een regio-aanwijzing.
 const BUITEN_ECONOMIE = /\b(Binance|Wall Street|Nasdaq|Dow Jones|S&P 500)\b/;
 const ECONOMIE = /\b(beurs\w*|aandelen\w*|koers\w*|markt\w*|crypto\w*|bitcoin\w*|handelsplatform\w*|winst\w*|verlies\w*|boete\w*|failliet\w*|handel\w*|investeer\w*|belegger\w*)\b/i;
 
 type BronIn = { href: string; buitenFeed?: boolean };
-export type Signaal = "buiten" | "binnen" | "neutraal" | null;
+type Signaal = "buiten" | "binnen" | "neutraal" | null;
 
 const BUITEN_SECTIE = new Set(["buitenland", "world", "wereld", "internationaal", "international", "verkiezingen-vs", "spanningen-oekraine", "oorlog-in-oekraine", "midden-oosten"]);
 const BINNEN_SECTIE = new Set(["binnenland", "regio", "politiek"]);
