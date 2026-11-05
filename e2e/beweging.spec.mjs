@@ -117,3 +117,38 @@ test("thema-icoon wisselt en reduced motion laat niets lopen", async ({ page }) 
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).not.toBe(voor);
   expect(await traag(page)).toEqual([]);
 });
+
+// Thema (#539): werkt met en zonder View Transitions-API, meta theme-color wisselt mee, geen flits.
+const themaStaat = (page) => page.evaluate(() => ({
+  thema: document.documentElement.dataset.theme,
+  meta: [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.getAttribute("content")),
+  bg: getComputedStyle(document.body).backgroundColor,
+}));
+
+for (const vt of ["zonder View Transitions-API", "met View Transitions-API"]) {
+  test(`thema wisselen ${vt}: theme-color mee, direct nieuwe achtergrond`, async ({ page }) => {
+    if (vt.startsWith("zonder")) await page.addInitScript(() => { Object.defineProperty(Document.prototype, "startViewTransition", { value: undefined, configurable: true }); });
+    await blokkeer(page);
+    await page.goto("#/");
+    await expect(page.locator(".topbar .iconbtn").last()).toBeVisible();
+    if (!vt.startsWith("zonder")) expect(await page.evaluate(() => typeof document.startViewTransition)).toBe("function");
+    else expect(await page.evaluate(() => typeof document.startViewTransition)).toBe("undefined");
+    const voor = await themaStaat(page);
+    const verwacht = voor.thema === "dark" ? "light" : "dark";
+    const kleur = verwacht === "dark" ? "#0f0f0f" : "#ffffff";
+    // direct na de klik (zelfde taak) lezen: geen tussenstand met de oude achtergrond
+    const na = await page.evaluate(() => {
+      const knop = [...document.querySelectorAll(".topbar .iconbtn")].pop();
+      knop.click();
+      return new Promise((r) => requestAnimationFrame(() => r({
+        thema: document.documentElement.dataset.theme,
+        meta: [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.getAttribute("content")),
+        bg: getComputedStyle(document.body).backgroundColor,
+      })));
+    });
+    expect(na.thema).toBe(verwacht);
+    expect(na.meta.every((c) => c === kleur)).toBe(true);
+    expect(na.bg).not.toBe(voor.bg);
+    expect(await themaStaat(page)).toEqual(na); // blijft staan, geen terugval
+  });
+}
