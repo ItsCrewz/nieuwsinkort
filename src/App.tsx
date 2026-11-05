@@ -1,8 +1,7 @@
 import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
-import { animeer, kanOvergang, metOvergang } from "./beweging";
+import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
-import { rustig, scrollGedrag, DUUR } from "./beweging";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
@@ -27,7 +26,7 @@ import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, volgendeTab, type TabOpt } from "./tabs";
+import { CAT_LABEL, tabOpties, volgendeTab, wisselRichting, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
@@ -1068,6 +1067,15 @@ export default function App() {
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
   useLayoutEffect(() => { document.title = viewTitel(route.view); }, [route.view, route.selected]);
+  // Rubriekwissel (#538): alleen het paneel schuift 12px in, richting volgt de tabvolgorde; geen uitgaande animatie, een nieuwe wissel annuleert de lopende (animeer).
+  const vorigeView = useRef(route.view);
+  useLayoutEffect(() => {
+    const van = vorigeView.current;
+    vorigeView.current = route.view;
+    const r = wisselRichting(van, route.view);
+    const paneel = r && !route.selected ? document.getElementById("rubriek-paneel") : null;
+    if (paneel) animeer(paneel, [{ opacity: 0, transform: `translateX(${r * 12}px)` }, { opacity: 1, transform: "none" }], { duration: DUUR[3], easing: "cubic-bezier(.05,.7,.1,1)" });
+  }, [route.view, route.selected]);
   const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);

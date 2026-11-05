@@ -217,7 +217,9 @@ Statische pagina `/over` (`public/over.html`, #518): over de site (wat, AI-gebru
 
 ## Bezoekersstatistieken
 
-Cloudflare Web Analytics is op 1-11-2026 aangezet via de Pages-instelling (Workers & Pages → nieuwsinkort → Metrics → Web Analytics). Cloudflare voegt de beacon (`https://static.cloudflareinsights.com/beacon.min.js`, zonder `integrity`/SRI en zonder `type=module`) bij de volgende deploy zelf in de HTML in. Er staat dus bewust geen snippet in `index.html`, en er komt er ook geen. Dit vraagt geen codewijziging, geen nieuwe dependency en geen service worker; `dist/` verandert niet (het script komt van een derde domein), dus de performancebudget-check blijft ongemoeid.
+Cloudflare Web Analytics is op 1-11-2026 aangezet. De app laadt de beacon na de eerste render, behalve wanneer `nik_nietmeten` in localStorage `1` is. `?nietmeten=1` slaat die keuze op; `?nietmeten=0` verwijdert haar. De parameter wordt daarna uit de URL verwijderd met behoud van de hash. Zonder beschikbare localStorage laadt de beacon gewoon. De publieke site-token moet vóór de deploy in `src/analytics.ts` worden ingevuld.
+
+Bij dezelfde deploy moet de coördinator onder Pages → nieuwsinkort → Metrics → Web Analytics de automatische injectie uitzetten, met behoud van de site. Controleer daarna dat de beacon zonder opt-out precies eenmaal en met opt-out niet in de DOM staat.
 
 **Wat gemeten wordt** (volgens de Cloudflare-docs): visits, paginaweergaven, laadtijd en Core Web Vitals (LCP, INP en CLS; CLS alleen in Chromium-browsers), met filters op land, host, pad, verwijzer, apparaattype, browser en besturingssysteem. Er zijn geen UTM-parameters (querystrings worden niet gelogd) en geen custom events. Adblockers blokkeren de beacon, dus de cijfers zijn een ondergrens. Data is 7 dagen ongesampled, daarna geaggregeerd; er kan 6 maanden terug worden gekeken.
 
@@ -229,7 +231,7 @@ Cloudflare Web Analytics is op 1-11-2026 aangezet via de Pages-instelling (Worke
 
 **CSP.** `public/_headers` staat de beacon al toe sinds #278 (PR #338): `script-src` bevat `https://static.cloudflareinsights.com` en `connect-src` bevat `'self' https: https://cloudflareinsights.com`. `tests/beveiligingsheaders.test.ts` legt dat vast. Voor deze functie verandert er niets aan de CSP.
 
-**Controleren** (live, na een deploy; lokaal ontbreekt de beacon omdat Cloudflare hem alleen op Pages invoegt):
+**Controleren** (live, na een deploy):
 - Het beacon-script laadt van `static.cloudflareinsights.com` (netwerktabblad).
 - De metingen naar `/cdn-cgi/rum` of `cloudflareinsights.com` geven een 2xx.
 - Er staan geen CSP- of CORS-fouten in de console.
@@ -237,7 +239,7 @@ Cloudflare Web Analytics is op 1-11-2026 aangezet via de Pages-instelling (Worke
 
 **Bekijken:** Cloudflare-dashboard → Web Analytics → de site.
 
-**Uitzetten/terugdraaien:** Web Analytics uitschakelen onder Workers & Pages → nieuwsinkort → Metrics → Web Analytics, daarna één gewone deploy zodat de injectie verdwijnt. Geen codewijziging nodig.
+**Uitzetten/terugdraaien:** verwijder de loader en deploy de wijziging; stem eventuele hernieuwde automatische injectie af op hetzelfde deploymoment.
 
 ## Open punten
 
