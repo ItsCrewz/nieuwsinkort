@@ -29,7 +29,25 @@ const hook = TestFilters();
 assert.equal(hook.f.tijd, "1u");
 assert.deepEqual(hook.f.cats, []);
 assert.equal(hook.vorig, 123);
+const echteInterval = g.setInterval, echteClear = g.clearInterval, echteNu = Date.now;
+let tik: (() => void) | undefined, ms = 0, gewist: unknown;
+g.setInterval = (fn: () => void, t: number) => { tik = fn; ms = t; return 42; };
+g.clearInterval = (id: unknown) => { gewist = id; };
+let nu = 5_000_000;
+Date.now = () => nu;
 const opruimen = effect!();
+g.setInterval = echteInterval;
+assert.equal(ms, 60_000);
+assert.equal(opslag.get("nieuwsinkort-laatste-bezoek"), "5000000");
+nu += 60_000;
+tik!(); // tabblad verborgen: geen schrijfactie
+assert.equal(opslag.get("nieuwsinkort-laatste-bezoek"), "5000000");
+g.document.visibilityState = "visible";
+tik!();
+assert.equal(opslag.get("nieuwsinkort-laatste-bezoek"), String(nu));
+assert.equal(hook.vorig, 123); // sessiereferentie blijft vast
+g.document.visibilityState = "hidden";
+Date.now = echteNu;
 g.document.dispatchEvent(new Event("visibilitychange"));
 assert.ok(Number(opslag.get("nieuwsinkort-laatste-bezoek")) > 123);
 hook.set({ video: true });
@@ -37,6 +55,8 @@ assert.equal(JSON.parse(opslag.get("nieuwsinkort-filters")!).video, true);
 hook.reset();
 assert.deepEqual(JSON.parse(opslag.get("nieuwsinkort-filters")!), STANDAARD);
 if (typeof opruimen === "function") opruimen();
+g.clearInterval = echteClear;
+assert.equal(gewist, 42);
 
 function vind(n: any, pred: (n: any) => boolean): any[] {
   if (!n || typeof n !== "object") return [];
