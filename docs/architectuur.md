@@ -59,7 +59,7 @@ De feednavigatie is met `inert` niet focusbaar zolang zij verborgen is; de start
 
 `src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug.
 
-Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
+Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren. Een YouTube-positie wordt pas hersteld (`seekTo`, eenmaal per video) na `onReady` van het actieve frame (`ytIsGereed` in `src/ytstart.ts`; andere frames, origins en oude video's tellen niet); mp4/HLS herstelt zodra `readyState > 0`.
 
 YouTube-fouten 100, 101, 150 en 152 verwijderen de geblokkeerde video uit de open feed, ook bij vooraf laden. De actieve video en scrollpositie blijven behouden; bij een actieve fout volgt de navigatie de laatst gekozen richting. Aan het begin blijft bij teruggaan het vangnet zichtbaar. Een lopende swipe wordt niet door een automatische sprong vervangen. Tests: `tests/ytverwijderen.test.ts`.
 

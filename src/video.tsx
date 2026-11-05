@@ -9,7 +9,7 @@ import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
-import { ytOndertitelsBijBericht } from "./ytstart";
+import { ytIsGereed, ytOndertitelsBijBericht } from "./ytstart";
 
 // De volledige videofeed (spelers, hls.js-glue, debug-overlay) is een eigen chunk: pas laden op touch + videoroute.
 const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
@@ -115,17 +115,18 @@ export function VideoGrid({
     let speelt = true;
     let hervat = false;
     let hersteld = false;
+    let klaar: { slug: string; win: Window } | null = null; // onReady van het actieve frame, per video
     const saved = opgeslagen.current;
     const actief = () => document.querySelector<HTMLElement>('.feed .fslide[aria-current="true"]');
     const frame = () => actief()?.querySelector<HTMLIFrameElement>('iframe.f-yt');
     const stuur = (func: string, args: unknown[] = []) => frame()?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "https://www.youtube-nocookie.com");
     const update = () => {
       const slug = decodeURIComponent(location.hash.split("/").slice(2).join("/")) || start || video;
-      if (slug !== vorigeSlug) { vorigeSlug = slug; positie = 0; hersteld = false; }
+      if (slug !== vorigeSlug) { vorigeSlug = slug; positie = 0; hersteld = false; klaar = null; }
       const el = actief()?.querySelector<HTMLVideoElement>("video");
       if (!hersteld && slug === saved?.slug && saved.cat === cat) {
         if (el && el.readyState > 0) { try { el.currentTime = saved.positie || 0; } catch { /* nog niet zoekbaar */ } hersteld = true; }
-        else if (frame()) { stuur("seekTo", [saved.positie || 0, true]); hersteld = true; }
+        else if (klaar && klaar.slug === slug && klaar.win === frame()?.contentWindow) { stuur("seekTo", [saved.positie || 0, true]); hersteld = true; }
       }
       if (el) { positie = el.currentTime || 0; if (document.visibilityState === "visible") speelt = !el.paused; }
       const item = feedVideos.find((v) => videoSlug(v) === slug);
@@ -133,6 +134,8 @@ export function VideoGrid({
     };
     const bericht = (e: MessageEvent) => {
       if (e.origin !== "https://www.youtube-nocookie.com" || e.source !== frame()?.contentWindow) return;
+      const f = frame();
+      if (f?.contentWindow && ytIsGereed(e, f)) { klaar = { slug: vorigeSlug, win: f.contentWindow }; update(); return; }
       try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; if (typeof d?.info?.currentTime === "number") positie = d.info.currentTime; if (document.visibilityState === "visible" && typeof d?.info?.playerState === "number") speelt = d.info.playerState === 1; } catch { /* onbekend bericht */ }
     };
     let verborgen = false;

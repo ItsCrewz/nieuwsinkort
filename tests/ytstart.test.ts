@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ytStartBesluit, ytSkipBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint } from "../src/ytstart";
+import { ytStartBesluit, ytSkipBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint, ytIsGereed } from "../src/ytstart";
 
 for (const actief of [true, false]) {
   const url = new URL(ytEmbedUrl("abc123", actief, "https://voorbeeld.nl"));
@@ -61,3 +61,23 @@ assert.equal(ytSkipBesluit(150, false, false, true), false);
 assert.equal(ytSkipBesluit(150, true, true, true), false);
 assert.equal(ytSkipBesluit(150, true, false, true), true);
 assert.equal(ytSkipBesluit(150, true, false, false), false);
+
+// #661: herstel pas na onReady van het actieve frame.
+{
+  const win = {}, ander = {};
+  const frame = { contentWindow: win };
+  const O = "https://www.youtube-nocookie.com";
+  const ready = JSON.stringify({ event: "onReady" });
+  assert.equal(ytIsGereed({ origin: O, source: win, data: ready }, frame), true);
+  assert.equal(ytIsGereed({ origin: O, source: ander, data: ready }, frame), false); // ander frame / oude video
+  assert.equal(ytIsGereed({ origin: "https://evil.example", source: win, data: ready }, frame), false);
+  assert.equal(ytIsGereed({ origin: O, source: win, data: JSON.stringify({ event: "infoDelivery" }) }, frame), false); // nog niet gereed
+  assert.equal(ytIsGereed({ origin: O, source: win, data: "geen json" }, frame), false);
+  assert.equal(ytIsGereed({ origin: O, source: win, data: ready }, null), false);
+  assert.equal(ytIsGereed({ origin: O, source: undefined, data: ready }, { contentWindow: null }), false);
+}
+{
+  const src = readFileSync("src/video.tsx", "utf8");
+  assert.ok(/klaar && klaar\.slug === slug && klaar\.win === frame\(\)\?\.contentWindow\) \{ stuur\("seekTo"/.test(src), "seekTo alleen na onReady van het actieve frame");
+  assert.ok(!/else if \(frame\(\)\) \{ stuur\("seekTo"/.test(src));
+}

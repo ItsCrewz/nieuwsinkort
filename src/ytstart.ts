@@ -23,6 +23,12 @@ export function ytToonHint(s: YtStart): boolean {
 }
 
 // De activatieklok loopt door bij pauze en statuswissels, ook zonder onReady.
+// Is dit een onReady van precies dit frame? Andere frames en andere origins tellen niet.
+export function ytIsGereed(e: { origin: string; source: unknown; data: unknown }, frame: { contentWindow: unknown } | null | undefined): boolean {
+  if (e.origin !== "https://www.youtube-nocookie.com" || !frame?.contentWindow || e.source !== frame.contentWindow) return false;
+  try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; return (d as { event?: string } | null)?.event === "onReady"; } catch { return false; }
+}
+
 export function ytStartBesluit(s: YtStart): "wacht" | "probeer" | "vangnet" {
   if (!s.actief || s.fout || s.status === 1 || s.status === 3 || s.gespeeld) return "wacht";
   if (ytToonHint(s)) return "vangnet";
