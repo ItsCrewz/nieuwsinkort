@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Vastgelopen aanvragen voor extra artikeltekst stoppen na 10 seconden, zodat een latere poging kan herstellen (#742).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).

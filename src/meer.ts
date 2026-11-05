@@ -9,10 +9,19 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
   if (!k || item.bronnen?.some((b) => verzamelUrl(b.href))) return Promise.resolve(null);
   let p = meerCache.get(k);
   if (!p) {
-    p = fetch(`/meer?k=${encodeURIComponent(k)}`)
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<null>((resolve) => {
+      timer = setTimeout(() => { controller.abort(); resolve(null); }, 10000);
+    });
+    const aanvraag = fetch(`/meer?k=${encodeURIComponent(k)}`, { signal: controller.signal })
       .then((r) => (r.ok ? (r.json() as Promise<Meer>) : null))
       .catch(() => null);
-    p.then((m) => { if (!m) meerCache.delete(k); });
+    p = Promise.race([aanvraag, timeout]).then((m) => {
+      clearTimeout(timer);
+      if (!m && meerCache.get(k) === p) meerCache.delete(k);
+      return m;
+    });
     meerCache.set(k, p);
   }
   return p;
