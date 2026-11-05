@@ -44,4 +44,6 @@ t("pijltjestoetsen doorlopen de zichtbare tabs in beide richtingen", () => {
   assert.equal(volgendeTab(2, 3, "ArrowRight"), 0);
   assert.equal(volgendeTab(0, 3, "ArrowLeft"), 2);
   assert.equal(volgendeTab(1, 3, "Tab"), null);
+  assert.equal(volgendeTab(2, 3, "Home"), 0);
+  assert.equal(volgendeTab(0, 3, "End"), 2);
 });
