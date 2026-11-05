@@ -701,3 +701,10 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .zoek-leeg{padding:24px;text-align:center;overflow-wrap:anywhere}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
+
+/* Trek-om-te-verversen (#540): alleen de indicator beweegt (transform/opacity); stand via inline style vanuit useTrekVerversen */
+.ptr{position:absolute;left:50%;top:8px;z-index:5;display:flex;align-items:center;gap:8px;max-width:calc(100% - 32px);padding:6px;border-radius:20px;background:var(--card);color:var(--muted);box-shadow:var(--ps);pointer-events:none;opacity:0;transform:translate(-50%,-44px)}
+.ptr-pijl{width:28px;height:28px;border-radius:14px;display:grid;place-items:center;transform:rotate(var(--draai,0deg))}
+.ptr-pijl .ic{width:16px;height:16px}
+.ptr.klaar{color:var(--a)}
+.ptr-t{padding-right:10px;font-size:13px;white-space:nowrap}

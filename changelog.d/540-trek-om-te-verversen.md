@@ -1,0 +1,1 @@
+- Nieuwsfeed: trek-om-te-verversen op touch (bovenaan naar beneden trekken, loslaten boven de drempel haalt één keer `/data.json` op, hooguit eens per 30 s; geen AI, geen KV-writes). Programmatische scrolls lopen al via `scrollGedrag()` (#540).
