@@ -1,0 +1,8 @@
+{
+  "opmerking": "Bericht met drie artikelbeelden van hosts buiten de beeldproxy-allowlist; een laadfout laat een beeld wegvallen (#625).",
+  "urls": [
+    "https://static.rtl.nl/cms/2026/10/31/voorpagina-1200x675.jpg",
+    "https://static.rtl.nl/cms/2026/10/31/fotoreeks-2-1200x675.jpg",
+    "https://static.rtl.nl/cms/2026/10/31/fotoreeks-3-1200x675.jpg"
+  ]
+}
