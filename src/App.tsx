@@ -1,6 +1,7 @@
 import { flushSync } from "react-dom";
 import { Suspense,lazy,startTransition,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState } from "react";
 import { useData,useTheme } from "./app-data";
+export { useData };
 import { Footer,Frame,Front,TopBar,UUR_ACTIEF } from "./app-frame";
 import { intro } from "./app-status";
 import { Briefing,Tabs } from "./app-tabs";

@@ -1,4 +1,4 @@
-import { useCallback,useEffect,useLayoutEffect,useState } from "react";
+import { useCallback,useEffect,useLayoutEffect,useRef,useState } from "react";
 import { sorteerOpGroep } from "./filmgroep";
 import { herindeel } from "./regio";
 import { zaaiSamenvattingen } from "./samenvattingcache";
@@ -17,11 +17,15 @@ export const afwijzingen = { aantal: 0 };
 
 // ---------------------------------------------------------------- data + thema
 export function useData() {
+  const volgnummer = useRef(0);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
+    const aanvraag = ++volgnummer.current;
     try {
-      const gevalideerd = valideer(await laadData(neemVroegeData()));
+      const antwoord = await laadData(neemVroegeData());
+      if (aanvraag !== volgnummer.current) return;
+      const gevalideerd = valideer(antwoord);
       afwijzingen.aantal = gevalideerd.afgewezen;
       const d = schoon(gevalideerd.data as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
@@ -34,7 +38,7 @@ export function useData() {
       setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
       setError(false);
     } catch {
-      setError(true);
+      if (aanvraag === volgnummer.current) setError(true);
     }
   }, []);
   useEffect(() => {
@@ -45,6 +49,7 @@ export function useData() {
     const t = window.setInterval(load, 15 * 60 * 1000);
     const grens = window.setInterval(() => setData((d) => d && verwijderGisteren(d, Date.now())), 1000);
     return () => {
+      volgnummer.current++;
       document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(t);
       window.clearInterval(grens);

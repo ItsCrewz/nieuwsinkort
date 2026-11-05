@@ -105,6 +105,8 @@ export function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, emp
       const t = e.target as HTMLElement | null;
       if (t && (t.closest("input,textarea,select,[contenteditable],.sheet,.menu,[role=dialog]") || document.querySelector(".sheet,.feed"))) return;
       const k = e.key;
+      // spatie/Enter op een knop, link of ander bedienbaar element: native activatie laten werken
+      if ((k === " " || k === "Enter") && t && t.closest("button,a,input,textarea,select,summary,[role=button],[contenteditable]")) return;
       let to: number | null = null;
       if (k === "ArrowDown" || k === "PageDown" || k === "j" || (k === " " && !e.shiftKey)) to = idxRef.current + 1;
       else if (k === "ArrowUp" || k === "PageUp" || k === "k" || (k === " " && e.shiftKey)) to = idxRef.current - 1;
