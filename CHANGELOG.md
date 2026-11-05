@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Voorkom caching van lege SEO-pagina’s bij ongeldige dagdata (#599).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).

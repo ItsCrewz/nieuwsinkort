@@ -24,13 +24,15 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   if (bestaand) return bestaand;
-  const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
-  if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
-  let html = vandaagHtml([], "");
+  const fout = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  let html: string;
   try {
-    const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) html = vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso);
-  } catch { console.error("vandaag: data lezen mislukt"); }
+    const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
+    if (!data.ok) return fout();
+    const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
+    if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
+    html = vandaagHtml(dag.items, ams(Date.parse(dag.gegenereerd)).iso);
+  } catch { console.error("vandaag: data lezen mislukt"); return fout(); }
   const response = new Response(html, { headers: { ...HDR, "Cache-Control": "public, max-age=300, stale-while-revalidate=600" } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   return response;
