@@ -103,7 +103,7 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 | Chunk | Inhoud | Wanneer geladen |
 | --- | --- | --- |
 | `index` | React, `App.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
-| `sheet` | `SourcesSheet` | bij openen van Bronnen |
+| `sheet` | `SourcesSheet` | bij openen van Bronnen (Tab/Shift+Tab blijven in het venster via `src/focusval.ts`, #615; Escape en sluiten herstellen de focus naar de opener) |
 | `filters-blad` | `FilterBlad` | bij openen van het filterblad |
 | `detail` | `DetailView` (`#/bericht/...`) | bij openen van een bericht |
 | `video` | `VideoGrid` (Filmpjes/Dumpert-overzicht) | op een videoroute |

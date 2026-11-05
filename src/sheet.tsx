@@ -28,6 +28,7 @@ import { Icon } from "./icons";
 import { rustig } from "./beweging";
 import { Switch } from "./ui";
 import { veiligeUrl } from "./url";
+import { bediening, volgendeFocus } from "./focusval";
 
 
 /** Paneel met alle bronnen; rechts op desktop, onderaan (bottom sheet) op mobiel. */
@@ -57,7 +58,17 @@ export function SourcesSheet({
   useEffect(() => {
     const prevFocus = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") return close();
+      if (e.key !== "Tab" || !panel.current) return;
+      const lijst = bediening(panel.current);
+      const doel = volgendeFocus(lijst, document.activeElement, e.shiftKey);
+      if (doel) {
+        e.preventDefault();
+        doel.focus({ preventScroll: false });
+      } else if (!lijst.length) {
+        e.preventDefault();
+        closeBtn.current?.focus({ preventScroll: true });
+      }
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
