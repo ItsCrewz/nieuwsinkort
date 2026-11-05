@@ -602,8 +602,10 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .bl-slide img.in{opacity:1}
 .bl.multi .bl-track{cursor:pointer}
 .bl-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:5px;pointer-events:none;z-index:1}
-.bl-dots span{width:16px;height:6px;margin:0 -1px;border-radius:8px/3px;transform:scaleX(.375);background:rgba(255,255,255,.55);box-shadow:0 0 0 .5px rgba(0,0,0,.25);transition:transform 220ms var(--e),background 220ms var(--e)}
-.bl-dots span.on{transform:none;background:#fff}
+.bl-dots span{width:16px;height:6px;margin:0 -1px;border-radius:8px/3px;transform:scaleX(.375);background:rgba(255,255,255,.55);box-shadow:0 0 0 .5px rgba(0,0,0,.25);transition:transform 220ms var(--e);position:relative}
+.bl-dots span::after{content:"";position:absolute;inset:0;border-radius:inherit;background:#fff;opacity:0;transition:opacity 220ms var(--e)}
+.bl-dots span.on{transform:none}
+.bl-dots span.on::after{opacity:1}
 .bl-nav{position:absolute;top:50%;width:34px;height:34px;margin-top:-17px;border-radius:50%;border:0;background:rgba(0,0,0,.42);color:#fff;font-size:1.375rem;line-height:32px;display:none;z-index:1;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .bl-nav.prev{left:8px}.bl-nav.next{right:8px}
 @media (hover:hover) and (pointer:fine){.bl.multi:hover .bl-nav{display:block}}
