@@ -42,7 +42,7 @@ const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.Sour
 const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
 let detailModule: typeof import("./detail") | undefined;
 let detailBelofte: Promise<typeof import("./detail")> | undefined;
-const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m));
+const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
 const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
