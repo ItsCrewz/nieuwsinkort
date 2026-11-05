@@ -1,0 +1,1 @@
+- Splits de videofeed (`feed.tsx`) in kleinere modules (`feed-*.ts(x)`) zonder gedragswijziging (#302).

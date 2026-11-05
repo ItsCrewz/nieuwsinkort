@@ -107,7 +107,7 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 | `filters-blad` | `FilterBlad` | bij openen van het filterblad |
 | `detail` | `DetailView` (`#/bericht/...`) | bij openen van een bericht |
 | `video` | `VideoGrid` (Filmpjes/Dumpert-overzicht) | op een videoroute |
-| `feed` | `Feed`, spelers, `debug-overlay` | op touch + videoroute |
+| `feed` | `Feed` en `feed-*.ts(x)` (spelers, waakhonden, slide, doorspoelbalk, samenvatting, gebaren), `debug-overlay` | op touch + videoroute |
 | `hls` | hls.js | door `feed` en het voorladen |
 
 Daarom staan pure helpers die het hoofdscherm of het voorladen nodig hebben los van de lazy modules: `videosoort.ts` (`playerFor`, `soortVan`, `viaProxy`), `samenvattingcache.ts` (`zaaiSamenvattingen`), `meer.ts` (`prefetchMeer`) en `leesverder.ts` (`fotos`, `bronnenTekst`). Importeer die niet via `video.tsx`/`feed.tsx`, anders komt de lazy chunk terug in `index`. Meting (gzip, `npm run build`): hoofdchunk 89,0 kB → 69,2 kB (−22%); de ondergrens is React + react-dom (≈46 kB gzip).
