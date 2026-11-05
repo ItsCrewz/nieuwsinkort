@@ -1,5 +1,23 @@
 import { test, expect } from "@playwright/test";
 
+for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 800]]) test(`zoekknop is vast, groot genoeg en botst niet met de deelknop (${naam})`, async ({ page }) => {
+  await page.setViewportSize({ width: breedte, height: hoogte });
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  expect(await knop.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
+  const vak = await knop.boundingBox();
+  expect(vak.width).toBeGreaterThanOrEqual(44);
+  expect(vak.height).toBeGreaterThanOrEqual(44);
+  await page.locator(".nc-title a").first().click();
+  const deel = page.getByRole("button", { name: "Deel dit bericht" });
+  await expect(deel).toBeVisible();
+  const dv = await deel.boundingBox();
+  const snijdt = vak.x < dv.x + dv.width && dv.x < vak.x + vak.width && vak.y < dv.y + dv.height && dv.y < vak.y + vak.height;
+  expect(snijdt).toBe(false);
+});
+
 test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
