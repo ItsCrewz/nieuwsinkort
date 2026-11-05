@@ -1,7 +1,8 @@
 // Beweging (#536): de enige reduced-motion-check, animeer/metOvergang en de CSS-tokens. Draai: npm test
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { DUUR, animeer, metOvergang, rustig, scrollGedrag } from "../src/beweging";
+import { parseHash } from "../src/route";
+import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "../src/beweging";
 
 let n = 0;
 const t = async (name: string, fn: () => void | Promise<void>) => { await fn(); n++; console.log("✓", name); };
@@ -52,6 +53,28 @@ await t("animeer: annuleert een lopende animatie op hetzelfde element en gebruik
   assert.equal(gemaakt[1].cancelled, false);
   assert.equal(gemaakt[0].opt.duration, DUUR[3]);
   assert.equal(gemaakt[1].opt.duration, 99);
+});
+
+await t("kanOvergang: alleen artikel openen en sluiten met beschikbare API", () => {
+  const lijst = parseHash("#/");
+  const artikel = parseHash("#/bericht/test");
+  const doc: G = { hidden: false, startViewTransition() {} };
+  g.document = doc;
+  zetWindow(mq(false));
+  assert.equal(kanOvergang(lijst, artikel), true);
+  assert.equal(kanOvergang(artikel, lijst), true);
+  assert.equal(kanOvergang(null, artikel), false);
+  assert.equal(kanOvergang(lijst, parseHash("#/tech")), false);
+  for (const hash of ["#/filmpjes", "#/filmpjes/video", "#/dumpert", "#/dumpert/video"]) {
+    assert.equal(kanOvergang(parseHash(hash), artikel), false);
+    assert.equal(kanOvergang(artikel, parseHash(hash)), false);
+  }
+  assert.equal(kanOvergang(artikel, lijst, true), false);
+  zetWindow(mq(true));
+  assert.equal(kanOvergang(lijst, artikel), false);
+  zetWindow(mq(false));
+  delete doc.startViewTransition;
+  assert.equal(kanOvergang(lijst, artikel), false);
 });
 
 await t("metOvergang: met startViewTransition, zonder, en bij reduced motion", async () => {

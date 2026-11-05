@@ -6,7 +6,7 @@ import { rustig, scrollGedrag, DUUR } from "./beweging";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
-import { Suspense, lazy, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
@@ -1095,12 +1095,12 @@ export default function App() {
         try { await laadDetail(); } catch { /* Suspense toont de bestaande foutafhandeling. */ }
         if (nummer !== volgnummer) return;
       }
-      const update = () => flushSync(() => { setFocusKey(back); setRoute(next); });
-      if ((openen || sluiten) && !video && !veeg && kanOvergang()) {
-        void metOvergang(update, openen ? "open" : "terug");
+      const update = () => { setFocusKey(back); setRoute(next); };
+      if (kanOvergang(prev, next, veeg)) {
+        void metOvergang(() => flushSync(update), openen ? "open" : "terug");
       }
       else {
-        update();
+        startTransition(update);
         if (sluiten && (veeg || !video)) {
           const overzicht = document.querySelector(".nf, main.wrap");
           if (overzicht) animeer(overzicht, [{ transform: "translateX(-24px)", opacity: 0.6 }, { transform: "translateX(0)", opacity: 1 }], { duration: DUUR[2] });

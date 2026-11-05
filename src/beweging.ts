@@ -22,9 +22,12 @@ export function animeer(el: Element, frames: Keyframe[] | PropertyIndexedKeyfram
   return a;
 }
 
+import type { Route } from "./route";
+
 type VT = { startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<unknown> } };
 
-export function kanOvergang(): boolean {
+export function kanOvergang(van?: Route | null, naar?: Route, veeg = false): boolean {
+  if (arguments.length && (!van || !naar || veeg || [van.view, naar.view].some((v) => v === "filmpjes" || v === "dumpert") || !!van.selected === !!naar.selected)) return false;
   const d = typeof document !== "undefined" ? (document as unknown as VT & Document) : null;
   return !!d && !d.hidden && !rustig() && typeof d.startViewTransition === "function" && !d.querySelector?.(".sheet-root,.menu,[role=dialog]");
 }

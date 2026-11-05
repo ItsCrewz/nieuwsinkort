@@ -45,3 +45,22 @@ test("zonder View Transition krijgt de lijst bij sluiten parallax", async ({ pag
   await page.locator(".detail .back").click();
   await expect.poll(() => page.evaluate(() => window.parallax)).toBe(1);
 });
+
+test("tabwissel en browser-terug behouden inhoud zonder overgang", async ({ page }) => {
+  await page.goto("#/");
+  await expect(page.locator("#rubriek-paneel .nc-title a").first()).toBeVisible();
+  await page.evaluate(() => {
+    window.leegPaneel = false;
+    new MutationObserver(() => {
+      const paneel = document.querySelector("#rubriek-paneel");
+      if (paneel && !paneel.querySelector(".nc-title a, .empty")) window.leegPaneel = true;
+    }).observe(document.querySelector("#rubriek-paneel"), { childList: true, subtree: true });
+  });
+  await page.getByRole("tab", { name: /tech/i }).click();
+  await expect(page).toHaveURL(/#\/tech$/);
+  await expect(page.locator("#rubriek-paneel .nc-title a").first()).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.locator("#rubriek-paneel .nc-title a").first()).toBeVisible();
+  expect(await page.evaluate(() => ({ overgangen: window.overgangen, leeg: window.leegPaneel }))).toEqual({ overgangen: 0, leeg: false });
+});
