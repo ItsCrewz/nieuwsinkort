@@ -1,6 +1,6 @@
 # AI-budget en meting (#79)
 
-Workers AI geeft 10.000 gratis neuronen per **UTC-dag** (reset 00:00 UTC, in de winter 01:00 en in de zomer 02:00 Amsterdamse tijd). Wij houden een eigen teller bij met plafond `BUDGET` (9000). Dit document beschrijft wat die teller meet, wat hij mist en hoe een quotafout wordt herkend. Gedrag per trap (70/90/100%): zie [architectuur](architectuur.md#workers-ai-en-budget).
+Workers AI geeft 10.000 gratis neuronen per **UTC-dag** (reset 00:00 UTC, in de winter 01:00 en in de zomer 02:00 Amsterdamse tijd). Wij houden een eigen teller bij met plafond `BUDGET` (9000). Dit document beschrijft wat die teller meet, wat hij mist en hoe een quotafout wordt herkend. Gedrag per trap (70/90/100%): zie [architectuur](architectuur.md#tekst-ai-en-budget).
 
 ## Hoe er gemeten wordt
 
@@ -43,7 +43,7 @@ Alleen `env.AI.run` telt; vier onderdelen praten er rechtstreeks mee.
 
 | Plek | Model | Meting | Opmerkingen |
 |---|---|---|---|
-| `worker/src/ai.ts` `chat()` (via `summarize`, `inHetKort`, `simpelWeer`, `verdiep`; aangeroepen vanuit `worker/src/index.ts`) | gemma-4-26b of llama-3.2-1b | `usage` → `state` + `meta` | succes én fout geteld sinds #79 |
+| `worker/src/ai.ts` `chat()` (via `summarize`, `inHetKort`, `simpelWeer`, `verdiep`, `tabTekst` in `worker/src/tabsam.ts`; aangeroepen vanuit `worker/src/index.ts`) | gemma-4-26b of llama-3.2-1b | `usage` → `state` + `meta` | succes én fout geteld sinds #79 |
 | `functions/samenvatting.ts` `chat()` (video-punten) | idem | `u` → `vid-neurons:<UTC-dag>` via DO | succes én fout geteld sinds #79 |
 | `functions/samenvatting.ts` Whisper (`whisper-large-v3-turbo`) | Whisper | duur × 46,64 neuronen/min; vooraf gereserveerd, achteraf verrekend | geen `usage` in de respons; duur uit `transcription_info`, anders schatting (`geschat`) |
 | `worker/src/vooraf.ts` | geen eigen AI | roept `/samenvatting` met `pre:true` aan; neuronen komen uit het antwoord (`neuronen`) en dit is alleen een lokale rem per alarm | telt dus via de Function, niet dubbel |
