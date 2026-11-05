@@ -34,3 +34,10 @@ export function volgendeTab(index: number, aantal: number, toets: string): numbe
   if (!aantal || index < 0 || (toets !== "ArrowLeft" && toets !== "ArrowRight")) return null;
   return (index + (toets === "ArrowRight" ? 1 : -1) + aantal) % aantal;
 }
+
+/** Richting van de paneelwissel volgens de tabvolgorde: 1 = naar rechts (volgende tab), -1 = terug, 0 = geen wissel. */
+export function wisselRichting(van: View, naar: View): number {
+  const volgorde: View[] = ["alles", ...CATS.map((c) => c.id as View), "filmpjes", "dumpert"];
+  const a = volgorde.indexOf(van), b = volgorde.indexOf(naar);
+  return a < 0 || b < 0 || a === b ? 0 : b > a ? 1 : -1;
+}

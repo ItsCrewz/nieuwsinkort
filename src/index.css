@@ -13,7 +13,7 @@
    ============================================================ */
 :root {
   --p:#fff; --s:#fff; --ink:#111111; --i2:#3d3d3d; --muted:#6d6d6d;
-  --rl:#e8e8e8; --r2:#f0f0f0; --h:rgba(0,0,0,.035);
+  --rl:#e8e8e8; --r2:#f0f0f0; --glans:rgba(255,255,255,.65); --h:rgba(0,0,0,.035);
   --card:#f6f6f5; --cl:transparent; --seg:#f0f0ef; --seg-on:#ffffff; --ss:0 1px 2px rgba(0,0,0,.08),0 1px 1px rgba(0,0,0,.04);
   --pp:#fff; --ps:0 12px 32px -8px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.06);
   --r:12px;
@@ -21,15 +21,15 @@
   --w:#a15c00; --wb:#fdf5e8; --rd:#b3261e; --rb:#fcecea; --o:#b35400; --ob:#fdf0e6;
   --sn:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --dur-1:120ms; --dur-2:180ms; --dur-3:240ms; --dur-4:320ms;
-  --i:cubic-bezier(.05,.7,.1,1); --v:cubic-bezier(.3,1.4,.5,1);
+  --ease-standaard:cubic-bezier(.2,0,0,1); --ease-in:cubic-bezier(.05,.7,.1,1); --ease-uit:cubic-bezier(.3,0,.8,.15); --ease-veer:cubic-bezier(.3,1.4,.5,1);
   --stap:30ms; --schuif:8px;
-  --e:cubic-bezier(.2,0,0,1); --eo:cubic-bezier(.3,0,.8,.15);
+  --e:var(--ease-standaard); --eo:var(--ease-uit);
   --f:140ms; --bs:200ms; --pg:260ms;
   color-scheme:light;
 }
 :root[data-theme="dark"] {
   --p:#0f0f0f; --s:#161616; --ink:#ededed; --i2:#c2c2c2; --muted:#8c8c8c;
-  --rl:#262626; --r2:#1c1c1c; --h:rgba(255,255,255,.045);
+  --rl:#262626; --r2:#1c1c1c; --glans:rgba(255,255,255,.05); --h:rgba(255,255,255,.045);
   --card:#171717; --cl:#222; --seg:#1a1a1a; --seg-on:#2a2a2a; --ss:0 1px 2px rgba(0,0,0,.5);
   --pp:#1c1c1c; --ps:0 16px 40px -8px rgba(0,0,0,.7),0 0 0 1px #2a2a2a;
   --a:#ff5a47;
@@ -44,7 +44,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 
 .app{
   font-family:var(--sn); font-size:1rem; line-height:1.6; font-weight:400; color:var(--ink); background:var(--p); min-height:100vh;
-  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
 }
 .app,.app *{box-sizing:border-box}
 :where(.app) :where(h1,h2,h3,p,ul,ol,dl,dd){margin:0}
@@ -76,7 +76,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .brand:hover .mark{transform:rotate(-6deg)}
 .brand:active .mark{transform:scale(.94)}
 .ti{display:grid}
-.ti .ic{grid-area:1/1;opacity:0;transform:rotate(-90deg);transition:all var(--dur-2) var(--v)}
+.ti .ic{grid-area:1/1;opacity:0;transform:rotate(-90deg);transition:all var(--dur-2) var(--ease-veer)}
 .ti .aan{opacity:1;transform:none}
 .ctrls{display:flex;align-items:center;gap:2px}
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:20px;color:var(--i2);flex:none}
@@ -90,13 +90,12 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .srcbtn{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 12px;border-radius:20px;font-size:0.875rem;font-weight:400;color:var(--i2)}
 
 .srcbtn .ic{width:17px;height:17px}
-.pop,.deel-knop.ok .ic{animation:pop var(--dur-2) var(--v) backwards}
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--a);color:#fff;font-size:0.6875rem;font-weight:600;line-height:1}
 
 /* Schakelaar: duim beweegt met transform, de vulling fadet met opacity */
 .sw{position:relative;display:inline-block;width:32px;height:18px;border-radius:9px;background:var(--rl);flex:none;isolation:isolate}
 .sw::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--a);opacity:0;transition:opacity var(--bs) var(--e)}
-.sw-k{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.15);transition:transform var(--dur-3) var(--v)}
+.sw-k{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.15);transition:transform 240ms cubic-bezier(.3,1.4,.5,1)}
 :root[data-theme="dark"] .sw-k{background:#e8e8e8}
 :root[data-theme="dark"] .sw.on .sw-k,:root[data-theme="dark"] .focus.on .sw-k{background:#fff}
 .sw.on::before,.focus.on .sw::before{opacity:1}
@@ -167,7 +166,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .more-btn.open .ic{transform:rotate(180deg)}
 /* Pil op de eindbreedte; schuift met transform (FLIP), dus alleen compositor-werk */
 .seg-tabs{display:contents}
-.seg-ind{position:absolute;left:0;top:3px;bottom:3px;width:60px;border-radius:9px;background:var(--seg-on);box-shadow:var(--ss);transform-origin:0 50%;opacity:0;pointer-events:none;transition:transform 260ms cubic-bezier(.3,.9,.3,1)}
+.seg-ind{position:absolute;left:0;top:3px;bottom:3px;width:60px;border-radius:9px;background:var(--seg-on);box-shadow:var(--ss);transform-origin:0 50%;opacity:0;pointer-events:none;transition:transform var(--dur-3) var(--ease-in)}
 .seg-ind.ready{opacity:1}
 .seg-measure{position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;height:0;overflow:hidden;contain:layout paint}
 .seg-measure .seg{position:absolute;left:0;top:0;width:max-content;max-width:none}
@@ -214,8 +213,8 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .morewrap{display:flex;justify-content:center;margin-top:36px}
 .btn{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 20px;border-radius:21px;background:var(--ink);color:var(--p);font-size:0.875rem;font-weight:500;transition:all var(--dur-2) var(--e)}
 
-.btn:active,.iconbtn:active,.srcbtn:active,.chip:active,.f-btn:active,.textbtn:active,.back:active,.f-icon:active,.nf-btn:active,.fpill:active,.fchip:active{transform:scale(.97);transition-duration:var(--dur-1)}
-.iconbtn,.srcbtn,.textbtn,.chip,.back,.fpill,.fchip,.deel-knop{transition:transform var(--dur-2) var(--e)}
+.btn:active,.iconbtn:active,.srcbtn:active,.chip:active,.f-btn:active,.textbtn:active,.back:active,.deel-knop:active{transform:scale(.97)}
+.iconbtn,.srcbtn,.textbtn,.chip,.back{transition:transform var(--dur-2) var(--e)}
 .empty{padding:48px 16px;text-align:center;font-size:0.9375rem;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
 .empty .ic{width:22px;height:22px;stroke-width:1.4}
 .linkbtn{text-decoration:underline;text-underline-offset:3px;color:var(--ink);font-weight:500}
@@ -246,17 +245,16 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 
 /* ---------- Detail ---------- */
 .detail{max-width:660px;margin:0 auto;padding:32px 0 8px}
+.detail.veegt{position:relative}
+.detail.veegt::before{content:"";position:absolute;inset:0 100% 0 auto;width:24px;background:linear-gradient(to left,rgba(0,0,0,.18),transparent);pointer-events:none}
 .back{display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:0.875rem;color:var(--muted)}
 .back:hover{color:var(--ink)}
 .back .ic{transition:transform var(--f) var(--e)}
 .back:hover .ic{transform:translateX(-3px)}
 /* Deelknop (#541): vast rechtsonder, altijd zichtbaar, tapdoel 48px */
 .deel-knop{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:30;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--s);color:var(--ink);border:1px solid var(--rl);box-shadow:0 2px 10px rgba(0,0,0,.18)}
-.deel-knop:active{transform:scale(.9);transition-duration:var(--dur-1)}
 .deel-knop .ic{width:22px;height:22px}
-.deel-melding{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 58px);z-index:30;background:var(--ink);color:var(--p);border-radius:8px;padding:8px 12px;font-size:.875rem;transition:opacity var(--dur-2) var(--e)}
-.deel-melding.ok{animation:up var(--dur-3) var(--i) backwards}
-.deel-melding.uit{opacity:0}
+.deel-melding{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 58px);z-index:30;background:var(--ink);color:var(--p);border-radius:8px;padding:8px 12px;font-size:.875rem}
 .deel-melding:empty{display:none}
 .deel-invoer{display:block;width:100%;margin-top:8px}
 .d-head{display:flex;flex-direction:column;gap:14px;margin-top:28px}
@@ -275,6 +273,7 @@ li:last-child > .srcrow,.srcrow:last-child{border-bottom:0}
 .srcrow:hover .s-title{text-decoration:underline;text-underline-offset:3px}
 .mono{flex:none;display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:var(--r2);font-size:0.625rem;font-weight:600;overflow:hidden}
 .mono img{width:16px;height:16px}
+.mono.m::before{content:attr(data-m)}
 .s-title{font-size:0.9375rem;font-weight:500}
 .s-out{flex:1;min-width:0;font-size:0.8125rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .srcrow .ic{color:var(--muted)}
@@ -282,8 +281,8 @@ li:last-child > .srcrow,.srcrow:last-child{border-bottom:0}
 /* ---------- Verticale video-feed ---------- */
 .feed{position:fixed;inset:0;z-index:60;height:100vh;height:100dvh;background:#000;color:#fff;animation:fadein 240ms var(--e) backwards;overscroll-behavior:contain;touch-action:pan-y}
 .feed.out{animation:fadeout 180ms var(--eo) both}
-.feed-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:0}
-.feed-scroll::-webkit-scrollbar{display:none}
+.feed-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;outline:0}
+.feed-scroll::-webkit-scrollbar,.nf::-webkit-scrollbar,.nc-in.fit-scroll::-webkit-scrollbar,.bl-track::-webkit-scrollbar{display:none}
 .fslide{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:flex;justify-content:center;contain:size layout style}
 .fcol{position:relative;aspect-ratio:9/16;height:100%;width:min(100%,calc(100dvh * 9 / 16));background:#000;overflow:hidden;container-type:size}
 .f-poster,.f-media{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border:0;display:block}
@@ -341,7 +340,6 @@ iframe.f-media{opacity:1}
 .feed-nav .f-icon{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.12)}
 @media (max-width:700px){.feed-nav{display:none}}
 @media (max-width:640px){.fcol,.feed-topcol{width:100%}}
-@keyframes pop{from{opacity:0;transform:scale(.8)}}
 
 /* ---------- Bronnen-paneel ---------- */
 .sheet-root{position:fixed;inset:0;z-index:60;display:flex;justify-content:flex-end}
@@ -357,7 +355,7 @@ iframe.f-media{opacity:1}
 .sh-intro{font-size:0.875rem;line-height:1.55;color:var(--muted);margin-top:4px;max-width:46ch}
 .sh-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0 10px}
 .sh-state{font-size:0.8125rem;color:var(--muted)}
-.sh-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 24px 40px;-webkit-overflow-scrolling:touch}
+.sh-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 24px 40px}
 .sh-group{padding-top:24px}
 .sh-group .kicker{color:var(--ink);font-size:0.875rem}
 .sh-ghead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 2px}
@@ -397,7 +395,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 @keyframes slo{to{transform:translate3d(calc(100% + 20px),0,0)}}
 @keyframes shu{from{transform:translate3d(0,100%,0)}}
 @keyframes shd{to{transform:translate3d(0,100%,0)}}
-@keyframes pulse{50%{opacity:.55}}
+@keyframes glans{to{transform:translateX(100%)}}
 /* intro: eerste ~12 items, 16ms na elkaar (max ~200ms), 220ms per item */
 .enter{animation:up 220ms var(--e) backwards;animation-delay:calc(var(--i,0) * 16ms)}
 .front.enter > *:not(.brief){animation:up 220ms var(--e) backwards}
@@ -405,12 +403,15 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .front.enter > :nth-child(2){animation-delay:40ms}
 .swap{animation:fadein var(--f) var(--e) both}
 .page-in{animation:up var(--pg) var(--e) both}
-.skel{background:var(--r2);border-radius:3px;animation:pulse 1.2s ease-in-out infinite}
+/* Shimmer (#538): alleen transform (compositor), 300ms vertraging tegen een flits bij snel laden */
+.skel{position:relative;overflow:hidden;background:var(--r2);border-radius:3px}
+.skel::after,.d-meer-laden span::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,var(--glans),transparent);transform:translateX(-100%);animation:glans 1.4s var(--ease-standaard) 300ms infinite}
 
 /* Reduced motion, centraal voor het hele document: tokens op nul en duur .01ms (animationend/finished gaan nog af), geen herhaling, geen smooth scroll, geen view transitions. */
 @media (prefers-reduced-motion:reduce){
   :root{--dur-1:.01ms;--dur-2:.01ms;--dur-3:.01ms;--dur-4:.01ms;--stap:0ms;--schuif:0px;--f:.01ms;--bs:.01ms;--pg:.01ms}
   *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;transition-delay:0s !important;scroll-behavior:auto !important}
+  .skel::after,.d-meer-laden span::after{display:none}
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none !important}
 }
 
@@ -468,8 +469,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .app-feed .tabs{position:relative;top:auto;margin:0 -32px;border-bottom:0}
 .app-feed .filternote{border-bottom:0}
 .nf-box{position:relative;flex:1;min-height:0}
-.nf{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;outline:none;-webkit-overflow-scrolling:touch}
-.nf::-webkit-scrollbar{display:none}
+.nf{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;outline:none}
 .nc-head{min-height:100%;scroll-snap-align:start;padding-bottom:72px}
 .nc-head .dateline{padding-left:0;padding-right:0;padding-top:28px}
 .nc-head .front{padding-bottom:0}
@@ -492,7 +492,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nc-body > :nth-child(3){--k:2}
 .nc-body > :nth-child(n+4){--k:3}
 .nc.wacht .nc-body > *{opacity:0}
-.nc.in .nc-body > *{animation:kaart-in var(--dur-3) var(--i) backwards;animation-delay:calc(var(--k) * var(--stap))}
+.nc.in .nc-body > *{animation:kaart-in var(--dur-3) var(--ease-in) backwards;animation-delay:calc(var(--k) * var(--stap))}
 @keyframes kaart-in{from{opacity:0;transform:translate3d(0,var(--schuif),0)}}
 .nc-body{display:flex;flex-direction:column;gap:18px;min-height:0}
 /* Nooit tekst half afsnijden: niets in de kaart mag krimpen (flex-shrink maakte de kop halve regels).
@@ -501,7 +501,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nc-in > *, .nc-body > *{flex:none}
 .nc-in.fit-nopts .nc-pts{display:none}
 .nc-in.fit-scroll{overflow-y:auto;overscroll-behavior:contain;justify-content:flex-start;scrollbar-width:none}
-.nc-in.fit-scroll::-webkit-scrollbar{display:none}
 .nc-img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:var(--seg);flex:none;max-height:38cqh}
 .nc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:0.84375rem;line-height:1.4;color:var(--muted)}
 .nc-meta > * + *::before{content:"·";margin-right:8px;color:var(--muted)}
@@ -535,9 +534,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   font-size:0.8125rem;font-weight:500;color:var(--ink);opacity:0;transform:translateY(8px);transition:opacity 200ms var(--e),transform 240ms var(--e)}
 .nf-pos.on{opacity:1;transform:none;pointer-events:auto}
 .nf-pos > span{min-width:44px;text-align:center}
-.nf-n{display:inline-block;--schuif:6px}
-.nf-n.vw,.nf-n.terug{animation:kaart-in var(--dur-2) var(--i) backwards}
-.nf-n.terug{--schuif:-6px}
 .nf-btn{width:28px;height:28px;border-radius:14px;display:grid;place-items:center;color:var(--muted);transition:all var(--dur-2) var(--e)}
 
 .nf-btn .ic{width:16px;height:16px}
@@ -576,7 +572,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .f-tab{position:relative;display:inline-flex;align-items:baseline;gap:5px;height:34px;padding:0 12px;border:0;background:none;color:rgba(255,255,255,.6);font-size:0.9375rem;font-weight:600;letter-spacing:-.005em;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.45);-webkit-tap-highlight-color:transparent;transition:color var(--f) var(--e)}
 .f-tab span{font-size:0.71875rem;font-weight:500;opacity:.7}
 .f-tab[aria-selected="true"]{color:#fff}
-.f-tab[aria-selected="true"]::after{content:"";position:absolute;left:50%;bottom:3px;width:20px;height:2px;margin-left:-10px;border-radius:1px;background:#fff;animation:tbl 200ms var(--e) both}
+.f-tab[aria-selected="true"]::after{content:"";position:absolute;left:50%;bottom:3px;width:20px;height:2px;margin-left:-10px;border-radius:1px;background:#fff;animation:tbl var(--dur-2) var(--ease-standaard) both}
 @keyframes tbl{from{transform:scaleX(0)}}
 .feed-scroll.g0,.feed-scroll.g1{animation:fadein 180ms var(--e) backwards}
 
@@ -585,15 +581,14 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .skip:focus{top:8px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border-width:0}
 .bl{position:relative;border-radius:12px;overflow:hidden;background:var(--seg);isolation:isolate;flex:none}
-.bl-track{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
-.bl-track::-webkit-scrollbar{display:none}
+.bl-track{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x pan-y}
 .bl-slide{flex:0 0 100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;overflow:hidden}
 .bl-slide img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 260ms var(--e);-webkit-user-drag:none;user-select:none}
 .bl-slide img.in{opacity:1}
 .bl.multi .bl-track{cursor:pointer}
 .bl-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:5px;pointer-events:none;z-index:1}
-.bl-dots span{width:16px;height:6px;margin:0 -1px;border-radius:8px/3px;transform:scaleX(.375);background:rgba(255,255,255,.55);box-shadow:0 0 0 .5px rgba(0,0,0,.25);transition:transform 220ms var(--e),background 220ms var(--e)}
-.bl-dots span.on{transform:none;background:#fff}
+.bl-dots span{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.55);box-shadow:0 0 0 .5px rgba(0,0,0,.25);transition:width 220ms var(--e),background 220ms var(--e)}
+.bl-dots span.on{width:16px;background:#fff}
 .bl-nav{position:absolute;top:50%;width:34px;height:34px;margin-top:-17px;border-radius:50%;border:0;background:rgba(0,0,0,.42);color:#fff;font-size:1.375rem;line-height:32px;display:none;z-index:1;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .bl-nav.prev{left:8px}.bl-nav.next{right:8px}
 @media (hover:hover) and (pointer:fine){.bl.multi:hover .bl-nav{display:block}}
@@ -624,7 +619,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .sv-x:hover{background:rgba(0,0,0,.06)}
 .sv-x .ic{width:20px;height:20px}
 .sv-titel{margin:2px 0 10px;font-size:0.84375rem;line-height:1.4;color:rgba(0,0,0,.6);overflow-wrap:anywhere}
-.sv-body{overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;overscroll-behavior:contain}
+.sv-body{overflow-y:auto;min-height:0;overscroll-behavior:contain}
 .sv-punten{margin:0;padding:0 0 0 20px;display:flex;flex-direction:column;gap:9px}
 .sv-punten li{font-size:1rem;line-height:1.45;overflow-wrap:anywhere}
 .sv-punten li::marker{color:var(--a)}
@@ -671,9 +666,8 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .pb ul{display:flex;flex-direction:column;gap:8px;padding-left:18px;list-style:disc}
 .pb li{font-size:1rem;line-height:1.6}
 .d-meer-laden{display:flex;flex-direction:column;gap:12px;margin-top:40px}
-.d-meer-laden span{display:block;height:14px;border-radius:7px;background:var(--rl);opacity:.6;animation:ml 1.2s ease-in-out infinite alternate}
+.d-meer-laden span{display:block;position:relative;overflow:hidden;height:14px;border-radius:7px;background:var(--rl)}
 .d-meer-laden span:nth-child(2){width:92%}.d-meer-laden span:nth-child(3){width:70%}
-@keyframes ml{to{opacity:.25}}
 
 .vcard-open{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;cursor:pointer;z-index:1}
 .v-ext{position:relative;z-index:2}
@@ -710,4 +704,16 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-leeg{padding:24px;text-align:center;overflow-wrap:anywhere}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
 
-@media (hover:hover){.iconbtn:hover,.srcbtn:hover{background:var(--h);color:var(--ink)}.textbtn:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.chip:hover{border-color:var(--muted)}.lead:hover::before,.row:hover::before{opacity:1}.btn:hover{opacity:.88}.f-btn:hover{opacity:.86}.btn.ghost:hover{opacity:1;background:var(--h)}.nf-btn:hover{color:var(--ink)}}
+@media (hover:hover){.iconbtn:hover,.srcbtn:hover{background:var(--h);color:var(--ink)}.textbtn:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.chip:hover{border-color:var(--muted)}.lead:hover::before,.row:hover::before{opacity:1}.btn:hover,.f-btn:hover{opacity:.88}.btn.ghost:hover{opacity:1;background:var(--h)}.nf-btn:hover{color:var(--ink)}}
+
+/* Artikel en overzicht bewegen onder de stilstaande topbalk. */
+html[data-overgang] .topbar{view-transition-name:topbalk}
+html[data-overgang] .page-in{animation:none}
+html[data-overgang]::view-transition-old(topbalk),html[data-overgang]::view-transition-new(topbalk){animation:none;mix-blend-mode:normal}
+html[data-overgang="open"]::view-transition-old(root){animation:voo var(--dur-2) var(--eo) both}
+html[data-overgang="open"]::view-transition-new(root){animation:von var(--dur-3) var(--ease-in) both}
+html[data-overgang="terug"]::view-transition-old(root){animation:glans var(--dur-3) var(--eo) both;z-index:2}
+html[data-overgang="terug"]::view-transition-new(root){animation:vtn var(--dur-3) var(--eo) both}
+@keyframes voo{to{opacity:0;transform:scale(.98)}}
+@keyframes von{from{opacity:0;transform:translateX(24px)}}
+@keyframes vtn{from{opacity:.6;transform:translateX(-24px)}}
