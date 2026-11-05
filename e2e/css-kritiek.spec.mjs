@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 // CSS gesplitst (css-kritiek): de beweging-CSS laadt na de eerste paint en wordt dan toegepast; zonder dat bestand rendert de pagina nog correct.
 // Fixture-data, externe verzoeken geblokkeerd. Lokaal zonder Playwright-chromium: PW_CHROME=/usr/bin/google-chrome.
 // eslint-disable-next-line no-empty-pattern
 test.beforeEach(({}, info) => { test.skip(info.project.name !== "chromium", "alleen het chromium-project"); });
-test.use({ viewport: { width: 390, height: 844 }, launchOptions: { executablePath: process.env.PW_CHROME || undefined, args: ["--no-sandbox"] } });
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, launchOptions: { executablePath: process.env.PW_CHROME || undefined, args: ["--no-sandbox"] } });
 
 const blokkeerExtern = (page) => page.route(/^https?:\/\/(?!127\.0\.0\.1:)/, (route) => route.abort("blockedbyclient"));
 const duur = (page, sel) => page.evaluate((s) => getComputedStyle(document.querySelector(s)).transitionDuration, sel);
@@ -60,4 +61,56 @@ test("prefers-reduced-motion blijft gerespecteerd na het laden", async ({ page }
   await page.waitForTimeout(2500);
   const s = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".nc-title a")).transitionDuration));
   expect(s).toBeLessThan(0.001);
+});
+
+// Het binnenkomen van de uitgestelde CSS mag op al zichtbare elementen geen animatie starten (geen flits, geen opnieuw infaden).
+// Het CSS-verzoek wordt vastgehouden tot de test het vrijgeeft; getAnimations() telt alleen eindige animaties (spinner/glans lopen oneindig).
+const MEDIA = readFileSync("tests/fixtures/stil.webm");
+const eindig = () => document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.animationName || a.transitionProperty);
+async function houdUitgesteld(page) {
+  let vrij; const poort = new Promise((r) => { vrij = r; });
+  await page.route(isUitgesteld, async (route) => { await poort; await route.continue(); });
+  return vrij;
+}
+// Registreert per frame de opacity van een selector, zodat een kortstondige flits zichtbaar wordt.
+const volgOpacity = (page, sel) => page.evaluate((s) => {
+  window.__op = new Set();
+  const tik = () => { const e = document.querySelector(s); if (e) window.__op.add(getComputedStyle(e).opacity); requestAnimationFrame(tik); };
+  tik();
+}, sel);
+
+test("scrollen vóór de uitgestelde CSS: .nf-start.off wordt niet opnieuw zichtbaar", async ({ page }) => {
+  await blokkeerExtern(page);
+  const vrij = await houdUitgesteld(page);
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await page.evaluate(() => { const f = document.querySelector(".nf"); f.scrollTo({ top: 100, behavior: "instant" }); });
+  await expect(page.locator(".nf-start")).toHaveClass(/off/);
+  await page.waitForTimeout(500);
+  expect(await duur(page, ".nc-title a")).toBe("0s"); // sheet is er echt nog niet
+  await volgOpacity(page, ".nf-start");
+  vrij();
+  await expect.poll(() => duur(page, ".nc-title a"), { timeout: 10000 }).toBe("0.14s");
+  await page.waitForTimeout(600); // ruim langer dan de 300 ms nfs-animatie
+  expect(await page.evaluate(eindig)).toEqual([]);
+  expect(await page.evaluate(() => [...window.__op])).toEqual(["0"]);
+});
+
+test("videofeed geopend vóór de uitgestelde CSS: geen opnieuw infaden", async ({ page }) => {
+  await blokkeerExtern(page);
+  await page.route(/^https:\/\/media\.test\//, (route) => route.fulfill({ status: 200, contentType: "video/webm", body: MEDIA, headers: { "accept-ranges": "none" } }));
+  const items = Array.from({ length: 3 }, (_, n) => ({ titel: `Testfilmpje ${n}`, ai: "", bron: "Dumpert", href: `https://www.dumpert.nl/item/${n}_abc`, embed: `https://media.test/d${n}.mp4`, thumb: "", populariteit: "1 views", tijd: "12:00", soort: "short", t: Date.now() - n * 60000 }));
+  await page.route("**/data.json*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ gegenereerd: new Date().toISOString(), datum: "31 oktober 2026", dag_samenvatting: "", weer: {}, items: [], dumpert: items, filmpjes: [] }) }));
+  const vrij = await houdUitgesteld(page);
+  await page.goto("#/dumpert");
+  await page.locator(".vcard-open").first().tap();
+  await expect(page.locator(".feed")).toBeVisible();
+  await page.waitForTimeout(400); // de kritieke intro is dan klaar
+  expect(await duur(page, ".f-btn")).toBe("0s");
+  await volgOpacity(page, ".feed");
+  vrij();
+  await expect.poll(() => duur(page, ".f-btn"), { timeout: 10000 }).not.toBe("0s");
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => document.getAnimations().filter((a) => a.animationName === "fadein" || a.animationName === "nfs").length)).toBe(0);
+  expect(await page.evaluate(() => [...window.__op])).toEqual(["1"]);
 });
