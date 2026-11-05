@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Voorkom dat bij verversing van een geopend bericht extra tekst van een eerdere sleutel verschijnt (#677).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
