@@ -16,7 +16,7 @@ Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages
 
 Onbekende paden geven op Cloudflare Pages een 404 met `public/404.html`; de app gebruikt hash-routes en deeplinks blijven onder `/`. Controleer een Pages-preview of productie met `node scripts/check-status.mjs <basis-url>`. De controle gebruikt veilige foutverzoeken voor Functions en start geen AI.
 
-Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home.
+Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home. Een hash met ongeldige percent-codering valt terug op Home.
 
 Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen.
 Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
@@ -35,7 +35,7 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
 | `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
 | `prod-frozen/` | Bevroren oude productiebuild (zie deploy) |
-| `tests/` | Alle `*.test.ts` draaien met `npm test`, waaronder `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `cluster-randgevallen.test.ts`, `worker-hulpmodules.test.ts`, `x-artikel-foutpaden.test.ts`, `stall.test.ts`, `videopool.test.ts`, `sources.test.ts`, `sources-hooks.test.ts`, `ui-host.test.ts` en `preload-beeld.test.ts`; Pages Functions worden getest met lokale nep-KV en nep-AI; X-foutpaden gebruiken een lokale fetch-mock en de beeldpreloadtest een nep-`Image` zonder netwerk. De `*-randgevallen.test.ts`-bestanden testen onder meer randgevallen bij parsing, filters, tijd en URL's. `live-dedup.ts` en `live-cluster.ts` zijn handmatige checks op echte data |
+| `tests/` | Alle `*.test.ts` draaien met `npm test`, waaronder `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `cluster-randgevallen.test.ts`, `worker-hulpmodules.test.ts`, `x-artikel-foutpaden.test.ts`, `stall.test.ts`, `videopool.test.ts`, `sources.test.ts`, `sources-hooks.test.ts`, `rooktest-app-feed.test.ts` (rendert `App` en `Feed` via de nep-DOM in `tests/hulp/nepdom.ts`), `ui-host.test.ts` en `preload-beeld.test.ts`; Pages Functions worden getest met lokale nep-KV en nep-AI; X-foutpaden gebruiken een lokale fetch-mock en de beeldpreloadtest een nep-`Image` zonder netwerk. De `*-randgevallen.test.ts`-bestanden testen onder meer randgevallen bij parsing, filters, tijd en URL's. `live-dedup.ts` en `live-cluster.ts` zijn handmatige checks op echte data |
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
 | `export_from_canvas.mjs` | Oude flow (verlaten, komt niet terug): canvas-bron naar `public/data.json`, dat nu alleen nog fallback is |
 

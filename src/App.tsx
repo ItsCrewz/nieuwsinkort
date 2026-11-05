@@ -806,6 +806,8 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
       const t = e.target as HTMLElement | null;
       if (t && (t.closest("input,textarea,select,[contenteditable],.sheet,.menu,[role=dialog]") || document.querySelector(".sheet,.feed"))) return;
       const k = e.key;
+      // spatie/Enter op een knop, link of ander bedienbaar element: native activatie laten werken
+      if ((k === " " || k === "Enter") && t && t.closest("button,a,input,textarea,select,summary,[role=button],[contenteditable]")) return;
       let to: number | null = null;
       if (k === "ArrowDown" || k === "PageDown" || k === "j" || (k === " " && !e.shiftKey)) to = idxRef.current + 1;
       else if (k === "ArrowUp" || k === "PageUp" || k === "k" || (k === " " && e.shiftKey)) to = idxRef.current - 1;
@@ -877,14 +879,18 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
 
 let afgewezenBerichten = 0;
 // ---------------------------------------------------------------- data + thema
-function useData() {
+export function useData() {
+  const volgnummer = useRef(0);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const laatsteGen = useRef<string | undefined>(undefined);
   // true = nieuwere `gegenereerd`, false = gelijk, null = fout (voor trek-om-te-verversen)
   const load = useCallback(async (): Promise<boolean | null> => {
+    const aanvraag = ++volgnummer.current;
     try {
-      const gevalideerd = valideer(await laadData(neemVroegeData()));
+      const antwoord = await laadData(neemVroegeData());
+      if (aanvraag !== volgnummer.current) return null;
+      const gevalideerd = valideer(antwoord);
       afgewezenBerichten = gevalideerd.afgewezen;
       const d = schoon(gevalideerd.data as Data); // ook hier ontdubbelen: statische data zonder Pages Function
       d.items ??= [];
@@ -900,7 +906,7 @@ function useData() {
       laatsteGen.current = d.gegenereerd;
       return nieuw;
     } catch {
-      setError(true);
+      if (aanvraag === volgnummer.current) setError(true);
       return null;
     }
   }, []);
@@ -912,6 +918,7 @@ function useData() {
     const t = window.setInterval(load, 15 * 60 * 1000);
     const grens = window.setInterval(() => setData((d) => d && verwijderGisteren(d, Date.now())), 1000);
     return () => {
+      volgnummer.current++;
       document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(t);
       window.clearInterval(grens);
