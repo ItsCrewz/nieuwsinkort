@@ -116,7 +116,7 @@ console.log("✓ vooraf berekenen, snel pad, 304 en terugval");
     };
     let parses = 0;
     JSON.parse = ((s: string, ...a: any[]) => { if (s === payload) parses++; return (echteParse as any)(s, ...a); }) as typeof JSON.parse;
-    let tekst = `2026-11-04\nx\n${payload}`;
+    const tekst = `2026-11-04\nx\n${payload}`;
     const kv = { ASSETS: { fetch: async () => { throw new Error("geen assets"); } }, NIEUWS: { get: async () => tekst } };
     const vraag = () => onRequestGet({ request: new Request("https://site.test/data.json"), env: kv });
     const verwacht = await oud(t0);
