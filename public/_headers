@@ -18,7 +18,13 @@
 # Iconen veranderen zelden en hebben geen hash in de naam
 /favicon.svg
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
-/favicon-32.png
+/favicon.ico
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/icon-48.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/icon-96.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/icon-maskable-512.png
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 /apple-touch-icon.png
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800

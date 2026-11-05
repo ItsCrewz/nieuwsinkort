@@ -50,7 +50,7 @@ export type Video = {
   /** Zelfde filmpje bij andere bronnen (na ontdubbelen). */
   ook?: Bron2[];
 };
-export type Bron2 = { bron: string; href: string };
+type Bron2 = { bron: string; href: string };
 export type Soort = "short" | "journaal";
 export type Data = {
   datum: string;
