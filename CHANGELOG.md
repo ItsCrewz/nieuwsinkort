@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Fotocarrousels met meerdere foto's geven een gekoppelde instructie voor de pijltjestoetsen (#744).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
