@@ -1,0 +1,1 @@
+- Maak de animatie voor terugkeren naar het overzicht kleiner door bestaande animatie en bewegingstokens te hergebruiken (#545).
