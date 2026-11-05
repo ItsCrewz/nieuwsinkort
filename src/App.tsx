@@ -930,14 +930,15 @@ function applyTheme(t: Theme) {
   document.documentElement.dataset.theme = t;
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", t === "dark" ? "#0f0f0f" : "#ffffff"));
 }
-function useTheme() {
+export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme as Theme) || savedTheme() || systemTheme());
+  const handmatig = useRef(false);
   useLayoutEffect(() => applyTheme(theme), [theme]);
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
     if (!mq) return;
     const on = () => {
-      if (!savedTheme()) setTheme(mq.matches ? "dark" : "light");
+      if (!handmatig.current && !savedTheme()) setTheme(mq.matches ? "dark" : "light");
     };
     mq.addEventListener?.("change", on);
     return () => mq.removeEventListener?.("change", on);
@@ -945,6 +946,7 @@ function useTheme() {
   // Direct wisselen: geen kleurovergang op elk element (dat hapert), één repaint en klaar.
   const toggle = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
+    handmatig.current = true;
     try {
       localStorage.setItem(THEME_KEY, next);
     } catch {

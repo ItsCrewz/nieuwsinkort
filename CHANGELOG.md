@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Behoud een handmatig gekozen thema bij geblokkeerde opslag zolang de pagina openstaat (#753).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).

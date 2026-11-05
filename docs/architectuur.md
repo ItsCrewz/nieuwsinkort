@@ -75,6 +75,8 @@ De rubriektabs vormen een tablist; de knop Meer staat daarbuiten. Links en recht
 
 De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de achtergronden van rubriektabs en filterpillen.
 
+Het thema volgt de systeemvoorkeur zolang geen thema is gekozen of opgeslagen. Een handmatige keuze blijft ook bij geblokkeerde opslag gedurende de huidige pagina behouden (#753).
+
 ## Laadprestaties (#35)
 
 - **Validatie**: `src/valideer.ts` controleert de hoofdstructuur en berichten vóór de opschoning. Ongeldige berichten worden overgeslagen; `?debug=1` toont hun aantal. Een ongeldige hoofdstructuur geeft een laadfout. De Worker-run-test bewaakt het contract met de client.
