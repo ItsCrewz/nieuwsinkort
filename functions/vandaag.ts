@@ -3,7 +3,7 @@ import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
 
-interface Env { NIEUWS?: { get(key: string, type: "json" | "text"): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
+interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
 type CacheMetDefault = CacheStorage & { default?: Cache };
 type Item = { id?: string; kop: string; ruw?: boolean; cat?: string; bronnen?: { href: string }[] };
