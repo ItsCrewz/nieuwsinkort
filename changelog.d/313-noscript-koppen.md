@@ -1,1 +1,1 @@
-- Zonder JavaScript toont de startpagina nu de dagsamenvatting en de eerste 10 koppen met bronlink (zelfde inhoud als data.json) in `<noscript>`; met JavaScript verandert er niets (#313).
+- Zonder JavaScript verwijst de startpagina naar het actuele nieuws op `/vandaag` en naar `/over`; verouderende nieuwskoppen worden niet ingebakken (#313).
