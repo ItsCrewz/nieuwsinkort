@@ -721,7 +721,6 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   const [idx, setIdx] = useState(-1); // -1 = de "vandaag"-kaart met samenvatting en weer
   const idxRef = useRef(idx);
   idxRef.current = idx;
-  // teller schuift mee met de scrollrichting (alleen na de eerste wissel)
   const total = sorted.length;
   // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
   const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
@@ -1002,7 +1001,7 @@ function TopBar({
           >
             <Icon name="sliders" />
             <span className="srcbtn-l">Bronnen</span>
-            {filtered ? <span key={filtered} className="badge tnum">{filtered}</span> : null}
+            {filtered ? <span className="badge tnum">{filtered}</span> : null}
           </button>
           <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
             <span className="ti">
