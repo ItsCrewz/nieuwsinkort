@@ -48,11 +48,35 @@ export function FilterBlad({
   }, [onClose]);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    // Tab blijft in het blad; uitgeschakelde knoppen (bijv. Standaard) tellen niet mee.
+    const bedien = () => Array.from(panel.current?.querySelectorAll<HTMLElement>("button:not([disabled]), [tabindex]:not([tabindex='-1'])") ?? []);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return close();
+      if (e.key !== "Tab") return;
+      const lijst = bedien();
+      const eerste = lijst[0], laatste = lijst[lijst.length - 1];
+      const nu = document.activeElement as HTMLElement | null;
+      if (!eerste || !nu || !panel.current?.contains(nu)) {
+        e.preventDefault();
+        (eerste ?? closeBtn.current)?.focus({ preventScroll: true });
+      } else if (e.shiftKey && nu === eerste) {
+        e.preventDefault();
+        laatste.focus({ preventScroll: true });
+      } else if (!e.shiftKey && nu === laatste) {
+        e.preventDefault();
+        eerste.focus({ preventScroll: true });
+      }
+    };
+    // Focus die toch buiten het blad belandt (muis, schermlezer) gaat terug naar de sluitknop.
+    const onIn = (e: FocusEvent) => {
+      if (panel.current && e.target instanceof Node && !panel.current.contains(e.target)) closeBtn.current?.focus({ preventScroll: true });
+    };
     window.addEventListener("keydown", onKey);
+    document.addEventListener?.("focusin", onIn);
     closeBtn.current?.focus({ preventScroll: true });
     return () => {
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener?.("focusin", onIn);
       prev?.focus?.({ preventScroll: true });
     };
   }, [close]);
