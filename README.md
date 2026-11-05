@@ -143,3 +143,5 @@ Browserrookproeven staan beschreven in [docs/browser-tests.md](docs/browser-test
 Focus lezen (#383): `src/focuslezen.ts` — standaard uit; alleen een expliciete klik wordt bewaard in localStorage-sleutel `nieuwsinkort-focus-lezen-keuze` (waarden `aan`/`uit`). De oude sleutel `dagelijks-nieuws-focus-lezen-v2` werd volgens de git-historie alleen bij een klik geschreven, maar wordt genegeerd en opgeruimd (een oude waarde kan niet van een standaard worden onderscheiden). De beginstand wordt lazy gelezen, dus geen flits. Zonder of met falende storage: uit. Tests: `tests/focuslezen.test.ts`.
 
 Bij het afdrukken van een bericht verdwijnen navigatie, bediening en media. De tekst is zwart op wit en bij bronlinks staat de URL.
+
+Na een deploy kan de orchestrator `npm run rooktest:live` uitvoeren (of `npm run rooktest:live -- https://voorbeeld.nl` voor een andere basis-URL). De rooktest controleert de kernpagina's, minstens 20 feeditems, minstens 10 koppen en een berichtpagina; elk verzoek heeft een timeout van 10 seconden. De test wordt niet automatisch bij deploy uitgevoerd en start geen AI.
