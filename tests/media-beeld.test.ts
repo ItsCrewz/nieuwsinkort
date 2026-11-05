@@ -347,7 +347,13 @@ await t("Pubble: alleen Rodi-beeldpaden zonder query, ook bij redirects", async 
   const pad = "images.pubble.cloud/worker/jpg/quick/1920/2229725/648e3015/content/2026/11/1d8096c1-467a-4ef5-917b-d970306e659c";
   const url = `https://${pad}`;
   mock(jpg());
-  assert.equal(beeldProxyPad(url), `/media/beeld/${pad}`);
+  // #563: 1920 px-bron wordt 840 px; kleinere breedte blijft, en het resultaat blijft door het padpatroon komen
+  assert.equal(beeldProxyPad(url), `/media/beeld/${pad.replace("/1920/", "/840/")}`);
+  assert.equal(beeldProxyPad(url.replace("/1920/", "/640/")), `/media/beeld/${pad.replace("/1920/", "/640/")}`);
+  assert.equal(beeldProxyPad(url.replace("/1920/", "/840/")), `/media/beeld/${pad.replace("/1920/", "/840/")}`);
+  assert.ok(upstreamUrl(pad.replace("/1920/", "/840/"), ""));
+  assert.equal(beeldProxyPad("https://images.nu.nl/a.jpg?width=2400&x=1"), "/media/beeld/images.nu.nl/a.jpg?width=1200&x=1");
+  assert.equal(beeldProxyPad("https://images.nu.nl/a.jpg?w=800"), "/media/beeld/images.nu.nl/a.jpg?w=800");
   const r = await vraag(pad);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-type"), "image/jpeg");
