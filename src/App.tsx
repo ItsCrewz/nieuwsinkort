@@ -32,7 +32,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, normaliseer } from "./zoek";
+import { zoekItems, normaliseer, markeerDelen } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
@@ -593,16 +593,16 @@ function fitCard(el: HTMLElement) {
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
 // De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
-const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean }) {
+const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
   const key = itemKey(item);
   return (
     <div className={`nc cat-${item.cat}`} data-id={key} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
-      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} />}
+      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} />}
     </div>
   );
 });
 
-function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn }) {
+function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
   const key = itemKey(item);
   const cardRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -630,7 +630,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
       el.removeEventListener("nc-dirty", run);
       cancelAnimationFrame(raf);
     };
-  }, [bionic, item]);
+  }, [bionic, item, zoekterm]);
   const click = useOpen(key, onOpen);
   const beelden = useMemo(() => fotos(item), [item]);
   const refit = useCallback(() => {
@@ -660,12 +660,12 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
       </div>
       <h2 className="nc-title">
         <a href={`#/bericht/${key}`} onClick={click}>
-          {item.kop}
+          <ZoekTekst tekst={item.kop} query={zoekterm} />
         </a>
       </h2>
       {sum ? (
         <p className="nc-sum bn">
-          <BionicText text={sum} on={bionic} />
+          <ZoekTekst tekst={sum} query={zoekterm} bionic={bionic} />
         </p>
       ) : null}
       {punten.length ? (
@@ -698,7 +698,11 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   );
 }
 
-function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function ZoekTekst({ tekst, query, bionic = false }: { tekst: string; query: string; bionic?: boolean }) {
+  return <>{markeerDelen(tekst, query).map((deel, i) => deel.markeer ? <mark key={i}><BionicText text={deel.tekst} on={bionic} /></mark> : <BionicText key={i} text={deel.tekst} on={bionic} />)}</>;
+}
+
+function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm }: { zoekterm: string; items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -822,7 +826,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
             Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
           </div>
         ) : (
-          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} />)
+          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} zoekterm={zoekterm} />)
         )}
         <div className="nc-end">
           <Footer />
@@ -1070,6 +1074,7 @@ export default function App() {
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const [zoekterm, setZoekterm] = useState("");
+  const zoekInvoer = useRef<HTMLInputElement>(null);
   const flt = useFilters();
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
@@ -1183,7 +1188,7 @@ export default function App() {
   const zoekUitkomst = isFeedView && data && raw ? zoekItems(filterNieuws(route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view), flt.f, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm) : [];
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} /> : undefined} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>
@@ -1299,8 +1304,9 @@ export default function App() {
           <Foutgrens key={view} code="CLIENT_FEED"><NewsFeed
             key={view}
             items={zoekUitkomst}
+            zoekterm={zoekterm}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
+            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => { setZoekterm(""); zoekInvoer.current?.focus(); }} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

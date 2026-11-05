@@ -4,16 +4,16 @@ import { renderToStaticMarkup } from "react-dom/server.browser";
 import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
 
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
-assert.match(leeg, /Geen berichten gevonden voor ‘niets’/);
+assert.match(leeg, /Niets gevonden voor “niets”/);
 assert.match(leeg, /Wis zoekopdracht/);
 for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 resultaten"]] as const) {
   // Een nieuwe mount simuleert terugkeer uit een bericht met behouden zoekterm.
-  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal }));
+  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal, invoer: createRef<HTMLInputElement>() }));
   assert.match(balk, /aria-expanded="true"/);
   assert.match(balk, /value="tekst"/);
   assert.ok(balk.includes(`aria-live="polite">${tekst}</span>`));
 }
-const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0 }));
+const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
 assert.match(geslotenBalk, /aria-expanded="false"/);
 let gesloten = false;
 const formulier = ZoekFormulier({ query: "tekst", onChange: () => {}, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
