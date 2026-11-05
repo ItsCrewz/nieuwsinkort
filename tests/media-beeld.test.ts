@@ -201,6 +201,11 @@ await t("Accept-emmers: avif > webp > basis, en de upstream-Accept volgt de emme
   assert.equal(acceptEmmer("*/*"), "basis");
   assert.equal(acceptEmmer(null), "basis");
   assert.equal(acceptEmmer("IMAGE/AVIF"), "avif");
+  assert.equal(acceptEmmer("image/avif;q=0,image/webp"), "webp");
+  assert.equal(acceptEmmer("image/avif; q=0.0, image/webp;q=0"), "basis");
+  assert.equal(acceptEmmer("Image/AVIF;Q=0.8,image/webp;q=0.5"), "avif");
+  assert.equal(acceptEmmer("image/avif;q=0.001,*/*;q=0.8"), "avif");
+  assert.equal(acceptEmmer("text/html,image/webp,image/apng,*/*;q=0.8"), "webp");
   const verwacht: Record<string, string> = { [AVIF]: "image/avif,image/webp,image/*;q=0.8", [WEBP]: "image/webp,image/*;q=0.8", [BASIS]: "image/png,image/jpeg,image/gif,image/*;q=0.8" };
   for (const [acc, up] of Object.entries(verwacht)) {
     mock(jpg());

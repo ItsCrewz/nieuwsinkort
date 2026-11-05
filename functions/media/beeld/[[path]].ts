@@ -27,7 +27,15 @@ const fout = (status: number, cache = "no-store") => new Response(status === 405
 const weg = (r: Response) => { try { r.body?.cancel().catch(() => {}); } catch { /* al gelezen of vergrendeld */ } };
 
 /** Accept van de bezoeker → emmer: avif als image/avif erin staat, anders webp, anders basis. */
-export const acceptEmmer = (accept: string | null): Emmer => (/image\/avif/i.test(accept || "") ? "avif" : /image\/webp/i.test(accept || "") ? "webp" : "basis");
+// Een formaat telt alleen als het genoemd is met q > 0 (q=0 = uitdrukkelijk uitgesloten).
+const accepteert = (accept: string, type: string): boolean =>
+  accept.toLowerCase().split(",").some((deel) => {
+    const [naam, ...params] = deel.split(";").map((s) => s.trim());
+    if (naam !== type) return false;
+    const q = params.map((p) => /^q\s*=\s*([\d.]+)$/.exec(p)).find(Boolean);
+    return !q || Number(q[1]) > 0;
+  });
+export const acceptEmmer = (accept: string | null): Emmer => (accepteert(accept || "", "image/avif") ? "avif" : accepteert(accept || "", "image/webp") ? "webp" : "basis");
 /** Synthetische Cache API-sleutel; de emmer zit erin, dus nooit vermenging tussen formaten. */
 export const cacheSleutel = (emmer: Emmer, u: URL): string => `https://nieuwsinkort.nl/__beeldcache/${emmer}/${u.host}${u.pathname}${u.search}`;
 
