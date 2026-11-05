@@ -1,17 +1,10 @@
+import { RATES } from "../../src/aimodellen";
+export { RATES } from "../../src/aimodellen";
 import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
 import { controleerSom, vageKop } from "./somcheck";
 import { stripBronvermelding } from "../../src/bronvermelding";
 import { groq, mistral, keten, ruimteVoor, type LlmState, type Verzoek, type Wacht } from "./llm";
 // Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq- en Mistral-terugval tellen tokens, geen neuronen.
-export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
-  "@cf/google/gemma-4-26b-a4b-it": [9091, 27273],
-  "@cf/meta/llama-3.2-1b-instruct": [2457, 18252],
-  "@cf/meta/llama-3.2-3b-instruct": [4625, 30475],
-  "@cf/qwen/qwen3-30b-a3b-fp8": [4625, 30475],
-  "@cf/meta/llama-3.1-8b-instruct-fp8-fast": [4119, 34868],
-  "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [26668, 204805],
-  "@cf/mistralai/mistral-small-3.1-24b-instruct": [31876, 50488],
-};
 // Laatste AI-fout van een run (#431): alleen een korte, opgeschoonde melding; nooit prompt, artikeltekst, sleutels of headers.
 export type AiBron = "cloudflare" | "groq" | "mistral";
 export type AiLaatsteFout = { soort: "aanroep" | "output"; bericht: string; tijd: string; bron?: AiBron };

@@ -1,3 +1,5 @@
+import { ams } from "../src/tijd";
+import { MAIN, SMALL, LLAMA_3B, RATES } from "../src/aimodellen";
 // Cloudflare Pages Function: POST /samenvatting {id} -> samenvatting van één filmpje, op verzoek.
 // 1. KV-cache per video (vs:<id>), dus elk filmpje kost hooguit één keer AI.
 // 2. Tekst: YouTube-ondertiteling (ook automatische), anders spraak-naar-tekst met Whisper op de eerste
@@ -15,9 +17,8 @@ import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat
 import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState } from "../worker/src/llm";
 
 type Usage = Meting;
-const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
 async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage): Promise<string> {
-  const tarief = RATES[model] || [10000, 30000];
+  const tarief: [number, number] = [MAIN, SMALL, LLAMA_3B].includes(model) ? RATES[model] : [10000, 30000];
   let r: any;
   try { r = await ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }); }
   catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } // een mislukte aanroep kan toch neuronen kosten
@@ -33,7 +34,6 @@ interface Env { NIEUWS: KV; AI: any; GROQ_API_KEY?: string; BUDGET_DO?: DO; ASSE
 interface Ctx { request: Request; env: Env }
 
 const BUDGET_DEF = 9000;
-const MAIN = "@cf/google/gemma-4-26b-a4b-it", SMALL = "@cf/meta/llama-3.2-1b-instruct";
 const WHISPER = "@cf/openai/whisper-large-v3-turbo";
 const WHISPER_PER_MIN = 46.64; // $0.000513 per audiominuut / $0.011 per 1000 neuronen
 const MAX_SEC = 180; // hooguit de eerste 3 minuten geluid
@@ -58,10 +58,6 @@ const MSG = {
   origin: "Verzoek van een andere website geweigerd.",
 };
 
-function ams(t = Date.now()) {
-  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
-  return { iso: `${p.year}-${p.month}-${p.day}`, h: +p.hour };
-}
 export const ytId = (u = "") => /(?:youtube(?:-nocookie)?\.com\/(?:shorts\/|embed\/|watch\?(?:.*&)?v=|live\/)|youtu\.be\/)([\w-]{11})/.exec(u)?.[1] || null;
 
 // ---------------- tekst uit YouTube-ondertiteling

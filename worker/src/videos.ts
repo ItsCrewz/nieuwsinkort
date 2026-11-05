@@ -1,6 +1,8 @@
 // Port van /workspace/nieuws/filmpjes.py (Dumpert-toppers, YouTube-nieuwskanalen, Reddit-video's).
 import { decode, stripHtml } from "./parse";
 import { youtubeId } from "../../src/slug";
+import { soortVan } from "../../src/soort";
+export { soortVan } from "../../src/soort";
 
 export const YT_NIEUWS: Record<string, string> = {
   NOS: "UC5xziMuoFAOpX9mwUVhe2Jw", "RTL Nieuws": "UCv4NUJ5BGSpJz_leIfayDzQ", "NU.nl": "UCCw1aOc9x3sEjrUzT-qmMGw",
@@ -178,16 +180,6 @@ export function selecteerFilmpjes<T extends { bron?: string; soort?: string }>(v
     return kandidaten.filter((v) => gekozen.has(v));
   });
 }
-const JOURNAAL_RE = /journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur/i;
-export function soortVan(v: { titel?: string; href?: string; embed?: string; bron?: string; soort?: string }): Soort {
-  if (v.soort === "short" || v.soort === "journaal") return v.soort;
-  if (JOURNAAL_RE.test(v.titel || "")) return "journaal";
-  const u = `${v.href || ""} ${v.embed || ""}`;
-  if (/youtube\.com\/shorts\//i.test(u)) return "short";
-  if (/youtube(?:-nocookie)?\.com\/(?:watch|embed|live)|youtu\.be\//i.test(u) && !/dumpert/i.test(v.bron || "")) return "journaal";
-  return "short";
-}
-
 // ---------------------------------------------------------------- Instagram (zonder login)
 // Kittygram blokkeert Cloudflare-IP's (HTTP 500 "Blocked"). Instagram's eigen profiel-embed
 // (instagram.com/<naam>/embed/) is openbaar en geeft de laatste 6 posts met echte tijd, tekst en of het een video is.

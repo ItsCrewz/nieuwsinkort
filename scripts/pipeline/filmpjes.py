@@ -86,7 +86,7 @@ def _politiek():
 IG_POLITIEK, YT_POLITIEK = _politiek()
 IG_UA = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
          "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
-# Shorts vs. Journaals (zelfde regels als worker/src/videos.ts soortVan en de site)
+# Shorts vs. Journaals (zelfde regels als src/soort.ts)
 JOURNAAL_RE = re.compile(r"journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|"
                          r"nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur", re.I)
 

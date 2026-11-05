@@ -1,3 +1,5 @@
+import { SMALL } from "../../src/aimodellen";
+import { UA, IG_UA, BR_UA } from "./ua";
 import { linkId } from "../../src/artikelid";
 import { relevantePunten, verzamelUrl, invoerBijKop } from "../../src/puntenrelevantie";
 import { videomoment, videoToegestaan, zonderGisteren } from "./videomoment";
@@ -70,7 +72,6 @@ export interface Env {
   NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>; BUDGET_DO: DurableObjectNamespace<Budget>;
   RUN_KEY?: string; GROQ_API_KEY?: string; MISTRAL_API_KEY?: string; MISTRAL_MAAND_TOKENS?: string; MISTRAL_TUSSENPOOS_MS?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string; NEURON_FACTOR?: string;
 }
-const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";
 const TZ = "Europe/Amsterdam";
 
 // ---------------------------------------------------------------- tijd
@@ -81,7 +82,6 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; pad?: string; alleenVideo?: boolean };
 type Res = { url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
-const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
 
 // Instagram: profiel-embed -> entries (bronstats) + van vandaag de video's met hun MP4 (max 3 per account).
@@ -177,7 +177,6 @@ async function runX(j: Job, _since: number, t0: number): Promise<Res> {
 
 const FEED_UA = "Feedly/1.0 (+http://www.feedly.com/fetcher.html; like FeedFetcher-Google)";
 const HN_RSS = /^https?:\/\/news\.ycombinator\.com\/rss\/?$/;
-const BR_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 async function get(url: string, timeout = 15000, ua = UA): Promise<Response> {
   // SRU (overheid.nl) geeft JSON terug zodra "application/json" in Accept staat: dan alleen XML vragen
   const accept = /\/sru\?/.test(url) ? "application/xml, text/xml" : "application/rss+xml, application/atom+xml, application/xml, text/xml, application/json, text/html;q=0.8, */*;q=0.5";
@@ -674,7 +673,7 @@ export class Runner extends DurableObject<Env> {
     // ---- AI-budget in trappen (gratis = 10.000 neuronen/dag, BUDGET = eigen plafond daaronder)
     //  <70%: hoofdmodel voor alles · 70–90%: klein model, minder berichten · 90–100%: klein model, alleen NL/Haarlem · daarna: geen AI.
     // Per run hooguit 2x het eerlijke deel van wat er nog over is, zodat ook de late uren samenvattingen krijgen.
-    const SMALL = env.SMALL_MODEL || "@cf/meta/llama-3.2-1b-instruct";
+    const kleinModel = env.SMALL_MODEL || SMALL;
     // video-samenvattingen op verzoek (functions/samenvatting.ts) tellen mee in hetzelfde dagbudget
     const leesVid = async () => +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
     let vidN = await leesVid();
@@ -704,7 +703,7 @@ export class Runner extends DurableObject<Env> {
     // Echte Cloudflare-dagquota die Groq opving: toch quotaOut + KV-vlag, en Cloudflare wordt overgeslagen.
     const cfStand = async () => { if (usage.llm!.cloudflareFout) await aiFoutAf(usage.llm!.cloudflareFout); };
     if (quotaOut) usage.llm!.cloudflare = false;
-    const modelNu = () => { const m = tier() === 1 ? model : SMALL; modelsUsed.add(m); return m; };
+    const modelNu = () => { const m = tier() === 1 ? model : kleinModel; modelsUsed.add(m); return m; };
     const toIn = (k: Cluster, id: number): In => {
       const cs = k.c.slice(0, 4);
       return { id, cat: k.cat, bronnen: [...new Set(cs.map((c) => c.site))], titels: [...new Set(cs.map((c) => c.t))].slice(0, 3), tekst: cs.map((c) => invoerBijKop(c.s, c.href)).join(" // ").slice(0, 900) };

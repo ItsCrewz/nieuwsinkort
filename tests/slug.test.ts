@@ -8,3 +8,10 @@ assert.equal(videoSlug(video("", "!!!")), "video");
 assert.equal(videoSlug(video("", "a".repeat(70))).length, 60);
 assert.equal(videoSlug(video("https://dumpert.nl/item/abc", "Titel", "https://youtube.com/embed/abcDEF12345")), "yt-abcDEF12345");
 console.log("✓ slug: platforms en terugval");
+
+import { artikelSlug } from "../src/artikelid";
+
+assert.equal(artikelSlug("Één café!"), "een-cafe");
+assert.equal(artikelSlug("  Nieuws & WEER 2026 "), "nieuws-weer-2026");
+assert.equal(artikelSlug("!!!"), "");
+assert.equal(artikelSlug("a".repeat(81)), "a".repeat(80));

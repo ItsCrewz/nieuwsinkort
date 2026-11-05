@@ -1,3 +1,4 @@
+import { UA, BR_UA_X } from "./ua";
 // X (Twitter) zonder login of API-sleutel. Elke 30 minuten (tier, zie tier.ts), gratis:
 //  1. api.fxtwitter.com/2/profile/<naam>/statuses  (FxEmbed, open JSON-API; laatste ±20 posts, met MP4-varianten)
 //  2. terugval: syndication.twitter.com timeline-profile (de officiële embed-tijdlijn, __NEXT_DATA__)
@@ -10,7 +11,6 @@ export const xUser = (u: string) => /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/(
 export const X_VIDEO: Record<string, string> = { RTLnieuws: "RTL Nieuws", telegraaf: "De Telegraaf", ADnl: "AD", PowNed: "PowNed", GeenStijl: "GeenStijl", nhnieuws: "NH Nieuws", BNR: "BNR" };
 
 export type XPost = { id: string; user: string; text: string; t: number; img?: string; mp4?: string; mp4Laag?: string; thumb?: string; dur?: number; views?: number; likes?: number };
-const BR_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36";
 
 function fromFx(s: any, user: string): XPost | null {
   if (!s || String(s.author?.screen_name || "").toLowerCase() !== user.toLowerCase()) return null; // repost van een ander
@@ -26,14 +26,14 @@ function fromFx(s: any, user: string): XPost | null {
   };
 }
 export async function xFx(user: string): Promise<XPost[]> {
-  const r = await fetch(`https://api.fxtwitter.com/2/profile/${user}/statuses`, { headers: { "User-Agent": "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)" }, signal: AbortSignal.timeout(12000) });
+  const r = await fetch(`https://api.fxtwitter.com/2/profile/${user}/statuses`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(12000) });
   if (!r.ok) throw new Error(`fxtwitter HTTP ${r.status}`);
   const j: any = await r.json();
   if (j?.code !== 200) throw new Error(`fxtwitter ${j?.code || "?"}`);
   return ((j.results || []) as any[]).map((s) => fromFx(s, user)).filter(Boolean) as XPost[];
 }
 export async function xSyndication(user: string): Promise<XPost[]> {
-  const r = await fetch(`https://syndication.twitter.com/srv/timeline-profile/screen-name/${user}`, { headers: { "User-Agent": BR_UA, Accept: "text/html" }, signal: AbortSignal.timeout(12000) });
+  const r = await fetch(`https://syndication.twitter.com/srv/timeline-profile/screen-name/${user}`, { headers: { "User-Agent": BR_UA_X, Accept: "text/html" }, signal: AbortSignal.timeout(12000) });
   if (!r.ok) throw new Error(`syndication HTTP ${r.status}`);
   const h = await r.text();
   const m = /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/.exec(h);

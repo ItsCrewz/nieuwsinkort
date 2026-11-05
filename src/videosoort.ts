@@ -1,5 +1,7 @@
 // Pure videohelpers (speler kiezen, soort Short/Journaal, proxy-URL); apart van video.tsx zodat het hoofdscherm en het voorladen niet de hele videogrid laden.
 import type { Soort, Video } from "./types";
+import { soortVan } from "./soort";
+export { soortVan } from "./soort";
 
 export type Player =
   | { kind: "youtube"; src: string }
@@ -41,16 +43,6 @@ export function viaProxy(src: string): string {
   return src;
 }
 
-// Shorts vs. Journaals: zelfde regels als worker/src/videos.ts (soortVan) en filmpjes.py (soort_van).
-const JOURNAAL_RE = /journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur/i;
-export function soortVan(v: Video): Soort {
-  if (v.soort === "short" || v.soort === "journaal") return v.soort;
-  if (JOURNAAL_RE.test(v.titel || "")) return "journaal";
-  const u = `${v.href || ""} ${v.embed || ""}`;
-  if (/youtube\.com\/shorts\//i.test(u)) return "short";
-  if (/youtube(?:-nocookie)?\.com\/(?:watch|embed|live)|youtu\.be\//i.test(u) && !/dumpert/i.test(v.bron || "")) return "journaal";
-  return "short";
-}
 export const SOORTEN: { id: Soort; label: string; leeg: string }[] = [
   { id: "short", label: "Shorts", leeg: "Nog geen shorts vandaag." },
   { id: "journaal", label: "Journaals", leeg: "Nog geen journaals vandaag." },

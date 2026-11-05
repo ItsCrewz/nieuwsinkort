@@ -1,3 +1,4 @@
+import { soortVan as frontendSoortVan } from "../src/videosoort";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import { parseDumpert, parseRedditVideos, parseYouTube, soortVan, selecteerFilmpjes, ytGeblokkeerdeShorts, ytBlokkades, YT_NIEUWS } from "../worker/src/videos";
@@ -133,3 +134,16 @@ await t("Dumpert: sortering op kudos vandaag blijft over beide lijsten", async (
 });
 
 console.log(`\n${n} video-tests geslaagd`);
+
+// Beide ingangen gebruiken dezelfde indeling, ook bij voorrang en uitzonderingen.
+for (const [video, verwacht] of [
+  [{ titel: "NOS Nieuws om 20:00", href: "https://youtube.com/shorts/abc" }, "journaal"],
+  [{ titel: "Uitzending", soort: "short" }, "short"],
+  [{ href: "https://youtube.com/shorts/abc" }, "short"],
+  [{ href: "https://youtube.com/watch?v=abc" }, "journaal"],
+  [{ embed: "https://youtube.com/embed/abc", bron: "Dumpert" }, "short"],
+  [{ titel: "Een gewoon filmpje" }, "short"],
+] as const) {
+  assert.equal(frontendSoortVan(video), verwacht);
+  assert.equal(soortVan(video), verwacht);
+}

@@ -1,3 +1,4 @@
+import { UA } from "./ua";
 // Generieke, opeenvolgende keten met conservatieve reserveringen per model.
 export type Teller = { dag: string; calls: number; tokens: number; venster: { tijd: number; tokens: number }[]; maand?: string; maandTokens?: number };
 export type LlmState = Record<string, Teller>;
@@ -38,7 +39,7 @@ export function groq(sleutel?: string): Aanbieder | undefined {
   if (!sleutel) return undefined;
   return { naam: "groq", modellen: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"], limieten: { rpm: 30, rpd: 1000, tpm: 8000, tpd: 200000 },
     async call(model, v) {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sleutel}`, "User-Agent": "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)" }, body: JSON.stringify({ model, messages: [{ role: "system", content: v.sys }, { role: "user", content: v.user }], ...(groqJson(model, v) ? { max_completion_tokens: v.maxTokens * 2, reasoning_effort: "low" } : { max_tokens: v.maxTokens }), temperature: 0.3, ...(v.json ? { response_format: { type: "json_object" } } : {}) }), signal: AbortSignal.timeout(15000) });
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sleutel}`, "User-Agent": UA }, body: JSON.stringify({ model, messages: [{ role: "system", content: v.sys }, { role: "user", content: v.user }], ...(groqJson(model, v) ? { max_completion_tokens: v.maxTokens * 2, reasoning_effort: "low" } : { max_tokens: v.maxTokens }), temperature: 0.3, ...(v.json ? { response_format: { type: "json_object" } } : {}) }), signal: AbortSignal.timeout(15000) });
       if (!r.ok) throw await httpFout(r, sleutel);
       const data: any = await r.json();
       const tekst = data?.choices?.[0]?.message?.content;
@@ -52,7 +53,7 @@ export function mistral(sleutel?: string, maandTokens?: string, tussenpoos?: str
   const max = Number(maandTokens), poos = Number(tussenpoos);
   return { naam: "mistral", modellen: ["mistral-small-latest"], limieten: { rpm: 60, rpd: 2000, tpm: 100000, tpd: 1000000, maandTokens: maandTokens && Number.isSafeInteger(max) && max >= 0 ? max : 30000000, tussenpoos: tussenpoos && Number.isSafeInteger(poos) && poos >= 0 ? poos : MISTRAL_TUSSENPOOS },
     async call(model, v) {
-      const r = await fetch("https://api.mistral.ai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sleutel}`, "User-Agent": "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)" }, body: JSON.stringify({ model, messages: [{ role: "system", content: v.sys }, { role: "user", content: v.user }], max_tokens: v.maxTokens, temperature: 0.3, ...(v.json ? { response_format: { type: "json_object" } } : {}) }), signal: AbortSignal.timeout(15000) });
+      const r = await fetch("https://api.mistral.ai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sleutel}`, "User-Agent": UA }, body: JSON.stringify({ model, messages: [{ role: "system", content: v.sys }, { role: "user", content: v.user }], max_tokens: v.maxTokens, temperature: 0.3, ...(v.json ? { response_format: { type: "json_object" } } : {}) }), signal: AbortSignal.timeout(15000) });
       if (!r.ok) throw await httpFout(r, sleutel);
       const data: any = await r.json();
       const tekst = data?.choices?.[0]?.message?.content;
