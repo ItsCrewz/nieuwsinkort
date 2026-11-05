@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Tel voor het filter en de sortering op bronnen elke uitgever eenmaal, ook bij meerdere links of rubrieknamen (#701).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).

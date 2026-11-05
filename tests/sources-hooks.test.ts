@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { act, createElement } from "react";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "../src/sources";
+import { filterNieuws, STANDAARD } from "../src/filters";
 import type { Catalog } from "../src/sources";
 import type { Data, Item, Video } from "../src/types";
 
@@ -222,6 +223,14 @@ await t("useFiltered verbergt berichten pas als alle bronnen uit staan", async (
   assert.equal(r.data.items[2], zonderBron);
   assert.equal(r.data.filmpjes.length, 2);
   assert.equal(r.data.datum, data.datum);
+  await h.unmount();
+});
+await t("bronfilter werkt door in aantal en sortering van samengevoegde berichten", async () => {
+  const h = await renderHook(() => useFiltered(data, index, new Set(["nl|nos"])), null);
+  const resultaat = filterNieuws(h.result.current!.data.items, { ...STANDAARD, tijd: "alles", samen: true, sort: "bronnen" }, 0, undefined, true);
+  assert.equal(resultaat.items.length, 0);
+  assert.equal(resultaat.per.alles, 0);
+  assert.ok(h.result.current!.data.items.includes(zonderBron));
   await h.unmount();
 });
 await t("useFiltered filtert filmpjes en Dumpert (lege bron = Dumpert)", async () => {
