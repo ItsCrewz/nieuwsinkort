@@ -11,23 +11,26 @@ import { scrollGedrag } from "./beweging";
 // inclusief decoderen, zodat hij er meteen staat. Van het bericht in beeld ook al de 2e carrouselfoto.
 // Begrensd: nooit meer dan een handvol tegelijk, dus niet alle 200 foto's in één keer (die bevriezing blijft weg).
 const AHEAD = 3;
-const klaar = new Set<string>(); // url's die al gedecodeerd zijn
-// Vangnet: faalt de proxy (bijv. botbescherming van de uitgever), dan één keer rechtstreeks (oude gedrag) voor het wegvallen.
-const rechtstreeks = new Set<string>();
-export const bronUrl = (u: string): string => (rechtstreeks.has(u) ? u : beeldViaProxy(u));
-/** Proxy gefaald: true als er nog een rechtstreekse poging is (nu ingepland), false als dat al geprobeerd is of niet kan.
- *  `huidig` = src-attribuut van de falende <img>: had die nog de proxy-URL, dan altijd één poging, ook als de preload
- *  de URL al in `rechtstreeks` zette (race). Na die poging is huidig === u, dus geen lus. */
+const klaar = new Map<string, string>(); // originele URL naar de gedecodeerde bron
+// Na een tijdelijke fout krijgt de proxy bij een volgende aanvraag opnieuw een kans.
+const TERUGVAL_MS = 60_000;
+const rechtstreeks = new Map<string, number>();
+export const bronUrl = (u: string): string => {
+  const tot = rechtstreeks.get(u);
+  if (tot !== undefined && Date.now() < tot) return u;
+  if (tot !== undefined) rechtstreeks.delete(u);
+  return beeldViaProxy(u);
+};
+/** Een falende proxy krijgt één rechtstreekse poging, ook bij gelijktijdige preload en weergave. */
 export function naarRechtstreeks(u: string, huidig?: string | null): boolean {
-  if (beeldViaProxy(u) === u) return false;
-  if (huidig != null && huidig !== u) { rechtstreeks.add(u); return true; }
-  if (rechtstreeks.has(u)) return false;
-  rechtstreeks.add(u);
+  if (beeldViaProxy(u) === u || huidig === u) return false;
+  if (huidig == null && bronUrl(u) === u) return false;
+  rechtstreeks.set(u, Date.now() + TERUGVAL_MS);
   return true;
 }
 const bezig = new Map<string, Promise<void>>();
 export function preloadBeeld(u: string | undefined): Promise<void> {
-  if (!u || klaar.has(u)) return Promise.resolve();
+  if (!u || klaar.get(u) === bronUrl(u)) return Promise.resolve();
   const p0 = bezig.get(u);
   if (p0) return p0;
   const laad = (src: string): Promise<void> => {
@@ -37,9 +40,10 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
     im.src = src;
     return im.decode ? im.decode() : new Promise<void>((ok, nok) => { im.onload = () => ok(); im.onerror = nok; });
   };
-  const p = laad(bronUrl(u)) // zelfde URL als de <img src>, anders dubbele downloads
-    .catch(() => (naarRechtstreeks(u) ? laad(u) : Promise.reject()))
-    .then(() => { klaar.add(u); }, () => {})
+  const src = bronUrl(u); // zelfde URL als de <img src>, anders dubbele downloads
+  const p = laad(src)
+    .then(() => src, () => (naarRechtstreeks(u, src) ? laad(u).then(() => u) : Promise.reject()))
+    .then((geladen) => { klaar.set(u, geladen); }, () => {})
     .finally(() => bezig.delete(u));
   bezig.set(u, p);
   return p;
@@ -173,7 +177,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
                 draggable={false}
                 loading={k === 0 ? "eager" : "lazy"}
                 fetchPriority={voorrang && k === 0 ? "high" : undefined}
-                className={klaar.has(u) ? "in" : undefined}
+                className={klaar.get(u) === bronUrl(u) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"
                 onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : drop(u))}
