@@ -1,0 +1,2 @@
+// Link-tags voor favicon en app-icoon (#597), gedeeld door de server-gerenderde pagina's; index.html en over.html bevatten dezelfde tags (test: tests/icoon.test.ts).
+export const ICOON_TAGS = '<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">';

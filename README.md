@@ -6,7 +6,7 @@ Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq voor tran
 
 - Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Productiedomein: https://nieuwsinkort.nl; www.nieuwsinkort.nl geeft een 301 naar de apex (`functions/_middleware.ts`).
 
-De metadata in `index.html` beschrijft de website en nieuwsorganisatie met JSON-LD; het logo verwijst naar `public/icon-512.png`.
+De metadata in `index.html` beschrijft de website en nieuwsorganisatie met JSON-LD; het logo verwijst naar `public/icon-512.png`; favicon en app-iconen: zie [architectuur](docs/architectuur.md) (#597).
 
 ## Stack
 
