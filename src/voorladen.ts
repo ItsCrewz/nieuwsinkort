@@ -86,6 +86,7 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
+export const POSTER_MAX_MS = 8000; // langste wachttijd per poster-taak
 const vast: unknown[] = []; // voorkomt dat Image-objecten voortijdig worden opgeruimd
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
@@ -135,7 +136,19 @@ export function voerUit(p: Plan) {
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
-          im.onload = im.onerror = () => ok();
+          // geen load/error (vastgelopen verbinding)? Na POSTER_MAX_MS toch vrijgeven, anders blokkeert de plaats de wachtrij
+          const klaar = () => {
+            clearTimeout(timer);
+            im.onload = im.onerror = null;
+            const n = vast.indexOf(im);
+            if (n >= 0) vast.splice(n, 1);
+            ok();
+          };
+          const timer = setTimeout(() => {
+            im.src = ""; // breekt de aanvraag af; handlers zijn al weg in klaar()
+            klaar();
+          }, POSTER_MAX_MS);
+          im.onload = im.onerror = klaar;
           im.src = t;
           vast.push(im);
         })
