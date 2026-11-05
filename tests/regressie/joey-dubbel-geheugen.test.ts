@@ -7,7 +7,7 @@ import { DetailView } from "../../src/detail";
 import type { Item } from "../../src/types";
 
 const item = JSON.parse(readFileSync("tests/fixtures/joey/nu-geheugen.json", "utf8")) as Item;
-const html = renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false }));
+const html = renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false, dag: "2026-11-03" }));
 assert.ok(!html.includes('aria-label="Uitgebreid"'));
 assert.ok(html.includes("Sam Altman van OpenAI") && html.includes("beter in datacenters"));
 assert.ok(html.includes('aria-label="Bronnen"'));
