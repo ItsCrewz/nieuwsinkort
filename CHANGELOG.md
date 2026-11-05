@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Houd de actieve foto en scrollpositie gelijk wanneer berichtfoto’s veranderen (#721).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
