@@ -42,6 +42,8 @@ const groepen: SourceGroup[] = [{
     { id: "b", key: "b", naam: "B", count: 0, fromData: false, stat: { vandaag: 0, laatste: "2026-10-30T10:30:00Z", ok: "2026-10-30T11:00:00Z", fout: "fout" } },
     { id: "c", key: "c", naam: "C", count: 1, fromData: false, stat: { vandaag: null, ok: "2026-10-29T10:00:00Z" } },
     { id: "d", key: "d", naam: "D", count: 0, fromData: false, stat: { vandaag: 3 } },
+    { id: "e", key: "e", naam: "E", count: 0, fromData: false, stat: { vandaag: 0, laatste: "2026-10-30T10:30:00Z", ok: "2026-10-30T11:00:00Z" } },
+    { id: "f", key: "f", naam: "F", count: 0, fromData: false, stat: { vandaag: 0, storing: true } },
   ],
 }];
 const calls: unknown[] = [];
@@ -58,9 +60,12 @@ const tekst = (node: any): string => typeof node === "string" || typeof node ===
 const root = render();
 assert.equal(root.containerInfo, body);
 assert.match(tekst(root), /1 bron uit/);
-assert.match(tekst(root), /4 bronnen · 7 berichten vandaag/);
+assert.match(tekst(root), /6 bronnen · 7 berichten vandaag/);
 assert.match(tekst(root), /2 in overzicht/);
-assert.match(tekst(root), /Vandaag niets · laatste 11:30 · bijgewerkt 12:00 · deels mislukt/);
+assert.match(tekst(root), /Stand onvolledig · laatste 11:30 · bijgewerkt 12:00 · deels mislukt/);
+assert.match(tekst(root), /Vandaag niets · laatste 11:30 · bijgewerkt 12:00(?! · deels)/);
+assert.match(tekst(root), /Stand onvolledig · deels mislukt/);
+assert.doesNotMatch(tekst(root), /Vandaag niets · deels/);
 assert.match(tekst(root), /Ophalen mislukt · laatst gelukt do 29 okt · 1 in overzicht/);
 assert.match(tekst(root), /3 vandaag/);
 assert.equal(nodes(root, "a")[0].props.href, undefined);
@@ -70,7 +75,7 @@ assert.equal(switches[0].props.checked, "mixed");
 assert.equal(switches[2].props.checked, false);
 switches[0].props.onChange(true);
 switches[2].props.onChange(true);
-assert.deepEqual(calls, [[['a', 'b', 'c', 'd'], true], [["b"], true]]);
+assert.deepEqual(calls, [[['a', 'b', 'c', 'd', 'e', 'f'], true], [["b"], true]]);
 const reset = nodes(root, "button").find((n) => tekst(n) === "Alles weer aan");
 assert.equal(reset.props.disabled, false);
 reset.props.onClick();

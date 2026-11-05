@@ -9,11 +9,11 @@ export type FrameTik = {
   videoWidth: number;
   readyState: number;
 };
-export type FrameBesluit = "ok" | "frame-vast" | "geen-eerste-frame";
+type FrameBesluit = "ok" | "frame-vast" | "geen-eerste-frame";
 
 /** Zonder nieuw beeld ten minste zo lang (wandklok) én zoveel klokvoortgang: beeld staat vast. */
-export const VAST_MS = 2500;
-export const VAST_KLOK = 1;
+const VAST_MS = 2500;
+const VAST_KLOK = 1;
 /** Geen eerste beeld (of breedte 0) zo lang na de start terwijl er data is of de klok loopt. */
 export const EERSTE_FRAME_MS = 5000;
 
