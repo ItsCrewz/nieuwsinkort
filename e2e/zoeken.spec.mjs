@@ -47,3 +47,44 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(opslag);
   expect(verzoeken).toEqual([]);
 });
+
+for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["mobiel klein", 360, 740], ["desktop", 1280, 800]]) test(`zoekknop dekt geen kaartactie of open-knop af, ook niet bij de laatste kaart (${naam})`, async ({ page }) => {
+  await page.setViewportSize({ width: breedte, height: hoogte });
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  const controle = async () => {
+    const vak = await knop.boundingBox();
+    const dozen = await page.evaluate(() => [...document.querySelectorAll(".nc .nc-act a, .nc .nc-act .btn, .nc-title a, .nc-end a")].map((el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }).filter((r) => r.width > 0 && r.y < innerHeight && r.y + r.height > 0));
+    for (const d of dozen) expect(vak.x < d.x + d.width && d.x < vak.x + vak.width && vak.y < d.y + d.height && d.y < vak.y + vak.height).toBe(false);
+    return dozen.length;
+  };
+  let gezien = await controle();
+  const aantal = await page.locator(".nf .nc").count();
+  for (let k = 0; k < aantal; k++) {
+    await page.evaluate((n) => { const f = document.querySelector(".nf"); f.scrollTo({ top: f.querySelectorAll(".nc")[n].offsetTop, behavior: "instant" }); }, k);
+    await page.waitForTimeout(50);
+    gezien += await controle();
+  }
+  await page.evaluate(() => { const f = document.querySelector(".nf"); f.scrollTo({ top: f.scrollHeight, behavior: "instant" }); });
+  await page.waitForTimeout(50);
+  gezien += await controle();
+  expect(gezien).toBeGreaterThan(0);
+});
+
+test("zoekknop schaalt niet bij :active met reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  await expect(knop).toBeVisible();
+  const vak = await knop.boundingBox();
+  await page.mouse.move(vak.x + vak.width / 2, vak.y + vak.height / 2);
+  await page.mouse.down();
+  const stijl = await knop.evaluate((el) => ({ t: getComputedStyle(el).transform, d: getComputedStyle(el).transitionDuration, actief: el.matches(":active") }));
+  await page.mouse.up();
+  expect(stijl.actief).toBe(true);
+  expect(stijl.t).toBe("none");
+});

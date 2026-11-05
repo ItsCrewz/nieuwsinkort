@@ -248,7 +248,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .back .ic{transition:transform var(--f) var(--e)}
 .back:hover .ic{transform:translateX(-3px)}
 /* Deelknop (#541) en zoekknop (#576, links i.p.v. rechts): vast onderin, altijd zichtbaar, tapdoel 48px */
-.deel-knop,.zoek-knop{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:30;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--s);color:var(--ink);border:1px solid var(--rl);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.deel-knop,.zoek-knop{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:30;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--s);color:var(--ink);border:1px solid var(--rl);box-shadow:0 2px 10px rgba(0,0,0,.18);transition:transform var(--dur-1) var(--e)}
 .deel-knop:active,.zoek-knop:active{transform:scale(.96)}
 .deel-knop .ic,.zoek-knop .ic{width:22px;height:22px}
 .deel-melding{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 58px);z-index:30;background:var(--ink);color:var(--p);border-radius:8px;padding:8px 12px;font-size:.875rem}
@@ -407,6 +407,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 
 /* Reduced motion, centraal voor het hele document: tokens op nul en duur .01ms (animationend/finished gaan nog af), geen herhaling, geen smooth scroll, geen view transitions. */
 @media (prefers-reduced-motion:reduce){
+  .deel-knop:active,.zoek-knop:active{transform:none}
   :root{--dur-1:.01ms;--dur-2:.01ms;--dur-3:.01ms;--dur-4:.01ms;--stap:0ms;--schuif:0px;--f:.01ms;--bs:.01ms;--pg:.01ms}
   *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;transition-delay:0s !important;scroll-behavior:auto !important}
   .skel::after,.d-meer-laden span::after{display:none}
@@ -557,6 +558,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
   .nf-pos > span{min-width:40px}
   .nf-rail{right:4px}
 }
+.nc,.nc-end{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 
 /* ---------- Filmpjes: Shorts / Journaals ---------- */
 .vseg{display:inline-flex;gap:2px;padding:3px;border-radius:12px;background:var(--seg);margin-top:20px;max-width:100%}
