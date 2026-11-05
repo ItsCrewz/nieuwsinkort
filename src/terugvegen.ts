@@ -39,6 +39,10 @@ export function negeerDoel(el: Element | null, grens: Element | null = null): bo
   return false;
 }
 
+export function magStartenOp(artikel: Element | null, doel: Element | null): boolean {
+  return !!artikel && !!doel && artikel.contains(doel) && !negeerDoel(doel, artikel.parentElement);
+}
+
 const selectie = () => { const s = window.getSelection?.(); return !!s && !s.isCollapsed && s.toString().length > 0; };
 
 // Pagina volgt de vinger; los te vroeg = terugveren, anders onBack (history.back via de bestaande sluitroute).
@@ -59,7 +63,8 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
       stand = "uit";
       const t = ev.touches[0];
       if (ev.touches.length !== 1 || !t || !magStarten(t.clientX) || selectie()) return;
-      if (negeerDoel(ev.target as Element | null, el()?.parentElement ?? null)) return;
+      const artikel = el();
+      if (!magStartenOp(artikel, ev.target instanceof Element ? ev.target : null)) return;
       x0 = t.clientX; y0 = t.clientY; t0 = ev.timeStamp; dx = 0; stand = "wacht";
     };
     const beweeg = (ev: TouchEvent) => {

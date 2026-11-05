@@ -66,3 +66,26 @@ test("verticaal scrollen sluit het artikel niet", async ({ page }) => {
   await expect(page.locator("article.detail")).toBeVisible();
   expect(await page.locator("article.detail").evaluate((e) => e.style.transform)).toBe("");
 });
+
+test("een veeg buiten het artikel, op het deelportaal of op een uitgesloten kind doet niets", async ({ page }) => {
+  await openArtikel(page);
+  await page.evaluate(() => {
+    const buiten = document.createElement("div");
+    buiten.id = "veeg-buiten";
+    buiten.style.cssText = "position:fixed;z-index:9999;left:40px;top:100px;width:300px;height:40px";
+    document.body.append(buiten);
+    const kind = document.createElement("input");
+    kind.id = "veeg-invoer";
+    kind.style.cssText = "position:fixed;z-index:9999;left:40px;top:200px;width:300px;height:40px";
+    document.querySelector("article.detail").append(kind);
+  });
+  for (const selector of ["#veeg-buiten", ".deel-knop", "#veeg-invoer"]) {
+    const vak = await page.locator(selector).boundingBox();
+    const y = Math.round(vak.y + vak.height / 2);
+    const x = Math.max(25, Math.round(vak.x + Math.min(vak.width / 2, 20)));
+    const g = await veeg(page, [x, y], [x + 200, y]);
+    expect(await page.locator("article.detail").evaluate((e) => e.style.transform)).toBe("");
+    await g.eind();
+    await expect(page.locator("article.detail")).toBeVisible();
+  }
+});
