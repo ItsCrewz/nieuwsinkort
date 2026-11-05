@@ -20,7 +20,7 @@ t("gecodeerde rubrieken en slugs worden eenmaal gedecodeerd", () => {
   assert.deepEqual(parseHash("#/bericht/caf%C3%A9%20%26%20nieuws"), { view: "alles", selected: "café & nieuws", video: null });
   assert.deepEqual(parseHash("#/filmpjes/a%2Fb%2520c"), { view: "filmpjes", selected: null, video: "a/b%20c" });
   assert.deepEqual(parseHash("#/dumpert%2Fvideo"), { view: "dumpert", selected: null, video: "video" });
-  assert.throws(() => parseHash("#/bericht/%E0%A4%A"), URIError);
+  assert.deepEqual(parseHash("#/bericht/%E0%A4%A"), home);
 });
 
 t("dubbele en afsluitende slashes blijven onderdeel van het huidige routegedrag", () => {
