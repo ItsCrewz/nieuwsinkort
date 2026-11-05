@@ -21,7 +21,8 @@ export function zoekItems(items: Item[], query: string): Item[] {
   const woorden = normaliseer(query).split(" ").filter(Boolean);
   if (!woorden.length) return items;
   return items.filter((item) => {
-    const tekst = zoektekst(item);
-    return woorden.every((woord) => tekst.includes(woord));
+    // Woordbegin: " " ervoor zodat "kat" niet in "politiek" valt, maar wel "katten" vindt.
+    const haystack = " " + zoektekst(item);
+    return woorden.every((woord) => haystack.includes(" " + woord));
   });
 }
