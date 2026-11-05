@@ -27,12 +27,10 @@ function SourceRow({ b }: { b: Bron }) {
   return (
     <li>
       <a className="srcrow" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
-        <span className="mono" aria-hidden="true">
+        <span className={imgOk && h ? "mono" : "mono m"} data-m={monoOf(b.site)} aria-hidden="true">
           {imgOk && h ? (
             <img src={`https://icons.duckduckgo.com/ip3/${h}.ico`} alt="" width={16} height={16} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setImgOk(false)} />
-          ) : (
-            monoOf(b.site)
-          )}
+          ) : null}
         </span>
         <span className="s-title">{b.site}</span>
         <span className="s-out">{h}</span>

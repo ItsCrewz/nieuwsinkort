@@ -270,6 +270,7 @@ li:last-child > .srcrow,.srcrow:last-child{border-bottom:0}
 .srcrow:hover .s-title{text-decoration:underline;text-underline-offset:3px}
 .mono{flex:none;display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:var(--r2);font-size:0.625rem;font-weight:600;overflow:hidden}
 .mono img{width:16px;height:16px}
+.mono.m::before{content:attr(data-m)}
 .s-title{font-size:0.9375rem;font-weight:500}
 .s-out{flex:1;min-width:0;font-size:0.8125rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .srcrow .ic{color:var(--muted)}
