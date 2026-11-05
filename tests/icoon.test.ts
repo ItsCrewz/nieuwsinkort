@@ -2,17 +2,31 @@
 import assert from "node:assert/strict";
 import { readFileSync, statSync } from "node:fs";
 import { vandaagHtml } from "../functions/vandaag";
+import { onRequestGet as bericht } from "../functions/bericht/[[pad]]";
+import { artikelPad } from "../src/artikelid";
 import { ICOON_TAGS } from "../src/icoontags";
 
 const t = async (naam: string, f: () => void | Promise<void>) => { await f(); console.log(`✓ ${naam}`); };
 const png = (pad: string) => { const b = readFileSync(pad); assert.equal(b.subarray(1, 4).toString(), "PNG", pad); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
-const TAGS = ['rel="icon" href="/favicon.ico" sizes="48x48"', 'rel="icon" type="image/svg+xml" href="/favicon.svg"', 'rel="icon" type="image/png" sizes="96x96" href="/icon-96.png"', 'rel="apple-touch-icon" href="/apple-touch-icon.png"'];
+const TAGS = ['rel="icon" href="/favicon.ico" sizes="48x48"', 'rel="icon" type="image/svg+xml" href="/favicon.svg"', 'rel="icon" type="image/png" sizes="96x96" href="/icon-96.png"', 'rel="apple-touch-icon" href="/apple-touch-icon.png"', 'rel="manifest" href="/manifest.webmanifest"'];
 const heeftTags = (html: string) => TAGS.forEach((x) => assert.ok(html.replace(/ \/>/g, ">").includes(x) || html.replace(/ \/>/g, ">").replace(/ +/g, " ").includes(x), x));
 
 await t("alle icoon-tags staan in index.html, over.html en /vandaag", () => {
   for (const p of ["index.html", "public/over.html"]) heeftTags(readFileSync(p, "utf8"));
   heeftTags(vandaagHtml([], "2026-11-05"));
   heeftTags(ICOON_TAGS);
+});
+
+await t("de gerenderde /bericht-pagina behoudt alle icoon-tags uit het indexsjabloon", async () => {
+  const echt = Date.now; Date.now = () => Date.parse("2026-11-04T12:00:00Z");
+  try {
+    const sjabloon = readFileSync("index.html", "utf8"), dag = "2026-11-04";
+    const item = { kop: "Icoontest voor bericht", ai: "Een samenvatting", samenvatting: "Meer", t: Date.now(), bronnen: [{ site: "Bron", href: "https://bron.nl/a" }] };
+    const env = { ASSETS: { fetch: async () => new Response(sjabloon, { headers: { "Content-Type": "text/html; charset=utf-8" } }) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify({ gegenereerd: new Date(Date.now()).toISOString(), items: [item] })}` } };
+    const r = await bericht({ request: new Request(`https://nieuwsinkort.nl${artikelPad(item, dag)}`), env, waitUntil: () => {} });
+    assert.equal(r.status, 200);
+    heeftTags(await r.text());
+  } finally { Date.now = echt; }
 });
 
 await t("icoonbestanden hebben de juiste pixelmaten", () => {
