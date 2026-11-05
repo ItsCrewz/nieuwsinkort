@@ -1282,11 +1282,24 @@ export function Feed({
     };
   }, [pool]);
 
+  // Sluiten gebeurt precies één keer (timer én animationend, dubbel tikken, herhaald Escape); timer opruimen bij verdwijnen.
+  const sluitTimer = useRef<number | null>(null);
+  const gesloten = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const rondAf = useCallback(() => {
+    if (gesloten.current) return;
+    gesloten.current = true;
+    if (sluitTimer.current !== null) { window.clearTimeout(sluitTimer.current); sluitTimer.current = null; }
+    onCloseRef.current();
+  }, []);
+  useEffect(() => () => { if (sluitTimer.current !== null) window.clearTimeout(sluitTimer.current); }, []);
   const close = useCallback(() => {
-    if (rustig()) return onClose();
+    if (gesloten.current || sluitTimer.current !== null) return;
+    if (rustig()) return rondAf();
     setClosing(true);
-    window.setTimeout(onClose, 220);
-  }, [onClose]);
+    sluitTimer.current = window.setTimeout(rondAf, 220);
+  }, [rondAf]);
 
   const metingen = useRef<SwipeMeting[]>([]);
   const lopendeMeting = useRef<SwipeMeting | null>(null);
@@ -1595,7 +1608,7 @@ export function Feed({
         aria-modal="true"
         aria-label={`${label}: video ${active + 1} van ${items.length}`}
         onAnimationEnd={(e) => {
-          if (e.target === root.current && closing) onClose();
+          if (e.target === root.current && closing) rondAf();
         }}
       >
         <div className={`feed-scroll ${gi ? "g1" : "g0"}`} id="feed-paneel" role={gs ? "tabpanel" : undefined} key={gi} ref={scroller} tabIndex={-1}>
