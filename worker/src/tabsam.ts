@@ -23,7 +23,7 @@ export async function maakTabSam(kv: KV, tab: string, items: TabArtikel[], now: 
     const cached = JSON.parse(await kv.get(key) || "null");
     const leeftijd = now - Date.parse(cached?.sam?.gegenereerd);
     if (cached?.sam?.tekst && cached.sam.ai === true && leeftijd >= 0 && (cached.hash === hash || leeftijd < 6 * 3600e3)) return { sam: cached.sam, geschreven: false };
-  } catch { /* zonder cache verder */ }
+  } catch { console.error("tabsam: cache lezen mislukt"); /* zonder cache verder */ }
   let tekst = "", bron = "extractief";
   if (maak) try { ({ tekst, bron } = await maak()); } catch { console.error("tabsam: AI mislukt"); /* extractieve terugval */ }
   const ai = !!tekst;

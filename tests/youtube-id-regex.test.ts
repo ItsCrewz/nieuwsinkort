@@ -27,6 +27,7 @@ t("YouTube-ID-regexes: dezelfde voorbeeld-URL's", () => {
     assert.equal(soortId(u), ID, u);
     assert.equal(ytVideoId({ href: u }), ID, u);
     assert.equal(ytId(u), ID, u);
+    assert.equal(reddit(u), u.includes("/embed/") ? null : ID, u);
   }
 });
 

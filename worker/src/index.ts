@@ -366,8 +366,8 @@ export class Runner extends DurableObject<Env> {
     const k: any = (await opslag.get("vooraf")) || { uur: A.h, n: 0 };
     if (k.uur !== A.h || k.n >= MAX_ALARMS_PER_UUR) return;
     // eerlijk deel per run van wat er tot 85% nog over is na de nieuwsreserve, x1.5 (begin van de dag inhalen)
-    const st: any = (await leesStateRest(opslag).catch(() => null)) ?? await env.NIEUWS.get("state", "json").catch(() => null); // DO-state; KV alleen vóór de eerste run na de overstap
-    const vidN = +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
+    const st: any = (await leesStateRest(opslag).catch(() => { console.error("alarm: DO-state lezen mislukt"); return null; })) ?? await env.NIEUWS.get("state", "json").catch(() => { console.error("alarm: KV-state lezen mislukt"); return null; }); // DO-state; KV alleen vóór de eerste run na de overstap
+    const vidN = +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => { console.error("worker: videobudget lezen mislukt"); return null; })) || 0) || 0;
     const used = nieuwsNeuronen(st, U) + vidN;
     const runsLeft = Math.max(1, 23 - A.h + 1);
     const vrij = 0.85 * BUDGET - used - Math.max(0, 23 - A.h) * 260;
@@ -423,7 +423,7 @@ export class Runner extends DurableObject<Env> {
     try {
       const g = await leesState(tel.opslag);
       // basis als in runBinnen: wint de KV-kopie (halve DO-write), dan die als basis en alle DO-delen opnieuw schrijven
-      const kv = g ? await tel.kv.get("state", "json").catch(() => null) : null;
+      const kv = g ? await tel.kv.get("state", "json").catch(() => { console.error("worker: KV-state lezen mislukt"); return null; }) : null;
       const kvWint = !!g && kvStateWint(g.st, kv, g.at);
       const st = !g || kvWint ? (kv ?? (g ? g.st : await tel.kv.get("state", "json"))) : g.st;
       if (!st) return false;
@@ -449,7 +449,7 @@ export class Runner extends DurableObject<Env> {
       leesState(opslag),
     ]);
     // state staat primair in DO-opslag; de KV-kopie wordt alleen gelezen en wint bij nieuwere inhoud (terugrollen naar de vorige Worker, of een mislukte DO-write), zie kvStateWint
-    const kvState = (await env.NIEUWS.get("state", "json").catch(() => null)) as State | null;
+    const kvState = (await env.NIEUWS.get("state", "json").catch(() => { console.error("worker: KV-state lezen mislukt"); return null; })) as State | null;
     const kvWint = !geladen || kvStateWint(geladen.st, kvState, geladen.at);
     const stateRaw: State | null = kvWint ? kvState ?? geladen?.st ?? null : geladen!.st;
     // KV-state gebruikt: alle delen opnieuw schrijven (lege vorige tekst = verschilt altijd) en DO-delen die KV niet kent wissen
@@ -505,7 +505,7 @@ export class Runner extends DurableObject<Env> {
     const tcCache = new Map<string, TierCache<Res>>();
     // altijd laden: ook een mislukte fetch in een 15/30-run valt terug op het tc:-resultaat van vandaag
     await Promise.all(all.filter((j) => jobGroep(j) !== "core").map(async (j) => {
-      const c = await opslag.get<TierCache<Res>>(`tc:${j.url}`).catch(() => undefined);
+      const c = await opslag.get<TierCache<Res>>(`tc:${j.url}`).catch(() => { console.error("worker: tier-cache lezen mislukt"); return undefined; });
       if (c && c.r && typeof c.at === "number") tcCache.set(j.url, c);
     }));
     const vd = verdeelJobs(all, bronTier, tcCache, since), uitvoeren = new Set(vd.uitvoeren.map((j) => j.url));
@@ -664,7 +664,7 @@ export class Runner extends DurableObject<Env> {
     const slechtGecachet = (k: Cluster) => !sumOf(k) && !!ruweSumOf(k);
     // Keten-stand = Worker-stand + wat /samenvatting vandaag al via Groq gebruikte (KV groq-chat:<UTC-dag>), zodat de dagslimiet per model over beide telt.
     const groqChatKey = `groq-chat:${U}`;
-    const groqChat = ((await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null) || {};
+    const groqChat = ((await env.NIEUWS.get(groqChatKey, "json").catch(() => { console.error("worker: Groq-teller lezen mislukt"); return null; })) as LlmState | null) || {};
     const ketenStand = somStand(st.llm!, groqChat, U), ketenVoor = kopieStand(ketenStand);
     const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: ketenStand } };
     let llmKlaar: { stAt: number; llm: string } | null = null;
@@ -677,7 +677,7 @@ export class Runner extends DurableObject<Env> {
     // Per run hooguit 2x het eerlijke deel van wat er nog over is, zodat ook de late uren samenvattingen krijgen.
     const SMALL = env.SMALL_MODEL || "@cf/meta/llama-3.2-1b-instruct";
     // video-samenvattingen op verzoek (functions/samenvatting.ts) tellen mee in hetzelfde dagbudget
-    const leesVid = async () => +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
+    const leesVid = async () => +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => { console.error("worker: videobudget lezen mislukt"); return null; })) || 0) || 0;
     let vidN = await leesVid();
     const used = () => st.neurons + vidN + usage.neurons;
     const tier = () => (used() < 0.7 * BUDGET ? 1 : used() < 0.9 * BUDGET ? 2 : used() < BUDGET ? 3 : 4);
@@ -693,7 +693,7 @@ export class Runner extends DurableObject<Env> {
     const capN = tier0 === 1 ? CAP : tier0 === 2 ? Math.min(CAP, 15) : tier0 === 3 ? 8 : 0;
     const pick = kiesVoorAI(byCat, tier0, capN);
     // quotaOut = alleen echt op: eigen budget bereikt of een echte dagquota-fout (KV-vlag ai-quota:<UTC-dag>). Een tijdelijke fout (429/rate-limit) stopt alleen de rest van deze run.
-    const quotaBekend = !!(await env.NIEUWS.get(quotaSleutel(U)).catch(() => null));
+    const quotaBekend = !!(await env.NIEUWS.get(quotaSleutel(U)).catch(() => { console.error("worker: AI-quota lezen mislukt"); return null; }));
     let quotaOut = quotaBekend || st.neurons + vidN >= BUDGET, quotaReden = quotaBekend ? "dagquota" : quotaOut ? "budget" : "", tijdelijk = 0, quotaKvWrites = 0;
     const aiFoutAf = async (e: any) => {
       const soort = aiFout(e);
@@ -1025,7 +1025,7 @@ export class Runner extends DurableObject<Env> {
     st.stAt = now;
     telOp(st.llm!, verschilStand(ketenVoor, ketenStand)); // alleen het eigen verschil, niet de meegenomen Function-stand
     llmKlaar = { stAt: now, llm: JSON.stringify(st.llm) };
-    const groqVandaag = groqTokens(U, st.llm, (await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null);
+    const groqVandaag = groqTokens(U, st.llm, (await env.NIEUWS.get(groqChatKey, "json").catch(() => { console.error("worker: Groq-teller lezen mislukt"); return null; })) as LlmState | null);
     st.neurons += usage.neurons; st.calls += usage.calls;
     st.inTok = (st.inTok || 0) + usage.inTok; st.outTok = (st.outTok || 0) + usage.outTok; st.geschat = (st.geschat || 0) + (usage.geschat || 0); st.foutN = (st.foutN || 0) + (usage.foutN || 0);
     const out = {
@@ -1158,7 +1158,7 @@ export default {
       // vooraf-log en KV-tellers staan in DO-opslag van de Runner (/info); KV `vooraf-log` alleen als terugval voor de overgang
       let vf: unknown = null, tellers: unknown[] = [];
       try { const i: any = await (await env.RUNNER.get(env.RUNNER.idFromName("runner")).fetch("https://do/info")).json(); vf = i.vooraf ?? null; tellers = Array.isArray(i.tellers) ? i.tellers.slice(-12) : []; } catch { /* Runner onbereikbaar: terugval */ }
-      if (!vf) vf = await env.NIEUWS.get("vooraf-log", "json").catch(() => null);
+      if (!vf) vf = await env.NIEUWS.get("vooraf-log", "json").catch(() => { console.error("worker: vooraf-log lezen mislukt"); return null; });
       return Response.json(d ? { gegenereerd: d.gegenereerd, ...d.meta, vooraf: vf, kvTellers: tellers } : { leeg: true });
     }
     return new Response("nieuwsinkort-uur", { status: 200 });

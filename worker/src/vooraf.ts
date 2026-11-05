@@ -35,7 +35,7 @@ export async function vooraf(env: { NIEUWS: KVNamespace; SITE: string; BUDGET?: 
   const d: any = await (await haal(`${env.SITE}/data.json?vooraf=${T0}`, { timeout: 15000 })).json();
   const lijst = volgorde(d);
   const ids = lijst.map((v) => videoSlug(v as any));
-  const cache = await Promise.all(ids.map((id) => env.NIEUWS.get(`vs:${id}`, "json").catch(() => null)));
+  const cache = await Promise.all(ids.map((id) => env.NIEUWS.get(`vs:${id}`, "json").catch(() => { console.error("vooraf: samenvatting lezen mislukt"); return null; })));
   const todo = lijst.map((v, i) => ({ v, id: ids[i] })).filter((_, i) => !cache[i]);
   let neur = 0, calls = 0, gemaakt = 0, stop = "";
   const fouten: string[] = [];

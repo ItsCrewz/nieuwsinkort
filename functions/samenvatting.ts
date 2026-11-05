@@ -201,7 +201,7 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
     try {
       // Beginstand = eigen stand + wat de uur-Worker vandaag al via Groq gebruikte (limiet per model telt over beide); daarna alleen het verschil bijschrijven.
       const eigen: LlmState = await env.NIEUWS.get(key, "json") || {};
-      const worker: LlmState | null = (await env.NIEUWS.get("state", "json").catch(() => null))?.llm || null;
+      const worker: LlmState | null = (await env.NIEUWS.get("state", "json").catch(() => { console.error("samenvatting: Groq-state lezen mislukt"); return null; }))?.llm || null;
       const state = somStand(eigen, worker, dag), voor = kopieStand(state);
       try { t = await keten([aanbieder], state, { sys: STIJL, user, maxTokens: 320, json: false }, (_naam, m) => { gebruikt = m; }); }
       finally { await bewaarGroqStand(env, key, verschilStand(voor, state)); }
@@ -272,14 +272,14 @@ export function kvPoort(env: Env): Poort {
       await env.NIEUWS.put(slot, "1", { expirationTtl: 60 }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
       return "1";
     },
-    async geefVrij(id) { bezigNu.delete(id); await env.NIEUWS.delete(`vs-bezig:${id}`).catch(() => {}); }, // klaar (of geweigerd): slot niet 60 s laten hangen
+    async geefVrij(id) { bezigNu.delete(id); await env.NIEUWS.delete(`vs-bezig:${id}`).catch(() => { console.error("samenvatting: KV-slot verwijderen mislukt"); }); }, // klaar (of geweigerd): slot niet 60 s laten hangen
     async stand(datum) { return +(await env.NIEUWS.get(`vid-neurons:${datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0; },
     // lezen-controleren-schrijven achter elkaar per isolate (opKv): gelijktijdige verzoeken overschrijven elkaars stand niet
     reserveer: (r) => opKv(async () => {
       const video = +(await env.NIEUWS.get(`vid-neurons:${r.datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
       if (r.nieuws + video + r.reserve + r.marge + r.schatting > r.budget) return "budget";
       const uurKey = `vs-uur:${r.uur}`;
-      const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0; // bewust stil: de Whisper-rem is hier best-effort, de budgetcontrole hierboven blijft gelden
+      const nUur = +(await env.NIEUWS.get(uurKey).catch(() => { console.error("samenvatting: Whisper-teller lezen mislukt"); return 0; })) || 0;
       if (nUur >= MAX_WHISPER_UUR) return "druk";
       await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => { console.error("samenvatting: KV schrijven mislukt"); });
       await optel(env, `vid-neurons:${r.datum}`, r.schatting);
@@ -345,7 +345,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
   const A = ams();
   const U = utcDag(); // Cloudflare telt per UTC-dag; A (Amsterdam) alleen voor het uur en de uurrem
   // echte dagquota-fout eerder vandaag gezien (door Worker of Function): geen AI meer tot 00:00 UTC
-  if (await env.NIEUWS.get(quotaSleutel(U)).catch(() => null)) return json({ ok: false, code: "budget", fout: MSG.budget });
+  if (await env.NIEUWS.get(quotaSleutel(U)).catch(() => { console.error("samenvatting: AI-quota lezen mislukt"); return null; })) return json({ ok: false, code: "budget", fout: MSG.budget });
   const st: any = await env.NIEUWS.get("state", "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   const nieuws = nieuwsNeuronen(st, U);
   const video = await poort.stand(U);
