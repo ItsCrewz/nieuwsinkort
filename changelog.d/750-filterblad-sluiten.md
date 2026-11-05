@@ -1,0 +1,1 @@
+- Voorkom dat een oude sluitactie een opnieuw geopend filterblad sluit (#750).
