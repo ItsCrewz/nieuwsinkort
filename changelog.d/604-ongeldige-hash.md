@@ -1,0 +1,1 @@
+- Ongeldige percent-codering in een link laat het nieuwsoverzicht weer openen (#604).

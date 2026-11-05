@@ -1,0 +1,1 @@
+- Gedeelde artikellinks (`/bericht/…`) behouden hun queryparameters bij het openen en bij terug naar het overzicht; `?nietmeten=1` werkt nu ook op zo'n link (#607).
