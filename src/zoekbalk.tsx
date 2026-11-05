@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 
 export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange: (query: string) => void; aantal: number }) {
   const [open, setOpen] = useState(!!query);
+  const [melding, setMelding] = useState<{ query: string; aantal: number } | null>(null);
+  useEffect(() => {
+    if (!open || !query.trim()) return;
+    const timer = window.setTimeout(() => setMelding({ query, aantal }), 400);
+    return () => { window.clearTimeout(timer); setMelding(null); };
+  }, [open, query, aantal]);
   const knop = useRef<HTMLButtonElement>(null);
   const invoer = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) invoer.current?.focus(); }, [open]);
@@ -14,7 +20,7 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
       {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} />}
-      <span className="zoek-status" aria-live="polite">{query.trim() ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}` : ""}</span>
+      <span className="zoek-status" aria-live="polite">{open && query.trim() && melding?.query === query && melding.aantal === aantal ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}` : ""}</span>
     </div>
   );
 }

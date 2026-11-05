@@ -370,3 +370,5 @@ Gedeelde berichtpagina (#541): `functions/bericht/[[pad]].ts` levert geen eigen 
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
+
+Zoekmeldingen (#711): de resultaten reageren direct; het live-gebied meldt het actuele aantal na 400 ms zonder wijziging. Wissen, sluiten en het verlaten van de zoekbalk annuleren een uitstaande melding.

@@ -1,0 +1,1 @@
+- Zoekresultaten worden pas na een korte typpauze aan schermlezers gemeld (#711).
