@@ -85,14 +85,31 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 }
 
 // ------------------------------------------------------------- browser-runner
-const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
+const gedaan = new Set<string>(); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
+const bezig = new Set<string>(); // lopend of in de wachtrij: gelijktijdige verzoeken voor dezelfde URL delen die ene taak
+const mislukt = new Map<string, number>(); // aantal mislukte pogingen per sleutel
+export const POGINGEN = 2; // een mislukte taak mag bij een volgend voorlaadmoment één keer opnieuw, daarna niet meer
 const vast: unknown[] = []; // voorkomt dat Image-objecten voortijdig worden opgeruimd
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
-const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
+const mag = (k: string) => !gedaan.has(k) && !bezig.has(k) && (mislukt.get(k) ?? 0) < POGINGEN;
+// Registreert pas als de taak slaagt; een fout telt als mislukte poging en geeft de sleutel vrij voor het volgende moment.
+const taak = (k: string, f: () => Promise<unknown>) => {
+  bezig.add(k);
+  return async () => {
+    try {
+      await f();
+      gedaan.add(k);
+    } catch {
+      mislukt.set(k, (mislukt.get(k) ?? 0) + 1);
+    } finally {
+      bezig.delete(k);
+    }
+  };
+};
 
 async function warmHls(master: string) {
-  const get = (u: string) => fetch(u, LOW).then((r) => (r.ok ? r.text() : ""));
+  const get = (u: string) => fetch(u, LOW).then((r) => (r.ok ? r.text() : Promise.reject(new Error("hls"))));
   const base = new URL(master, location.href).href;
   let txt = await get(master);
   let b = base;
@@ -100,12 +117,13 @@ async function warmHls(master: string) {
     b = laagsteVariant(txt, base);
     txt = b ? await get(b) : "";
   }
-  for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => r.arrayBuffer());
+  for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("hls"))));
 }
 
 async function warmMp4(src: string) {
   // Alleen het begin: een Range-aanvraag (Instagram-CDN: CORS *, Range ok). Geeft de server toch 200, dan stoppen we zelf.
   const r = await fetch(src, { ...LOW, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+  if (!r.ok) throw new Error("mp4");
   const rd = r.body?.getReader();
   if (!rd) return;
   for (let got = 0; got < MP4_BYTES; ) {
@@ -118,7 +136,8 @@ async function warmMp4(src: string) {
 
 export function voerUit(p: Plan) {
   for (const o of p.preconnect) {
-    if (!nieuw(`pc:${o}`)) continue;
+    if (gedaan.has(`pc:${o}`)) continue;
+    gedaan.add(`pc:${o}`);
     const l = document.createElement("link");
     l.rel = "preconnect";
     l.href = o;
@@ -127,28 +146,31 @@ export function voerUit(p: Plan) {
   }
   const taken: (() => Promise<unknown>)[] = [];
   for (const t of p.thumbs) {
-    if (!nieuw(`img:${t}`)) continue;
+    const k = `img:${t}`;
+    if (!mag(k)) continue;
     taken.push(
-      () =>
-        new Promise<void>((ok) => {
+      taak(k, () =>
+        new Promise<void>((ok, fout) => {
           const im = new Image();
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
-          im.onload = im.onerror = () => ok();
+          im.onload = () => ok();
+          im.onerror = () => fout(new Error("img"));
           im.src = t;
           vast.push(im);
         })
+      )
     );
   }
   // zelfde specifier als feed.tsx: Vite deelt de chunk, de eerste speler vindt hem dus al in de cache
-  if (p.hlsChunk && nieuw("hls.js")) taken.push(() => import("hls.js"));
-  for (const m of p.hls) if (nieuw(`hls:${m}`)) taken.push(() => warmHls(m));
-  if (p.mp4 && nieuw(`mp4:${p.mp4}`)) taken.push(() => warmMp4(p.mp4!));
+  if (p.hlsChunk && mag("hls.js")) taken.push(taak("hls.js", () => import("hls.js")));
+  for (const m of p.hls) if (mag(`hls:${m}`)) taken.push(taak(`hls:${m}`, () => warmHls(m)));
+  if (p.mp4 && mag(`mp4:${p.mp4}`)) taken.push(taak(`mp4:${p.mp4}`, () => warmMp4(p.mp4!)));
   // kleine pool: hooguit GELIJK taken tegelijk, in volgorde van belang
   let i = 0;
   const loop = async () => {
-    while (i < taken.length) await taken[i++]().catch(() => {});
+    while (i < taken.length) await taken[i++]();
   };
   for (let k = 0; k < GELIJK; k++) loop();
 }

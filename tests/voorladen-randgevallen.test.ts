@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MP4_BYTES, POGINGEN, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -76,7 +76,7 @@ try {
     const verzoeken: { url: string; opties: RequestInit }[] = [];
     installeer("fetch", async (url: string, opties: RequestInit) => {
       verzoeken.push({ url, opties });
-      return { body: null };
+      return { ok: true, body: null };
     });
     const v = video("https://mobiel.example/a.mp4", "https://img.example/mobiel.jpg");
     const p = planVoorladen([v], [], false, hulp);
@@ -98,16 +98,44 @@ try {
     assert.equal(verzoeken.length, 1);
   });
 
-  await test("offline-fouten worden opgevangen en niet opnieuw geprobeerd", async () => {
+  await test("offline-fouten worden opgevangen en hooguit POGINGEN keer geprobeerd", async () => {
     installeer("navigator", { onLine: false });
     const verzoeken: string[] = [];
     installeer("fetch", async (url: string) => { verzoeken.push(url); throw new Error("offline"); });
     const p = { ...leeg(), hls: ["/offline.m3u8"], mp4: "https://offline.example/a.mp4" };
+    for (let i = 0; i < POGINGEN + 2; i++) {
+      voerUit(p);
+      await wacht();
+    }
+    assert.deepEqual(verzoeken, ["/offline.m3u8", "https://offline.example/a.mp4", "/offline.m3u8", "https://offline.example/a.mp4"]);
+  });
+
+  await test("fout gevolgd door succes: opnieuw geprobeerd, daarna ontdubbeld; gelijktijdig gedeeld", async () => {
+    const verzoeken: string[] = [];
+    let stuk = true;
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (stuk) throw new Error("tijdelijk");
+      return { ok: true, body: null };
+    });
+    const p = { ...leeg(), mp4: "https://herstel.example/a.mp4", thumbs: ["https://herstel.example/a.jpg"] };
+    const begin = afbeeldingen.length;
+    voerUit(p);
+    voerUit(p); // gelijktijdig: gedeeld, geen tweede verzoek
+    assert.equal(afbeeldingen.length - begin, 1);
+    afbeeldingen[begin].onerror!();
+    await wacht();
+    assert.equal(verzoeken.length, 1);
+    stuk = false;
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 2);
+    afbeeldingen[begin + 1].onload!();
+    await wacht();
+    assert.equal(verzoeken.length, 2);
     voerUit(p);
     await wacht();
-    voerUit(p);
-    await wacht();
-    assert.deepEqual(verzoeken, ["/offline.m3u8", "https://offline.example/a.mp4"]);
+    assert.equal(afbeeldingen.length - begin, 2);
+    assert.equal(verzoeken.length, 2);
   });
 
   await test("HLS haalt laagste variant en hooguit twee segmenten op", async () => {
@@ -128,7 +156,7 @@ try {
   await test("mp4-stream stopt bij de bytegrens", async () => {
     let gelezen = 0;
     let gestopt = false;
-    installeer("fetch", async () => ({ body: { getReader: () => ({
+    installeer("fetch", async () => ({ ok: true, body: { getReader: () => ({
       read: async () => { gelezen++; return { done: false, value: new Uint8Array(MP4_BYTES / 2) }; },
       cancel: async () => { gestopt = true; },
     }) } }));
