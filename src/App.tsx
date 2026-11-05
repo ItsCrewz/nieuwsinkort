@@ -1079,6 +1079,7 @@ export default function App() {
   const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
+  const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
   const [zoekterm, setZoekterm] = useState("");
   const flt = useFilters();
   const vids = useMemo(
@@ -1310,7 +1311,7 @@ export default function App() {
   const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
   const filterBlad = fsheet ? (
     <Foutgrens code="CLIENT_FILTER_SHEET"><Suspense fallback={null}>
-      <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={() => setFsheet(false)} />
+      <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={sluitFilters} />
     </Suspense></Foutgrens>
   ) : null;
   if (!isVideo) {

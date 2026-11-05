@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import React from "react";
 import { FilterBlad } from "../src/filters-blad";
 import { STANDAARD, type Filters, type Uitkomst } from "../src/filters";
@@ -136,4 +137,8 @@ assert.deepEqual(focus, ["sluiten", "vorig"]);
 minderBeweging = true;
 nodes(maak(), "button").find((b) => b.props.className === "scrim").props.onClick();
 assert.equal(gesloten, 3);
+// Regressie #623: App geeft een stabiele onClose mee, anders draait het focus-effect bij elke filterwijziging opnieuw.
+const appBron = readFileSync("src/App.tsx", "utf8");
+assert.match(appBron, /onClose=\{sluitFilters\}/);
+assert.doesNotMatch(appBron, /<FilterBlad[^\n]*onClose=\{\(\) =>/);
 console.log("filters-blad: tests geslaagd");

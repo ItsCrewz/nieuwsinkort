@@ -110,6 +110,8 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 | `feed` | `Feed`, spelers, `debug-overlay` | op touch + videoroute |
 | `hls` | hls.js | door `feed` en het voorladen |
 
+Het focus-effect van `FilterBlad` hangt aan `onClose`; `App.tsx` geeft daarom een stabiele `sluitFilters` (`useCallback`) mee. Een inline functie zou bij elke filterwijziging de focus naar de sluitknop zetten (#623).
+
 Daarom staan pure helpers die het hoofdscherm of het voorladen nodig hebben los van de lazy modules: `videosoort.ts` (`playerFor`, `soortVan`, `viaProxy`), `samenvattingcache.ts` (`zaaiSamenvattingen`), `meer.ts` (`prefetchMeer`) en `leesverder.ts` (`fotos`, `bronnenTekst`). Importeer die niet via `video.tsx`/`feed.tsx`, anders komt de lazy chunk terug in `index`. Meting (gzip, `npm run build`): hoofdchunk 89,0 kB → 69,2 kB (−22%); de ondergrens is React + react-dom (≈46 kB gzip).
 
 ## Pages Functions (`functions/`)
