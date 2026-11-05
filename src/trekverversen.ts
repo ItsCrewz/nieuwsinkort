@@ -40,6 +40,7 @@ export function useTrekVerversen(scroller: RefObject<HTMLElement | null>, ptr: R
   useEffect(() => {
     const el = scroller.current;
     const p = ptr.current;
+    const ic = p?.querySelector<HTMLElement>(".ic");
     if (!el || !p) return;
     let y0: number | null = null;
     let afstand = 0;
@@ -54,7 +55,7 @@ export function useTrekVerversen(scroller: RefObject<HTMLElement | null>, ptr: R
     const terug = () => {
       veer(UIT, false);
       p.classList.remove("klaar");
-      p.style.setProperty("--draai", "0deg");
+      if (ic) ic.style.transform = "rotate(0deg)";
       los = false;
     };
     const start = (e: TouchEvent) => {
@@ -83,7 +84,7 @@ export function useTrekVerversen(scroller: RefObject<HTMLElement | null>, ptr: R
       p.style.transition = "none";
       p.style.opacity = String(Math.min(1, afstand / 24));
       p.style.transform = `translate(-50%, ${afstand + UIT}px)`;
-      p.style.setProperty("--draai", `${voortgang(afstand) * 180}deg`);
+      if (ic) ic.style.transform = `rotate(${voortgang(afstand) * 180}deg)`;
     };
     const eind = async () => {
       if (y0 === null) return;
