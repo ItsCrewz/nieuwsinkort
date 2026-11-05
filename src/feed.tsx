@@ -63,7 +63,7 @@ function useBar(ref: React.RefObject<HTMLElement>): Bar {
 }
 
 // Doorspoelen: de speler meldt zich hier aan, de balk onderaan stuurt hem aan.
-export type SeekApi = { dur: () => number; cur: () => number; seek: (t: number) => void };
+type SeekApi = { dur: () => number; cur: () => number; seek: (t: number) => void };
 type SeekRef = React.MutableRefObject<SeekApi | null>;
 
 type PlayerProps = {
@@ -1206,7 +1206,7 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
 }
 
 // ------------------------------------------------------------- de feed
-export type FeedGroup = { id: string; label: string; list: Video[] };
+type FeedGroup = { id: string; label: string; list: Video[] };
 export function Feed({
   list,
   cat,
