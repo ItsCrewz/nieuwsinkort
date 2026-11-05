@@ -381,7 +381,7 @@ export class Runner extends DurableObject<Env> {
       const r = await stub.fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return (await r.json()) as Res[];
-    });
+    }, (url, code, ms) => ({ url, ok: false, status: 0, code, ms }));
     meldBronfouten(results.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0 })));
     const nieuwsUrls = new Set(srcFeeds.flatMap((f) => f.urls));
     if (nieuwsUrls.size && !results.some((r) => nieuwsUrls.has(r.url) && r.ok)) throw new Error("Geen nieuwsbron bereikbaar; vorige data behouden");
