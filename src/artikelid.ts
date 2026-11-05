@@ -1,5 +1,6 @@
 // Stabiele sleutel op basis van de genormaliseerde ankerlink.
-export const normArtikelLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
+import { normLink } from "./linknorm";
+export const normArtikelLink = normLink;
 export function linkId(link: string): string {
   let h = 0xcbf29ce484222325n;
   for (const b of new TextEncoder().encode(normArtikelLink(link))) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
