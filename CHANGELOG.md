@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).

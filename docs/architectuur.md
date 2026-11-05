@@ -217,7 +217,7 @@ Statische pagina `/over` (`public/over.html`, #518): over de site (wat, AI-gebru
 
 ## Bezoekersstatistieken
 
-Cloudflare Web Analytics is op 1-11-2026 aangezet. De app laadt de beacon na de eerste render, behalve wanneer `nik_nietmeten` in localStorage `1` is. `?nietmeten=1` slaat die keuze op; `?nietmeten=0` verwijdert haar. De parameter wordt daarna uit de URL verwijderd met behoud van de hash. Zonder beschikbare localStorage laadt de beacon gewoon. De publieke site-token moet vóór de deploy in `src/analytics.ts` worden ingevuld.
+Cloudflare Web Analytics is op 1-11-2026 aangezet. De app laadt de beacon na de eerste render, behalve wanneer `nik_nietmeten` in localStorage `1` is. `?nietmeten=1` slaat die keuze op; `?nietmeten=0` verwijdert haar. Bij beschikbare opslag wordt de parameter daarna uit de URL verwijderd met behoud van de hash. Bij geblokkeerde opslag blijft `?nietmeten=1` in de URL staan en verschijnt een melding: op een andere pagina moet de keuze opnieuw worden gemaakt. Zonder opgeslagen keuze of parameter laadt de beacon gewoon. De publieke site-token moet vóór de deploy in `src/analytics.ts` worden ingevuld.
 
 Bij dezelfde deploy moet de coördinator onder Pages → nieuwsinkort → Metrics → Web Analytics de automatische injectie uitzetten, met behoud van de site. Controleer daarna dat de beacon zonder opt-out precies eenmaal en met opt-out niet in de DOM staat.
 
