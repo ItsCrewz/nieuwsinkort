@@ -1,0 +1,1 @@
+- Behoud de video-voorlaadintentie na terugkeer van een geopende videotab (#686).
