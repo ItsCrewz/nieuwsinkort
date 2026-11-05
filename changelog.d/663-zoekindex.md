@@ -1,0 +1,1 @@
+- Zoeken hergebruikt genormaliseerde berichttekst tijdens het typen en werkt de index bij gewijzigde gegevens of zichtbare bronnen bij (#663).
