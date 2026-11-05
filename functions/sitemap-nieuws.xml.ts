@@ -7,7 +7,9 @@ interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cache
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
 type CacheMetDefault = CacheStorage & { default?: Cache };
 const HDR = { "Content-Type": "application/xml; charset=utf-8", "X-Content-Type-Options": "nosniff", "Strict-Transport-Security": "max-age=86400" };
-const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+// XML 1.0 staat alleen deze codepunten toe.
+// eslint-disable-next-line no-control-regex
+const esc = (s: unknown) => String(s ?? "").replace(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 const leeg = (items: string) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${items}</urlset>\n`;
 type Item = { id?: string; kop: string; ruw?: boolean; cat?: string; t?: number | string; bronnen?: { href: string }[] };
 export function nieuwsSitemap(items: Item[], dag: string): string {

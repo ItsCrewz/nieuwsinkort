@@ -1,0 +1,1 @@
+- Voorkom ongeldige XML door verboden tekens in de nieuwssitemap te verwijderen (#762).
