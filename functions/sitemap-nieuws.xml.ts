@@ -16,8 +16,10 @@ export function nieuwsSitemap(items: Item[], dag: string): string {
     if (regels.length >= 1000) break;
     const ms = i.t ? new Date(i.t).getTime() : NaN;
     if (!indexeerbaar(i) || !i.kop || !Number.isFinite(ms)) continue; // news:publication_date is verplicht; zonder geldige tijd overslaan
+    const pad = artikelPad(i, dag);
+    if (!pad) continue; // zonder ankeridentiteit geen dubbelzinnige URL
     const datum = new Date(ms).toISOString();
-    regels.push(`<url><loc>https://nieuwsinkort.nl${esc(artikelPad(i, dag))}</loc><lastmod>${datum}</lastmod><news:news><news:publication><news:name>Nieuws in het kort</news:name><news:language>nl</news:language></news:publication><news:publication_date>${datum}</news:publication_date><news:title>${esc(i.kop)}</news:title></news:news></url>`);
+    regels.push(`<url><loc>https://nieuwsinkort.nl${esc(pad)}</loc><lastmod>${datum}</lastmod><news:news><news:publication><news:name>Nieuws in het kort</news:name><news:language>nl</news:language></news:publication><news:publication_date>${datum}</news:publication_date><news:title>${esc(i.kop)}</news:title></news:news></url>`);
   }
   return leeg(regels.join(""));
 }

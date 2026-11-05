@@ -1,0 +1,1 @@
+- Bronloze berichten zonder id krijgen geen gedeelde artikellink meer (geen hash van een lege tekst): geen link op /vandaag, niet in de nieuws-sitemap en delen valt terug op de homepage (#702).
