@@ -15,7 +15,7 @@ import { ytOndertitelsBijBericht } from "./ytstart";
 const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
 
 /** Touch (swipe-feed) of muis/trackpad (kopjes en kaarten); volgt wijzigingen van de mediaquery. */
-export function useTouch(): boolean {
+function useTouch(): boolean {
   const [touch, setTouch] = useState(touchNu);
   useEffect(() => {
     setTouch(touchNu());
