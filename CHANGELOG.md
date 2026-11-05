@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Een vertraagde deelactie toont geen kopieermelding meer bij een ander artikel (#680).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).

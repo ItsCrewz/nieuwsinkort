@@ -116,14 +116,35 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   );
 }
 
-export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string }) {
+function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
-  const url = artikelUrl(item, dag);
+  const actie = useRef(0);
+  useEffect(() => {
+    return () => { actie.current++; };
+  }, []);
   useEffect(() => {
     if (deelStatus !== "gekopieerd") return;
     const t = setTimeout(() => setDeelStatus(""), 3000);
     return () => clearTimeout(t);
   }, [deelStatus]);
+  return (
+    <>
+      <button type="button" className="deel-knop" aria-label="Deel dit bericht" onClick={async () => {
+        const huidig = ++actie.current;
+        setDeelStatus("");
+        const status = await deel(navigator, item.kop, url);
+        if (actie.current === huidig) setDeelStatus(status);
+      }}>
+        <Icon name="share" />
+      </button>
+      <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
+      {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
+    </>
+  );
+}
+
+export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string }) {
+  const url = artikelUrl(item, dag);
   const kopRef = useRef<HTMLHeadingElement>(null);
   const artRef = useRef<HTMLElement>(null);
   useTerugvegen(artRef, onBack);
@@ -150,15 +171,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
     } catch { return false; }
   });
   // Buiten .shell renderen: container-type:inline-size maakt daar het blok voor position:fixed van, dan scrolt de knop mee.
-  const deelBlok = (
-    <>
-        <button type="button" className="deel-knop" aria-label="Deel dit bericht" onClick={async () => { setDeelStatus(await deel(navigator, item.kop, url)); }}>
-          <Icon name="share" />
-        </button>
-        <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
-        {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
-    </>
-  );
+  const deelBlok = <DeelBlok key={url} item={item} url={url} />;
   return (
     <article className={`detail cat-${item.cat}`} ref={artRef}>
       {typeof document === "undefined" ? deelBlok : createPortal(deelBlok, document.body)}
