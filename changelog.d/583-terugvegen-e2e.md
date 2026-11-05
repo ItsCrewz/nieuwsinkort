@@ -1,0 +1,1 @@
+- Tests: e2e-regressietest voor terugvegen in een artikel (#583, iPhone-emulatie): terug op dezelfde kaart en scrollpositie, korte veeg en verticaal scrollen sluiten niet, en terugvegen werkt ook met beperkte beweging. Geen app-wijziging.

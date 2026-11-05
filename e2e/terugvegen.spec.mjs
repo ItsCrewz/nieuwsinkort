@@ -15,10 +15,20 @@ async function veeg(page, van, naar, stappen = 8) {
   return { eind: () => cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }) };
 }
 
-async function openArtikel(page) {
+// Scrollcontainer van de feed (nu de kaartenlijst zelf, geen window).
+const feedScroller = (page) => page.locator(".nc").first().evaluateHandle((n) => { let e = n.parentElement; while (e && !/^(auto|scroll)$/.test(getComputedStyle(e).overflowY)) e = e.parentElement; return e; });
+
+// naKaart: scroll eerst naar die kaart en open het artikel daar (anders de eerste kaart).
+async function openArtikel(page, naKaart = 0) {
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:)/, (route) => route.abort("blockedbyclient"));
   await page.goto("#/");
-  const kop = page.locator(".nc-title a").first();
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  if (naKaart) {
+    const sc = await feedScroller(page);
+    await sc.evaluate((e, k) => { e.scrollTop = e.querySelectorAll(".nc")[k].offsetTop; }, naKaart);
+    await expect.poll(() => sc.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
+  }
+  const kop = page.locator(".nc-title a").nth(naKaart);
   await expect(kop).toBeVisible();
   await kop.click();
   await expect(page.locator("article.detail")).toBeVisible();
@@ -62,6 +72,38 @@ test("veeg vanaf de linkerrand wordt genegeerd (iOS-randgebaar)", async ({ page 
 test("verticaal scrollen sluit het artikel niet", async ({ page }) => {
   await openArtikel(page);
   const g = await veeg(page, [200, 600], [230, 200]);
+  await g.eind();
+  await expect(page.locator("article.detail")).toBeVisible();
+  expect(await page.locator("article.detail").evaluate((e) => e.style.transform)).toBe("");
+});
+
+// Eindpositie na terugvegen: dezelfde kaart staat weer in beeld en de feed staat op dezelfde scrollpositie (#512).
+async function terugOpDezelfdeKaart(page, reduced) {
+  if (reduced) await page.emulateMedia({ reducedMotion: "reduce" });
+  await openArtikel(page, 2);
+  const titel = (await page.locator("article.detail h1").first().innerText()).trim();
+  const y = await startY(page);
+  const g = await veeg(page, [60, y], [300, y + 10]);
+  await g.eind();
+  await expect(page.locator("article.detail")).toHaveCount(0);
+  const kaart = page.locator(".nc", { hasText: titel }).first();
+  await expect(kaart).toBeInViewport({ ratio: 0.5 });
+  const sc = await feedScroller(page);
+  expect(await sc.evaluate((e, t) => { const k = [...e.querySelectorAll(".nc")].findIndex((n) => n.textContent.includes(t)); return k; }, titel)).toBe(2);
+  expect(await sc.evaluate((e) => Math.abs(e.scrollTop - e.querySelectorAll(".nc")[2].offsetTop))).toBeLessThan(3);
+}
+
+test("terugvegen brengt je terug op dezelfde kaart en scrollpositie", async ({ page }) => { await terugOpDezelfdeKaart(page, false); });
+
+test("terugvegen werkt ook met beperkte beweging (zonder animatie)", async ({ page }) => {
+  await terugOpDezelfdeKaart(page, true);
+});
+
+test("korte veeg sluit niet, ook niet met beperkte beweging", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openArtikel(page);
+  const y = await startY(page);
+  const g = await veeg(page, [60, y], [60 + 35, y + 2], 4); // 35 px: onder de drempel (30%) en onder FLICK_MIN, dus ook een snelle veeg sluit niet
   await g.eind();
   await expect(page.locator("article.detail")).toBeVisible();
   expect(await page.locator("article.detail").evaluate((e) => e.style.transform)).toBe("");
