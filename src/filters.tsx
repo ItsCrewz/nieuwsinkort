@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Cat, Item, Video } from "./types";
 import { midnight } from "./tijd";
+import { publicatieTijd } from "./vandaag";
 import { BUITEN_WOORD } from "./regio";
 import { Icon } from "./icons";
 
@@ -184,7 +185,8 @@ export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: stri
 export function filterVideos(list: Video[], f: Filters, vorig: number, gen: string | undefined): Video[] {
   if (f.tijd === "alles") return list;
   const g = genVan(gen);
-  const ts = list.map((v) => tijdstip(v.tijd, g));
+  const now = Date.now();
+  const ts = list.map((v) => publicatieTijd(v.t, now) ?? (v.gisteren ? -Infinity : tijdstip(v.tijd, g)));
   let t: Exclude<Tijd, "auto">;
   if (f.tijd === "auto") {
     const vandaag = vanafVoor("vandaag", vorig);

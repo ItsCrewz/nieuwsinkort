@@ -34,6 +34,7 @@ export type Weer = {
   bronnen: Bron[];
 };
 export type Video = {
+  t?: number;
   gisteren?: boolean;
   titel: string;
   ai: string;

@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Videofilters gebruiken de volledige publicatiedatum, zodat terugvalvideo’s van gisteren niet als recent verschijnen (#645).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
