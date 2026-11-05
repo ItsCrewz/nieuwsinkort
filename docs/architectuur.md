@@ -183,7 +183,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - Reddit-filmpjes spelen `v.redd.it` rechtstreeks af via HLS, zonder proxy. YouTube-links in posts gebruiken de YouTube-embed; andere videolinks worden overgeslagen. De verwijzing naar de Reddit-post blijft bewaard voor ontdubbeling.
 - **Weer** (landelijk, plaats "Nederland"): Buienradar (alle landstations: mediaan en koudste–warmste, landelijke 5-daagse), Open-Meteo als terugval (Groningen, De Bilt, Maastricht in één verzoek), KNMI-weerbericht (bron: KNMI, CC0) en de landelijke waarschuwingsregel uit datzelfde weerbericht (code geel/oranje/rood, ergste wint). Geen provinciepagina's: `/waarschuwingen` stuurt door naar Utrecht en per provincie ophalen kost subrequests. Ontbrekende bron = veld weg. De AI-herschrijving (`simpelWeer`) blijft één aanroep met max 1500 tekens invoer. Rubriek Haarlem is los van het weer. Een AI-uitvoer die de prompt herhaalt (`isPromptEcho` in `worker/src/ai.ts`) wordt afgewezen en niet in `weerTxt` bewaard (#378).
 - **Overig**: openraadsinformatie (gemeenteraad), og:image van artikelpagina's.
-- Lukt niet: BleepingComputer (403).
+- **Feedfouten (#572)**: `bronfeedsOvergeslagen` in de run-meta noemt per mislukte bronfeed de bron, URL, HTTP-status (0 bij netwerkfout) en foutmelding, ook als een andere feed van die bron slaagt. BleepingComputer gaf 403 ondanks een herpoging met browser-UA; bij CISA waren twee feeds onbereikbaar. De precieze oorzaak en een werkend herstel zijn zonder meting vanaf Cloudflare niet vastgesteld; de bestaande feeds blijven actief en worden bij een fout voor die run overgeslagen.
 
 ## Scripts
 
