@@ -1,0 +1,9 @@
+# Diagnose YouTube-feeds (#562)
+
+De meting van 5 november 08:00 meldt sinds 4 november 22:45 UTC een HTTP 404 voor de bestaande `https://www.youtube.com/feeds/videos.xml?channel_id=…`-feeds. De Worker verstuurt daarbij de User-Agent `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, een Accept-header voor onder meer RSS en Atom en `Accept-Language: nl-NL,nl;q=0.9,en;q=0.8`. Na twee 404- of 5xx-antwoorden slaat de bestaande kanarie de overige YouTube-feeds die run over. De eerstvolgende run probeert de primaire feed opnieuw.
+
+De melding bevat geen opgenomen HTTP-respons of meting van de uploads-playlistvariant. Daarom is niet vastgesteld of die variant items levert, of de fout samenhangt met User-Agent, IP-adres of rate limiting, of dat er geen bruikbaar officieel gratis pad meer bestaat. Een gesimuleerde respons zou dat niet aantonen. Er is geen fallback geactiveerd zonder bewijs dat deze werkt.
+
+Voor een controle vanaf een netwerk met toegang tot YouTube: `node scripts/diagnose-youtube.mjs <bestaand-kanaal-ID> [oude-gebruikersnaam]`. Het script vergelijkt de kanaalfeed en de afgeleide uploads-playlistfeed (`UC…` → `UU…`) met de Worker- en browser-User-Agent; optioneel ook de oude gebruikersnaamfeed. Het toont per verzoek URL, verzonden headers, status, contenttype en aantal Atom-entries, zonder responseheaders of inhoud te bewaren. De gebruikersnaam moet daadwerkelijk bij hetzelfde kanaal horen. Herhaal met meerdere bestaande kanalen en vanaf Cloudflare én een ander netwerk; een lokale meting bewijst geen gedrag vanaf Cloudflare. Beoordeel ook of de entries bij het gevraagde kanaal horen. Bij 429 of andere aanwijzingen voor rate limiting niet blijven herhalen.
+
+Escalatie naar de coördinator: een echte responsmeting is nodig voordat de fallback kan worden gebouwd en de acht bronnen na deploy kunnen worden gegarandeerd. Als geen variant werkt, onderbouw dat met de metingen; kies geen onofficiële client of scraping.

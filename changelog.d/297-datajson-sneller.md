@@ -1,0 +1,1 @@
+- data.json: KV-reads met cacheTtl 60 en 30 s per isolate hergebruik van het verwerkte vooraf-antwoord (minder CPU en TTFB, #297).
