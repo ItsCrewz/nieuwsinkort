@@ -30,14 +30,31 @@ export const CAT_OPT: { id: Cat; label: string }[] = [
   { id: "showbizz", label: "Showbizz" },
 ];
 
+const TIJD_OPT: Tijd[] = ["auto", "sinds", "vandaag", "1u", "3u", "alles"];
+const SORTEN: Filters["sort"][] = ["nieuw", "oud", "bronnen"];
+const REGIOS: Regio[] = ["haarlem", "nl", "wereld"];
+const lijst = <T extends string>(v: unknown, ok: readonly T[]): T[] => (Array.isArray(v) ? ok.filter((x) => v.includes(x)) : []);
+
+/** Opgeslagen JSON → geldige Filters: onbekende waarden vallen terug op de standaard, geldige keuzes blijven. */
+export function schoonFilters(j: unknown): Filters {
+  if (!j || typeof j !== "object" || Array.isArray(j)) return STANDAARD;
+  const o = j as Record<string, unknown>;
+  return {
+    tijd: TIJD_OPT.find((x) => x === o.tijd) ?? STANDAARD.tijd,
+    cats: lijst(o.cats, CAT_OPT.map((c) => c.id)),
+    video: o.video === true,
+    samen: o.samen === true,
+    regio: lijst(o.regio, REGIOS),
+    sort: SORTEN.find((x) => x === o.sort) ?? STANDAARD.sort,
+  };
+}
+
 function lees(): Filters {
   try {
-    const j = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (j && typeof j === "object") return { ...STANDAARD, ...j, cats: Array.isArray(j.cats) ? j.cats : [], regio: Array.isArray(j.regio) ? j.regio : [] };
+    return schoonFilters(JSON.parse(localStorage.getItem(KEY) || "null"));
   } catch {
-    /* privémodus */
+    return STANDAARD; // privémodus of kapotte JSON
   }
-  return STANDAARD;
 }
 
 /** Vorig bezoek: bij de start van een sessie gelezen (en vastgehouden zolang het tabblad open is), daarna "nu" opgeslagen. */
