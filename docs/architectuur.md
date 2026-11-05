@@ -73,6 +73,8 @@ Een lege nieuwsrubriek toont dat er nog geen berichten zijn; als nieuwsfilters a
 
 De rubriektabs vormen een tablist; de knop Meer staat daarbuiten. Links en rechts selecteren en focussen de volgende zichtbare tab, met doorloop aan de uiteinden; alleen de geselecteerde tab staat in de tabvolgorde.
 
+De zoekopdracht blijft actief tijdens het lezen van een artikel. Bij terugkeer gaat de focus naar de resultaatlink, of naar de zichtbare zoekknop als het resultaat ontbreekt; de opnieuw gemonteerde zoekbalk focust het invoerveld niet. Bij bewust openen krijgt het invoerveld wel focus en bij sluiten de zoekknop (#761).
+
 De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de achtergronden van rubriektabs en filterpillen.
 
 ## Laadprestaties (#35)
