@@ -1,0 +1,1 @@
+- Splits de app in kleinere modules zonder gedragswijziging (#302).
