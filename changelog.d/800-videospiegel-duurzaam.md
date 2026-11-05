@@ -1,0 +1,1 @@
+- Herstel de videobudgetspiegel (`vid-neurons`) ook na herstart van de Durable Object: de achterstand staat nu duurzaam in opslag (`videovuil:<datum>`) (#800).

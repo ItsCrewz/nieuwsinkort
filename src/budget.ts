@@ -71,10 +71,10 @@ const rond = (n: number) => Math.round(n * 10) / 10;
 
 export class BudgetLogica {
   constructor(private s: Opslag, private buiten: Buiten, private nu: () => number = Date.now, private groq?: GroqBuiten) {}
-  private vuil = new Set<string>(); // dagen waarvan de KV-spiegel achterloopt op de opslag
 
+  // Duurzame markering `videovuil:<datum>` (niet in geheugen): de KV-spiegel loopt achter op `video:<datum>`, ook na een herstart.
   private async spiegel(datum: string, n: number) {
-    if ((await this.buiten.spiegel(datum, n)) === false) this.vuil.add(datum); else this.vuil.delete(datum);
+    if ((await this.buiten.spiegel(datum, n)) === false) await this.s.put(`videovuil:${datum}`, true); else await this.s.delete(`videovuil:${datum}`);
   }
 
   // Eén opslagwaarde bewaart ook of een mislukte KV-spiegel nog moet worden hersteld.
@@ -113,7 +113,7 @@ export class BudgetLogica {
   // Video-neuronen van de dag (zonder nieuws).
   async stand(datum: string): Promise<number> {
     const v = await this.s.get<number>(`video:${datum}`);
-    if (typeof v === "number") { if (this.vuil.has(datum)) await this.spiegel(datum, v); return v; }
+    if (typeof v === "number") { if (await this.s.get<boolean>(`videovuil:${datum}`)) await this.spiegel(datum, v); return v; }
     const z = await this.buiten.zaad(datum);
     if (z == null) return 0; // KV onleesbaar: niet bewaren, volgende keer opnieuw proberen
     await this.s.put(`video:${datum}`, z);
@@ -130,7 +130,7 @@ export class BudgetLogica {
     await this.s.put(`uur:${r.uur}`, n + 1);
     await this.s.put(`video:${r.datum}`, nieuw);
     // oude dagen en uren opruimen
-    const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "uur:" })).keys()].filter((k) => k !== `video:${r.datum}` && k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`));
+    const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "uur:" })).keys(), ...(await this.s.list({ prefix: "videovuil:" })).keys()].filter((k) => k !== `video:${r.datum}` && k !== `videovuil:${r.datum}` && k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`));
     if (oud.length) await this.s.delete(oud);
     await this.spiegel(r.datum, nieuw);
     return { ok: true, video: nieuw };
