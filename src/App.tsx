@@ -9,7 +9,7 @@ import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayou
 import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
-import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
 import { sorteerOpGroep } from "./filmgroep";
@@ -1270,6 +1270,7 @@ export default function App() {
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
+              meerBronnen={off.size ? actieveBronnen(selectedItem, index, off) : undefined}
               dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
               onBack={(opties) => {

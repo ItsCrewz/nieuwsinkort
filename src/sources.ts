@@ -185,6 +185,10 @@ export function useSourceFilter() {
   return { off, setMany, reset };
 }
 
+export function actieveBronnen(item: Item, index: Index, off: Set<string>): Bron[] {
+  return (item.bronnen ?? []).filter((b) => !off.has(sourceKey(index, groepVan(item), b.site, b.href)));
+}
+
 /** Data met de filter toegepast. Berichten zonder bronnen blijven altijd zichtbaar. */
 export function useFiltered(data: Data | null, index: Index, off: Set<string>) {
   return useMemo(() => {
@@ -198,7 +202,7 @@ export function useFiltered(data: Data | null, index: Index, off: Set<string>) {
         items.push(it);
         continue;
       }
-      const active: Bron[] = bronnen.filter((b) => !off.has(sourceKey(index, groepVan(it), b.site, b.href)));
+      const active = actieveBronnen(it, index, off);
       if (active.length === 0) hidden++;
       else items.push(active.length === bronnen.length ? it : { ...it, bronnen: active });
     }
