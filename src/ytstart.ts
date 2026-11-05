@@ -1,4 +1,4 @@
-export type YtStart = { actief: boolean; gepauzeerd: boolean; klaar: boolean; status: number | null; pogingen: number; sinds: number; nu: number; gespeeld?: boolean; fout?: boolean };
+type YtStart = { actief: boolean; gepauzeerd: boolean; klaar: boolean; status: number | null; pogingen: number; sinds: number; nu: number; gespeeld?: boolean; fout?: boolean };
 
 export function ytEmbedUrl(id: string, actief: boolean, origin: string): string {
   const params = new URLSearchParams({ autoplay: actief ? "1" : "0", cc_load_policy: "0", mute: "1", playsinline: "1", enablejsapi: "1", controls: "1", rel: "0", modestbranding: "1", iv_load_policy: "3", loop: "1", playlist: id, origin });
@@ -22,13 +22,13 @@ export function ytToonHint(s: YtStart): boolean {
   return s.actief && !s.fout && !s.gespeeld && s.status !== 1 && s.status !== 3 && s.nu - s.sinds >= 1500;
 }
 
-// De activatieklok loopt door bij pauze en statuswissels, ook zonder onReady.
 // Is dit een onReady van precies dit frame? Andere frames en andere origins tellen niet.
 export function ytIsGereed(e: { origin: string; source: unknown; data: unknown }, frame: { contentWindow: unknown } | null | undefined): boolean {
   if (e.origin !== "https://www.youtube-nocookie.com" || !frame?.contentWindow || e.source !== frame.contentWindow) return false;
   try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; return (d as { event?: string } | null)?.event === "onReady"; } catch { return false; }
 }
 
+// De activatieklok loopt door bij pauze en statuswissels, ook zonder onReady.
 export function ytStartBesluit(s: YtStart): "wacht" | "probeer" | "vangnet" {
   if (!s.actief || s.fout || s.status === 1 || s.status === 3 || s.gespeeld) return "wacht";
   if (ytToonHint(s)) return "vangnet";
@@ -57,11 +57,6 @@ export function ytStatusNaam(status: number | null): string {
     case 5: return "cued";
     default: return "onbekend";
   }
-}
-
-// Een actieve slide wordt maar één keer per activatie overgeslagen.
-export function ytSkipBesluit(code: unknown, actief: boolean, alOvergeslagen: boolean, volgende: boolean): boolean {
-  return actief && ytEchteFout(code) && !alOvergeslagen && volgende;
 }
 
 // Bij teruggaan blijft de eerste geblokkeerde video als vangnet staan.
