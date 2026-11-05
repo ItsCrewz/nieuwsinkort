@@ -1,0 +1,1 @@
+- Gecachte overzichten `/vandaag` en `/sitemap-nieuws.xml` verlopen uiterlijk bij de volgende Amsterdamse middernacht of 06:00-grens (ook op DST-wisseldagen); na een grens wordt geen oude cache-entry meer gebruikt (#679).

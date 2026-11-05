@@ -2,6 +2,7 @@
 import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
+import { GELDIG_TOT, nogGeldig, overzichtTtl } from "../src/overzichtcache";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
@@ -26,15 +27,16 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de sitemap niet breken
-  if (bestaand) return bestaand;
+  if (bestaand && nogGeldig(bestaand, Date.now())) return bestaand;
   const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
-  let xml = leeg("");
+  let xml = leeg(""), gegenereerd: string | undefined;
   if (!data.ok) return new Response(xml, { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
   try {
     const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) xml = nieuwsSitemap(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso);
+    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) xml = (gegenereerd = dag.gegenereerd,  nieuwsSitemap(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso));
   } catch { console.error("sitemap-nieuws: data lezen mislukt"); }
-  const response = new Response(xml, { headers: { ...HDR, "Cache-Control": "public, max-age=300" } });
+  const nu = Date.now(), ttl = overzichtTtl(nu, gegenereerd);
+  const response = new Response(xml, { headers: { ...HDR, "Cache-Control": `public, max-age=${ttl}`, [GELDIG_TOT]: String(nu + ttl * 1000) } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   return response;
 }
