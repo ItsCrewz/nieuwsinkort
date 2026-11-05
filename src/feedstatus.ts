@@ -4,10 +4,12 @@ import { videoSlug } from "./slug";
 export type FeedStatus = { cat: "filmpjes" | "dumpert"; slug: string; soort: Soort; positie: number; speelt: boolean; lijst: Video[] };
 const KEY = "nieuwsinkort-feedstatus";
 
-export function herstelFeed(status: FeedStatus | null, cat: FeedStatus["cat"], slug: string, lijst: Video[]): { lijst: Video[]; slug: string } {
-  const bron = lijst.length ? lijst : status?.cat === cat ? status.lijst : [];
+// `laden`: actuele data is er nog niet; alleen dan mag de opgeslagen lijst tijdelijk dienen.
+// Een definitief lege (of weggefilterde) lijst blijft leeg, zodat oude video's niet terugkomen.
+export function herstelFeed(status: FeedStatus | null, cat: FeedStatus["cat"], slug: string, lijst: Video[], laden = false): { lijst: Video[]; slug: string } {
+  const bron = lijst.length || !laden ? lijst : status?.cat === cat ? status.lijst : [];
   const gevonden = bron.find((v) => videoSlug(v) === slug);
-  const oud = status?.cat === cat ? status.lijst.findIndex((v) => videoSlug(v) === slug) ?? -1 : -1;
+  const oud = status?.cat === cat ? status.lijst.findIndex((v) => videoSlug(v) === slug) : -1;
   const gekozen = gevonden || bron[Math.min(Math.max(oud, 0), bron.length - 1)];
   return { lijst: bron, slug: gekozen ? videoSlug(gekozen) : slug };
 }

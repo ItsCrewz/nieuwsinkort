@@ -1,0 +1,1 @@
+- Videofeed herstelt de opgeslagen lijst alleen tijdens laden; een lege of gefilterde actuele lijst toont een lege toestand en oude of uitgesloten video's komen niet terug (#659).
