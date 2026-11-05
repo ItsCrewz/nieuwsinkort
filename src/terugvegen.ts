@@ -42,17 +42,17 @@ export function negeerDoel(el: Element | null, grens: Element | null = null): bo
 const selectie = () => { const s = window.getSelection?.(); return !!s && !s.isCollapsed && s.toString().length > 0; };
 
 // Pagina volgt de vinger; los te vroeg = terugveren, anders onBack (history.back via de bestaande sluitroute).
-export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () => void) {
+export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opties?: { geveegd?: boolean }) => void) {
   const terug = useRef(onBack);
   terug.current = onBack;
   useLayoutEffect(() => {
     let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" | "sluit" = "uit";
     let timer: ReturnType<typeof setTimeout> | undefined, overflowVoor: string | null = null;
     const el = () => ref.current;
-    const zet = (x: number, anim: boolean) => {
+    const zet = (x: number, anim: boolean, veer = false) => {
       const e = el();
       if (!e) return;
-      e.style.transition = anim ? "transform .2s" : "none";
+      e.style.transition = anim ? `transform var(--dur-2) var(${veer ? "--ease-veer" : "--ease-uit"})` : "none";
       e.style.transform = x ? `translateX(${x}px)` : "";
     };
     const wis = () => { if (timer !== undefined) { clearTimeout(timer); timer = undefined; } };
@@ -60,12 +60,12 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
     const klaar = () => {
       wis();
       const e = el();
-      if (e) { e.style.transition = ""; e.style.transform = ""; }
+      if (e) { e.style.transition = ""; e.style.transform = ""; e.classList.remove("veegt"); }
       if (overflowVoor !== null) { document.body.style.overflowX = overflowVoor; overflowVoor = null; }
     };
     const plan = (fn: () => void, ms: number) => { wis(); timer = setTimeout(() => { timer = undefined; fn(); }, ms); };
     // Onderbroken veeg: artikel blijft open en veert terug (direct bij reduced motion).
-    const veer = () => { if (rustig()) klaar(); else { zet(0, true); plan(klaar, 220); } };
+    const veer = () => { if (rustig()) klaar(); else { zet(0, true, true); plan(klaar, 220); } };
     const start = (ev: TouchEvent) => {
       if (stand === "sluit") return; // sluitanimatie loopt: onBack volgt, niets meer opstarten
       if (stand === "veeg") veer(); // tweede vinger tijdens een veeg
@@ -87,6 +87,7 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
         if (b === "nee") { stand = "uit"; return; }
         stand = "veeg";
         if (overflowVoor === null) overflowVoor = document.body.style.overflowX;
+        el()?.classList.add("veegt");
         document.body.style.overflowX = "hidden";
       }
       if (ev.cancelable) ev.preventDefault();
@@ -99,10 +100,10 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
       if (was !== "veeg") return;
       const breed = window.innerWidth;
       if (ev.type !== "touchcancel" && sluit(dx, breed, ev.timeStamp - t0)) {
-        if (rustig()) { klaar(); terug.current(); return; }
+        if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
         stand = "sluit";
         zet(breed, true);
-        plan(() => { stand = "uit"; terug.current(); klaar(); }, 200);
+        plan(() => { stand = "uit"; terug.current({ geveegd: true }); klaar(); }, 200);
       } else veer();
     };
     document.addEventListener("touchstart", start, { passive: true });
