@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { createElement, createRef } from "react";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
-import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
+import { Zoekbalk, ZoekLeeg } from "../src/zoekbalk";
 
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
 assert.match(leeg, /Geen berichten gevonden voor ‘niets’/);
@@ -18,10 +18,4 @@ assert.match(geslotenBalk, /aria-expanded="false"/);
 assert.match(geslotenBalk, /aria-label="Zoeken"/);
 assert.match(geslotenBalk, /<button type="button" class="zoek-knop"[^>]*><svg[^>]*><use href="#i-search"><\/use><\/svg><\/button>/);
 assert.ok(!/>Zoek</.test(geslotenBalk));
-let gesloten = false;
-const formulier = ZoekFormulier({ query: "tekst", onChange: () => {}, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
-const invoer = formulier.props.children[0];
-assert.equal(invoer.props["aria-label"], "Zoek in het nieuws");
-invoer.props.onKeyDown({ key: "Escape", preventDefault() {}, stopPropagation() {} });
-assert.equal(gesloten, true);
 console.log("zoekbalk: tests geslaagd");

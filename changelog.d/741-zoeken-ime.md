@@ -1,0 +1,1 @@
+- Behoud de focus van het zoekveld bij Enter tijdens IME-compositie (#741).
