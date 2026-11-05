@@ -1,3 +1,5 @@
+import { Icon } from "./icons";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { aantalExtra, CAT_OPT, TIJD_LABEL, type Filters, type Tijd } from "./filters";
 import { CATS } from "./tabs";
@@ -28,9 +30,11 @@ export function Zoekbalk({ query, onChange, aantal, scope, breed = false, onBree
   const invoer = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) invoer.current?.focus(); }, [open]);
   const sluit = () => { onChange(""); onBreed?.(false); setOpen(false); knop.current?.focus(); };
+  // Buiten .shell renderen (container-type:inline-size), anders scrolt de vaste knop mee, net als de deelknop.
+  const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} aria-label="Zoeken" title="Zoeken" onClick={() => open ? sluit() : setOpen(true)}><Icon name="search" /></button>;
   return (
     <div className="zoek-container">
-      <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} onClick={() => open ? sluit() : setOpen(true)}>Zoek</button>
+      {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
       {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} scope={scope} breed={breed} onBreed={onBreed} />}
       <span className="zoek-status" aria-live="polite">{query.trim() ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}${scope ? `. ${scopeZin(scope, breed)}` : ""}` : ""}</span>
     </div>

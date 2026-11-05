@@ -194,7 +194,7 @@ export function soortVan(v: { titel?: string; href?: string; embed?: string; bro
 export const igUser = (url: string) => /kg\.meowing\.de\/([^/]+)\/atom\.xml|instagram\.com\/([\w.]+)\/?(?:embed\/?)?$/i.exec(url)?.slice(1).find(Boolean) || "";
 export const igProfileUrl = (user: string) => `https://www.instagram.com/${user}/embed/`;
 export const igPostEmbed = (code: string) => `https://www.instagram.com/p/${code}/embed/captioned/`;
-export type IgPost = { code: string; video: boolean; t: number; text: string; img: string; likes: number; user: string };
+type IgPost = { code: string; video: boolean; t: number; text: string; img: string; likes: number; user: string };
 export function parseIgProfile(html: string): IgPost[] {
   const m = /"contextJSON":"((?:[^"\\]|\\.)*)"/.exec(html);
   if (!m) throw new Error("geen Instagram-embeddata");
