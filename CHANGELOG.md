@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Na het wissen van een zoekopdracht zonder resultaten keert de focus terug naar het zoekveld (#769).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
