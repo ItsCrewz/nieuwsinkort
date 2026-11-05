@@ -137,8 +137,46 @@ assert.deepEqual(focus, ["sluiten", "vorig"]);
 minderBeweging = true;
 nodes(maak(), "button").find((b) => b.props.className === "scrim").props.onClick();
 assert.equal(gesloten, 3);
-// Regressie #623: App geeft een stabiele onClose mee, anders draait het focus-effect bij elke filterwijziging opnieuw.
+// Regressie #623: bij her-renderen met gewijzigde filters mag het focus-effect niet opnieuw draaien, in nieuws- én videoweergave.
+// Mini-runtime met per-render hookslots en echte deps-vergelijking (Object.is), zoals React ze toepast.
+const vorigeDispatcher = intern.current;
+function speel(onClose: () => void, rondes: Partial<Parameters<typeof FilterBlad>[0]>[]) {
+  const slots: any[] = [];
+  let i = 0;
+  const gelijk = (a?: unknown[], b?: unknown[]) => !!a && !!b && a.length === b.length && a.every((x, k) => Object.is(x, b[k]));
+  const wachtend: (() => void)[] = [];
+  const log: string[] = [];
+  intern.current = {
+    useState: (v: boolean) => { const k = i++; slots[k] ??= { v }; return [slots[k].v, (n: boolean) => { slots[k].v = n; }]; },
+    useRef: () => { const k = i++; slots[k] ??= { current: k === 1 ? paneel : { focus: () => log.push("sluiten") } }; return slots[k]; },
+    useCallback: (fn: any, deps: unknown[]) => { const k = i++; if (!slots[k] || !gelijk(slots[k].deps, deps)) slots[k] = { fn, deps }; return slots[k].fn; },
+    useMemo: (fn: () => unknown, deps: unknown[]) => { const k = i++; if (!slots[k] || !gelijk(slots[k].deps, deps)) slots[k] = { w: fn(), deps }; return slots[k].w; },
+    useEffect: (fn: () => () => void, deps: unknown[]) => {
+      const k = i++;
+      if (slots[k] && gelijk(slots[k].deps, deps)) return;
+      wachtend.push(() => { slots[k]?.cleanup?.(); slots[k] = { deps, cleanup: fn() }; });
+    },
+  };
+  g.document.activeElement = { focus: () => log.push("vorig") };
+  for (const o of rondes) {
+    i = 0;
+    FilterBlad({ f: STANDAARD, set: () => {}, reset: () => {}, u: uitkomst(2), bron: bronItems, catBron, vorig: 0, alles: false, onClose, ...o });
+    wachtend.splice(0).forEach((fn) => fn());
+  }
+  return log;
+}
+const wijzigingen = [{}, { f: { ...STANDAARD, tijd: "1u" as const } }, { f: { ...STANDAARD, video: true } }, { f: { ...STANDAARD, regio: ["haarlem" as const] } }, { u: uitkomst(5) }];
+const stabiel = () => {};
+for (const video of [false, true]) {
+  const log = speel(stabiel, wijzigingen.map((w) => ({ ...w, video })));
+  assert.deepEqual(log, ["sluiten"], `focus mag maar één keer bewegen (video=${video})`); // geen "vorig" terug, geen tweede "sluiten"
+}
+// Controle dat de test gevoelig is: een onClose die elke render verandert herstelt wel focus bij iedere wijziging.
+const onstabiel = speel(() => {}, wijzigingen.map((w) => ({ ...w, onClose: () => {} })));
+assert.ok(onstabiel.filter((x) => x === "sluiten").length > 1);
+intern.current = vorigeDispatcher;
+// App moet dan ook een stabiele onClose doorgeven (useCallback zonder deps).
 const appBron = readFileSync("src/App.tsx", "utf8");
+assert.match(appBron, /const sluitFilters = useCallback\(\(\) => setFsheet\(false\), \[\]\)/);
 assert.match(appBron, /onClose=\{sluitFilters\}/);
-assert.doesNotMatch(appBron, /<FilterBlad[^\n]*onClose=\{\(\) =>/);
 console.log("filters-blad: tests geslaagd");
