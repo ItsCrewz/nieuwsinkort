@@ -33,6 +33,8 @@ Oude flow (verlaten): routine → Grok-canvas → `export_from_canvas.mjs` → `
 
 Vite 8, React 18, TypeScript, Tailwind 3, hls.js. Mobiele feed in TikTok-stijl met fotocarrousels, filters (tijd, rubriek, regio, video, samengevoegd, volgorde), Bronnen-paneel, en een videofeed die alleen op touch verschijnt (`src/invoer.ts`: `(pointer: coarse)` of `(hover: none)`, reageert op wijzigingen; desktop toont de kaarten met kopjes en opent een filmpje bij de bron) (max 2 spelers tegelijk, frame-waakhond die op hetzelfde element herstelt bij 2,5 s zonder nieuw beeld, geluid standaard aan via localStorage). Video: YouTube via nocookie-iframe, HLS native of via hls.js, MP4 via `<video>` (met `referrer=no-referrer` voor video.twimg.com). Ontdubbelen van video's en foto's: `dedup.ts`, `beeld.ts`. Het bouwen draait eerst `scripts/build-bronnen.mjs` (`public/bronnen.json`).
 
+Nieuwsfilters en sortering gebruiken de geldige absolute publicatietijd `t` in milliseconden. Bij oudere data zonder geldige `t` wordt `tijd` als Amsterdamse kloktijd afgeleid van `gegenereerd`; rond een klokwisseling is die terugval niet eenduidig. Relatieve filters rekenen tegen de huidige tijd.
+
 Video's worden naast platform-ID, media, URL, thumbnail en titel ook gekoppeld op een letterlijk gedeeld begin van de genormaliseerde caption of titel met beschrijving: minstens 80 tekens en acht verschillende inhoudswoorden, binnen drie uur. Bij twee publicatietijdstippen geldt hun werkelijke verschil; anders zijn twee geldige `tijd`-velden nodig. De beste kopie blijft staan en andere bronnen komen in `ook`. Gelijk onderwerp of afwijkende tekst is onvoldoende: de JA21-reel en het SGP-journaal blijven bijvoorbeeld apart. Een lange gedeelde standaardtekst kan nog steeds verschillende video's samenvoegen.
 
 Video (#44): `src/stall.ts` bewaakt elke 300 ms de afspeeltijd. Na 600 ms stilstand bevriest de balk; bij beweging of meer dan 0,3 s afwijking wordt hij gelijkgezet. Bij minstens 1 s buffer vooruit of readyState 3 volgt na 3 s een herstelpoging; zonder data pas na 10 s. Na nog 3 s volgt zo nodig herladen, met hetzelfde herstelbudget als de frame-waakhond (twee per minuut, vier per speler). Pauze, verborgen tabblad en seeks tellen niet als stilstand. Tests: `tests/stall.test.ts`.
@@ -109,7 +111,7 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 | Chunk | Inhoud | Wanneer geladen |
 | --- | --- | --- |
 | `index` | React, `App.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
-| `sheet` | `SourcesSheet` | bij openen van Bronnen (Tab/Shift+Tab blijven in het venster via `src/focusval.ts`, #615; Escape en sluiten herstellen de focus naar de opener) |
+| `sheet` | `SourcesSheet` | bij openen van Bronnen (Tab/Shift+Tab blijven in het venster via `src/focusval.ts`, #615; Escape en sluiten herstellen de focus naar de opener). Bij nul berichten en een deels mislukte ophaling (`fout` of `storing`) toont de regel "Stand onvolledig" i.p.v. "Vandaag niets" (#618). |
 | `filters-blad` | `FilterBlad` | bij openen van het filterblad |
 | `detail` | `DetailView` (`#/bericht/...`) | bij openen van een bericht |
 | `video` | `VideoGrid` (Filmpjes/Dumpert-overzicht) | op een videoroute |
@@ -250,7 +252,7 @@ Bij dezelfde deploy moet de coördinator onder Pages → nieuwsinkort → Metric
 ## Open punten
 
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
-- "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd.
+- "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd. Antwoorden worden vóór de sessiecache op de gebruikte tekstlijsten en brongegevens gecontroleerd; ongeldige antwoorden vallen terug op de berichttekst en kunnen opnieuw worden opgehaald (#647).
 - `src/leesverder.ts` bepaalt of een bericht Lees verder heeft en haalt alinea’s, kernpunten en bronnen voor de detailpagina uit het bericht.
 - Het kopje **Uitgebreid** staat altijd in de detailpagina, ook zonder `meer`-sleutel of bij een mislukte `/meer`-aanroep (#184, `src/uitgebreid.ts`). Keten: AI-uitleg (Workers AI, Groq, Mistral; gecachet in `st.diep` in KV-state, per artikel één keer, `zonderUitleg` slaat gecachete artikelen over) → alineas uit de bron → samenvatting/kernpunten van het bericht → de kop. Geen extra AI-aanroepen of neuronen; geldt voor Nederland en Buitenland.
 - Redlib-instances blokkeren Cloudflare; Reddit valt daardoor soms terug op een oude kopie.
@@ -370,3 +372,5 @@ Gedeelde berichtpagina (#541): `functions/bericht/[[pad]].ts` levert geen eigen 
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
+
+Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
