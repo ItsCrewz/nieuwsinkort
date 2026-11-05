@@ -44,6 +44,11 @@ let detailModule: typeof import("./detail") | undefined;
 let detailBelofte: Promise<typeof import("./detail")> | undefined;
 const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
 const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
+// Houd het componenttype gelijk zolang een artikel openstaat, ook als de module intussen laadt.
+function ArtikelDetail(props: React.ComponentProps<typeof DetailView>) {
+  const [Component] = useState(() => detailModule?.DetailView ?? DetailView);
+  return <Component {...props} />;
+}
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
 
@@ -1246,7 +1251,6 @@ export default function App() {
   }
 
   // Detail: eerst in de gefilterde lijst (met alleen de actieve bronnen), anders het origineel (directe link).
-  const ActiefDetail = detailModule?.DetailView ?? DetailView;
   const selectedItem = route.selected
     ? data.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
     : null;
@@ -1256,7 +1260,7 @@ export default function App() {
       <Frame top={top}>
         <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
           <Suspense fallback={null}>
-            <ActiefDetail
+            <ArtikelDetail
               item={selectedItem}
               dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
