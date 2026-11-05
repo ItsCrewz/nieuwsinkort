@@ -1,3 +1,4 @@
+import { Icon } from "./icons";
 import { useEffect, useRef, useState } from "react";
 
 export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange: (query: string) => void; aantal: number }) {
@@ -8,7 +9,7 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
   const sluit = () => { onChange(""); setOpen(false); knop.current?.focus(); };
   return (
     <div className="zoek-container">
-      <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} onClick={() => open ? sluit() : setOpen(true)}>Zoek</button>
+      <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} aria-label="Zoeken" title="Zoeken" onClick={() => open ? sluit() : setOpen(true)}><Icon name="search" /></button>
       {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} />}
       <span className="zoek-status" aria-live="polite">{query.trim() ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}` : ""}</span>
     </div>

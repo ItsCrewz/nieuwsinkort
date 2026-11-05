@@ -8,7 +8,13 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   const opslag = await page.evaluate(() => ({ ...localStorage }));
   const verzoeken = [];
   page.on("request", (request) => { if (["fetch", "xhr"].includes(request.resourceType())) verzoeken.push(request.url()); });
-  const knop = page.getByRole("button", { name: "Zoek", exact: true });
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  await expect(knop.locator("svg")).toHaveCount(1);
+  expect((await knop.textContent()).trim()).toBe("");
+  await expect(page.getByText("Zoek", { exact: true })).toHaveCount(0);
+  const vak = await knop.boundingBox();
+  expect(vak.width).toBeGreaterThanOrEqual(44);
+  expect(vak.height).toBeGreaterThanOrEqual(44);
   await knop.click();
   const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
   await expect(invoer).toBeFocused();

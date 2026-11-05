@@ -1,0 +1,1 @@
+- Zoekknop (#576): vergrootglasicoon (aria-label "Zoeken", 44×44, motion-tokens) i.p.v. de tekst "Zoek".
