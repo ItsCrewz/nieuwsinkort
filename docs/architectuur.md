@@ -65,7 +65,7 @@ YouTube-fouten 100, 101, 150 en 152 verwijderen de geblokkeerde video uit de ope
 
 Bufferregels (#36): `src/buffer.ts` bepaalt per netwerkniveau de seconden en bytes voor de actieve en volgende hls.js-speler. De pool laadt geen spelers vanaf +2. Tests: `tests/buffer.test.ts` en `tests/videopool.test.ts`.
 
-Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert de offset op DST-wisseldagen naar die van middernacht zelf. `filters.tsx` gebruikt `gegenereerd` als referentiedag (bij ontbrekende/ongeldige waarde: nu) en laat berichttijden tot 20 minuten vooruit op die dag staan. Vandaag begint op de huidige Amsterdamse middernacht; 1u/3u rekenen tegen `Date.now()`. Regressietests: `tests/filters.test.ts`.
+Tijd: `src/tijd.ts` deelt `midnight()` tussen frontend en Worker en corrigeert de offset op DST-wisseldagen naar die van middernacht zelf. `filters.tsx` gebruikt `gegenereerd` als referentiedag (bij ontbrekende/ongeldige waarde: nu) en laat berichttijden tot 20 minuten vooruit op die dag staan. Vandaag begint op de huidige Amsterdamse middernacht; 1u/3u rekenen tegen `Date.now()`. Alleen kloktijden 00:00–23:59 tellen; een onmogelijke tijd (25:99, 12:60) geldt als onbekend: altijd zichtbaar en bij tijdsortering onderaan. Regressietests: `tests/filters.test.ts`.
 
 Een lege nieuwsrubriek toont dat er nog geen berichten zijn; als nieuwsfilters alle beschikbare berichten uitsluiten, toont de leegmelding knoppen om de filters aan te passen of te herstellen. Zie `src/leegmelding.tsx` en `tests/leegmelding.test.ts`.
 
