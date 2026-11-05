@@ -134,9 +134,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [item, onBack]);
-  useEffect(() => {
-    document.title = `${item.kop} · Nieuws in het kort`;
-  }, [item]);
+  // documenttitel zet App (zelfde vorm als de serverpagina, #622)
   // punten alleen als ze iets nieuws zeggen (#488)
   const tekst = zonderBronvermelding(toonBekendmaking(item));
   const { paragraphs: alleAlineas, bronnen } = detailInhoud(tekst);
