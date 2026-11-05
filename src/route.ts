@@ -4,7 +4,9 @@ import type { View } from "./types";
 export type Route = { view: View; selected: string | null; video: string | null };
 
 export function parseHash(hash: string): Route {
-  const h = decodeURIComponent(hash.replace(/^#\/?/, ""));
+  let h: string;
+  try { h = decodeURIComponent(hash.replace(/^#\/?/, "")); }
+  catch { return { view: "alles", selected: null, video: null }; }
   if (h.startsWith("bericht/")) return { view: "alles", selected: h.slice(8), video: null };
   const c = CATS.find((c) => c.slug === h);
   if (c) return { view: c.id, selected: null, video: null };
