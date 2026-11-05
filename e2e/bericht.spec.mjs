@@ -67,11 +67,13 @@ test.describe("iPhone-emulatie", () => {
     await expect(page.locator(".topbar")).toBeVisible();
     await page.evaluate((id) => { window.location.hash = `#/bericht/${id}`; }, artikelid.artikelId(item));
     await expect(page.locator("article.detail")).toBeVisible();
+    await expect(page).toHaveTitle(`${item.kop} – Nieuws in het kort`);
     await expect(page.locator("article.detail .d-lead")).toBeVisible();
     const inApp = await page.locator("article.detail").evaluate((el) => ({ klasse: el.className, tekst: el.innerText, stijl: getComputedStyle(el.querySelector(".d-title")).fontSize + getComputedStyle(el).maxWidth, koppen: [...el.querySelectorAll("h1,h2")].map((h) => h.textContent) }));
     // 2. gedeelde pagina
     await page.goto(pad);
     await expect(page.locator("article.detail")).toBeVisible();
+    await expect(page).toHaveTitle(`${item.kop} – Nieuws in het kort`);
     await expect(page.locator("article.detail .d-lead")).toBeVisible();
     const gedeeld = await page.locator("article.detail").evaluate((el) => ({ klasse: el.className, tekst: el.innerText, stijl: getComputedStyle(el.querySelector(".d-title")).fontSize + getComputedStyle(el).maxWidth, koppen: [...el.querySelectorAll("h1,h2")].map((h) => h.textContent) }));
     expect(gedeeld).toEqual(inApp);
@@ -83,6 +85,11 @@ test.describe("iPhone-emulatie", () => {
     await page.getByRole("button", { name: "Terug naar het nieuws" }).click();
     await expect(page.locator("article.detail")).toHaveCount(0);
     await expect(page).toHaveURL(/\/#\/$/);
+    await expect(page).toHaveTitle("Nieuws in het kort");
+    await page.evaluate(() => { window.location.hash = "#/tech"; });
+    await expect(page).toHaveTitle("Tech · Nieuws in het kort");
+    await page.evaluate(() => { window.location.hash = "#/bericht/onbekend"; });
+    await expect(page).toHaveTitle("Nieuws in het kort");
     await expect(page.locator(".nc-title a, .lead").first()).toBeVisible();
   });
 
