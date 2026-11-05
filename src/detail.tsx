@@ -14,7 +14,7 @@ import { uitgebreidOntdubbeld } from "./uitgebreid";
 import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
-import { prefetchMeer } from "./meer";
+import { meerVoor, prefetchMeer, type MeerState } from "./meer";
 import { artikelUrl, deel } from "./delen";
 import { useTerugvegen } from "./terugvegen";
 
@@ -41,7 +41,7 @@ function SourceRow({ b }: { b: Bron }) {
 }
 
 function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
-  const [st, setSt] = useState<{ k?: string; meer: Meer | null; laden: boolean }>({ meer: null, laden: !!item.meer });
+  const [st, setSt] = useState<MeerState>({ meer: null, laden: !!item.meer });
   useEffect(() => {
     let weg = false;
     if (!item.meer) { setSt({ meer: null, laden: false }); return; }
@@ -49,7 +49,7 @@ function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
     prefetchMeer(item).then((m) => { if (!weg) setSt({ k: item.meer, meer: m, laden: false }); });
     return () => { weg = true; };
   }, [item]);
-  return st;
+  return meerVoor(st, item.meer);
 }
 
 // Bron (nieuwssite) nooit als verkoper of kanaal tonen (#488): de teksten van het bericht zonder "via <bron>"-vermeldingen.
