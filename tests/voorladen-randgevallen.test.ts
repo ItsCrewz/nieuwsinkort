@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, vastAantal, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -150,6 +150,22 @@ try {
     assert.equal(afbeeldingen.length - begin, GELIJK + 2);
     afbeeldingen.slice(begin + 2).forEach((img) => img.onload!());
     await wacht();
+  });
+
+  await test("afgeronde afbeeldingen worden losgelaten, ook bij herhaalde plannen", async () => {
+    const begin = afbeeldingen.length;
+    assert.equal(vastAantal(), 0);
+    for (let ronde = 0; ronde < 3; ronde++) {
+      voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK + 1 }, (_, i) => `https://ronde${ronde}.example/${i}.jpg`) });
+      assert.equal(vastAantal(), GELIJK);
+      afbeeldingen[begin + ronde * (GELIJK + 1)].onerror!(); // fout
+      afbeeldingen[begin + ronde * (GELIJK + 1) + 1].onload!(); // succes
+      await wacht();
+      assert.equal(vastAantal(), 2); // twee los, de vierde taak gestart: hooguit GELIJK vast
+      afbeeldingen.slice(begin + ronde * (GELIJK + 1) + 2, begin + (ronde + 1) * (GELIJK + 1)).forEach((img) => img.onload!());
+      await wacht();
+      assert.equal(vastAantal(), 0);
+    }
   });
 
   await test("naIdle wacht op load, idle en zichtbaarheid en kan annuleren", () => {

@@ -86,7 +86,8 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
-const vast: unknown[] = []; // voorkomt dat Image-objecten voortijdig worden opgeruimd
+const vast = new Set<unknown>(); // Image-objecten van lopende taken (tegen voortijdig opruimen); na load/error weer los
+export const vastAantal = () => vast.size;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
 const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
@@ -135,9 +136,13 @@ export function voerUit(p: Plan) {
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
-          im.onload = im.onerror = () => ok();
+          im.onload = im.onerror = () => {
+            im.onload = im.onerror = null;
+            vast.delete(im);
+            ok();
+          };
+          vast.add(im);
           im.src = t;
-          vast.push(im);
         })
     );
   }
