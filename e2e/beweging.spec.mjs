@@ -106,3 +106,36 @@ test("terug uit een artikel: doelkaart speelt de entree niet opnieuw", async ({ 
   await expect(kaart).not.toHaveClass(/wacht|\bin\b/);
   expect(await kaartAnimaties(page)).toBe(0);
 });
+
+test("rubriekwissel: paneel animeert ≤ 240 ms, nooit gestapeld; briefing zonder animatie", async ({ page }) => {
+  await blokkeer(page);
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  expect(await page.evaluate(() => document.querySelector("p.brief-text")?.getAnimations().length ?? 0)).toBe(0);
+  const tabs = page.locator('[role="tab"]');
+  for (const [tab, richting] of [[1, 1], [2, 1], [1, -1]]) {
+    await tabs.nth(tab).click();
+    // Route (hashchange) loopt async: pas meten als de tab echt actief is, anders lees je de vorige animatie.
+    await expect(tabs.nth(tab)).toHaveAttribute("aria-selected", "true");
+    const animaties = await page.evaluate(() => document.getElementById("rubriek-paneel").getAnimations()
+      .filter((a) => a.playState === "running" || a.playState === "pending")
+      .map((a) => ({ duur: a.effect.getTiming().duration, x: new DOMMatrix(a.effect.getKeyframes()[0].transform).m41 })));
+    expect(animaties).toHaveLength(1);
+    expect(animaties[0].duur).toBeGreaterThan(0);
+    expect(animaties[0].duur).toBeLessThanOrEqual(240);
+    expect(animaties[0].x * richting).toBeGreaterThan(0);
+  }
+});
+
+test("reduced motion: geen lopende animaties bij rubriekwissel", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await blokkeer(page);
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const tabs = page.locator('[role="tab"]');
+  for (const tab of [1, 0]) {
+    await tabs.nth(tab).click();
+    expect(await page.evaluate(() => document.getElementById("rubriek-paneel").getAnimations().length)).toBe(0);
+    expect(await traag(page)).toEqual([]);
+  }
+});
