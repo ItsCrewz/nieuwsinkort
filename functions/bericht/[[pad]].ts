@@ -1,4 +1,4 @@
-import { artikelId, artikelPad, linkId, parsePad } from "../../src/artikelid";
+import { artikelId, artikelPad, indexeerbaar, linkId, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
 import { ams } from "../../src/tijd";
@@ -24,7 +24,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   }
   const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env }, false);
   if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
-  const dag = await data.json() as { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
+  const dag = await data.json() as { gegenereerd?: string; items?: { id?: string; kop: string; cat?: string; ruw?: boolean; bronnen?: { site: string; href: string }[] }[] };
   const items = dag.gegenereerd && ams(Date.parse(dag.gegenereerd)).iso === pad.dag ? dag.items || [] : [];
   const item = items.find((i) => artikelId(i) === pad.id) || items.find((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id));
   if (!item) return redirect(302, "/", "no-store");
@@ -33,7 +33,8 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   // De pagina is de app zelf (index.html met eigen kop-tags); lukt dat ophalen niet, dan opent de hash-route in de app.
   const sjabloon = await env.ASSETS.fetch(new Request(`${u.origin}/`)).catch(() => null);
   if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return redirect(302, `/#/bericht/${artikelId(item)}`, "no-store");
-  const html = berichtHtml(await sjabloon.text(), item, pad.dag), tag = await etag(html);
+  const verwant = items.filter((i) => i !== item && i.cat === item.cat && indexeerbaar(i) && i.kop).slice(0, 5); // interne links naar dezelfde rubriek
+  const html = berichtHtml(await sjabloon.text(), item, pad.dag, verwant), tag = await etag(html);
   const headers = new Headers(sjabloon.headers);
   for (const [k, v] of Object.entries({ ...basis, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300, stale-while-revalidate=600", ETag: tag })) headers.set(k, v);
   headers.delete("Content-Length"); headers.delete("Content-Encoding");
