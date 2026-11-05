@@ -1,0 +1,1 @@
+- Bug: video's zonder herkenbaar platform-id kregen een sleutel op alleen de titel, waardoor twee filmpjes met dezelfde titel route en samenvatting deelden; de sleutel is nu `v-<hash van de link>` en verandert niet bij een andere titel. Oude titel-only hashroutes werken nog als precies één video erbij past (#687).

@@ -16,8 +16,13 @@ export function videoSlug(v: Video): string {
   if (m) return `r-${m[1]}`;
   m = /instagram\.com\/(?:reel|p)\/([\w-]+)/.exec(v.href);
   if (m) return `ig-${m[1]}`;
+  // Titel is geen identiteit: alleen de href (stabiel bij titelwijziging) bepaalt de sleutel.
+  return `v-${hrefHash(v.href)}`;
+}
+
+function titelSlug(titel: string): string {
   return (
-    v.titel
+    titel
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
@@ -27,3 +32,21 @@ export function videoSlug(v: Video): string {
   );
 }
 
+// FNV-1a over href zonder fragment, 32 bit, base36.
+function hrefHash(href: string): string {
+  let h = 0x811c9dc5;
+  const t = href.split("#")[0];
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
+
+// Oude sleutel (alleen titel) voor oude hashroutes; alleen veilig als precies één video in de lijst hem draagt.
+export function oudeSlug(v: Video): string {
+  return /^v-/.test(videoSlug(v)) ? titelSlug(v.titel) : videoSlug(v);
+}
+export function vindSlug(lijst: Video[], slug: string): Video | null {
+  const exact = lijst.find((v) => videoSlug(v) === slug);
+  if (exact) return exact;
+  const oud = lijst.filter((v) => oudeSlug(v) === slug);
+  return oud.length === 1 ? oud[0] : null;
+}
