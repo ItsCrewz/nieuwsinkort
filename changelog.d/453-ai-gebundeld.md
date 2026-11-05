@@ -1,0 +1,1 @@
+- AI gebundeld: nieuwe clusters wachten op een volle batch of hooguit ±10 minuten, en "In het kort" wordt hooguit eens per 30 minuten opnieuw gemaakt; bij uurlijks draaien verandert er niets (#453).

@@ -1,0 +1,1 @@
+- Voeg dubbele kaarten over dezelfde rechtszaak of wedstrijduitslag conservatief samen, ook tussen routine en uurdata (#509). De eerdere clustertests (#38 en #469) dekten feedberichten; de naamregel sluit dezelfde uitgever uit en de sportregel (#440/#443) herkent alleen specifieke afstanden. De samenvoeging van gepubliceerde items vergeleek alleen bronlinks.

@@ -1,0 +1,1 @@
+- Nieuwsberichten hebben een eigen pagina en zijn eenvoudig te delen met een link.

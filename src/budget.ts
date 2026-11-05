@@ -1,16 +1,20 @@
 // Logica van de Durable Object `Budget`: enige eigenaar van het slot per video, de video-neuronen per dag en de
 // Whisper-rem per uur voor /samenvatting. KV is niet atomair; de shell voert de aanroepen strikt serieel uit (externe KV-I/O opent de input gate).
 // Hier zonder cloudflare:workers, zodat het met een kleine in-memory opslag te testen is (shell: worker/src/budget.ts).
+import { telOp, type LlmState } from "../worker/src/llm";
+
 export const MAX_WHISPER_UUR = 30; // globale rem: hooguit zoveel Whisper-aanroepen per uur
 export const SLOT_TTL = 90e3; // ms; verloopt vanzelf als de Function wegvalt
 
 // ---- meting van Workers AI-verbruik (gedeeld door Worker en Pages Function; zie docs/ai-budget.md)
 // Cloudflare telt de gratis 10.000 neuronen per UTC-dag (reset 00:00 UTC), niet per Amsterdamse dag.
 export const utcDag = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
-/** Veiligheidsfactor uit env NEURON_FACTOR (tussen 0,5 en 5, anders 1): de echte teller kan hoger staan dan de onze. Effectief budget = BUDGET / factor. */
+// Meting 02-11: Cloudflare telt circa 1,06× onze teller; zie docs/ai-budget.md.
+export const STANDAARD_NEURON_FACTOR = 1.12;
+/** Veiligheidsfactor uit env NEURON_FACTOR (tussen 0,5 en 5). Effectief budget = BUDGET / factor. */
 export function neuronFactor(s?: string | number): number {
   const f = Number(s);
-  return Number.isFinite(f) && f > 0 ? Math.min(5, Math.max(0.5, f)) : 1;
+  return Number.isFinite(f) && f > 0 ? Math.min(5, Math.max(0.5, f)) : STANDAARD_NEURON_FACTOR;
 }
 export const TEKENS_PER_TOKEN = 3.5; // grove schatting als de respons geen usage meldt
 export const schatTokens = (s: string) => Math.ceil(s.length / TEKENS_PER_TOKEN);
@@ -58,13 +62,36 @@ export interface Opslag {
   list<T = unknown>(o: { prefix: string }): Promise<Map<string, T>>;
 }
 // spiegel: schrijft het dagtotaal naar KV `vid-neurons:<datum>` (de uur-Worker leest dat); zaad: leest die spiegel bij de eerste keer van de dag
-export interface Buiten { spiegel(datum: string, n: number): Promise<void>; zaad(datum: string): Promise<number | null> }
+// spiegel geeft `false` als het schrijven mislukte: de logica probeert het bij de volgende aanroep (ook een lezing) opnieuw, zodat de Worker geen verouderde stand blijft lezen
+export interface Buiten { spiegel(datum: string, n: number): Promise<void | boolean>; zaad(datum: string): Promise<number | null> }
 export type Reservering = { datum: string; uur: string; nieuws: number; budget: number; reserve: number; marge: number; schatting: number };
+export interface GroqBuiten { zaad(datum: string): Promise<LlmState>; spiegel(datum: string, stand: LlmState): Promise<boolean> }
 
 const rond = (n: number) => Math.round(n * 10) / 10;
 
 export class BudgetLogica {
-  constructor(private s: Opslag, private buiten: Buiten, private nu: () => number = Date.now) {}
+  constructor(private s: Opslag, private buiten: Buiten, private nu: () => number = Date.now, private groq?: GroqBuiten) {}
+  private vuil = new Set<string>(); // dagen waarvan de KV-spiegel achterloopt op de opslag
+
+  private async spiegel(datum: string, n: number) {
+    if ((await this.buiten.spiegel(datum, n)) === false) this.vuil.add(datum); else this.vuil.delete(datum);
+  }
+
+  // Eén opslagwaarde bewaart ook of een mislukte KV-spiegel nog moet worden hersteld.
+  async groqBij(datum: string, verschil: LlmState): Promise<void> {
+    if (!this.groq) throw new Error("Groq-spiegel ontbreekt");
+    const sleutel = `groq:${datum}`;
+    const opgeslagen = await this.s.get<{ stand: LlmState; vuil: boolean }>(sleutel);
+    const stand = opgeslagen?.stand ?? await this.groq.zaad(datum);
+    const gewijzigd = Object.values(verschil).some((v) => v.calls || v.tokens || v.maandTokens);
+    if (gewijzigd) {
+      telOp(stand, verschil);
+      await this.s.put(sleutel, { stand, vuil: true });
+    }
+    if ((gewijzigd || opgeslagen?.vuil) && await this.groq.spiegel(datum, stand)) {
+      await this.s.put(sleutel, { stand, vuil: false });
+    }
+  }
 
   // Slot per video: bezig => null. Het token voorkomt dat een verlopen eigenaar het slot van een ander vrijgeeft.
   async claim(id: string, ttl = SLOT_TTL): Promise<string | null> {
@@ -86,7 +113,7 @@ export class BudgetLogica {
   // Video-neuronen van de dag (zonder nieuws).
   async stand(datum: string): Promise<number> {
     const v = await this.s.get<number>(`video:${datum}`);
-    if (typeof v === "number") return v;
+    if (typeof v === "number") { if (this.vuil.has(datum)) await this.spiegel(datum, v); return v; }
     const z = await this.buiten.zaad(datum);
     if (z == null) return 0; // KV onleesbaar: niet bewaren, volgende keer opnieuw proberen
     await this.s.put(`video:${datum}`, z);
@@ -105,7 +132,7 @@ export class BudgetLogica {
     // oude dagen en uren opruimen
     const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "uur:" })).keys()].filter((k) => k !== `video:${r.datum}` && k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`));
     if (oud.length) await this.s.delete(oud);
-    await this.buiten.spiegel(r.datum, nieuw);
+    await this.spiegel(r.datum, nieuw);
     return { ok: true, video: nieuw };
   }
 
@@ -115,7 +142,7 @@ export class BudgetLogica {
     if (!delta) return video;
     const nieuw = Math.max(0, rond(video + delta));
     await this.s.put(`video:${datum}`, nieuw);
-    await this.buiten.spiegel(datum, nieuw);
+    await this.spiegel(datum, nieuw);
     return nieuw;
   }
 }

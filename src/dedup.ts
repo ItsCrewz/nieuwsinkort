@@ -5,7 +5,7 @@
 // Van elke groep blijft de beste kopie over (in de site afspeelbaar, beste kwaliteit, populairst);
 // de andere bronnen komen in `ook`.
 
-export type DVideo = { titel: string; href: string; embed?: string; thumb?: string; bron: string; ai?: string; tijd?: string; _pub?: number; populariteit?: string; ook?: { bron: string; href: string }[] };
+export type DVideo = { titel: string; href: string; embed?: string; thumb?: string; bron: string; ai?: string; tijd?: string; _pub?: number; populariteit?: string; duur?: number; _k?: string; _kanaal?: string; ook?: { bron: string; href: string }[] };
 
 const TRACK = /^(utm_\w+|si|igsh|igshid|feature|ref|ref_src|ref_url|s|fbclid|gclid|mc_\w+|share_id|context|pp)$/i;
 export function canonUrl(u: string): string {
@@ -65,18 +65,27 @@ function sameTitle(a: string[], b: string[]): boolean {
   return n / (a.length + b.length - n) >= 0.8;
 }
 
+// sameCaption vergelijkt elk paar: genormaliseerde tekst per video één keer maken (O(n) i.p.v. O(n²) regex-werk).
+const captionCache = new WeakMap<DVideo, { titel?: string; ai?: string; res: string[] }>();
 function caption(v: DVideo): string[] {
+  const c = captionCache.get(v);
+  if (c && c.titel === v.titel && c.ai === v.ai) return c.res;
+  const res = captionBereken(v);
+  captionCache.set(v, { titel: v.titel, ai: v.ai, res });
+  return res;
+}
+function captionBereken(v: DVideo): string[] {
   const norm = (s: string) => s.replace(/#[\p{L}\d_]+/gu, " ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const titel = norm(v.titel || ""), ai = norm(v.ai || "");
   return [...new Set([ai, ai.startsWith(titel) ? ai : `${titel} ${ai}`.trim()].filter(Boolean))];
 }
+function minutenVerschil(a: DVideo, b: DVideo): number {
+  if (Number.isFinite(a._pub) && Number.isFinite(b._pub) && a._pub! > 0 && b._pub! > 0) return Math.abs(a._pub! - b._pub!) / 60000;
+  const minuten = (t?: string) => { const m = /^(\d{2}):(\d{2})$/.exec(t || ""); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : NaN; };
+  return Math.abs(minuten(a.tijd) - minuten(b.tijd));
+}
 function sameCaption(a: DVideo, b: DVideo): boolean {
-  let verschil: number;
-  if (Number.isFinite(a._pub) && Number.isFinite(b._pub) && a._pub! > 0 && b._pub! > 0) verschil = Math.abs(a._pub! - b._pub!) / 60000;
-  else {
-    const minuten = (t?: string) => { const m = /^(\d{2}):(\d{2})$/.exec(t || ""); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : NaN; };
-    verschil = Math.abs(minuten(a.tijd) - minuten(b.tijd));
-  }
+  const verschil = minutenVerschil(a, b);
   if (!(verschil <= 180)) return false;
   for (const x of caption(a)) for (const y of caption(b)) {
     const xx = x.split(" "), yy = y.split(" ");
@@ -86,6 +95,20 @@ function sameCaption(a: DVideo, b: DVideo): boolean {
     if (begin.length >= 80 && titleTokens(begin).length >= 8) return true;
   }
   return false;
+}
+
+// Zelfde uitgever op twee platforms (YouTube-kanaal ↔ Instagram-account): de titel van de één staat in titel + beschrijving
+// van de ander (bijv. NU.nl: Instagram-caption "Een steen als 'huisdier'?" staat in de YouTube-beschrijving).
+// Uitgever komt uit `_k`/`_kanaal` (pipeline); onbekend = nooit samenvoegen. Venster 6 uur, duur (als bekend) mag max 3 s of 15% verschillen.
+const uitgever = (v: DVideo) => (v._k || v._kanaal || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+function sameUitgever(a: DVideo, b: DVideo): boolean {
+  const u = uitgever(a);
+  if (!u || u !== uitgever(b) || a.bron === b.bron) return false;
+  if (!(minutenVerschil(a, b) <= 360)) return false;
+  if (a.duur! > 0 && b.duur! > 0 && Math.abs(a.duur! - b.duur!) > Math.max(3, 0.15 * Math.max(a.duur!, b.duur!))) return false;
+  const norm = (s: string) => ` ${s.replace(/#[\p{L}\d_]+/gu, " ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
+  const heeft = (x: DVideo, y: DVideo) => { const t = norm(x.titel || ""); return t.trim().length >= 16 && titleTokens(t).length >= 2 && norm(`${y.titel || ""} ${y.ai || ""}`).includes(t); };
+  return heeft(a, b) || heeft(b, a);
 }
 
 export function popNum(p?: string): number {
@@ -111,7 +134,7 @@ export function dedupVideos<T extends DVideo>(list: T[], against: DVideo[] = [])
   const keys = list.map(videoKeys);
   const toks = list.map((v) => titleTokens(v.titel));
   list.forEach((_, i) => { for (const k of keys[i]) { const j = byKey.get(k); if (j == null) byKey.set(k, i); else join(j, i); } });
-  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (find(i) !== find(j) && (sameTitle(toks[i], toks[j]) || sameCaption(list[i], list[j]))) join(i, j);
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (find(i) !== find(j) && (sameTitle(toks[i], toks[j]) || sameCaption(list[i], list[j]) || sameUitgever(list[i], list[j]))) join(i, j);
   const groups = new Map<number, number[]>();
   list.forEach((_, i) => { const r = find(i); (groups.get(r) || groups.set(r, []).get(r)!).push(i); });
   const out: { i: number; v: T }[] = [];

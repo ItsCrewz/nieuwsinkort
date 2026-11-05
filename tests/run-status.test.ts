@@ -46,7 +46,8 @@ try {
     assert.deepEqual(writes[2], status);
   });
   const before = fouten.length;
-  const kapot = { async get(): Promise<any> { throw new Error("KV onbereikbaar"); } };
+  const gelezenSleutels: string[] = [];
+  const kapot = { async get(key: string): Promise<any> { gelezenSleutels.push(key); throw new Error("KV onbereikbaar"); } };
   const data = await dataGet({ request: new Request("https://test/data.json"), env: {
     NIEUWS: kapot, ASSETS: { async fetch() { return Response.json({ items: [], filmpjes: [], dumpert: [] }); } },
   } });
@@ -56,7 +57,9 @@ try {
     assert.equal(data.status, 200);
     assert.equal(meer.status, 404);
     assert.equal(samenvatting.status, 200);
-    assert.equal(fouten.length - before, 4);
+    assert.deepEqual(gelezenSleutels, ["data-vooraf", "uur", "sv-klaar", "meer", "vs:test"]);
+    assert.equal(fouten.length - before, 5);
+    assert.deepEqual(fouten[before], ["data.json: KV vooraf lezen mislukt"]);
   });
   if (status) status.laatsteOk = null;
   const opslagFouten = fouten.length;

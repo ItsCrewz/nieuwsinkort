@@ -1,16 +1,20 @@
 # nieuwsinkort
 
-Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone Safari. Nieuws per rubriek (Nederland, Buitenland, Politiek, Voetbal, Formule 1, Auto, Tech, Haarlem, Showbizz; lege rubrieken worden verborgen) met ontdubbelde berichten uit meerdere bronnen, korte AI-samenvatting in eenvoudig Nederlands voor volwassenen (ongeveer B1; zinnen liefst hooguit 15 woorden, nooit meer dan 20), "In het kort", landelijk weer (heel Nederland, bron KNMI), fotocarrousels en Filmpjes/Dumpert (journaals, shorts): op touchschermen een verticale swipe-feed, op desktop (muis/trackpad) de gewone weergave met kopjes, tabbladen en kaarten; een kaart opent daar het filmpje bij de bron.
+Mobiele nieuwssite in het Nederlands ("Nieuws in het kort"), gemaakt voor iPhone Safari. Nieuws per rubriek (Nederland, Buitenland, Politiek, Voetbal, Formule 1, Auto, Sport, Tech, Haarlem, Showbizz; lege rubrieken worden verborgen) met ontdubbelde berichten uit meerdere bronnen, korte AI-samenvatting in eenvoudig Nederlands voor volwassenen (ongeveer B1; zinnen liefst hooguit 15 woorden, nooit meer dan 20), "In het kort", landelijk weer (heel Nederland, bron KNMI), fotocarrousels en Filmpjes/Dumpert (journaals, shorts): op touchschermen een verticale swipe-feed, op desktop (muis/trackpad) de gewone weergave met kopjes, tabbladen en kaarten; een kaart opent daar het filmpje bij de bron.
 
 Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq voor transcriptie en punten; bij ontbrekende sleutel of uitputting volgt de bestaande Cloudflare-route binnen het budget. Groq-tellers in KV zijn een rem zonder atomaire garantie.
 
-- Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Het domein nieuwsinkort.nl is nog niet gekoppeld.
+- Live: https://nieuwsinkort.pages.dev (Cloudflare Pages-project `nieuwsinkort`). Productiedomein: https://nieuwsinkort.nl; www.nieuwsinkort.nl geeft een 301 naar de apex (`functions/_middleware.ts`).
+
+De metadata in `index.html` beschrijft de website en nieuwsorganisatie met JSON-LD; het logo verwijst naar `public/icon-512.png`; favicon en app-iconen: zie [architectuur](docs/architectuur.md) (#597).
 
 ## Stack
 
 Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages Functions (`functions/`), Worker `nieuwsinkort-uur` (`worker/`) met Durable Objects (`Runner`, `Fetcher`, `Budget`), KV en Workers AI. Tekst-AI valt bij fouten zo nodig terug op Groq en daarna Mistral; zie [AI-aanbieders en secrets](docs/ai-aanbieders.md).
 
 ## Filters
+
+Onbekende paden geven op Cloudflare Pages een 404 met `public/404.html`; de app gebruikt hash-routes en deeplinks blijven onder `/`. Controleer een Pages-preview of productie met `node scripts/check-status.mjs <basis-url>`. De controle gebruikt veilige foutverzoeken voor Functions en start geen AI.
 
 Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home.
 
@@ -26,14 +30,14 @@ Vandaag begint om middernacht in Amsterdam, ook op zomer- en wintertijdwisseldag
 | Map / bestand | Inhoud |
 |---|---|
 | `src/` | Frontend (React, feed, filters, video, ontdubbelen, `buffer.ts` = bufferregels voor de videofeed) |
-| `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/[[path]].ts` |
+| `functions/` | Pages Functions: `data.json.ts`, `samenvatting.ts`, `meer.ts`, `media/dumpert/[[path]].ts`, `media/beeld/[[path]].ts` |
 | `worker/` | Uur-Worker `nieuwsinkort-uur` (eigen `package.json` en `wrangler.toml`) |
 | `scripts/` | Hulpscripts (bronnenlijst, Dumpert-fix, foto's/hash) |
 | `public/` | Statische bestanden, o.a. `data.json` en `bronnen.json` |
 | `prod-frozen/` | Bevroren oude productiebuild (zie deploy) |
 | `tests/` | Alle `*.test.ts` draaien met `npm test`, waaronder `dedup.test.ts`, `extractief.test.ts`, `regio.test.ts`, `cluster.test.ts`, `cluster-randgevallen.test.ts`, `worker-hulpmodules.test.ts`, `x-artikel-foutpaden.test.ts`, `stall.test.ts`, `videopool.test.ts`, `sources.test.ts`, `sources-hooks.test.ts`, `ui-host.test.ts` en `preload-beeld.test.ts`; Pages Functions worden getest met lokale nep-KV en nep-AI; X-foutpaden gebruiken een lokale fetch-mock en de beeldpreloadtest een nep-`Image` zonder netwerk. De `*-randgevallen.test.ts`-bestanden testen onder meer randgevallen bij parsing, filters, tijd en URL's. `live-dedup.ts` en `live-cluster.ts` zijn handmatige checks op echte data |
 | `deploy.sh`, `DEPLOY_BRANCH` | Deploy naar Cloudflare Pages (+ optioneel de Worker) |
-| `export_from_canvas.mjs` | Oude flow: canvas-bron naar `public/data.json` |
+| `export_from_canvas.mjs` | Oude flow (verlaten, komt niet terug): canvas-bron naar `public/data.json`, dat nu alleen nog fallback is |
 
 Met `scripts/feedtitels.mts` zijn nieuwsfeeds voor het lokaal naspelen van clustering op te halen, inclusief Voetbal, Formule 1 en Auto. Buitenland wordt per bericht herkend uit Nederlandse feeds; YouTube, Instagram, Reddit en podcasts blijven uitgesloten. Het script schrijft alleen een lokaal JSON-bestand.
 
@@ -45,20 +49,25 @@ Bij uitputting van de AI-ruimte of een tijdelijke AI-fout maakt `worker/src/extr
 
 ## Vooraf laden
 
-Na het laden van de pagina (en in idle-tijd) warmt de site op de achtergrond de eerste Filmpjes en Dumpert-video's op, zodat een klik op die tabs niet hoeft te wachten: thumbnails, de hls.js-chunk, het begin van geschikte streams en de eerste bytes van de eerste mp4. Dit gebeurt op alle verbindingen, ook bij mobiele data en Save-Data. Zie `src/voorladen.ts`; de richtwaarde voor het dataverbruik is ≈1,55 MB.
+Na het laden van de homepage warmt de site in idle-tijd thumbnails op. Bij aanwijzen, aanraken of focussen van een videotab volgen de hls.js-chunk (behalve op Apple), het begin van geschikte streams en de eerste bytes van de eerste mp4. Een HLS-speler laadt hls.js ook zelf als dat nodig is. Dit gebeurt op alle verbindingen, ook bij mobiele data en Save-Data. Zie `src/voorladen.ts`; de richtwaarde voor het dataverbruik is ≈1,55 MB.
 
 ## Lokaal draaien
 
 ```bash
 npm ci
 npm run dev      # Vite dev-server
-npm run check    # tests, build en typechecks voor Worker en Functions
+npm run lint     # ESLint (typescript-eslint, react-hooks); 0 errors, warnings zijn informatief
+npm run check    # lint, tests, build, CSS- en HTML-lint, gzip-budget en typechecks voor Worker en Functions
+npm run lint:css # Stylelint voor src/**/*.css
+npm run lint:html # HTML-validatie van index.html en dist/index.html (na build)
+npm run check:bronlinks # offline controle van bron-URL’s
 npm test         # tests
+npm run coverage # tests met Vitest en regeldekking per kritieke groep
 npm run typecheck:tests  # typecheck van tests/ (los van build; vereist @types/node)
 npm run build    # bronnen.json + tsc + vite build -> dist/
 ```
 
-De TypeScript-controles voor frontend, Worker en Functions controleren ook ongebruikte declaraties en parameters en ontbrekende `break`-instructies in switches.
+De TypeScript-controles voor frontend, Worker en Functions gebruiken `strict` en controleren ook ongebruikte declaraties en parameters en ontbrekende `break`-instructies in switches. De losse testtypecheck gebruikt een declaratie voor `react-dom/server.browser` in `tests/`.
 
 Pages Functions lokaal (incl. Dumpert-proxy): `npx wrangler pages dev dist --port 4173`.
 Worker lokaal: `cd worker && npm ci && npx wrangler dev --test-scheduled` met lokaal ingestelde `RUN_KEY`, dan `/run` en `/uur` met de header `Authorization: Bearer <RUN_KEY>`. Sleutels in queryparameters worden niet geaccepteerd. `force=1` geeft 429 als de laatste runstart minder dan tien minuten geleden was. Workers AI is altijd remote en kost dus echte neuronen.
@@ -94,7 +103,13 @@ Elke PR voegt een fragment `changelog.d/<issue>-<slug>.md` toe (onderdeel van "k
 
 ## Beveiligingsheaders
 
-Statische bestanden krijgen via `public/_headers` een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De vier Pages Functions zetten zelf `X-Content-Type-Options: nosniff`; cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, altijd hervalideren); `/assets/*` is immutable, `/bronnen.json` en de iconen hebben in `_headers` een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
+Statische bestanden krijgen via `public/_headers` HSTS met `max-age=86400`, een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De HTML verwijdert de CORS-header; `/data.json` gebruikt dezelfde origin en de Function behoudt haar eigen CORS-header. Pages Functions krijgen de headers uit `_headers` niet automatisch; de vier Functions zetten zelf `X-Content-Type-Options: nosniff`. Cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, browserhervalidatie en een gedeelde cache van 60 seconden met 240 seconden stale-while-revalidate); gehashte `/assets/*` zijn immutable, fonts en iconen zonder hash krijgen minstens één dag cache en `/bronnen.json` heeft een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
+
+De CSP staat het Cloudflare Web Analytics-script van `static.cloudflareinsights.com` toe, zodat de beacon kan werken. `cloudflareinsights.com` staat expliciet bij `connect-src`; HTTPS-verbindingen waren daar al toegestaan. De app laadt de beacon afhankelijk van de opt-out (zie [Bezoekersstatistieken](#bezoekersstatistieken-cloudflare-web-analytics)).
+
+## Bezoekersstatistieken (Cloudflare Web Analytics)
+
+De app laadt Cloudflare Web Analytics na de eerste render. Met `?nietmeten=1` sluit je bezoeken in deze browser uit; met `?nietmeten=0` zet je meting weer aan. De keuze wordt in localStorage bewaard. Gemeten worden visits, paginaweergaven, laadtijd en Core Web Vitals (LCP, INP, CLS), met filters op onder meer land, pad, verwijzer en apparaat. Kosten: €0. Er zijn geen cookies, geen localStorage en geen fingerprinting; volgens Cloudflare worden geen persoonsgegevens van bezoekers verzameld (niet juridisch getoetst). Adblockers blokkeren de beacon, dus de cijfers zijn een ondergrens. Hash-routes (`#/filmpjes`, `#/sport`) worden niet apart geteld: alle bezoeken verschijnen als `/`. Bekijken: Cloudflare-dashboard → Web Analytics → de site. Bij ingebruikname moet de coördinator bij dezelfde deploy de automatische injectie uitschakelen onder Pages → nieuwsinkort → Metrics → Web Analytics; de site blijft bestaan. Details: [architectuur](docs/architectuur.md#bezoekersstatistieken).
 
 ### KV-schrijflimiet uur-Worker
 
@@ -121,4 +136,10 @@ Video-debug (#50): open `/?debug=1#/dumpert` voor de verborgen diagnose-overlay;
 
 Nieuwsberichten krijgen een samenvatting van 2–3 korte zinnen en hooguit twee aanvullende punten. De Worker hergebruikt samenvattingen via bronlinks en via een rubriekgebonden titelwoordenset, maximaal 24 uur; dit beperkt AI-uitvoer en nieuwe aanvragen.
 
-Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Dit is nog niet op een echte iPhone geverifieerd.
+Geluid (#66): `src/geluid.ts` onthoudt de keuze voor filmpjes, shorts en Dumpert in sessie- en localStorage, met een geheugenfallback. Bij een gebruikersgebaar worden alle drie poolelementen vrijgegeven; weigert autoplay geluid, dan verschijnt „Tik voor geluid” zonder de keuze te wissen. YouTube krijgt de keuze via zijn iframe. Sinds #437 geldt de blokkade per bron (een geblokkeerde YouTube-slide dempt Dumpert en Instagram niet) en geldt „getikt” per document; zie [architectuur](docs/architectuur.md). Dit is nog niet op een echte iPhone geverifieerd.
+
+Browserrookproeven staan beschreven in [docs/browser-tests.md](docs/browser-tests.md).
+
+Focus lezen (#383): `src/focuslezen.ts` — standaard uit; alleen een expliciete klik wordt bewaard in localStorage-sleutel `nieuwsinkort-focus-lezen-keuze` (waarden `aan`/`uit`). De oude sleutel `dagelijks-nieuws-focus-lezen-v2` werd volgens de git-historie alleen bij een klik geschreven, maar wordt genegeerd en opgeruimd (een oude waarde kan niet van een standaard worden onderscheiden). De beginstand wordt lazy gelezen, dus geen flits. Zonder of met falende storage: uit. Tests: `tests/focuslezen.test.ts`.
+
+Bij het afdrukken van een bericht verdwijnen navigatie, bediening en media. De tekst is zwart op wit en bij bronlinks staat de URL.

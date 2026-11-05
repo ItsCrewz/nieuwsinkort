@@ -1,0 +1,36 @@
+{
+  "_bron": "data.json live 02-11 11:17 (Tweakers 254034); tweede item idem (Ajax) met twee punten die al in de tekst staan",
+  "item": {
+    "cat": "tech",
+    "kop": "Hackers verhogen temperaturen bij Belgische supermarkten",
+    "ai": "Aanvallers hackten maandagochtend koelkasten en diepvriezers van Delhaize en Carrefour. Ook slagerijen in België zijn geraakt.",
+    "samenvatting": "Hackers hebben de koeltemperaturen bij Belgische supermarkten verhoogd. Dit gebeurde bij zeker 40 winkels van Delhaize en 15 winkels van Carrefour. Ook slagerijen zijn getroffen.",
+    "punten": [
+      "Delhaize is het moederbedrijf van Albert Heijn"
+    ],
+    "tijd": "10:31",
+    "bronnen": [
+      {
+        "site": "Tweakers",
+        "href": "https://tweakers.net/nieuws/254034/hackers-verhogen-op-afstand-koeltemperaturen-bij-belgische-supermarkten.html"
+      }
+    ]
+  },
+  "puntenDubbel": {
+    "cat": "voetbal",
+    "kop": "Ajax wint topper tegen AZ in elfde speelronde",
+    "ai": "De elfde speelronde van de Eredivisie is afgelopen. Ajax won de wedstrijd tegen AZ.",
+    "samenvatting": "Ajax won de topper tegen AZ. PSV won overtuigend van Willem II en Feyenoord liet punten liggen tegen Fortuna Sittard. FC Twente haalde flink uit in Kralingen.",
+    "punten": [
+      "Feyenoord speelt tegen Fortuna Sittard",
+      "FC Twente speelt in Kralingen"
+    ],
+    "tijd": "10:28",
+    "bronnen": [
+      {
+        "site": "VI",
+        "href": "https://www.vi.nl/nieuws/bekijk-hier-alle-samenvattingen-van-speelronde-11-in-de-eredivisie"
+      }
+    ]
+  }
+}

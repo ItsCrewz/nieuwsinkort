@@ -1,0 +1,27 @@
+{
+  "_bron": "data.json live 02-11 11:17 + begin van het Bright-artikel (eerste 900 tekens, zoals de Worker aanlevert); /meer-uitleg van dat item",
+  "item": {
+    "cat": "tech",
+    "kop": "Nieuwe iPad mini heeft een kleinere batterij",
+    "ai": "Apple onthult de accucapaciteit van de nieuwste iPad mini. De tablet heeft een iets kleinere accu dan het vorige model.",
+    "samenvatting": "De nieuwe iPad mini heeft een kleinere accu. Door efficiëntere hardware merk je hier weinig van.",
+    "punten": [],
+    "tijd": "10:19",
+    "bronnen": [
+      {
+        "site": "Bright",
+        "href": "https://www.bright.nl/nieuws/2153970/de-nieuwe-ipad-mini-heeft-een-kleinere-batterij-maar-daar-merk-je-weinig-van.html"
+      }
+    ]
+  },
+  "brontekst": "Apple heeft de accucapaciteit van de nieuwste iPad mini onthuld: de tablet krijgt een iets kleinere accu dan zijn voorganger, maar dat maakt door efficiëntere hardware eigenlijk vrij weinig uit. Door Europese regelgeving moet Apple tegenwoordig open kaart spelen over accucapaciteiten. Daardoor weten we dat de achtste generatie iPad mini beschikt over een batterij met een capaciteit van 4.900 mAh. Dat is een lichte daling ten opzichte van de zevende generatie uit 2024, die nog een 5.034 mAh-batterij heeft. Die kleine krimp moet je echter afwegen tegen flinke interne upgrades. Zo introduceert de compacte tablet voor het eerst een oled-scherm en draait hij op een krachtige A20 Pro-processor, dezelfde chip als in de iPhone 18 Pro. De capaciteit van een batterij zegt natuurlijk niet alles. Volgens Apple blijft de batterijduur in de praktijk dan ook onveranderd: je haalt nog steeds 10 uur bij ",
+  "meer": {
+    "uitleg": [
+      "Apple heeft de accugrootte van de nieuwe iPad mini onthuld. De tablet heeft een batterij van 4.900 milliampère-uur. Dat is iets minder dan het vorige model.",
+      "Het vorige model had een batterij van 5.034 milliampère-uur. De daling is klein. Apple gebruikt nu efficiëntere hardware in de tablet.",
+      "De nieuwe iPad mini heeft voor het eerst een OLED-scherm. Ook zit er een krachtige A20 Pro-processor in. Deze chip is ook in de iPhone 18 Pro.",
+      "Volgens Apple blijft de batterijduur hetzelfde. Je kunt nog steeds tien uur video kijken. Via mobiel internet is dat negen uur.",
+      "De tablet is dunner en lichter geworden. Je kunt hem al bestellen. In Nederland kost hij minimaal 759 euro. Hij is op 6 november leverbaar."
+    ]
+  }
+}

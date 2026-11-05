@@ -27,7 +27,7 @@ await t("Worker accepteert Bearer voor run en uur", async () => {
 });
 function runner() {
   const data = new Map<string, unknown>();
-  const ctx: any = { storage: { get: async (k: string) => data.get(k), put: async (k: string, v: unknown) => { data.set(k, v); } }, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() };
+  const ctx: any = { storage: { get: async (k: string) => data.get(k), put: async (k: string, v: unknown) => { data.set(k, v); }, delete: async (k: string) => { data.delete(k); } }, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() };
   return { r: new Runner(ctx, env), data };
 }
 await t("Runner weigert force binnen tien minuten na gewone of geforceerde run", async () => {

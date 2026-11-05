@@ -29,8 +29,8 @@ export const GROUP_ORDER: { id: GroupId; label: string }[] = [
   { id: "dumpert", label: "Dumpert" },
 ];
 const FILTER_KEY = "nieuwsinkort-bronnen-uit";
-// Buitenland is een rubriek, maar geen bronnengroep: die bronnen staan onder "nl".
-const groepVan = (it: Item): GroupId => (it.cat === "buitenland" ? "nl" : it.cat);
+// Buitenland en Sport zijn rubrieken, maar geen bronnengroepen: die bronnen staan onder "nl".
+const groepVan = (it: Item): GroupId => (it.cat === "buitenland" || it.cat === "sport" ? "nl" : it.cat);
 
 // Gelijk aan norm() in scripts/build-bronnen.mjs
 export const norm = (s: string) =>

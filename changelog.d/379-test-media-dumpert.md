@@ -1,0 +1,1 @@
+- Tests toegevoegd voor de Dumpert-HLS-proxy `functions/media/dumpert/[[path]].ts` (#379).

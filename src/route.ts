@@ -18,3 +18,12 @@ export function viewHash(v: View) {
   const c = CATS.find((c) => c.id === v);
   return `#/${c ? c.slug : v}`;
 }
+
+// Zelfde tekst als <title> in index.html (SEO, #598)
+export const HOME_TITEL = "Nieuwsinkort - Het nieuws van vandaag samengevat";
+
+export function viewTitel(view: View): string {
+  if (view === "alles") return HOME_TITEL;
+  const label = CATS.find((cat) => cat.id === view)?.label ?? (view === "filmpjes" ? "Filmpjes" : "Dumpert");
+  return `${label} · Nieuws in het kort`;
+}

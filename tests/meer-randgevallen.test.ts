@@ -69,4 +69,19 @@ await t("sleutel met speciale tekens wordt gedecodeerd opgezocht", async () => {
   assert.equal(r.status, 200);
 });
 
+await t("de meer-blob wordt per KV-binding 60 s hergebruikt (één KV-lezing/parse voor veel verzoeken)", async () => {
+  let reads = 0;
+  const kv = { async get(_k: string, _o: any) { reads++; return { items: { a: { uitleg: ["x"] } } }; } };
+  const t0 = performance.now();
+  for (let i = 0; i < 200; i++) {
+    const r = await meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } });
+    assert.equal(r.status, 200);
+  }
+  assert.equal(reads, 1);
+  assert.ok(performance.now() - t0 < 2000);
+  const kv2 = { async get(_k: string, _o: any) { reads++; return { items: {} }; } };
+  assert.equal((await meer({ request: req("/meer?k=a"), env: { NIEUWS: kv2 } })).status, 404);
+  assert.equal(reads, 2);
+});
+
 console.log(`${n} meer-randgevallen-tests geslaagd`);

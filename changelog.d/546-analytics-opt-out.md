@@ -1,0 +1,1 @@
+- Eigen bezoeken aan Web Analytics uitsluiten via een browserkeuze (#546).

@@ -1,0 +1,44 @@
+[
+  {
+    "cat": "tech",
+    "kop": "Cyberaanval kost Ahold Delhaize maximaal 250 miljoen euro",
+    "ai": "Een cyberaanval kost Ahold Delhaize maximaal een kwart miljard euro. De verantwoordelijkheid voor een datalek bij een leverancier ligt bij het bedrijf.",
+    "samenvatting": "Een cyberaanval kost Ahold Delhaize maximaal 250 miljoen euro. Een consument vindt dat bedrijven verantwoordelijk zijn voor datalekken bij uitbestede IT. NLdigital biedt een gedragscode voor IT-bedrijven voor de AVG.",
+    "punten": [
+      "Delft is gastheer voor een festival over kunst en robotica",
+      "NorthC wil de capaciteit van datacenters uitbreiden"
+    ],
+    "tijd": "12:30",
+    "bronnen": [
+      {
+        "site": "Computable",
+        "href": "https://www.computable.nl/2026/11/04/kort-aanval-kost-ahold-delhaize-250-miljoen-datalek-bij-leverancier-voor-rekening-van-bedrijf-en-meer/"
+      }
+    ],
+    "beelden": [
+      "https://www.computable.nl/wp-content/uploads/2026/05/Albert-Heijn-brood.jpg"
+    ],
+    "t": 1793791800000,
+    "uur": true,
+    "meer": "computable.nl/2026/11/04/kort-aanval-kost-ahold-delhaize-250-miljoen-datalek-bij-leverancier-voor-rekening-van-bedrijf-en-meer"
+  },
+  {
+    "cat": "haarlem",
+    "kop": "Brand in schoorsteen zorgt voor rook in Haarlem",
+    "ai": "Rond 11.30 uur ontstond er een schoorsteenbrand in de Smedestraat in Haarlem. De brandweer heeft de schoorsteen gereinigd.",
+    "samenvatting": "Er kwam veel rook vrij door een schoorsteenbrand in de Smedestraat in Haarlem. De brandweer heeft de brand onder controle en de schoorsteen gereinigd. De smalle straat was tijdelijk afgezet voor hulpdiensten.",
+    "punten": [
+      "Het is niet duidelijk hoe de brand is ontstaan"
+    ],
+    "tijd": "12:42",
+    "bronnen": [
+      {
+        "site": "Haarlem105",
+        "href": "https://haarlem105.nl/flinke-rookontwikkeling-bij-schoorsteenbrand-smedestraat/"
+      }
+    ],
+    "t": 1793792569000,
+    "uur": true,
+    "meer": "haarlem105.nl/flinke-rookontwikkeling-bij-schoorsteenbrand-smedestraat"
+  }
+]

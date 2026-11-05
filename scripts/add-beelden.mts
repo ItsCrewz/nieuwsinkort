@@ -50,7 +50,8 @@ const ham = (a: string, b: string) => { let x = BigInt("0x" + a) ^ BigInt("0x" +
 const normLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
 const feedImg = new Map<string, string>();
 const FEEDS = process.env.FEEDS_JSON || "/workspace/nieuws/feeds.json";
-let feedsOk = 0, feedsFout: string[] = [];
+let feedsOk = 0;
+const feedsFout: string[] = [];
 if (fs.existsSync(FEEDS)) {
   const feeds = JSON.parse(fs.readFileSync(FEEDS, "utf8")).filter((f: any) => f.werkt && ["nl", "tech", "haarlem", "showbizz", "politiek", "voetbal", "f1", "auto"].includes(f.cat) && !/^https?:\/\/(x|twitter)\.com|reddit\.com|kg\.meowing\.de/.test(f.url));
   await pool(feeds, 8, async (f: any) => {

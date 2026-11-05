@@ -1,0 +1,217 @@
+[
+ {
+  "cat": "sport",
+  "kop": "Femke Kok is routinematig de beste in olympisch jaar",
+  "ai": "Femke Kok is de beste in een olympisch jaar. De tekst komt van Trouw.",
+  "tijd": "19:51",
+  "t": 1793472660000,
+  "bronnen": [
+   {
+    "site": "Trouw",
+    "href": "https://www.trouw.nl/sport/femke-kok-is-geen-machine-maar-ook-in-een-naolympisch-jaar-routinematig-de-beste~be29dca7/"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Kjeld Nuis wint 1500 meter in Thialf",
+  "ai": "De 36-jarige Kjeld Nuis wint de 1500 meter op het kwalificatietoernooi voor de wereldbeker (WCKT) in Thialf. Hij rijdt een tijd van 1.45,35.",
+  "tijd": "19:46",
+  "t": 1793472365000,
+  "bronnen": [
+   {
+    "site": "RTL Nieuws",
+    "href": "https://www.rtl.nl/nieuws/sport/artikel/5662243/nuis-verbaast-zichzelf-met-zege-op-1500-meter-na-mislukte-aanloop"
+   },
+   {
+    "site": "Telegraaf",
+    "href": "https://www.telegraaf.nl/sport/schaatsen/kjeld-nuis-verrast-zichzelf-met-zege-door-vechtlust-superdom-een-beginnersfout/163904975.html"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Schaatsster Gioya Lancee is sensatie van het seizoen",
+  "ai": "De 27-jarige Gioya Lancee schaatst naar internationale wedstrijden. Zij werd derde op de 1500 meter en tweede op de 3 kilometer.",
+  "tijd": "19:18",
+  "t": 1793470696000,
+  "bronnen": [
+   {
+    "site": "AD",
+    "href": "https://www.ad.nl/schaatsen/ze-kan-amper-leven-van-het-schaatsen-maar-is-nu-de-sensatie-van-het-seizoen-als-jullie-nog-tips-hebben-qua-financien~a2fe5588/"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Gioya Lancee reist met medaillewinnaars naar World Cups",
+  "ai": "De Utrechtse schaatster Gioya Lancee (28) vliegt volgende week naar China en Japan. Zij gaat met Marijke Groenewoud en Joy Beune.",
+  "tijd": "19:08",
+  "t": 1793470138000,
+  "bronnen": [
+   {
+    "site": "Telegraaf",
+    "href": "https://www.telegraaf.nl/sport/schaatsen/gioya-lancee-mag-met-de-olympische-medaillewinnaars-het-vliegtuig-in-voor-de-world-cups-er-zit-een-hele-harde-kop-op/163900122.html"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Femke Kok wint na fout op 500 meter",
+  "ai": "Olympisch kampioene Femke Kok schaatste zaterdag in Heerenveen. Zij maakte een zeldzame fout tijdens haar eerste wedstrijd van het nieuwe seizoen.",
+  "tijd": "19:07",
+  "t": 1793470037000,
+  "bronnen": [
+   {
+    "site": "NU.nl",
+    "href": "https://www.nu.nl/schaatsen/6415063/femke-kok-revancheert-zich-na-zeldzame-fout-op-500-meter-ben-geen-machine.html"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Kjeld Nuis wint 1.500 meter in Thialf",
+  "ai": "De 36-jarige Kjeld Nuis won de 1.500 meter bij het World Cup-kwalificatietoernooi (WCKT) in Thialf. Femke Kok is ook de snelste op de tweede 500 meter.",
+  "tijd": "18:38",
+  "t": 1793468280000,
+  "bronnen": [
+   {
+    "site": "NU.nl",
+    "href": "https://www.nu.nl/schaatsen/6415052/kjeld-nuis-36-klopt-joep-wennemars-en-tim-prins-op-1500-meter-bij-wckt.html"
+   },
+   {
+    "site": "RTL Nieuws",
+    "href": "https://www.rtl.nl/nieuws/sport/artikel/5662228/kok-thialf-ook-de-snelste-op-de-tweede-500-meter"
+   },
+   {
+    "site": "Telegraaf",
+    "href": "https://www.telegraaf.nl/sport/schaatsen/live-schaatsen-kjeld-nuis-36-pakt-ticket-voor-wereldbeker-na-winst-op-1500-meter-femke-kok-toont-weer-haar-klasse-op-de-500-meter/163892026.html"
+   },
+   {
+    "site": "AD",
+    "href": "https://www.ad.nl/schaatsen/femke-kok-oppermachtig-op-haar-500-meter-dolblije-kjeld-nuis-blijft-de-jeugd-voor-op-1500-meter~ac084358/"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Femke Kok bijna onderuit op 500 meter",
+  "ai": "Schaatser Femke Kok heeft bijna een val gemaakt tijdens de 500 meter. Zij zegt dat het voelde alsof zij op een shorttrackbaan stond.",
+  "tijd": "18:25",
+  "t": 1793467530000,
+  "bronnen": [
+   {
+    "site": "NU.nl",
+    "href": "https://www.nu.nl/331838/video/femke-kok-bijna-onderuit-op-500-meter-alsof-ik-op-de-shorttrackbaan-stond.html"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Nederlandse schaatsers starten komend weekend World Cup-kwalificatietoernooi",
+  "ai": "De beste Nederlandse schaatsers en schaatssters starten dit weekend het World Cup-kwalificatietoernooi (WCKT).",
+  "tijd": "18:08",
+  "t": 1793466480000,
+  "bronnen": [
+   {
+    "site": "AD",
+    "href": "https://www.ad.nl/schaatsen/programma-en-uitslagen-dit-is-het-schema-van-dit-weekend-en-deze-schaatsers-hebben-zich-geplaatst~af842e2c/"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Femke Kok wint op 500 meter in Thialf",
+  "ai": "Femke Kok won op de 500 meter tijdens het World Cup-kwalificatietoernooi in Thialf. Zij was de enige schaatsster onder de 37 seconden.",
+  "tijd": "17:53",
+  "t": 1793465608000,
+  "bronnen": [
+   {
+    "site": "NU.nl",
+    "href": "https://www.nu.nl/schaatsen/6415058/femke-kok-weer-klasse-apart-op-500-meter-olympier-anna-boersma-stelt-teleur.html"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Nuis wint 1.500 meter na griep",
+  "ai": "Nuis wint de race van 1.500 meter. De sporter won ondanks een griep.",
+  "tijd": "17:37",
+  "t": 1793464666000,
+  "bronnen": [
+   {
+    "site": "NU.nl",
+    "href": "https://www.nu.nl/331837/video/nuis-wint-1500-meter-na-griep-als-je-wint-maakt-de-tijd-niet-uit.html"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Kjeld Nuis wint 1500 meter in Thialf",
+  "ai": "De 36-jarige schaatser Kjeld Nuis van Team Reggeborgh wint de 1500 meter in Thialf in Heerenveen. Hij rijdt een tijd van 1.45,35.",
+  "tijd": "17:10",
+  "t": 1793463038000,
+  "bronnen": [
+   {
+    "site": "RTL Nieuws",
+    "href": "https://www.rtl.nl/nieuws/sport/artikel/5662224/nuis-wint-1500-meter-op-kwalificatietoernooi-voor-wennemars"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Judoka Van Heemst wint brons op Grand Slam Abu Dhabi",
+  "ai": "De 24-jarige Yael van Heemst wint brons in de klasse tot 78 kilogram. Dit gebeurt tijdens de Grand Slam in Abu Dhabi.",
+  "tijd": "17:04",
+  "t": 1793462660000,
+  "bronnen": [
+   {
+    "site": "RTL Nieuws",
+    "href": "https://www.rtl.nl/nieuws/sport/artikel/5662223/brons-judoka-van-heemst-op-grand-slam-abu-dhabi"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Pogacar vertelt over zware val in Vuelta a España",
+  "ai": "De Sloveense wielrenner Tadej Pogacar geeft details over zijn val eind augustus. Hij brak een nekwervel en twee borstwervels.",
+  "tijd": "16:44",
+  "t": 1793461480000,
+  "bronnen": [
+   {
+    "site": "NU.nl",
+    "href": "https://www.nu.nl/wielrennen/6415048/pogacar-deelt-details-over-val-in-vuelta-moest-in-ambulance-mijn-shirt-signeren.html"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Schaatsster Femke Kok wint eerste 500 meter",
+  "ai": "Femke Kok won de eerste 500 meter bij het kwalificatietoernooi voor de Wereldbeker (WCKT) in Heerenveen. Zij reed een tijd van 37,23.",
+  "tijd": "16:17",
+  "t": 1793459868000,
+  "bronnen": [
+   {
+    "site": "RTL Nieuws",
+    "href": "https://www.rtl.nl/nieuws/sport/artikel/5662220/schaatsster-kok-wint-eerste-500-meter-nipt-voor-duizendstraal"
+   }
+  ]
+ },
+ {
+  "cat": "sport",
+  "kop": "Fallon Sherrock wint prijzenpot dartsshow",
+  "ai": "Fallon Sherrock won de prijzenpot van de Netflix-show Beat Luke Littler.",
+  "tijd": "15:49",
+  "t": 1793458140000,
+  "bronnen": [
+   {
+    "site": "NU.nl",
+    "href": "https://www.nu.nl/darts/6415036/sherrock-pareert-kritiek-na-zege-in-dartsshow-van-littler-zie-mezelf-niet-als-prof.html"
+   },
+   {
+    "site": "AD",
+    "href": "https://www.ad.nl/darts/fallon-sherrock-bijt-van-zich-af-na-kritiek-op-winst-van-586-000-euro-tegen-luke-littler-zie-mezelf-niet-als-prof~a286a41d/"
+   }
+  ]
+ }
+]

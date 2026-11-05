@@ -13,7 +13,7 @@
 import { Buffer } from "node:buffer";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
 import { llmAanroep } from "../worker/src/llm-aanroep";
-import { groq, keten, type LlmState } from "../worker/src/llm";
+import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState } from "../worker/src/llm";
 
 type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
@@ -198,11 +198,14 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
   let t = "", gebruikt = model;
   const aanbieder = groq(env.GROQ_API_KEY);
   if (aanbieder) {
-    const key = `groq-chat:${new Date().toISOString().slice(0, 10)}`;
+    const dag = new Date().toISOString().slice(0, 10), key = `groq-chat:${dag}`;
     try {
-      const state: LlmState = await env.NIEUWS.get(key, "json") || {};
+      // Beginstand = eigen stand + wat de uur-Worker vandaag al via Groq gebruikte (limiet per model telt over beide); daarna alleen het verschil bijschrijven.
+      const eigen: LlmState = await env.NIEUWS.get(key, "json") || {};
+      const worker: LlmState | null = (await env.NIEUWS.get("state", "json").catch(() => null))?.llm || null;
+      const state = somStand(eigen, worker, dag), voor = kopieStand(state);
       try { t = await keten([aanbieder], state, { sys: STIJL, user, maxTokens: 320, json: false }, (_naam, m) => { gebruikt = m; }); }
-      finally { await env.NIEUWS.put(key, JSON.stringify(state), { expirationTtl: 3 * 86400 }); }
+      finally { await bewaarGroqStand(env, key, verschilStand(voor, state)); }
     } catch { console.error("samenvatting: Groq-chat niet beschikbaar"); }
   }
   if (!t) {
@@ -211,6 +214,22 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
     t = await chat(env.AI, model, STIJL, user, 320, u);
   }
   return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5) };
+}
+
+// De DO telt verschillen atomair op; de KV-terugval is per isolate serieel.
+export async function bewaarGroqStand(env: Env, key: string, verschil: LlmState) {
+  if (!Object.values(verschil).some((v) => v.calls || v.tokens || v.maandTokens)) return;
+  if (env.BUDGET_DO) {
+    try {
+      const stub = env.BUDGET_DO.get(env.BUDGET_DO.idFromName("dag"));
+      const r = await stub.fetch("https://do/groq-bij", { method: "POST", body: JSON.stringify({ datum: key.slice("groq-chat:".length), verschil }) });
+      if (r.ok) return;
+    } catch { console.error("samenvatting: Groq-teller DO niet beschikbaar"); }
+  }
+  await opKv(async () => {
+    const vers: LlmState = await env.NIEUWS.get(key, "json") || {};
+    await env.NIEUWS.put(key, JSON.stringify(telOp(vers, verschil)), { expirationTtl: 3 * 86400 });
+  });
 }
 
 class CloudBudgetFout extends Error { constructor(public response: Response) { super(); } }
@@ -225,7 +244,7 @@ interface Poort {
   verreken(datum: string, delta: number): Promise<void>; // schrijft nooit een fout door: het resultaat is al betaald
 }
 class PoortFout extends Error {}
-function doPoort(ns: DO): Poort {
+export function doPoort(ns: DO): Poort {
   const stub = ns.get(ns.idFromName("dag"));
   const call = async (actie: string, body: unknown): Promise<any> => {
     try {
@@ -239,10 +258,11 @@ function doPoort(ns: DO): Poort {
     geefVrij: async (id, tok) => { await call("vrij", { id, tok }); },
     stand: async (datum) => +(await call("stand", { datum })).video || 0,
     reserveer: async (r) => { const j = await call("reserveer", r); return j.ok ? "ok" : j.reden === "druk" ? "druk" : "budget"; },
-    verreken: async (datum, delta) => { if (delta) await call("verreken", { datum, delta }).catch(() => {}); },
+    // een verloren verrekening laat het echte verbruik uit de teller (of een te hoge reservering staan): één nieuwe poging
+    verreken: async (datum, delta) => { if (delta) await call("verreken", { datum, delta }).catch(() => call("verreken", { datum, delta })).catch(() => { console.error("samenvatting: verrekening verloren"); }); },
   };
 }
-function kvPoort(env: Env): Poort {
+export function kvPoort(env: Env): Poort {
   return {
     async claim(id) {
       // eerst synchroon in het geheugen (geen await tussen check en set), dan in KV
@@ -255,27 +275,37 @@ function kvPoort(env: Env): Poort {
     },
     async geefVrij(id) { bezigNu.delete(id); await env.NIEUWS.delete(`vs-bezig:${id}`).catch(() => {}); }, // klaar (of geweigerd): slot niet 60 s laten hangen
     async stand(datum) { return +(await env.NIEUWS.get(`vid-neurons:${datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0; },
-    async reserveer(r) {
-      const video = await this.stand(r.datum);
+    // lezen-controleren-schrijven achter elkaar per isolate (opKv): gelijktijdige verzoeken overschrijven elkaars stand niet
+    reserveer: (r) => opKv(async () => {
+      const video = +(await env.NIEUWS.get(`vid-neurons:${r.datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
       if (r.nieuws + video + r.reserve + r.marge + r.schatting > r.budget) return "budget";
       const uurKey = `vs-uur:${r.uur}`;
       const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0;
       if (nUur >= MAX_WHISPER_UUR) return "druk";
       await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => {});
-      await addNeurons(env, `vid-neurons:${r.datum}`, r.schatting);
+      await optel(env, `vid-neurons:${r.datum}`, r.schatting);
       return "ok";
-    },
+    }),
     async verreken(datum, delta) { await addNeurons(env, `vid-neurons:${datum}`, delta).catch(() => { console.error("samenvatting: KV schrijven mislukt"); }); },
   };
 }
 
 // ---------------- welke filmpjes staan er nu op de site
+// Elke cache-miss parste uur (±330 KB) en data.json (±120 KB) opnieuw: CPU-zwaar (#409). De videolijst
+// blijft per isolate en per KV-binding 60 s staan; alleen gelukte lezingen worden bewaard.
+const lijstCache = new WeakMap<object, { at: number; lists: any[] }>();
 async function vindVideo(env: Env, req: Request, id: string): Promise<any | null> {
-  const lists: any[] = [];
-  try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch { console.error("samenvatting: fout bij fallback"); }
-  try { const S: any = await (await env.ASSETS.fetch(new URL("/data.json", req.url).toString())).json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { console.error("samenvatting: fout bij fallback"); }
+  let c = lijstCache.get(env.NIEUWS);
+  if (!c || Date.now() - c.at >= 60e3) {
+    const lists: any[] = [];
+    let ok = true;
+    try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
+    try { const S: any = await (await env.ASSETS.fetch(new URL("/data.json", req.url).toString())).json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
+    c = { at: Date.now(), lists };
+    if (ok) lijstCache.set(env.NIEUWS, c);
+  }
   const { videoSlug } = await import("../src/slug");
-  return lists.find((v) => v?.href && videoSlug(v) === id) || null;
+  return c.lists.find((v) => v?.href && videoSlug(v) === id) || null;
 }
 
 export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> => {
@@ -417,7 +447,15 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
     return uit(out, 500);
   }
 }
-async function addNeurons(env: Env, k: string, n: number) {
+// KV kent geen atomaire teller: binnen één isolate gaan lezen-en-schrijven achter elkaar. Tussen isolates blijft een korte race mogelijk; daarom is de Budget-DO de echte eigenaar.
+let kvKeten: Promise<unknown> = Promise.resolve();
+function opKv<T>(f: () => Promise<T>): Promise<T> {
+  const r = kvKeten.then(f, f);
+  kvKeten = r.catch(() => {});
+  return r;
+}
+export const addNeurons = (env: Env, k: string, n: number) => opKv(() => optel(env, k, n));
+async function optel(env: Env, k: string, n: number) {
   if (!n) return; // n mag negatief zijn: correctie van een eerdere schatting
   const cur = +(await env.NIEUWS.get(k).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
   await env.NIEUWS.put(k, String(Math.max(0, Math.round((cur + n) * 10) / 10)), { expirationTtl: 3 * 86400 });

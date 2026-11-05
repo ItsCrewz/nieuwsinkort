@@ -1,0 +1,1 @@
+- Borsato-kostenclaim (391.000 euro / vier ton / ruim 390.000) valt samen tot één kaart; regressietest met de echte data van 13:05 (#509).

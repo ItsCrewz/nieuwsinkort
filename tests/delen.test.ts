@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { artikelUrl, deel } from "../src/delen";
+const url = artikelUrl({ kop: "Nieuws", bronnen: [{ href: "https://bron.nl/a" }] }, "2026-11-04");
+assert.ok(url.startsWith("https://nieuwsinkort.nl/bericht/"));
+let gedeeld = "", gekopieerd = "";
+assert.equal(await deel({ share: async (d) => { gedeeld = d.url || ""; } }, "Titel", url), "gedeeld");
+assert.equal(gedeeld, url);
+assert.equal(await deel({ share: async () => { throw new DOMException("", "AbortError"); }, clipboard: { writeText: async () => { throw Error(); } } }, "Titel", url), "geannuleerd");
+assert.equal(await deel({ share: async () => { throw Error(); }, clipboard: { writeText: async (s) => { gekopieerd = s; } } }, "Titel", url), "gekopieerd");
+assert.equal(gekopieerd, url);
+assert.equal(await deel({ clipboard: { writeText: async () => { throw Error(); } } }, "Titel", url), "handmatig");
