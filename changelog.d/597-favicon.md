@@ -1,0 +1,1 @@
+- Echt favicon en site-icoon: SVG, PNG 48/96/192/512, maskable, apple-touch-icon en favicon.ico met bijgewerkte head-tags en manifest (#597).

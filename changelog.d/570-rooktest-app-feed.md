@@ -1,0 +1,1 @@
+- Rooktests voor `App` en `Feed` (nep-DOM in `tests/hulp/nepdom.ts`) als vangnet vóór de grote extracties (#570).
