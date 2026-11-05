@@ -88,3 +88,30 @@ test("zoekknop schaalt niet bij :active met reduced motion", async ({ page }) =>
   expect(stijl.actief).toBe(true);
   expect(stijl.t).toBe("none");
 });
+
+for (const toets of ["Space", "Enter"]) test(`zoekknop opent met toetsenbord (${toets}) en het zoekveld krijgt focus`, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  await knop.focus();
+  await expect(knop).toBeFocused();
+  await page.keyboard.press(toets);
+  await expect(page.getByRole("searchbox", { name: "Zoek in het nieuws" })).toBeFocused();
+});
+
+test("spatie bladert nog door de feed als de focus niet op een bedienbaar element staat", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await page.evaluate(() => { document.activeElement?.blur?.(); });
+  const top = () => page.evaluate(() => document.querySelector(".nf").scrollTop);
+  expect(await top()).toBe(0);
+  await page.keyboard.press("Space");
+  await expect.poll(top).toBeGreaterThan(0);
+  const na = await top();
+  await page.keyboard.press("Shift+Space");
+  await expect.poll(top).toBeLessThan(na);
+});
