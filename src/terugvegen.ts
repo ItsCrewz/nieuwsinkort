@@ -46,7 +46,8 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
   const terug = useRef(onBack);
   terug.current = onBack;
   useLayoutEffect(() => {
-    let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" = "uit";
+    let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" | "sluit" = "uit";
+    let timer: ReturnType<typeof setTimeout> | undefined, overflowVoor: string | null = null;
     const el = () => ref.current;
     const zet = (x: number, anim: boolean) => {
       const e = el();
@@ -54,8 +55,21 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
       e.style.transition = anim ? "transform .2s" : "none";
       e.style.transform = x ? `translateX(${x}px)` : "";
     };
-    const klaar = () => { const e = el(); if (e) { e.style.transition = ""; e.style.transform = ""; } document.body.style.overflowX = ""; };
+    const wis = () => { if (timer !== undefined) { clearTimeout(timer); timer = undefined; } };
+    // Herstelt stijl en de body-overflow van vóór het gebaar (niet blind ""), en breekt lopende timers af.
+    const klaar = () => {
+      wis();
+      const e = el();
+      if (e) { e.style.transition = ""; e.style.transform = ""; }
+      if (overflowVoor !== null) { document.body.style.overflowX = overflowVoor; overflowVoor = null; }
+    };
+    const plan = (fn: () => void, ms: number) => { wis(); timer = setTimeout(() => { timer = undefined; fn(); }, ms); };
+    // Onderbroken veeg: artikel blijft open en veert terug (direct bij reduced motion).
+    const veer = () => { if (rustig()) klaar(); else { zet(0, true); plan(klaar, 220); } };
     const start = (ev: TouchEvent) => {
+      if (stand === "sluit") return; // sluitanimatie loopt: onBack volgt, niets meer opstarten
+      if (stand === "veeg") veer(); // tweede vinger tijdens een veeg
+      else if (timer !== undefined) klaar(); // nieuw gebaar tijdens het terugveren: eerst netjes terug naar af
       stand = "uit";
       const t = ev.touches[0];
       if (ev.touches.length !== 1 || !t || !magStarten(t.clientX) || selectie()) return;
@@ -63,15 +77,16 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
       x0 = t.clientX; y0 = t.clientY; t0 = ev.timeStamp; dx = 0; stand = "wacht";
     };
     const beweeg = (ev: TouchEvent) => {
-      if (stand === "uit") return;
+      if (stand === "uit" || stand === "sluit") return;
       const t = ev.touches[0];
-      if (!t || ev.touches.length !== 1 || selectie()) { if (stand === "veeg") zet(0, !rustig()); stand = "uit"; return; }
+      if (!t || ev.touches.length !== 1 || selectie()) { if (stand === "veeg") veer(); stand = "uit"; return; }
       dx = t.clientX - x0;
       if (stand === "wacht") {
         const b = besluit(dx, t.clientY - y0);
         if (b === "wacht") return;
         if (b === "nee") { stand = "uit"; return; }
         stand = "veeg";
+        if (overflowVoor === null) overflowVoor = document.body.style.overflowX;
         document.body.style.overflowX = "hidden";
       }
       if (ev.cancelable) ev.preventDefault();
@@ -79,15 +94,16 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
     };
     const eind = (ev: TouchEvent) => {
       const was = stand;
+      if (was === "sluit") return;
       stand = "uit";
       if (was !== "veeg") return;
       const breed = window.innerWidth;
       if (ev.type !== "touchcancel" && sluit(dx, breed, ev.timeStamp - t0)) {
         if (rustig()) { klaar(); terug.current(); return; }
+        stand = "sluit";
         zet(breed, true);
-        setTimeout(() => { terug.current(); klaar(); }, 200);
-      } else if (rustig()) klaar();
-      else { zet(0, true); setTimeout(klaar, 220); }
+        plan(() => { stand = "uit"; terug.current(); klaar(); }, 200);
+      } else veer();
     };
     document.addEventListener("touchstart", start, { passive: true });
     document.addEventListener("touchmove", beweeg, { passive: false });
@@ -98,7 +114,7 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: () =
       document.removeEventListener("touchmove", beweeg);
       document.removeEventListener("touchend", eind);
       document.removeEventListener("touchcancel", eind);
-      klaar();
+      klaar(); // wist ook de timer: na unmount geen reset of onBack meer
     };
   }, [ref]);
 }
