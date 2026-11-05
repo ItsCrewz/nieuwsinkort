@@ -25,10 +25,10 @@ function sourceLine(s: SourceRow): string {
   return [`${st.vandaag} vandaag`, inOverzicht, bij, deels].filter(Boolean).join(" · ");
 }
 import { Icon } from "./icons";
+import { rustig } from "./beweging";
 import { Switch } from "./ui";
 import { veiligeUrl } from "./url";
 
-const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** Paneel met alle bronnen; rechts op desktop, onderaan (bottom sheet) op mobiel. */
 export function SourcesSheet({
@@ -50,7 +50,7 @@ export function SourcesSheet({
   const panel = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const close = () => {
-    if (!motionOK()) return onClose();
+    if (rustig()) return onClose();
     setClosing(true);
     window.setTimeout(onClose, 360); // vangnet als animationend niet komt
   };

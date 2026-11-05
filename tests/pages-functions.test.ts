@@ -24,14 +24,14 @@ const headers = (r: Response, cache: string | null) => {
 
 let r = await data({ request: req("/data.json"), env });
 assert.equal(r.status, 200);
-headers(r, "public, max-age=0, must-revalidate, stale-while-revalidate=300");
+headers(r, "public, max-age=0, s-maxage=60, stale-while-revalidate=240");
 assert.deepEqual((await r.json()).items, []);
 const etag = r.headers.get("etag");
 assert.ok(etag);
 r = await data({ request: req("/data.json", { headers: { "If-None-Match": etag } }), env });
 assert.equal(r.status, 304);
 assert.equal(await r.text(), "");
-headers(r, "public, max-age=0, must-revalidate, stale-while-revalidate=300");
+headers(r, "public, max-age=0, s-maxage=60, stale-while-revalidate=240");
 inhoud.uur = { ...statisch, dag_samenvatting: "Uurnieuws" };
 inhoud["sv-klaar"] = { klaar: { video: { punten: ["Een punt"] } } };
 r = await data({ request: req("/data.json"), env });

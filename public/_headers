@@ -7,10 +7,11 @@
 /index.html
   ! Access-Control-Allow-Origin
 
-# Catalogus: kort vers houden; de client hervalideert toch (cache: no-cache)
+# Fonts hebben geen hash in de bestandsnaam
 /fonts/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=86400
 
+# Catalogus: kort vers houden; de client hervalideert toch (cache: no-cache)
 /bronnen.json
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
 

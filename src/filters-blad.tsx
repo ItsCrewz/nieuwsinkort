@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Item } from "./types";
 import { Icon } from "./icons";
+import { rustig } from "./beweging";
 import { CAT_OPT, REGIO_LABEL, STANDAARD, TIJD_LABEL, heeftVideo, regioVan, samengevoegd, type Filters, type Uitkomst } from "./filters";
 
 function Chip({ on, onClick, children, n }: { on: boolean; onClick: () => void; children: React.ReactNode; n?: number }) {
@@ -41,7 +42,7 @@ export function FilterBlad({
   const panel = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return onClose();
+    if (rustig()) return onClose();
     setClosing(true);
     window.setTimeout(onClose, 360);
   }, [onClose]);

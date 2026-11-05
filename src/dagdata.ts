@@ -21,7 +21,7 @@ const norm = (l = "") => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/
 const kvOpt = (type: "json" | "text") => ({ type, cacheTtl: 60 });
 // Per isolate: het verwerkte vooraf-antwoord 30 s hergebruiken zolang KV dezelfde tekst geeft (scheelt parse, dagfilter, stringify en SHA-1).
 let voorafGeheugen: { vooraf: string; dag: string; tot: number; body: string; tag: string } | undefined;
-const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, must-revalidate, stale-while-revalidate=300", "Access-Control-Allow-Origin": "*" };
+const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=240", "Access-Control-Allow-Origin": "*" };
 
 /** Velden die de site niet leest (alleen diagnose); weg uit de respons. */
 export function slim(d: any) {

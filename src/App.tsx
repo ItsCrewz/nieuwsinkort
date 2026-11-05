@@ -1,5 +1,6 @@
 import { Foutgrens } from "./foutgrens";
 import { artikelId, artikelSlug } from "./artikelid";
+import { rustig, scrollGedrag } from "./beweging";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
@@ -61,7 +62,6 @@ function bronLabel(bronnen: Bron[]) {
   return `${names[0]} + ${names.length - 1}`;
 }
 
-const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 function amsterdamTime(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -307,7 +307,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
     prev.current = { x, w };
     if (from && from.x === x && from.w === w && ind.classList.contains("ready")) return;
     ind.style.width = `${w}px`;
-    if (animate && from && motionOK()) {
+    if (animate && from && !rustig()) {
       ind.style.transition = "none";
       ind.style.transform = `translate3d(${from.x}px,0,0) scaleX(${from.w / w})`;
       void ind.offsetWidth;
@@ -509,7 +509,7 @@ const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item
 });
 
 function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: { items: Item[]; view: View; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
-  const [enter] = useState(() => !introDone && motionOK());
+  const [enter] = useState(() => !introDone && !rustig());
   const [showAll, setShowAll] = useState(false);
   const sorted = useMemo(() => (keepOrder ? items : sortItems(items)), [items, keepOrder]);
   const leadIdx = useMemo(() => (keepOrder ? 0 : pickLead(sorted)), [sorted, keepOrder]);
@@ -739,12 +739,26 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     read();
-    // kaarten krijgen eenmalig hun invlieg-animatie als ze in beeld komen (DOM-klasse, geen React-render)
+    // Kaart-entree (DOM-klassen, geen React-render): kaarten die bij het mounten buiten beeld liggen krijgen 'wacht' en spelen eenmalig 'in' af als ze in beeld komen.
+    // Kaarten die al in beeld staan (eerste kaart, LCP) of die bij terug-uit-artikel horen, en alles bij reduced motion, krijgen niets.
     const io = new IntersectionObserver(
-      (es) => es.forEach((e) => e.isIntersecting && e.target.classList.add("seen")),
+      (es) => es.forEach((e) => {
+        if (!e.isIntersecting) return;
+        const c = e.target as HTMLElement;
+        if (c.classList.contains("wacht")) { c.classList.remove("wacht"); c.classList.add("in"); }
+        io.unobserve(c);
+      }),
       { root: el, threshold: 0.35 }
     );
-    el.querySelectorAll(".nc,.nc-head").forEach((n) => io.observe(n));
+    const cards = Array.from(el.querySelectorAll<HTMLElement>(".nc"));
+    const nieuw = cards.filter((c) => !c.dataset.b); // bij een herrun (nieuwe data) alleen nieuwe kaarten beoordelen
+    const vr = el.getBoundingClientRect();
+    const rects = nieuw.map((c) => c.getBoundingClientRect()); // eerst alles meten, dan schrijven
+    nieuw.forEach((c, k) => {
+      c.dataset.b = "1";
+      if (!rustig() && !(rects[k].bottom > vr.top && rects[k].top < vr.bottom)) c.classList.add("wacht");
+    });
+    cards.forEach((c) => c.classList.contains("wacht") && io.observe(c));
     return () => {
       el.removeEventListener("scroll", onScroll);
       if (raf) cancelAnimationFrame(raf);
@@ -757,7 +771,11 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
     const el = ref.current;
     if (!el || !focusKey) return;
     const n = el.querySelector<HTMLElement>(`[data-id="${CSS.escape(focusKey)}"]`);
-    if (n) el.scrollTop = n.offsetTop;
+    if (!n) return;
+    el.scrollTop = n.offsetTop;
+    // doelkaart en buren: geen entree (dataset.b voorkomt 'wacht' in het IO-effect)
+    const c = n.closest<HTMLElement>(".nc");
+    [c?.previousElementSibling, c, c?.nextElementSibling].forEach((x) => { if (x instanceof HTMLElement && x.classList.contains("nc")) x.dataset.b = "1"; });
   }, [focusKey]);
 
   const go = useCallback((to: number) => {
@@ -765,7 +783,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
     if (!el) return;
     const cards = el.querySelectorAll<HTMLElement>(".nc");
     const k = Math.max(-1, Math.min(cards.length - 1, to));
-    el.scrollTo({ top: k < 0 ? 0 : cards[k].offsetTop, behavior: motionOK() ? "smooth" : "auto" });
+    el.scrollTo({ top: k < 0 ? 0 : cards[k].offsetTop, behavior: scrollGedrag() });
   }, []);
 
   // Pijltjes, PageUp/Down, spatie, j/k, Home/End
@@ -999,12 +1017,13 @@ function Footer() {
       </div>
       <p>Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron.</p>
       <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk kwartier bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
+      <p><a href="/over">Over deze site</a></p>
     </footer>
   );
 }
 
 function Front({ children }: { children: ReactNode }) {
-  const [enter] = useState(() => !introDone && motionOK());
+  const [enter] = useState(() => !introDone && !rustig());
   return <div className={`front ${enter ? "enter" : ""}`}>{children}</div>;
 }
 
@@ -1130,7 +1149,7 @@ export default function App() {
     if (window.location.hash && window.location.hash !== "#/" && window.location.hash !== "#") window.location.hash = "#/";
     else {
       window.dispatchEvent(new Event("nf-top"));
-      window.scrollTo({ top: 0, behavior: motionOK() ? "smooth" : "auto" });
+      window.scrollTo({ top: 0, behavior: scrollGedrag() });
     }
   };
 
@@ -1216,7 +1235,7 @@ export default function App() {
               dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
               bionic={bionic}
               onBack={() => {
-                if (openedInside) window.history.back();
+                if (openedInside || window.history.state?.binnen) window.history.back();
                 else window.location.hash = "#/";
               }}
             />
@@ -1325,7 +1344,7 @@ export default function App() {
               list={view === "filmpjes" ? vids!.filmpjes : vids!.dumpert}
               bionic={bionic}
               bronFilter={view === "filmpjes"}
-              enter={!introDone && motionOK()}
+              enter={!introDone && !rustig()}
               video={route.video}
               onOpen={(slug) => openFeed(view, slug)}
               onCloseFeed={() => closeFeed(view)}
