@@ -152,3 +152,24 @@ for (const vt of ["zonder View Transitions-API", "met View Transitions-API"]) {
     expect(await themaStaat(page)).toEqual(na); // blijft staan, geen terugval
   });
 }
+
+test("licht en donker thema blijven leesbaar met Focus-lezen aan", async ({ page }) => {
+  await blokkeer(page);
+  await page.addInitScript(() => { localStorage.setItem("nieuwsinkort-thema", "light"); });
+  await page.goto("#/");
+  const focus = page.getByRole("switch", { name: "Focus-lezen" });
+  await focus.click();
+  await expect(focus).toHaveAttribute("aria-checked", "true");
+  const tekst = page.locator(".nc .bn b").first();
+  await expect(tekst).toBeVisible();
+  const licht = await tekst.evaluate((el) => getComputedStyle(el).color);
+  await page.getByRole("button", { name: "Schakel naar donkere modus" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(focus).toHaveAttribute("aria-checked", "true");
+  await expect(tekst).toBeVisible();
+  expect(await tekst.evaluate((el) => getComputedStyle(el).color)).not.toBe(licht);
+  await page.getByRole("button", { name: "Schakel naar lichte modus" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(focus).toHaveAttribute("aria-checked", "true");
+  expect(await tekst.evaluate((el) => getComputedStyle(el).color)).toBe(licht);
+});

@@ -963,7 +963,6 @@ function TopBar({
   onSources: () => void;
   filtered: number;
 }) {
-  const [gewisseld, setGewisseld] = useState(false); // iconen animeren pas na de eerste wissel, niet bij laden
   return (
     <header className="topbar">
       <div className="bar">
@@ -998,8 +997,8 @@ function TopBar({
             <span className="srcbtn-l">Bronnen</span>
             {filtered ? <span key={filtered} className="badge pop tnum">{filtered}</span> : null}
           </button>
-          <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={() => { setGewisseld(true); onTheme(); }}>
-            <span className={`ti ${gewisseld ? "wissel" : ""}`}>
+          <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
+            <span className="ti">
               <Icon name="sun" className={theme === "dark" ? "aan" : ""} />
               <Icon name="moon" className={theme === "dark" ? "" : "aan"} />
             </span>
