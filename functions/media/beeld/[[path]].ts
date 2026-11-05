@@ -21,7 +21,8 @@ const MAX = 5 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
 const TTL = 86400;
 const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";
-const ACCEPT = { avif: "image/avif,image/webp,image/*;q=0.8", webp: "image/webp,image/*;q=0.8", basis: "image/png,image/jpeg,image/gif,image/*;q=0.8" } as const;
+// Geen image/*-joker: die zou ook een uitgesloten formaat (avif bij q=0) toestaan.
+const ACCEPT = { avif: "image/avif,image/webp,image/jpeg,image/png,image/gif", webp: "image/webp,image/jpeg,image/png,image/gif", basis: "image/png,image/jpeg,image/gif" } as const;
 export type Emmer = keyof typeof ACCEPT;
 const fout = (status: number, cache = "no-store") => new Response(status === 405 ? "Method not allowed" : "Not found", { status, headers: { ...HDR, "Cache-Control": cache, ...(status === 405 ? { Allow: "GET, HEAD" } : {}) } });
 const weg = (r: Response) => { try { r.body?.cancel().catch(() => {}); } catch { /* al gelezen of vergrendeld */ } };
@@ -34,6 +35,12 @@ const accepteert = (accept: string, type: string): boolean =>
     if (naam !== type) return false;
     const q = params.map((p) => /^q\s*=\s*([\d.]+)$/.exec(p)).find(Boolean);
     return !q || Number(q[1]) > 0;
+  });
+// Uitdrukkelijk uitgesloten (q=0) formaat van deze bezoeker; geldt ook voor wat een uitgever of oude cache-entry teruggeeft.
+export const uitgesloten = (accept: string | null, type: string): boolean =>
+  (accept || "").toLowerCase().split(",").some((deel) => {
+    const [naam, ...params] = deel.split(";").map((x) => x.trim());
+    return naam === type.split(";")[0].trim().toLowerCase() && params.some((x) => /^q\s*=\s*0*(\.0*)?$/.test(x));
   });
 export const acceptEmmer = (accept: string | null): Emmer => (accepteert(accept || "", "image/avif") ? "avif" : accepteert(accept || "", "image/webp") ? "webp" : "basis");
 /** Synthetische Cache API-sleutel; de emmer zit erin, dus nooit vermenging tussen formaten. */
@@ -59,7 +66,8 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
   let doel = upstreamUrl(p, search);
   if (!doel) return fout(404, "public, max-age=60");
 
-  const emmer = acceptEmmer(request.headers.get("accept"));
+  const accept = request.headers.get("accept");
+  const emmer = acceptEmmer(accept);
   const sleutel = new Request(cacheSleutel(emmer, doel));
   const cache: Cache | undefined = (globalThis as { caches?: { default?: Cache } }).caches?.default;
   // Naar de bezoeker `private`: de gedeelde zone-randcache keyt op URL en negeert Vary, dus de eerste bezoeker bepaalde het formaat voor iedereen.
@@ -68,6 +76,7 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
   if (cache) {
     let hit: Response | undefined;
     try { hit = await cache.match(sleutel); } catch { /* cachefout: gewoon upstream */ }
+    if (hit && uitgesloten(accept, hit.headers.get("content-type") || "")) { weg(hit); hit = undefined; }
     if (hit && request.method === "HEAD") hit.body?.cancel().catch(() => {});
     if (hit) return new Response(request.method === "HEAD" ? null : hit.body, { status: 200, headers: metVary(new Headers(hit.headers)) });
   }
@@ -100,7 +109,7 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
   if (!r.ok) { weg(r); return fout(r.status === 404 ? 404 : 502, r.status === 404 ? "public, max-age=30" : "no-store"); }
 
   const type = r.headers.get("content-type") || "";
-  if (!TYPE.test(type)) { weg(r); return fout(415); }
+  if (!TYPE.test(type) || uitgesloten(accept, type)) { weg(r); return fout(415); }
   const lengte = r.headers.get("content-length");
   if (lengte !== null && !(/^\d+$/.test(lengte) && Number(lengte) <= MAX)) { weg(r); return fout(413); }
 
