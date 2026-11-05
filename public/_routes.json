@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/fonts/*",
+    "/apple-touch-icon.png",
+    "/favicon.ico",
+    "/icon-48.png",
+    "/icon-96.png",
+    "/icon-maskable-512.png",
+    "/favicon.svg",
+    "/icon-192.png",
+    "/icon-512.png",
+    "/og-image.png",
+    "/bronnen.json",
+    "/robots.txt",
+    "/sitemap.xml"
+  ]
+}

@@ -13,7 +13,7 @@ try {
     const kv = new Map<string, string>([["uur", "vorige data"]]);
     const opslag = new Map<string, any>();
     const env: any = { SITE: "https://lokaal", MODEL: "m", NIEUWS: { get: async (k: string, type?: string) => { const v = kv.get(k); return v == null ? null : type === "json" ? JSON.parse(v) : v; }, put: async (k: string, v: string) => { kv.set(k, v); } }, FETCHER: { idFromName: (x: string) => x, get: () => ({ fetch: async (_u: string, init: any) => Response.json(JSON.parse(init.body).jobs.map((j: any) => { const i = urls.indexOf(j.url); return i >= 0 && i < aantal ? { url: j.url, ok: false, status: 0, code: codes[i], ms: i + 1 } : { url: j.url, ok: true, status: 200, ms: 1, entries: [], videos: [] }; })) }) } };
-    const ctx: any = { storage: { get: async (k: string) => opslag.get(k), put: async (k: string, v: any) => { opslag.set(k, v); }, setAlarm: async () => {} }, blockConcurrencyWhile: async (fn: any) => fn() };
+    const ctx: any = { storage: { get: async (k: string) => opslag.get(k), put: async (k: string | Record<string, any>, v?: any) => { if (typeof k === "string") opslag.set(k, v); else for (const [key, waarde] of Object.entries(k)) opslag.set(key, waarde); }, delete: async (k: string) => opslag.delete(k), getAlarm: async () => null, setAlarm: async () => {} }, blockConcurrencyWhile: async (fn: any) => fn() };
     const oudeError = console.error; console.error = () => {};
     let response: Response;
     try { response = await new Runner(ctx, env).fetch(new Request("https://do/run")); } finally { console.error = oudeError; }

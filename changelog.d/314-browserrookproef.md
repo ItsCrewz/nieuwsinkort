@@ -1,0 +1,1 @@
+- Voeg een Playwright-rookproef met axe toe voor Chromium, Firefox, WebKit en iPhone-/Android-emulatie (#314); de gemeten axe-baseline is vastgelegd en WebKit en iPhone zijn optioneel.

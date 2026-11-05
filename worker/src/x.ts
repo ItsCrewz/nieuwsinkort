@@ -1,4 +1,4 @@
-// X (Twitter) zonder login of API-sleutel. Elk uur, gratis:
+// X (Twitter) zonder login of API-sleutel. Elke 30 minuten (tier, zie tier.ts), gratis:
 //  1. api.fxtwitter.com/2/profile/<naam>/statuses  (FxEmbed, open JSON-API; laatste ±20 posts, met MP4-varianten)
 //  2. terugval: syndication.twitter.com timeline-profile (de officiële embed-tijdlijn, __NEXT_DATA__)
 // Reposts van anderen slaan we over: alleen wat het account zelf post.
@@ -9,7 +9,7 @@ export const xUser = (u: string) => /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/(
 // Nieuwsaccounts die (soms) video posten. Hun artikelen komen al via RSS binnen: hier alleen de filmpjes.
 export const X_VIDEO: Record<string, string> = { RTLnieuws: "RTL Nieuws", telegraaf: "De Telegraaf", ADnl: "AD", PowNed: "PowNed", GeenStijl: "GeenStijl", nhnieuws: "NH Nieuws", BNR: "BNR" };
 
-export type XPost = { id: string; user: string; text: string; t: number; img?: string; mp4?: string; mp4Laag?: string; thumb?: string; dur?: number; views?: number; likes?: number };
+type XPost = { id: string; user: string; text: string; t: number; img?: string; mp4?: string; mp4Laag?: string; thumb?: string; dur?: number; views?: number; likes?: number };
 const BR_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36";
 
 function fromFx(s: any, user: string): XPost | null {
@@ -58,13 +58,22 @@ export async function xSyndication(user: string): Promise<XPost[]> {
   return out.sort((a, b) => b.t - a.t);
 }
 /** Eerst fxtwitter, dan syndication. Geeft ook terug welke route werkte en wat er misging. */
+export class XFout extends Error {
+  constructor(public fx: string, public syn: string) { super(`${fx}; ${syn}`); }
+}
+export function xFouten(results: { url: string; ok: boolean; xFout?: { fx: string; syn: string }; err?: string }[]) {
+  return results.flatMap((r) => {
+    const account = xUser(r.url);
+    return !r.ok && account ? [{ account, fx: r.xFout?.fx || r.err || "geen antwoord", syn: r.xFout?.syn || "onbekend" }] : [];
+  });
+}
 export async function xPosts(user: string): Promise<{ posts: XPost[]; via: string; err?: string }> {
   const errs: string[] = [];
   for (const [via, fn] of [["fxtwitter", xFx], ["syndication", xSyndication]] as const) {
     try { return { posts: await fn(user), via, ...(errs.length ? { err: errs.join("; ") } : {}) }; }
     catch (e: any) { errs.push(String(e?.message || e).slice(0, 60)); }
   }
-  throw new Error(errs.join("; "));
+  throw new XFout(errs[0], errs[1]);
 }
 const schoon = (s: string) => s.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
 export function xEntry(p: XPost): Entry {

@@ -1,0 +1,1 @@
+- YouTube-video’s met geblokkeerde embeds worden uit de videofeed geweerd; bij afspeelfouten slaat de speler automatisch over (#283).

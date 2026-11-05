@@ -1,4 +1,4 @@
-export type Cat = "nl" | "buitenland" | "tech" | "haarlem" | "showbizz" | "politiek" | "voetbal" | "f1" | "auto";
+export type Cat = "nl" | "buitenland" | "tech" | "haarlem" | "showbizz" | "politiek" | "voetbal" | "f1" | "auto" | "sport";
 export type Bron = { site: string; href: string };
 export type Item = {
   cat: Cat;
@@ -34,6 +34,7 @@ export type Weer = {
   bronnen: Bron[];
 };
 export type Video = {
+  gisteren?: boolean;
   titel: string;
   ai: string;
   bron: string;
@@ -44,10 +45,12 @@ export type Video = {
   tijd: string;
   /** "short" = kort clipje (YouTube Shorts, Reels, Reddit, X); "journaal" = uitzending/reportage. */
   soort?: Soort;
+  /** Onderwerpgroep (#459): Nieuws, Politiek, Showbizz, Opvallend of Sport; ontbreekt in oude data (dan Nieuws). */
+  groep?: "Nieuws" | "Politiek" | "Showbizz" | "Opvallend" | "Sport";
   /** Zelfde filmpje bij andere bronnen (na ontdubbelen). */
   ook?: Bron2[];
 };
-export type Bron2 = { bron: string; href: string };
+type Bron2 = { bron: string; href: string };
 export type Soort = "short" | "journaal";
 export type Data = {
   datum: string;

@@ -21,3 +21,8 @@ export function saveSound(aan: boolean): void {
     } catch { /* opslag geblokkeerd */ }
   }
 }
+
+// "Getikt" geldt per document: een herladen tab start gedempt (verse, vergrendelde elementen) tot de eerste tik.
+let tikGeheugen = false;
+export function geluidTik(): boolean { return tikGeheugen; }
+export function onthoudGeluidTik(): void { tikGeheugen = true; }

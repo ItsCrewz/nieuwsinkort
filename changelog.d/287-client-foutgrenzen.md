@@ -1,0 +1,1 @@
+- Foutgrenzen houden de app en andere onderdelen zichtbaar bij een renderfout; clientfouten krijgen een vaste consolecode (#287).

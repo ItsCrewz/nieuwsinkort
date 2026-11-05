@@ -1,0 +1,1 @@
+- Rubriekwissel schuift het paneel rustig in (richting volgt de tabvolgorde) en het laden toont een shimmer in plaats van pulseren; bij reduced motion statisch (#538)

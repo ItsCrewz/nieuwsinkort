@@ -1,0 +1,1 @@
+- Geblokkeerde YouTube-video's verdwijnen uit de feed zonder dat terugswipen terugveert of de huidige video verspringt (#348).

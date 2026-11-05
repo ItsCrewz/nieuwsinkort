@@ -1,0 +1,1 @@
+- Zet de CSS inline in `index.html` bij de build: geen render-blokkerend stylesheet-verzoek meer (~450 ms minder blokkade in lokale Lighthouse), zonder visuele wijziging (#403).

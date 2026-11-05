@@ -19,16 +19,16 @@ function sourceLine(s: SourceRow): string {
   if (!st) return inOverzicht || "Niet in overzicht"; // oude data.json zonder bronstats: niets beweren over 'vandaag'
   // Ophalen mislukt is iets anders dan "vandaag niets": zeg het eerlijk, met wanneer het voor het laatst wél lukte.
   if (st.vandaag == null) return ["Ophalen mislukt", st.ok ? `laatst gelukt ${hhmm(st.ok)}` : st.laatste ? `laatste bericht ${hhmm(st.laatste)}` : "", inOverzicht].filter(Boolean).join(" · ");
-  const bij = st.ok ? `bijgewerkt ${hhmm(st.ok)}` : ""; // laatste gelukte ophaalronde (elk uur)
+  const bij = st.ok ? `bijgewerkt ${hhmm(st.ok)}` : ""; // laatste gelukte ophaalronde (elk kwartier)
   const deels = st.fout ? "deels mislukt" : "";
   if (st.vandaag === 0) return [`Vandaag niets${st.laatste ? ` · laatste ${hhmm(st.laatste)}` : ""}`, bij, deels].filter(Boolean).join(" · ");
   return [`${st.vandaag} vandaag`, inOverzicht, bij, deels].filter(Boolean).join(" · ");
 }
 import { Icon } from "./icons";
+import { rustig } from "./beweging";
 import { Switch } from "./ui";
 import { veiligeUrl } from "./url";
 
-const motionOK = () => !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** Paneel met alle bronnen; rechts op desktop, onderaan (bottom sheet) op mobiel. */
 export function SourcesSheet({
@@ -50,7 +50,7 @@ export function SourcesSheet({
   const panel = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const close = () => {
-    if (!motionOK()) return onClose();
+    if (rustig()) return onClose();
     setClosing(true);
     window.setTimeout(onClose, 360); // vangnet als animationend niet komt
   };
