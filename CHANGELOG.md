@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Na een mislukte vroege data-aanvraag wordt actuele data opnieuw opgehaald voordat de statische terugval wordt gebruikt (#694).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
