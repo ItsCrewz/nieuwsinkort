@@ -1,0 +1,1 @@
+- Toegankelijkheid: axe-e2e (0 serious/critical) op `/vandaag` en een `/bericht`-fixturepagina in licht en donker (#584).

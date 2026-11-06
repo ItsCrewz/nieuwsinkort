@@ -1,0 +1,14 @@
+{
+  "tegen": [
+    {"titel": "Een bijzonder filmpje uit de stad", "bron": "Dumpert", "href": "https://www.dumpert.nl/item/123"}
+  ],
+  "lijst": [
+    {"titel": "Grote brand in oude fabriek", "bron": "Eén", "href": "https://www.youtube.com/watch?v=abcdefghijk&utm_source=test"},
+    {"titel": "Andere titel", "bron": "Twee", "embed": "https://youtu.be/abcdefghijk"},
+    {"titel": "Grote brand in oude fabriek - Nieuws", "bron": "Drie", "href": "https://example.org/brand"},
+    {"titel": "Ander onderwerp", "bron": "Vier", "href": "https://m.example.org/video/?utm_source=test&id=7"},
+    {"titel": "Nog iets anders", "bron": "Vijf", "href": "https://www.example.org/video?id=7&fbclid=abc"},
+    {"titel": "Een bijzonder filmpje uit de stad", "bron": "Zes", "href": "https://example.org/stad"},
+    {"titel": "Eigen verhaal over treinverkeer", "bron": "Zeven", "href": "https://example.org/trein"}
+  ]
+}

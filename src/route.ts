@@ -4,7 +4,9 @@ import type { View } from "./types";
 export type Route = { view: View; selected: string | null; video: string | null };
 
 export function parseHash(hash: string): Route {
-  const h = decodeURIComponent(hash.replace(/^#\/?/, ""));
+  let h: string;
+  try { h = decodeURIComponent(hash.replace(/^#\/?/, "")); }
+  catch { return { view: "alles", selected: null, video: null }; }
   if (h.startsWith("bericht/")) return { view: "alles", selected: h.slice(8), video: null };
   const c = CATS.find((c) => c.slug === h);
   if (c) return { view: c.id, selected: null, video: null };
@@ -19,8 +21,11 @@ export function viewHash(v: View) {
   return `#/${c ? c.slug : v}`;
 }
 
+// Zelfde tekst als <title> in index.html (SEO, #598)
+export const HOME_TITEL = "Nieuwsinkort - Het nieuws van vandaag samengevat";
+
 export function viewTitel(view: View): string {
-  if (view === "alles") return "Nieuws in het kort";
+  if (view === "alles") return HOME_TITEL;
   const label = CATS.find((cat) => cat.id === view)?.label ?? (view === "filmpjes" ? "Filmpjes" : "Dumpert");
   return `${label} · Nieuws in het kort`;
 }
