@@ -57,10 +57,13 @@ export function laagsteVariant(txt: string, base: string): string {
   let best = "";
   let bw = Infinity;
   lines.forEach((l, i) => {
-    const m = /^#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)/.exec(l);
+    if (!l.startsWith("#EXT-X-STREAM-INF:")) return;
+    const attrs = l.slice("#EXT-X-STREAM-INF:".length).matchAll(/(?:^|,)([A-Z0-9-]+)=("[^"]*"|[^,]*)/g);
+    const waarde = Array.from(attrs).find((m) => m[1] === "BANDWIDTH")?.[2] ?? "";
+    const getal = /^\d+$/.test(waarde) ? Number(waarde) : 0;
     const u = lines[i + 1];
-    if (m && u && !u.startsWith("#") && +m[1] < bw) {
-      bw = +m[1];
+    if (Number.isSafeInteger(getal) && getal > 0 && u && !u.startsWith("#") && getal < bw) {
+      bw = getal;
       best = u;
     }
   });
