@@ -25,7 +25,8 @@ import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
-import { svCache, haalSamenvatting, type Sv } from "./samenvattingcache";
+import { svCache } from "./samenvattingcache";
+import { useSamenvatting } from "./usesamenvatting";
 import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
@@ -1134,16 +1135,8 @@ function SamenvattingKnop({ v }: { v: Video }) {
 }
 function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
   const id = videoSlug(v);
-  const [res, setRes] = useState<Sv | null>(() => svCache.get(id) || null);
-  const [n, setN] = useState(0);
+  const { res, opnieuw } = useSamenvatting(id);
   const closeBtn = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (svCache.has(id) && n === 0) return;
-    const ac = new AbortController();
-    setRes(null);
-    haalSamenvatting(id, ac.signal).then(setRes, () => {});
-    return () => ac.abort();
-  }, [id, n]);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
     closeBtn.current?.focus({ preventScroll: true });
@@ -1176,7 +1169,7 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
             <>
               <p className="sv-fout">{res.fout}</p>
               {["fout", "net", "bezig", "geblokkeerd"].includes(res.code) ? (
-                <button type="button" className="f-btn" onClick={() => { svCache.delete(id); setN((x) => x + 1); }}>Probeer opnieuw</button>
+                <button type="button" className="f-btn" onClick={opnieuw}>Probeer opnieuw</button>
               ) : null}
             </>
           )}
