@@ -9,5 +9,5 @@ for (const f of bestanden("src").filter((p) => /\.(tsx?|css)$/.test(p))) {
   assert.ok(!tekst.includes("Samenvatting gemaakt met AI"), `${f} bevat nog de vermelding`);
   assert.ok(!/ai-vermelding|AiVermelding/.test(tekst), `${f} verwijst nog naar AiVermelding`);
 }
-const app = readFileSync("src/App.tsx", "utf8");
+const app = readFileSync("src/app-frame.tsx", "utf8");
 assert.match(app, /<footer className="foot">[\s\S]*Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten\. Lees bij twijfel altijd de bron\.[\s\S]*<\/footer>/);

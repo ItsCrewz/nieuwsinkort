@@ -2,7 +2,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const feed = readFileSync("src/feed.tsx", "utf8");
+const feed = readFileSync("src/feed-balk.tsx", "utf8");
+const yt = readFileSync("src/feed-youtube.tsx", "utf8");
 const app = readFileSync("src/App.tsx", "utf8");
 const detail = readFileSync("src/detail.tsx", "utf8");
 const t = (name: string, fn: () => void) => { fn(); console.log("✓", name); };
@@ -16,7 +17,8 @@ t("scrubber heeft altijd aria-valuenow en aria-valuetext", () => {
 });
 
 t("YouTube-iframe is niet uit de tabvolgorde gehaald", () => {
-  const iframe = feed.slice(feed.indexOf("<iframe"), feed.indexOf("/>", feed.indexOf("<iframe")));
+  const iframe = yt.slice(yt.indexOf("<iframe"), yt.indexOf("/>", yt.indexOf("<iframe")));
+  assert.ok(iframe.length > 10);
   assert.doesNotMatch(iframe, /tabIndex/);
 });
 
