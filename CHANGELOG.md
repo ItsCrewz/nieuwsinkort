@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Behoud per rubriek de recentste beschikbare samenvatting bij het samenvoegen van routine- en uurdata (#810).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
