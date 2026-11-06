@@ -121,7 +121,7 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 
 Het bronnenvenster rondt sluiten eenmaal af via het animatie-einde of een vangnet na 360 ms. Bij ontkoppelen wordt de timer gewist; bij verminderde beweging sluit het venster direct en wordt de focus hersteld. Bij nul berichten en een deels mislukte ophaling (`fout` of `storing`) toont de regel "Stand onvolledig" in plaats van "Vandaag niets" (#618).
 
-Daarom staan pure helpers die het hoofdscherm of het voorladen nodig hebben los van de lazy modules: `videosoort.ts` (`playerFor`, `soortVan`, `viaProxy`), `samenvattingcache.ts` (`zaaiSamenvattingen`), `meer.ts` (`prefetchMeer`) en `leesverder.ts` (`fotos`, `bronnenTekst`). Importeer die niet via `video.tsx`/`feed.tsx`, anders komt de lazy chunk terug in `index`. Meting (gzip, `npm run build`): hoofdchunk 89,0 kB → 69,2 kB (−22%); de ondergrens is React + react-dom (≈46 kB gzip).
+Daarom staan pure helpers die het hoofdscherm of het voorladen nodig hebben los van de lazy modules: `videosoort.ts` (`playerFor`, `soortVan`, `viaProxy`), `samenvattingcache.ts` (`zaaiSamenvattingen`, ververst een bestaande vooraf gemaakte samenvatting bij nieuwe geldige data, #768), `meer.ts` (`prefetchMeer`) en `leesverder.ts` (`fotos`, `bronnenTekst`). Importeer die niet via `video.tsx`/`feed.tsx`, anders komt de lazy chunk terug in `index`. Meting (gzip, `npm run build`): hoofdchunk 89,0 kB → 69,2 kB (−22%); de ondergrens is React + react-dom (≈46 kB gzip).
 
 ## Pages Functions (`functions/`)
 
