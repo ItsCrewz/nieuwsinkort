@@ -218,7 +218,8 @@ export function useSourceFilter() {
   }, []);
   // andere tabbladen bijhouden
   useEffect(() => {
-    const on = (e: StorageEvent) => e.key === FILTER_KEY && setOff(readOff());
+    // key === null: localStorage.clear() in een ander tabblad
+    const on = (e: StorageEvent) => (e.key === FILTER_KEY || e.key === null) && setOff(readOff());
     window.addEventListener("storage", on);
     return () => window.removeEventListener("storage", on);
   }, []);

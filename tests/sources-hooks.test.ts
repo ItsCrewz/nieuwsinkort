@@ -223,6 +223,21 @@ await t("useSourceFilter volgt andere tabbladen via storage-events", async () =>
   assert.equal(h.result.current.off.size, 0);
   await act(async () => void win.dispatchEvent(storageEvent(KEY)));
   assert.deepEqual([...h.result.current.off], ["haarlem|haarlemsdagblad"]);
+  // localStorage.clear() in een ander tabblad: key === null
+  opslag.clear();
+  await act(async () => void win.dispatchEvent(storageEvent(null)));
+  assert.equal(h.result.current.off.size, 0);
+  // clear met onleesbare opslag: leeg filter, geen crash
+  opslag.set(KEY, JSON.stringify(["haarlem|haarlemsdagblad"]));
+  await act(async () => void win.dispatchEvent(storageEvent(null)));
+  assert.equal(h.result.current.off.size, 1);
+  fouten.get = true;
+  await act(async () => void win.dispatchEvent(storageEvent(null)));
+  assert.equal(h.result.current.off.size, 0);
+  fouten.get = false;
+  opslag.set(KEY, "{kapot");
+  await act(async () => void win.dispatchEvent(storageEvent(null)));
+  assert.equal(h.result.current.off.size, 0);
   await h.unmount();
   assert.equal(listeners.remove - voor.remove, 1);
   opslag.clear();
