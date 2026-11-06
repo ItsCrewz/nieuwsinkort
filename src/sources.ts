@@ -1,6 +1,7 @@
 // Bronnenfilter: welke bronnen je wilt zien. Opgeslagen in localStorage, puur client-side.
 // Een bericht verdwijnt pas als AL zijn bronnen uit staan; anders tonen we alleen de bronnen die aan staan.
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { artikelId } from "./artikelid";
 import type { Bron, Data, Item, Video } from "./types";
 
 export type GroupId = "nl" | "tech" | "haarlem" | "showbizz" | "politiek" | "voetbal" | "f1" | "auto" | "filmpjes" | "dumpert";
@@ -182,6 +183,14 @@ export function sourceKey(index: Index, gid: GroupId, site: string, href: string
   return `${gid}|${ix ? resolveIn(ix, site, href) : norm(site)}`;
 }
 
+export function filterArtikelBronnen(it: Item, index: Index, off: Set<string>): Item | null {
+  const bronnen = it.bronnen ?? [];
+  if (!bronnen.length || !index.has(groepVan(it))) return it;
+  const active: Bron[] = bronnen.filter((b) => !off.has(sourceKey(index, groepVan(it), b.site, b.href)));
+  if (!active.length) return null;
+  return active.length === bronnen.length ? it : { ...it, id: artikelId(it), bronnen: active };
+}
+
 function readOff(): Set<string> {
   try {
     const raw = JSON.parse(localStorage.getItem(FILTER_KEY) || "[]");
@@ -233,14 +242,9 @@ export function useFiltered(data: Data | null, index: Index, off: Set<string>) {
     let hidden = 0;
     const items: Item[] = [];
     for (const it of data.items) {
-      const bronnen = it.bronnen ?? [];
-      if (!bronnen.length || !index.has(groepVan(it))) {
-        items.push(it);
-        continue;
-      }
-      const active: Bron[] = bronnen.filter((b) => !off.has(sourceKey(index, groepVan(it), b.site, b.href)));
-      if (active.length === 0) hidden++;
-      else items.push(active.length === bronnen.length ? it : { ...it, bronnen: active });
+      const actief = filterArtikelBronnen(it, index, off);
+      if (actief) items.push(actief);
+      else hidden++;
     }
     const vid = (list: Video[], gid: GroupId) =>
       list.filter((v) => {
