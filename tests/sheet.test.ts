@@ -33,7 +33,7 @@ intern.current = {
   useEffect: (fn: () => () => void) => { effect = fn; },
 };
 const groepen: SourceGroup[] = [{
-  id: "nl", label: "Nederland", total: 5, published: 7,
+  id: "nl", label: "Nederland", total: 5, published: 7, onvolledig: true,
   sources: [
     { id: "a", key: "a", naam: "A", count: 2, fromData: false },
     { id: "b", key: "b", naam: "B", count: 0, fromData: false, stat: { vandaag: 0, laatste: "2026-10-30T10:30:00Z", ok: "2026-10-30T11:00:00Z", fout: "fout" } },
@@ -57,7 +57,7 @@ const tekst = (node: any): string => typeof node === "string" || typeof node ===
 const root = render();
 assert.equal(root.containerInfo, body);
 assert.match(tekst(root), /1 bron uit/);
-assert.match(tekst(root), /6 bronnen · 7 berichten vandaag/);
+assert.match(tekst(root), /6 bronnen · minstens 7 berichten vandaag \(onvolledig\)/);
 assert.match(tekst(root), /2 in overzicht/);
 assert.match(tekst(root), /Stand onvolledig · laatste 11:30 · bijgewerkt 12:00 · deels mislukt/);
 assert.match(tekst(root), /Vandaag niets · laatste 11:30 · bijgewerkt 12:00(?! · deels)/);

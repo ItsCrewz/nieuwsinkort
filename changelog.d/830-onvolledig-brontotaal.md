@@ -1,0 +1,1 @@
+- Bronnenblad: toon een rubriektotaal met ontbrekende of mislukte bronstellingen als „minstens N berichten vandaag (onvolledig)” in plaats van een volledig dagtotaal (#830).
