@@ -9,7 +9,7 @@ import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort
 import { veiligeUrl } from "./url";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
-import { ytOndertitelsBijBericht } from "./ytstart";
+import { ytGereedLijst, ytOndertitelsBijBericht } from "./ytstart";
 
 // De volledige videofeed (spelers, hls.js-glue, debug-overlay) is een eigen chunk: pas laden op touch + videoroute.
 const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
@@ -115,6 +115,7 @@ export function VideoGrid({
     let speelt = true;
     let hervat = false;
     let hersteld = false;
+    const gereed = ytGereedLijst(); // onReady per frame, ook van vooraf geladen buren
     const saved = opgeslagen.current;
     const actief = () => document.querySelector<HTMLElement>('.feed .fslide[aria-current="true"]');
     const frame = () => actief()?.querySelector<HTMLIFrameElement>('iframe.f-yt');
@@ -125,14 +126,16 @@ export function VideoGrid({
       const el = actief()?.querySelector<HTMLVideoElement>("video");
       if (!hersteld && slug === saved?.slug && saved.cat === cat) {
         if (el && el.readyState > 0) { try { el.currentTime = saved.positie || 0; } catch { /* nog niet zoekbaar */ } hersteld = true; }
-        else if (frame()) { stuur("seekTo", [saved.positie || 0, true]); hersteld = true; }
+        else if (gereed.is(frame()?.contentWindow)) { stuur("seekTo", [saved.positie || 0, true]); hersteld = true; }
       }
       if (el) { positie = el.currentTime || 0; if (document.visibilityState === "visible") speelt = !el.paused; }
       const item = feedVideos.find((v) => videoSlug(v) === slug);
       bewaarFeed({ cat, slug, soort: item ? soortVan(item) : "short", positie, speelt, lijst: feedVideos });
     };
     const bericht = (e: MessageEvent) => {
-      if (e.origin !== "https://www.youtube-nocookie.com" || e.source !== frame()?.contentWindow) return;
+      if (e.origin !== "https://www.youtube-nocookie.com") return;
+      if (gereed.meld(e, document.querySelectorAll<HTMLIFrameElement>(".feed iframe.f-yt"))) { update(); return; }
+      if (e.source !== frame()?.contentWindow) return;
       try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; if (typeof d?.info?.currentTime === "number") positie = d.info.currentTime; if (document.visibilityState === "visible" && typeof d?.info?.playerState === "number") speelt = d.info.playerState === 1; } catch { /* onbekend bericht */ }
     };
     let verborgen = false;
