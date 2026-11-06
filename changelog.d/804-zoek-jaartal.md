@@ -1,0 +1,1 @@
+- Zoeken: een zoekterm van een volledig jaartal (≥4 cijfers) vindt alleen dat hele getal, niet een langer getal als 20240; gewone woorden en korte cijfers behouden woordbeginmatching (#804).
