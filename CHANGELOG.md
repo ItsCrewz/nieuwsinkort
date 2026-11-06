@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Videofilters gebruiken de volledige publicatiedatum, zodat terugvalvideo’s van gisteren niet als recent verschijnen (#645).
+- Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
