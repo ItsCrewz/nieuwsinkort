@@ -49,3 +49,10 @@ try {
   Object.assign(globalThis, { sessionStorage: oorspronkelijkeOpslag, history: oorspronkelijkeGeschiedenis });
 }
 console.log("feedstatus-randgevallen: geslaagd");
+
+// #687: dubbelzinnige oude titelroute opent geen willekeurige video; hash botst niet op bekende FNV-botsing.
+{
+  const a = { titel: "Zelfde", href: "https://example.com/a/1" } as any, b = { titel: "Zelfde", href: "https://example.com/a/2" } as any;
+  assert.equal(herstelFeed(null, "dumpert", "zelfde", [a, b]).slug, "zelfde");
+  assert.notEqual(videoSlug({ titel: "x", href: "https://example.com/video/9h5kto" } as any), videoSlug({ titel: "x", href: "https://example.com/video/b2yzyf" } as any));
+}
