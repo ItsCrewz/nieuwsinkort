@@ -20,7 +20,6 @@ Zoekopdrachten staan in de URL als `?q=zoekterm`, vóór de hash-route. Zo zijn 
 
 Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home. Een hash met ongeldige percent-codering valt terug op Home.
 
-
 Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen.
 Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
 Bij Nieuwste eerst staat het openingsartikel met de meeste bronnen bovenaan, gevolgd door de overige artikelen op tijd.
