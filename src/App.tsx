@@ -2,6 +2,7 @@ import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
+import { isNieuwer, useTrekVerversen, type Ververs } from "./trekverversen";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
@@ -708,7 +709,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   );
 }
 
-function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, ververs }: { ververs?: Ververs; items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -718,6 +719,8 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   const ref = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLSpanElement>(null);
   const startRef = useRef<HTMLButtonElement>(null);
+  const ptrRef = useRef<HTMLDivElement>(null);
+  const ptrTekst = useTrekVerversen(ref, ptrRef, ververs);
   const [idx, setIdx] = useState(-1); // -1 = de "vandaag"-kaart met samenvatting en weer
   const idxRef = useRef(idx);
   idxRef.current = idx;
@@ -840,6 +843,10 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
           <Footer />
         </div>
       </div>
+      <div className="ptr" style={{ opacity: 0 }} ref={ptrRef} role="status" aria-live="polite">
+        <span className="ptr-pijl" aria-hidden="true"><Icon name="chevdown" /></span>
+        {ptrTekst ? <span className="ptr-t">{ptrTekst}</span> : null}
+      </div>
       {total > 0 ? (
         <>
         <FeedNavigatie verborgen={idx < 0}>
@@ -876,11 +883,13 @@ export function useData() {
   const volgnummer = useRef(0);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
-  const load = useCallback(async () => {
+  const laatsteGen = useRef<string | undefined>(undefined);
+  // true = nieuwere `gegenereerd`, false = gelijk, null = fout (voor trek-om-te-verversen)
+  const load = useCallback(async (): Promise<boolean | null> => {
     const aanvraag = ++volgnummer.current;
     try {
       const antwoord = await laadData(neemVroegeData());
-      if (aanvraag !== volgnummer.current) return;
+      if (aanvraag !== volgnummer.current) return null;
       const gevalideerd = valideer(antwoord);
       afgewezenBerichten = gevalideerd.afgewezen;
       const d = schoon(gevalideerd.data as Data); // ook hier ontdubbelen: statische data zonder Pages Function
@@ -893,8 +902,12 @@ export function useData() {
       d.filmpjes = sorteerOpGroep(d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }))); // Shorts of Journaals; op onderwerpgroep (#459): Sport onderaan, ook voor de volgorde van doorlopend kijken
       setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
       setError(false);
+      const nieuw = isNieuwer(d.gegenereerd, laatsteGen.current);
+      if (nieuw || laatsteGen.current === undefined) laatsteGen.current = d.gegenereerd;
+      return nieuw;
     } catch {
       if (aanvraag === volgnummer.current) setError(true);
+      return null;
     }
   }, []);
   useEffect(() => {
@@ -1336,6 +1349,7 @@ export default function App() {
           <div id="rubriek-paneel" className="nf-panel" role="tabpanel">
           <Foutgrens key={view} code="CLIENT_FEED"><NewsFeed
             key={view}
+            ververs={error ? undefined : reload}
             items={zoekUitkomst}
             keepOrder={flt.f.sort !== "nieuw"}
             empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}

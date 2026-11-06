@@ -58,6 +58,7 @@
 .nf-start:active{transform:translateX(-50%) scale(.98)}
 .nf-pos{transition:opacity 200ms var(--e),transform 240ms var(--e)}
 .nf-start{animation:nfs 300ms var(--e) backwards;transition:opacity 180ms var(--e),transform 220ms var(--e)}
+.ptr{transition:opacity 180ms var(--e),transform 220ms var(--e)}
 @media (max-width:640px){
   .sheet{animation-name:shu}
   .sheet-root.out .sheet{animation-name:shd}
