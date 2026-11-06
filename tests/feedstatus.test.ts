@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { bewaarFeed, leesFeed, herstelFeed, vastLijst, wisFeed, type FeedStatus } from "../src/feedstatus";
+import { bewaarFeed, leesFeed, herstelFeed, vastLijst, syncFeed, wisFeed, type FeedStatus } from "../src/feedstatus";
 import { videoSlug } from "../src/slug";
 import type { Video } from "../src/types";
 const opslag = new Map<string, string>();
@@ -11,15 +11,13 @@ bewaarFeed(status);
 assert.deepEqual(leesFeed(), status);
 assert.deepEqual((history.state as any).feed, status);
 assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, [lijst[0], lijst[2]]).slug, videoSlug(lijst[2]));
-assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, [], true).lijst.length, 3); // herladen tijdens laden
-assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, [], true).slug, status.slug);
 assert.deepEqual(herstelFeed(leesFeed(), "dumpert", status.slug, []), { lijst: [], slug: status.slug }); // definitief leeg
 wisFeed(); (history as any).state = null; assert.equal(leesFeed(), null);
 console.log("feedstatus: geslaagd");
 
 // Lege lijsten en een andere categorie mogen geen oude selectie overnemen.
 assert.deepEqual(herstelFeed(null, "dumpert", "onbekend", []), { lijst: [], slug: "onbekend" });
-assert.deepEqual(herstelFeed(status, "filmpjes", status.slug, [], true), { lijst: [], slug: status.slug });
+assert.deepEqual(herstelFeed(status, "filmpjes", status.slug, []), { lijst: [], slug: status.slug });
 // Uitgesloten bron: alleen actuele, toegestane items; positie op een nog beschikbare video blijft.
 assert.deepEqual(herstelFeed(status, "dumpert", status.slug, [lijst[0]]).lijst, [lijst[0]]);
 assert.equal(herstelFeed(status, "dumpert", videoSlug(lijst[2]), [lijst[2]]).slug, videoSlug(lijst[2]));
@@ -61,3 +59,18 @@ assert.equal(vastLijst(vast, status, "dumpert", status.slug, lijst.map((v) => (v
 assert.equal(vastLijst(vast, status, "dumpert", status.slug, []), null); // definitief leeg: niets vasthouden
 assert.deepEqual(vastLijst(vast, status, "dumpert", status.slug, [video("nieuw")]).map(videoSlug), [videoSlug(video("nieuw"))]); // niets meer gemeen: nieuwe lijst
 console.log("feedstatus-randgevallen: geslaagd");
+
+// Open feed: uitgesloten of verdwenen video's gaan er live uit, actief blijft dezelfde video.
+{
+  const l = [video("a"), video("b"), video("c"), video("d")];
+  assert.equal(syncFeed(l, 2, l).items, l); // ongewijzigd: zelfde array
+  const r = syncFeed(l, 2, [l[2], l[3]]);
+  assert.deepEqual(r.items, [l[2], l[3]]); assert.equal(r.actief, 0); // eerdere items weg, actieve blijft
+  const r2 = syncFeed(l, 2, [l[0], l[1], l[3]]);
+  assert.deepEqual(r2.items, [l[0], l[1], l[3]]); assert.equal(r2.actief, 2); // actieve zelf weg: dichtstbijzijnde (volgende)
+  const r3 = syncFeed(l, 3, [l[0]]);
+  assert.equal(r3.actief, 0); // clamp
+  const vers = { ...l[1], bron: "vers" } as Video;
+  assert.equal(syncFeed(l, 1, [l[0], vers]).items[1], vers); // verse gegevens, volgorde stabiel
+  assert.deepEqual(syncFeed(l, 1, [video("nieuw")]).items, []); // niets gemeen: leeg (component houdt dan vast)
+}

@@ -57,7 +57,7 @@ Kopkaart (#150): `.nc-head` is alleen op Home schermvullend. Tabs krijgen de kla
 
 De feednavigatie is met `inert` niet focusbaar zolang zij verborgen is; de startknop blijft daarbuiten bereikbaar. Bij zichtbare navigatie werkt Tab weer normaal (#275).
 
-`src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug. De opgeslagen lijst dient alleen tijdens laden (`laden`); een definitief lege of gefilterde actuele lijst blijft leeg en `VideoGrid` toont dan „Deze video is niet meer beschikbaar” (#659).
+`src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug. `VideoGrid` mount pas met actuele data (tot dan staat het skeleton), dus een lege of gefilterde actuele lijst blijft leeg en toont „Deze video is niet meer beschikbaar” (#659). `syncFeed` houdt de open `Feed` gelijk met de actuele toegestane items: uitgesloten of verdwenen video's verdwijnen live en de actieve blijft dezelfde video.
 
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
 
