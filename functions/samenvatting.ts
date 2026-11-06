@@ -149,12 +149,31 @@ async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{
   let o = 0; for (const p of parts) { bytes.set(p, o); o += p.length; }
   return { bytes, sec: d };
 }
-async function mp4Audio(url: string, why: string[], maxBytes = MAX_MP4): Promise<{ bytes: Uint8Array; sec: number } | null> {
+export async function mp4Audio(url: string, why: string[], maxBytes = MAX_MP4): Promise<{ bytes: Uint8Array; sec: number } | null> {
   const H = { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" };
   // eerst alleen het begin: staat de index (moov) vooraan, dan is een afgeknipt stuk nog af te spelen
   const r = await fetch(url, { headers: { ...H, Range: `bytes=0-${maxBytes - 1}` }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) { why.push(`mp4: HTTP ${r.status}${r.status === 403 ? " (link verlopen)" : ""}`); return null; }
-  const bytes = new Uint8Array(await r.arrayBuffer());
+  const delen: Uint8Array[] = [];
+  let lengte = 0;
+  const lezer = r.body?.getReader();
+  if (lezer) {
+    try {
+      while (true) {
+        const { done, value } = await lezer.read();
+        if (done) break;
+        lengte += value.length;
+        if (lengte > maxBytes) {
+          await lezer.cancel().catch(() => {});
+          why.push("mp4: te groot (downloadlimiet overschreden)");
+          return { bytes: new Uint8Array(0), sec: -1 };
+        }
+        delen.push(value);
+      }
+    } finally { lezer.releaseLock(); }
+  }
+  const bytes = new Uint8Array(lengte);
+  let offset = 0; for (const deel of delen) { bytes.set(deel, offset); offset += deel.length; }
   const total = +((r.headers.get("content-range") || "").split("/")[1] || 0) || bytes.length;
   if (total <= bytes.length) return { bytes, sec: 0 };
   const head = new TextDecoder("latin1").decode(bytes.subarray(0, 4096));
