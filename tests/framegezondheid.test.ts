@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { decodeTeller, EERSTE_FRAME_MS, FrameGezondheid, frameTeller, HerstelBudget, type FrameTik } from "../src/framegezondheid";
+import { decodeTeller, EERSTE_FRAME_MS, FrameGezondheid, frameTeller, frameTellerBron, HerstelBudget, type FrameTik } from "../src/framegezondheid";
 
 const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
 const tik = (now: number, currentTime: number, frames: number | null, extra: Partial<FrameTik> = {}): FrameTik => ({
@@ -121,4 +121,29 @@ t("decodeTeller: getVideoPlaybackQuality, anders webkitDecodedFrameCount", () =>
   assert.equal(decodeTeller({ getVideoPlaybackQuality: () => ({ totalVideoFrames: 7 }), webkitDecodedFrameCount: 3 }), 7);
   assert.equal(decodeTeller({ webkitDecodedFrameCount: 3 }), 3);
   assert.equal(decodeTeller({}), null);
+});
+
+t("tellerwisseling decode -> presentatie: geen valse melding, daarna vooruitgang bewaakt", () => {
+  const fg = new FrameGezondheid();
+  // Decodeerteller loopt (grote waarde), daarna schakelt de bron over op een kleinere presentatieteller.
+  assert.equal(speel(fg, 0, 3000, { frames: (n) => 500 + n / 40, extra: { bron: "decode" } }).b, "ok");
+  assert.equal(speel(fg, 3500, 6000, { t0: 3, frames: (n) => 2 + (n - 3500) / 40, extra: { bron: "presentatie" } }).b, "ok");
+  // Presentatieteller staat daarna echt stil: melding.
+  assert.equal(speel(fg, 10000, 4000, { t0: 9, frames: () => 300, extra: { bron: "presentatie" } }).b, "frame-vast");
+});
+
+t("tellerwisseling met stilstaande nieuwe teller: melding 2,5 s na de wisseling, niet eerder", () => {
+  const fg = new FrameGezondheid();
+  assert.equal(speel(fg, 0, 1500, { frames: () => 80, extra: { bron: "decode" } }).b, "ok");
+  const r = speel(fg, 2000, 5000, { t0: 1.5, frames: () => 5, extra: { bron: "presentatie" } });
+  assert.equal(r.b, "frame-vast");
+  assert.ok(r.now - 2000 >= 2500);
+});
+
+t("echte stilstand zonder wisseling en normale voortgang blijven gelijk; frameTellerBron", () => {
+  assert.equal(speel(new FrameGezondheid(), 0, 3500, { frames: () => 7, extra: { bron: "decode" } }).b, "frame-vast");
+  assert.equal(speel(new FrameGezondheid(), 0, 20000, { frames: (n) => n / 40, extra: { bron: "presentatie" } }).b, "ok");
+  assert.equal(frameTellerBron({ gepresenteerd: 3, rvfc: true, decode: true }), "presentatie");
+  assert.equal(frameTellerBron({ gepresenteerd: 0, rvfc: true, decode: true }), "decode");
+  assert.equal(frameTellerBron({ gepresenteerd: 0, rvfc: false, decode: false }), null);
 });
