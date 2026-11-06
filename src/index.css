@@ -75,9 +75,11 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .mark i:nth-child(3){width:44%}
 .brand:hover .mark{transform:rotate(-6deg)}
 .brand:active .mark{transform:scale(.94)}
+.ti{display:grid}
+.ti .ic{grid-area:1/1;opacity:0;transform:rotate(90deg) scale(.8)}
+.ti .aan{opacity:1;transform:none}
 .ctrls{display:flex;align-items:center;gap:2px}
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:20px;color:var(--i2);flex:none}
-.iconbtn:hover{background:var(--h);color:var(--ink)}
 .ic{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .ic.sm{width:15px;height:15px}
 .ic.fill{fill:currentColor;stroke:none}
@@ -171,7 +173,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .menu-item:hover{background:var(--h)}
 .filternote{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;padding:12px 0;font-size:0.8125rem;color:var(--muted);border-bottom:1px solid var(--r2)}
 .textbtn{font-size:0.8125rem;font-weight:500;color:var(--a);min-height:32px}
-.textbtn:hover{text-decoration:underline;text-underline-offset:3px}
+
 .textbtn:disabled{color:var(--muted);opacity:.6;cursor:default;text-decoration:none}
 
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:20px 0 4px}
@@ -205,7 +207,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .morewrap{display:flex;justify-content:center;margin-top:36px}
 .btn{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 20px;border-radius:21px;background:var(--ink);color:var(--p);font-size:0.875rem;font-weight:500}
 .btn:hover{opacity:.88}
-.btn:active,.iconbtn:active,.srcbtn:active,.chip:active,.f-btn:active,.textbtn:active,.back:active{transform:scale(.98)}
+.btn:active,.iconbtn:active,.srcbtn:active,.chip:active,.f-btn:active,.textbtn:active,.back:active,.fpill:active,.nf-btn:active{transform:scale(.97)}
 .empty{padding:48px 16px;text-align:center;font-size:0.9375rem;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
 .empty .ic{width:22px;height:22px;stroke-width:1.4}
 .linkbtn{text-decoration:underline;text-underline-offset:3px;color:var(--ink);font-weight:500}
@@ -303,8 +305,8 @@ iframe.f-media{opacity:1}
 .f-scrub.off{pointer-events:none}
 .f-bar{position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(255,255,255,.18);transform:scaleY(.334);transform-origin:50% 100%}
 .f-bar > span{position:absolute;inset:0;background:var(--a);transform:scaleX(0);transform-origin:0 50%}
-.f-scrub.drag .f-bar,.f-scrub:focus-visible .f-bar{transform:none}
 @media (hover:hover){.f-scrub:hover .f-bar{transform:scaleY(.667)}}
+.f-scrub.drag .f-bar,.f-scrub:focus-visible .f-bar{transform:none}
 .f-time{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);padding:6px 12px;border-radius:16px;background:rgba(0,0,0,.6);color:rgba(255,255,255,.72);font-size:0.9375rem;font-weight:500;white-space:nowrap;pointer-events:none}
 .f-time b{color:#fff;font-weight:600}
 .f-scrub.drag ~ .f-info,.fcol:has(.f-scrub.drag) .f-info{opacity:0}
@@ -487,7 +489,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nc-pts li::before{content:"";position:absolute;left:0;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--a)}
 .nc-act{display:flex;flex-wrap:wrap;align-items:center;gap:10px 10px;margin-top:6px}
 .btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--rl)}
-.btn.ghost:hover{opacity:1;background:var(--h)}
+
 .btn .ic{width:15px;height:15px}
 .nc-act .btn{padding-left:12px;padding-right:12px;white-space:nowrap}
 .nc-in .nc-act{display:block}
@@ -554,9 +556,9 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .bl-slide img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;-webkit-user-drag:none;user-select:none}
 .bl-slide img.in{opacity:1}
 .bl.multi .bl-track{cursor:pointer}
-.bl-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:5px;pointer-events:none;z-index:1}
+.bl-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:8px;pointer-events:none;z-index:1}
 .bl-dots span{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.55);box-shadow:0 0 0 .5px rgba(0,0,0,.25)}
-.bl-dots span.on{width:16px;background:#fff}
+.bl-dots span.on{transform:scaleX(2.667);background:#fff}
 .bl-nav{position:absolute;top:50%;width:34px;height:34px;margin-top:-17px;border-radius:50%;border:0;background:rgba(0,0,0,.42);color:#fff;font-size:1.375rem;line-height:32px;display:none;z-index:1;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .bl-nav.prev{left:8px}.bl-nav.next{right:8px}
 @media (hover:hover) and (pointer:fine){.bl.multi:hover .bl-nav{display:block}}
@@ -609,7 +611,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .fpill-n{color:var(--muted);font-size:0.75rem}
 .fpill-n::before{content:"· "}
 .fpill-x{padding:1px 7px;border-radius:9px;background:var(--a);color:#fff;font-size:0.6875rem;font-weight:600}
-.fpill:active{transform:scale(.98)}
 .app-feed .fbar{padding:4px 0 6px}
 .fbody{padding-top:0}
 .fgroup{padding-top:20px}
@@ -671,5 +672,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .zoek-leeg{padding:24px;text-align:center;overflow-wrap:anywhere}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
+
+@media (hover:hover){.iconbtn:hover,.srcbtn:hover{background:var(--h);color:var(--ink)}.textbtn:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}.chip:hover{border-color:var(--muted)}.lead:hover::before,.row:hover::before{opacity:1}.btn:hover,.f-btn:hover{opacity:.88}.btn.ghost:hover{opacity:1;background:var(--h)}.nf-btn:hover{color:var(--ink)}}
 
 /* Artikel en overzicht bewegen onder de stilstaande topbalk. */

@@ -107,6 +107,73 @@ test("terug uit een artikel: doelkaart speelt de entree niet opnieuw", async ({ 
   expect(await kaartAnimaties(page)).toBe(0);
 });
 
+test("thema-icoon wisselt en reduced motion laat niets lopen", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await blokkeer(page);
+  await page.goto("#/");
+  const knop = page.locator(".topbar .iconbtn").last();
+  const voor = await page.evaluate(() => document.documentElement.dataset.theme);
+  await knop.click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).not.toBe(voor);
+  expect(await traag(page)).toEqual([]);
+});
+
+// Thema (#539): werkt met en zonder View Transitions-API, meta theme-color wisselt mee, geen flits.
+const themaStaat = (page) => page.evaluate(() => ({
+  thema: document.documentElement.dataset.theme,
+  meta: [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.getAttribute("content")),
+  bg: getComputedStyle(document.body).backgroundColor,
+}));
+
+for (const vt of ["zonder View Transitions-API", "met View Transitions-API"]) {
+  test(`thema wisselen ${vt}: theme-color mee, direct nieuwe achtergrond`, async ({ page }) => {
+    if (vt.startsWith("zonder")) await page.addInitScript(() => { Object.defineProperty(Document.prototype, "startViewTransition", { value: undefined, configurable: true }); });
+    await blokkeer(page);
+    await page.goto("#/");
+    await expect(page.locator(".topbar .iconbtn").last()).toBeVisible();
+    if (!vt.startsWith("zonder")) expect(await page.evaluate(() => typeof document.startViewTransition)).toBe("function");
+    else expect(await page.evaluate(() => typeof document.startViewTransition)).toBe("undefined");
+    const voor = await themaStaat(page);
+    const verwacht = voor.thema === "dark" ? "light" : "dark";
+    const kleur = verwacht === "dark" ? "#0f0f0f" : "#ffffff";
+    // direct na de klik (zelfde taak) lezen: geen tussenstand met de oude achtergrond
+    const na = await page.evaluate(() => {
+      const knop = [...document.querySelectorAll(".topbar .iconbtn")].pop();
+      knop.click();
+      return new Promise((r) => requestAnimationFrame(() => r({
+        thema: document.documentElement.dataset.theme,
+        meta: [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.getAttribute("content")),
+        bg: getComputedStyle(document.body).backgroundColor,
+      })));
+    });
+    expect(na.thema).toBe(verwacht);
+    expect(na.meta.every((c) => c === kleur)).toBe(true);
+    expect(na.bg).not.toBe(voor.bg);
+    expect(await themaStaat(page)).toEqual(na); // blijft staan, geen terugval
+  });
+}
+
+test("licht en donker thema blijven leesbaar met Focus-lezen aan", async ({ page }) => {
+  await blokkeer(page);
+  await page.addInitScript(() => { localStorage.setItem("nieuwsinkort-thema", "light"); });
+  await page.goto("#/");
+  const focus = page.getByRole("switch", { name: "Focus-lezen" });
+  await focus.click();
+  await expect(focus).toHaveAttribute("aria-checked", "true");
+  const tekst = page.locator(".nc .bn b").first();
+  await expect(tekst).toBeVisible();
+  const licht = await tekst.evaluate((el) => getComputedStyle(el).color);
+  await page.getByRole("button", { name: "Schakel naar donkere modus" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(focus).toHaveAttribute("aria-checked", "true");
+  await expect(tekst).toBeVisible();
+  expect(await tekst.evaluate((el) => getComputedStyle(el).color)).not.toBe(licht);
+  await page.getByRole("button", { name: "Schakel naar lichte modus" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(focus).toHaveAttribute("aria-checked", "true");
+  expect(await tekst.evaluate((el) => getComputedStyle(el).color)).toBe(licht);
+});
+
 test("rubriekwissel: paneel animeert ≤ 240 ms, nooit gestapeld; briefing zonder animatie", async ({ page }) => {
   await blokkeer(page);
   await page.goto("#/");
@@ -139,3 +206,75 @@ test("reduced motion: geen lopende animaties bij rubriekwissel", async ({ page }
     expect(await traag(page)).toEqual([]);
   }
 });
+
+// Micro-interacties (#539) die in de PR zitten: tikfeedback scale(.97), transform-transitie op knoppen, zon/maan-icoon dat draait.
+// Geschrapt voor het CSS-budget (dus niet getest): richting-animatie teller, pop van de bronnen-badge, fade van de deel-toast, pop van het deel-vinkje.
+const micro = (page) => page.evaluate(() => {
+  const cs = (el) => getComputedStyle(el);
+  const knop = document.querySelector(".topbar .iconbtn:last-child");
+  const src = document.querySelector(".topbar .srcbtn");
+  const icoon = [...knop.querySelectorAll(".ti .ic")].map((i) => ({ aan: i.classList.contains("aan"), op: cs(i).opacity, tr: cs(i).transitionDuration }));
+  return {
+    knopTransitie: [cs(knop).transitionProperty, cs(knop).transitionDuration],
+    srcTransitie: [cs(src).transitionProperty, cs(src).transitionDuration],
+    icoon,
+  };
+});
+const tikStand = async (page, loc) => {
+  const b = await loc.boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  // de transform-transitie (--dur-2) loopt nog: wacht tot de eindstand
+  await expect.poll(() => loc.evaluate((el) => getComputedStyle(el).transform), { timeout: 2000 }).toMatch(/^matrix\(0\.97,/);
+  const t = await loc.evaluate((el) => getComputedStyle(el).transform);
+  await page.mouse.move(2, 2); // weg van de knop vóór loslaten: geen klik
+  await page.mouse.up();
+  return t;
+};
+
+for (const thema of ["light", "dark"]) {
+  test(`micro-interacties in ${thema} thema met Focus lezen aan`, async ({ page }) => {
+    await blokkeer(page);
+    await page.addInitScript((t) => { localStorage.setItem("nieuwsinkort-thema", t); }, thema);
+    await page.goto("#/");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", thema);
+    const focus = page.getByRole("switch", { name: "Focus-lezen" });
+    await focus.click();
+    await expect(focus).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator(".nc .bn b").first()).toBeVisible();
+    const m = await micro(page);
+    // knoppen: transform-transitie met echte duur; icoon: precies één zichtbaar (zon bij donker, maan bij licht)
+    for (const [prop, dur] of [m.knopTransitie, m.srcTransitie]) { expect(prop).toMatch(/transform|all/); expect(parseFloat(dur)).toBeGreaterThan(0); }
+    expect(m.icoon).toHaveLength(2);
+    expect(m.icoon.every((i) => parseFloat(i.tr) > 0)).toBe(true);
+    expect(m.icoon.filter((i) => i.aan)).toHaveLength(1);
+    expect(m.icoon.map((i) => i.op).sort()).toEqual(["0", "1"]);
+    // tikfeedback: scale(.97) tijdens ingedrukt
+    const stand = await tikStand(page, page.locator(".topbar .srcbtn"));
+    expect(parseFloat(stand.match(/^matrix\(([^,]+)/)?.[1])).toBeCloseTo(0.97, 2);
+    // thema-icoon draait mee en blijft leesbaar met Focus lezen aan
+    await page.locator(".topbar .iconbtn").last().click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", thema === "dark" ? "light" : "dark");
+    await expect(focus).toHaveAttribute("aria-checked", "true");
+    await expect.poll(async () => (await micro(page)).icoon.map((i) => i.op).sort().join()).toBe("0,1");
+    expect((await micro(page)).icoon.filter((i) => i.aan)).toHaveLength(1);
+  });
+
+  test(`micro-interacties uit bij reduced motion in ${thema} thema met Focus lezen aan`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await blokkeer(page);
+    await page.addInitScript((t) => { localStorage.setItem("nieuwsinkort-thema", t); }, thema);
+    await page.goto("#/");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", thema);
+    const focus = page.getByRole("switch", { name: "Focus-lezen" });
+    await focus.click();
+    await expect(focus).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator(".nc .bn b").first()).toBeVisible();
+    const m = await micro(page);
+    for (const [, dur] of [m.knopTransitie, m.srcTransitie]) expect(parseFloat(dur)).toBeLessThanOrEqual(0.00001);
+    expect(m.icoon.every((i) => parseFloat(i.tr) <= 0.00001)).toBe(true);
+    await page.locator(".topbar .iconbtn").last().click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", thema === "dark" ? "light" : "dark");
+    expect(await traag(page)).toEqual([]);
+  });
+}
