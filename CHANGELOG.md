@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Beperk ook de actieve HLS-buffer bij databesparing en zuinig netwerk (#818).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
