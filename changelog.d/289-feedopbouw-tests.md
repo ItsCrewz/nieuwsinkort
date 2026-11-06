@@ -1,0 +1,2 @@
+- Extra lokale tests voor de opbouw van Dumpert-, Instagram- en Reddit-video's (#289).
+- Test de feedfetcher met lokale antwoorden, tijd en cache, inclusief foutpaden (#289).
