@@ -152,6 +152,24 @@ try {
     await wacht();
   });
 
+  await test("de limiet geldt voor alle plannen samen, ook als een nieuw plan start terwijl eerdere taken lopen", async () => {
+    const begin = afbeeldingen.length;
+    voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK }, (_, i) => `https://samen-a.example/${i}.jpg`) });
+    voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK }, (_, i) => `https://samen-b.example/${i}.jpg`) });
+    assert.equal(afbeeldingen.length - begin, GELIJK);
+    assert.equal(vastAantal(), GELIJK);
+    afbeeldingen[begin].onload!();
+    await wacht();
+    assert.equal(afbeeldingen.length - begin, GELIJK + 1);
+    assert.equal(vastAantal(), GELIJK);
+    for (let i = begin + 1; i < afbeeldingen.length || vastAantal() > 0; i++) {
+      afbeeldingen[i].onload!();
+      await wacht();
+    }
+    assert.equal(afbeeldingen.length - begin, GELIJK * 2);
+    assert.equal(vastAantal(), 0);
+  });
+
   await test("afgeronde afbeeldingen worden losgelaten, ook bij herhaalde plannen", async () => {
     const begin = afbeeldingen.length;
     assert.equal(vastAantal(), 0);
