@@ -9,6 +9,7 @@ import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
 import { rustig, scrollGedrag } from "./beweging";
+import { maakSluiter } from "./feedsluiten";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
@@ -1283,23 +1284,12 @@ export function Feed({
   }, [pool]);
 
   // Sluiten gebeurt precies één keer (timer én animationend, dubbel tikken, herhaald Escape); timer opruimen bij verdwijnen.
-  const sluitTimer = useRef<number | null>(null);
-  const gesloten = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  const rondAf = useCallback(() => {
-    if (gesloten.current) return;
-    gesloten.current = true;
-    if (sluitTimer.current !== null) { window.clearTimeout(sluitTimer.current); sluitTimer.current = null; }
-    onCloseRef.current();
-  }, []);
-  useEffect(() => () => { if (sluitTimer.current !== null) window.clearTimeout(sluitTimer.current); }, []);
-  const close = useCallback(() => {
-    if (gesloten.current || sluitTimer.current !== null) return;
-    if (rustig()) return rondAf();
-    setClosing(true);
-    sluitTimer.current = window.setTimeout(rondAf, 220);
-  }, [rondAf]);
+  const [sluiter] = useState(() => maakSluiter({ rustig, start: () => setClosing(true), onClose: () => onCloseRef.current() }));
+  useEffect(() => sluiter.opruimen, [sluiter]);
+  const rondAf = sluiter.rondAf;
+  const close = sluiter.sluit;
 
   const metingen = useRef<SwipeMeting[]>([]);
   const lopendeMeting = useRef<SwipeMeting | null>(null);
