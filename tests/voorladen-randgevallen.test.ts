@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, POGINGEN, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -98,16 +98,16 @@ try {
     assert.equal(verzoeken.length, 1);
   });
 
-  await test("offline-fouten worden opgevangen en hooguit POGINGEN keer geprobeerd", async () => {
+  await test("offline-fouten worden opgevangen en bij elk volgend voorlaadmoment opnieuw geprobeerd", async () => {
     installeer("navigator", { onLine: false });
     const verzoeken: string[] = [];
     installeer("fetch", async (url: string) => { verzoeken.push(url); throw new Error("offline"); });
     const p = { ...leeg(), hls: ["/offline.m3u8"], mp4: "https://offline.example/a.mp4" };
-    for (let i = 0; i < POGINGEN + 2; i++) {
+    for (let i = 0; i < 3; i++) {
       voerUit(p);
       await wacht();
     }
-    assert.deepEqual(verzoeken, ["/offline.m3u8", "https://offline.example/a.mp4", "/offline.m3u8", "https://offline.example/a.mp4"]);
+    assert.deepEqual(verzoeken, ["/offline.m3u8", "https://offline.example/a.mp4", "/offline.m3u8", "https://offline.example/a.mp4", "/offline.m3u8", "https://offline.example/a.mp4"]);
   });
 
   await test("fout gevolgd door succes: opnieuw geprobeerd, daarna ontdubbeld; gelijktijdig gedeeld", async () => {

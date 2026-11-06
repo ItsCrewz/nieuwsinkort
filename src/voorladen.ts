@@ -87,13 +87,12 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
 const bezig = new Set<string>(); // lopend of in de wachtrij: gelijktijdige verzoeken voor dezelfde URL delen die ene taak
-const mislukt = new Map<string, number>(); // aantal mislukte pogingen per sleutel
-export const POGINGEN = 2; // een mislukte taak mag bij een volgend voorlaadmoment één keer opnieuw, daarna niet meer
 const vast: unknown[] = []; // voorkomt dat Image-objecten voortijdig worden opgeruimd
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
-const mag = (k: string) => !gedaan.has(k) && !bezig.has(k) && (mislukt.get(k) ?? 0) < POGINGEN;
-// Registreert pas als de taak slaagt; een fout telt als mislukte poging en geeft de sleutel vrij voor het volgende moment.
+const mag = (k: string) => !gedaan.has(k) && !bezig.has(k);
+// Registreert pas als de taak slaagt; na een fout komt de sleutel vrij en probeert het volgende voorlaadmoment het opnieuw
+// (nooit automatisch binnen dezelfde voerUit: geen retry-lus, ook niet na herstel van de verbinding).
 const taak = (k: string, f: () => Promise<unknown>) => {
   bezig.add(k);
   return async () => {
@@ -101,7 +100,7 @@ const taak = (k: string, f: () => Promise<unknown>) => {
       await f();
       gedaan.add(k);
     } catch {
-      mislukt.set(k, (mislukt.get(k) ?? 0) + 1);
+      /* mislukt: volgend voorlaadmoment opnieuw */
     } finally {
       bezig.delete(k);
     }
