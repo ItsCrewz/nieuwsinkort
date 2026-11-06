@@ -75,4 +75,32 @@ for (const [intern, verwacht] of [[true, ["back"]], [false, ["replace /?x=1#/dum
   t.taken[0].f(); s.rondAf(); t.taken[0].f();
   assert.deepEqual(log, verwacht);
 }
+// Echte bestemming: eenvoudig geschiedenismodel (stapel + positie). Dubbel sluiten mag nooit voorbij het overzicht terugvallen.
+function browser(stapel: string[], pos: number) {
+  const w = {
+    location: { pathname: "/", search: "", replace: (u: string) => { stapel[pos] = u.replace("/", ""); } },
+    history: { back: () => { if (pos > 0) pos--; } },
+  };
+  return { w, nu: () => stapel[pos], get pos() { return pos; }, get lengte() { return stapel.length; } };
+}
+{
+  // Intern geopend: ervoor "#/home", overzicht "#/dumpert", feed "#/dumpert/a".
+  const b = browser(["#/home", "#/dumpert", "#/dumpert/a"], 2);
+  const nav = maakFeedNavigatie(b.w);
+  nav.geopend(true);
+  const s = maakSluiter({ rustig: () => true, onClose: () => nav.sluit("dumpert"), start: () => {} });
+  s.sluit(); s.sluit(); s.rondAf();
+  assert.equal(b.nu(), "#/dumpert");
+}
+{
+  // Directe videolink: ervoor een externe pagina; sluiten vervangt de feed-ingang door het overzicht en blijft op de site.
+  const b = browser(["extern", "#/dumpert/a"], 1);
+  const nav = maakFeedNavigatie(b.w);
+  nav.geopend(false);
+  const s = maakSluiter({ rustig: () => true, onClose: () => nav.sluit("dumpert"), start: () => {} });
+  s.sluit(); s.sluit(); s.rondAf();
+  assert.equal(b.nu(), "#/dumpert");
+  assert.equal(b.pos, 1);
+  assert.equal(b.lengte, 2);
+}
 console.log("Feed sluiten (#648): één keer onClose, timeropruiming, reduced motion en beide sluitroutes geslaagd");
