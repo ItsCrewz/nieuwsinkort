@@ -2,11 +2,11 @@ import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
-import { ams } from "./tijd";
+import { ams, dayDates } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
+import type { Bron, Data, Item, View, Weer } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
@@ -97,26 +97,6 @@ function weatherKind(s?: string): Kind {
   return "cloud";
 }
 const KIND_CLASS: Record<Kind, string> = { sun: "ic-sun", rain: "ic-rain", partly: "ic-partly", cloud: "" };
-const WD = ["zo", "ma", "di", "wo", "do", "vr", "za"];
-const MO = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-function dayDates(dagen: WeerDag[]) {
-  // koppel "do", "vr"… aan de eerstvolgende datums (vanaf morgen)
-  const out: string[] = [];
-  const cur = new Date();
-  for (const d of dagen) {
-    const want = WD.indexOf((d.dag || "").slice(0, 2).toLowerCase());
-    if (want < 0) {
-      out.push("");
-      continue;
-    }
-    for (let k = 0; k < 8; k++) {
-      cur.setDate(cur.getDate() + 1);
-      if (cur.getDay() === want) break;
-    }
-    out.push(`${cur.getDate()} ${MO[cur.getMonth()]}`);
-  }
-  return out;
-}
 
 function WarnBanner({ text }: { text: string }) {
   const t = text.toLowerCase();
