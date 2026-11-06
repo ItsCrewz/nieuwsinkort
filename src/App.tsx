@@ -1,4 +1,5 @@
 import { Foutgrens } from "./foutgrens";
+import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
@@ -708,7 +709,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   );
 }
 
-function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function NewsFeed({ tab, items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { tab: string; items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -722,6 +723,27 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const total = sorted.length;
+  const positie = useRef<Nieuwspositie | null>(leesNieuwspositie(tab));
+  const [nieuw, setNieuw] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ids = sorted.map(itemKey);
+    const oud = positie.current;
+    if (oud) {
+      const herstel = herstelNieuwspositie(oud, ids);
+      const kaart = Array.from(el.querySelectorAll<HTMLElement>(".nc")).find((c) => c.dataset.id === herstel.id);
+      if (kaart) {
+        el.scrollTop = kaart.offsetTop + oud.offset;
+        const i = ids.indexOf(herstel.id!);
+        setIdx(i);
+        [kaart.previousElementSibling, kaart, kaart.nextElementSibling].forEach((x) => { if (x instanceof HTMLElement && x.classList.contains("nc")) x.dataset.b = "1"; });
+      } else el.scrollTop = 0;
+      positie.current = { id: herstel.id, offset: herstel.id ? oud.offset : 0, volgorde: ids, nieuw: herstel.nieuw };
+      setNieuw(herstel.nieuw.length);
+    } else positie.current = { id: null, offset: 0, volgorde: ids, nieuw: [] };
+    bewaarNieuwspositie(tab, positie.current);
+  }, [sorted, tab]);
   // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
   const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
   const mountRef = useRef(0);
@@ -740,12 +762,20 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
       let cur = -1;
       for (let k = 0; k < cards.length; k++) if (cards[k].offsetTop <= y) cur = k;
       if (cur !== idxRef.current) setIdx(cur);
+      const boven = Array.from(cards).reverse().find((c) => c.offsetTop <= el.scrollTop + 1);
+      const opTop = el.scrollTop < 60;
+      const p = positie.current;
+      if (p) {
+        positie.current = { ...p, id: boven?.dataset.id ?? null, offset: boven ? el.scrollTop - boven.offsetTop : 0, nieuw: opTop ? [] : p.nieuw };
+        if (opTop) setNieuw(0);
+        bewaarNieuwspositie(tab, positie.current);
+      }
       const max = el.scrollHeight - el.clientHeight;
       startRef.current?.classList.toggle("off", el.scrollTop > 60);
       if (railRef.current) railRef.current.style.transform = `scaleY(${max > 0 ? Math.min(1, el.scrollTop / max) : 0})`;
     };
     const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(read);
+      read();
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     read();
@@ -774,12 +804,12 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
       if (raf) cancelAnimationFrame(raf);
       io.disconnect();
     };
-  }, [sorted]);
+  }, [sorted, tab]);
 
   // Terug uit een bericht: meteen weer op die kaart.
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || !focusKey) return;
+    if (!el || !focusKey || positie.current?.id) return;
     const n = el.querySelector<HTMLElement>(`[data-id="${CSS.escape(focusKey)}"]`);
     if (!n) return;
     el.scrollTop = n.offsetTop;
@@ -840,6 +870,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
           <Footer />
         </div>
       </div>
+      {nieuw > 0 && <div className="nf-nieuw" role="status"><button type="button" onClick={() => { if (positie.current) { positie.current.nieuw = []; bewaarNieuwspositie(tab, positie.current); } setNieuw(0); go(-1); }}>{nieuw} nieuwe {nieuw === 1 ? "artikel" : "artikelen"}</button><button type="button" aria-label="Melding sluiten" onClick={() => { if (positie.current) { positie.current.nieuw = []; bewaarNieuwspositie(tab, positie.current); } setNieuw(0); }}>×</button></div>}
       {total > 0 ? (
         <>
         <FeedNavigatie verborgen={idx < 0}>
@@ -1142,7 +1173,7 @@ export default function App() {
     else if (was) {
       const n = document.querySelector<HTMLElement>(`[data-id="${CSS.escape(was)}"]`);
       if (n) {
-        n.scrollIntoView({ block: "center" });
+        if (!n.closest(".nf")) n.scrollIntoView({ block: "center" });
         // Focus terug op de link/kaart waarmee het artikel opende (toetsenbord en schermlezer)
         const f = n instanceof HTMLAnchorElement ? n : n.querySelector<HTMLElement>("a[href]") ?? n;
         if (f === n && !n.hasAttribute("tabindex")) n.tabIndex = -1;
@@ -1336,6 +1367,7 @@ export default function App() {
           <div id="rubriek-paneel" className="nf-panel" role="tabpanel">
           <Foutgrens key={view} code="CLIENT_FEED"><NewsFeed
             key={view}
+            tab={view}
             items={zoekUitkomst}
             keepOrder={flt.f.sort !== "nieuw"}
             empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
