@@ -376,3 +376,5 @@ Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="sea
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
+
+Het bronnenfilter koppelt een naamloze bron aan een catalogushost of een subdomein daarvan. Gedeelde landsuffixen zoals `co.uk` gelden niet als catalogushost; onbekende hosts behouden hun volledige hostnaam. Zo delen verschillende registratiedomeinen geen filter of telling. Er is geen online domeinopzoeking; de catalogus blijft bepalend voor herkenning van subdomeinen.
