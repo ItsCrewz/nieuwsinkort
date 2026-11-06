@@ -1,0 +1,1 @@
+- Home-gewicht: beelden van images.pubble.cloud gaan van 1920 naar 840 px breed en `width`/`w`-queryparameters boven 1200 worden 1200 (vangrail in `beeldProxyPad`, #563).
