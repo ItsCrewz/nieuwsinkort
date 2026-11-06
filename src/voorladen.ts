@@ -73,19 +73,44 @@ export function laagsteVariant(txt: string, base: string): string {
     return "";
   }
 }
-export function segmenten(txt: string, base: string, max = 2): string[] {
-  const out: string[] = [];
+export type Segment = { url: string; bereik?: { van: number; tot: number } };
+
+/** Eerste segmenten uit een mediaplaylist. Segmenten met #EXT-X-BYTERANGE krijgen hun bereik mee (zonder @offset: aansluitend
+ *  op het vorige bereik van dezelfde URL); een kapot bereik slaat dat segment over, het hele bestand halen we nooit op. */
+export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
+  const out: Segment[] = [];
+  const einde = new Map<string, number>(); // volgende offset per URL
+  let br: string | null = null;
   for (const l of txt.split("\n").map((x) => x.trim())) {
-    if (!l || l.startsWith("#")) continue;
+    if (!l) continue;
+    if (l.startsWith("#")) {
+      const m = /^#EXT-X-BYTERANGE:(.*)$/.exec(l);
+      if (m) br = m[1].trim();
+      continue;
+    }
+    const bereik = br;
+    br = null;
+    let url = "";
     try {
-      out.push(new URL(l, base).href);
+      url = new URL(l, base).href;
     } catch {
-      /* sla over */
+      continue;
+    }
+    if (bereik === null) out.push({ url });
+    else {
+      const m = /^(\d+)(?:@(\d+))?$/.exec(bereik);
+      const len = m ? +m[1] : 0;
+      const van = m ? (m[2] !== undefined ? +m[2] : einde.get(url)) : undefined;
+      if (m && len > 0 && van !== undefined && Number.isSafeInteger(van + len)) {
+        einde.set(url, van + len);
+        out.push({ url, bereik: { van, tot: van + len - 1 } });
+      } else einde.delete(url); // onbekende positie: volgende zonder @ ook overslaan
     }
     if (out.length >= max) break;
   }
   return out;
 }
+export const segmenten = (txt: string, base: string, max = 2): string[] => segmentenBereik(txt, base, max).map((s) => s.url);
 
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
@@ -103,7 +128,23 @@ async function warmHls(master: string) {
     b = laagsteVariant(txt, base);
     txt = b ? await get(b) : "";
   }
-  for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => r.arrayBuffer());
+  for (const s of segmentenBereik(txt, b)) {
+    if (!s.bereik) await fetch(s.url, LOW).then((r) => r.arrayBuffer());
+    else await warmBereik(s.url, s.bereik.van, s.bereik.tot);
+  }
+}
+
+// Bytebereik-segment: alleen dat bereik. Antwoordt de server met 200 (Range genegeerd = heel bestand), dan stoppen we meteen.
+async function warmBereik(url: string, van: number, tot: number) {
+  const r = await fetch(url, { ...LOW, headers: { Range: `bytes=${van}-${tot}` } });
+  const rd = r.status === 206 ? r.body?.getReader() : undefined;
+  if (!rd) return void r.body?.cancel?.().catch(() => {});
+  for (let got = 0, max = tot - van + 1; got < max; ) {
+    const { done, value } = await rd.read();
+    if (done) return;
+    got += value.length;
+  }
+  rd.cancel().catch(() => {});
 }
 
 async function warmMp4(src: string) {
