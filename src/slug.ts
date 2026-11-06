@@ -32,12 +32,18 @@ function titelSlug(titel: string): string {
   );
 }
 
-// FNV-1a over href zonder fragment, 32 bit, base36.
+// cyrb53 over href zonder fragment, 53 bit, base36: 32 bit botste al bij een paar duizend links.
 function hrefHash(href: string): string {
-  let h = 0x811c9dc5;
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
   const t = href.split("#")[0];
-  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
-  return h.toString(36);
+  for (let i = 0; i < t.length; i++) {
+    const c = t.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
 // Oude sleutel (alleen titel) voor oude hashroutes; alleen veilig als precies één video in de lijst hem draagt.

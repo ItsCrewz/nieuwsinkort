@@ -57,7 +57,7 @@ Kopkaart (#150): `.nc-head` is alleen op Home schermvullend. Tabs krijgen de kla
 
 De feednavigatie is met `inert` niet focusbaar zolang zij verborgen is; de startknop blijft daarbuiten bereikbaar. Bij zichtbare navigatie werkt Tab weer normaal (#275).
 
-Video-sleutel (#687): `videoSlug` gebruikt het platform-id (`yt-`, `d-`, `x-`, `r-`, `ig-`); anders `v-<hash van href>` (titel telt niet mee). Oude titel-only routes lossen via `vindSlug` alleen op bij precies één treffer; oude samenvattingscache onder titel-only sleutels wordt niet hergebruikt.
+Video-sleutel (#687): `videoSlug` gebruikt het platform-id (`yt-`, `d-`, `x-`, `r-`, `ig-`); anders `v-<53-bits hash van href>` (titel telt niet mee). Oude titel-only routes lossen via `vindSlug` alleen op bij precies één treffer (bij een dubbelzinnige route kiest `herstelFeed` geen willekeurige video); oude samenvattingscache onder titel-only sleutels wordt niet hergebruikt.
 
 `src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug.
 
