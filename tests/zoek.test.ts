@@ -20,4 +20,12 @@ assert.deepEqual(zoekItems([katten], "kat asiel"), [katten]);
 assert.deepEqual(zoekItems([katten], "kat debat"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 100 van 2026" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "00"), []);
+// De klinkertekens onderscheiden woorden en blijven bij canonieke normalisatie behouden.
+for (const [eerste, tweede] of [["कल", "काल"], ["عَلَم", "عِلْم"]]) {
+  const artikelen = [eerste, tweede].map((kop) => ({ cat: "nl", kop } as Item));
+  assert.notEqual(normaliseer(eerste), normaliseer(tweede));
+  assert.deepEqual(zoekItems(artikelen, eerste), [artikelen[0]]);
+  assert.deepEqual(zoekItems(artikelen, tweede), [artikelen[1]]);
+}
+assert.equal(normaliseer("José"), normaliseer("Jose\u0301"));
 console.log("zoek: tests geslaagd");

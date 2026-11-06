@@ -2,7 +2,7 @@ import { CAT_LABEL } from "./tabs";
 import type { Item } from "./types";
 
 export function normaliseer(tekst: string): string {
-  return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim();
 }
 
 export function zoekItems(items: Item[], query: string): Item[] {
