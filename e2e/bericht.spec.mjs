@@ -85,11 +85,11 @@ test.describe("iPhone-emulatie", () => {
     await page.getByRole("button", { name: "Terug naar het nieuws" }).click();
     await expect(page.locator("article.detail")).toHaveCount(0);
     await expect(page).toHaveURL(/\/#\/$/);
-    await expect(page).toHaveTitle("Nieuws in het kort");
+    await expect(page).toHaveTitle("Nieuwsinkort - Het nieuws van vandaag samengevat");
     await page.evaluate(() => { window.location.hash = "#/tech"; });
     await expect(page).toHaveTitle("Tech · Nieuws in het kort");
     await page.evaluate(() => { window.location.hash = "#/bericht/onbekend"; });
-    await expect(page).toHaveTitle("Nieuws in het kort");
+    await expect(page).toHaveTitle("Nieuwsinkort - Het nieuws van vandaag samengevat");
     await expect(page.locator(".nc-title a, .lead").first()).toBeVisible();
   });
 
