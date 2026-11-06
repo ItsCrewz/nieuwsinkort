@@ -49,3 +49,26 @@ try {
   Object.assign(globalThis, { sessionStorage: oorspronkelijkeOpslag, history: oorspronkelijkeGeschiedenis });
 }
 console.log("feedstatus-randgevallen: geslaagd");
+
+// Wissen haalt de status uit beide opslagplaatsen en laat andere geschiedenisvelden staan (#802).
+{
+  const g = new Map<string, string>();
+  const staat = { sessionStorage: { getItem: (k: string) => g.get(k) ?? null, setItem: (k: string, v: string) => g.set(k, v), removeItem: (k: string) => g.delete(k) }, history: { state: { ander: 1 } as unknown, replaceState(s: unknown) { this.state = s; } } };
+  Object.assign(globalThis, staat);
+  bewaarFeed(status);
+  wisFeed();
+  assert.equal(leesFeed(), null);
+  assert.deepEqual(history.state, { ander: 1 });
+  // geblokkeerde sessionStorage: geschiedenis wordt toch gewist
+  bewaarFeed(status);
+  Object.assign(globalThis, { sessionStorage: { getItem() { throw new Error("uit"); }, setItem() { throw new Error("uit"); }, removeItem() { throw new Error("uit"); } } });
+  wisFeed();
+  assert.equal((history.state as any).feed, undefined);
+  assert.equal((history.state as any).ander, 1);
+  // geschiedenis geblokkeerd: sessionStorage wordt toch gewist
+  Object.assign(globalThis, { sessionStorage: staat.sessionStorage, history: { state: { feed: status }, replaceState() { throw new Error("uit"); } } });
+  g.set("nieuwsinkort-feedstatus", JSON.stringify(status));
+  wisFeed();
+  assert.equal(g.has("nieuwsinkort-feedstatus"), false);
+}
+console.log("feedstatus-wissen: geslaagd");
