@@ -113,5 +113,6 @@ try {
   for (const i of echt2) assert.match(artikelId(i), /^[0-9a-z]{8}$/);
   // ruw → som: de som houdt de id van het anker, dus dezelfde pagina (geen botsing met andere items)
   const anker = "https://nos.nl/anker";
-  assert.equal(artikelId({ id: linkId(anker), kop: "Ruwe kop" }), artikelId({ id: linkId(anker), kop: "Nette AI-kop" }));
+  const ruw = { id: linkId(anker), kop: "Ruwe kop" }, som = { id: linkId(anker), kop: "Nette AI-kop" };
+  assert.equal(artikelId(ruw), artikelId(som));
 } finally { Date.now = echteNu; }

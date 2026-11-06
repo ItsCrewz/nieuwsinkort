@@ -1,17 +1,20 @@
 # Pipeline-scripts (Dagelijks Nieuws)
 
 Deze scripts stonden oorspronkelijk in `/workspace/nieuws` op de box en werden gedraaid door de
-Grok Bot-routine "Dagelijks Nieuws". Hier staan ze als kopie, ongewijzigd.
+Grok Bot-routine "Dagelijks Nieuws". Hier staan ze als kopie; lokaal onderhoud staat hieronder vermeld.
 
 | Bestand | Wat het doet |
 | --- | --- |
 | `filmpjes.py` | Kandidaten voor de tabbladen "Filmpjes" (nieuwsfilmpjes) en "Dumpert"; geeft JSON met `filmpjes`, `dumpert` en `status`. Opties: `--dumpert`, `--filmpjes`, `--uren N`. |
+| `ontdubbel.py` | Ontdubbelt filmpjes op video, URL en titel; de vaste invoer en uitvoer staan in `tests/fixtures/ontdubbel/`. Fouten bij URL-verwerking worden op stderr gemeld. |
 | `weer.py` | Haalt het weer voor Haarlem op (oude pipeline; het live weer is sinds #37 landelijk en komt uit `worker/src/weer.ts`) (Buienradar, KNMI, Open-Meteo als terugval) en print het WEER-object als JSON. `--raw` voegt de volledige KNMI-tekst toe. |
 | `yt_transcript.py` | `yt_transcript.py <video_id> [...]`: schone NL-transcriptie van een YouTube-video via Invidious (met terugvalopties). |
 | `gemeenteraad_ori.py` | Recente gemeenteraad-/collegevergaderingen via Open Raadsinformatie (Elastic). Opties: `--gemeente`, `--max`, `--type`. |
 | `officiele_bekendmakingen.py` | Recente officiële bekendmakingen via repository.overheid.nl (SRU), standaard gefilterd op nieuwswaardige types. Opties: `--gemeente`, `--max`, `--all`. |
 | `feeds.json` | Lijst van bronnen/feeds. |
 | `feeds_detail.json` | Extra detailgegevens per feed. |
+
+De filmpjespipeline meldt ook fouten bij het lezen van politieke feeds en Instagram-berichten op stderr.
 
 ## Koppeling met de rest van de repo
 
