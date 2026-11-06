@@ -16,7 +16,7 @@ Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages
 
 Onbekende paden geven op Cloudflare Pages een 404 met `public/404.html`; de app gebruikt hash-routes en deeplinks blijven onder `/`. Controleer een Pages-preview of productie met `node scripts/check-status.mjs <basis-url>`. De controle gebruikt veilige foutverzoeken voor Functions en start geen AI.
 
-Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home.
+Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home. Een hash met ongeldige percent-codering valt terug op Home.
 
 Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen.
 Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
@@ -145,3 +145,5 @@ Focus lezen (#383): `src/focuslezen.ts` — standaard uit; alleen een expliciete
 Bij het afdrukken van een bericht verdwijnen navigatie, bediening en media. De tekst is zwart op wit en bij bronlinks staat de URL.
 
 Zoeken filtert lokaal op alle zoekwoorden, ongeacht hoofdletters en accenten. Overeenkomsten in titel en samenvatting worden gemarkeerd; bij geen resultaten wist de knop de zoekopdracht en brengt de focus terug naar het zoekveld.
+
+Na een deploy kan de orchestrator `npm run rooktest:live` uitvoeren (of `npm run rooktest:live -- https://voorbeeld.nl` voor een andere basis-URL). De rooktest controleert de kernpagina's, minstens 20 feeditems, minstens 10 koppen en een berichtpagina; elk verzoek heeft een timeout van 10 seconden. De test wordt niet automatisch bij deploy uitgevoerd en start geen AI.

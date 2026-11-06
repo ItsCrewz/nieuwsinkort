@@ -15,6 +15,9 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
 }
 const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
 assert.match(geslotenBalk, /aria-expanded="false"/);
+assert.match(geslotenBalk, /aria-label="Zoeken"/);
+assert.match(geslotenBalk, /<button type="button" class="zoek-knop"[^>]*><svg[^>]*><use href="#i-search"><\/use><\/svg><\/button>/);
+assert.ok(!/>Zoek</.test(geslotenBalk));
 let gesloten = false;
 const formulier = ZoekFormulier({ query: "tekst", onChange: () => {}, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
 const invoer = formulier.props.children[0];
