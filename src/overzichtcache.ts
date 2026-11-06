@@ -15,9 +15,19 @@ export function volgendeGrens(nu: number, gegenereerd?: string): number {
   }
   return Math.min(...grenzen.filter((g) => g > nu));
 }
-/** Levensduur in hele seconden: maximaal 5 minuten, en nooit voorbij de volgende grens. */
+/** Levensduur in hele seconden: maximaal 5 minuten, en nooit voorbij de volgende grens (0 als er minder dan 1 s rest). */
 export function overzichtTtl(nu: number, gegenereerd?: string): number {
-  return Math.max(1, Math.min(OVERZICHT_TTL, Math.floor((volgendeGrens(nu, gegenereerd) - nu) / 1000)));
+  return Math.max(0, Math.min(OVERZICHT_TTL, Math.floor((volgendeGrens(nu, gegenereerd) - nu) / 1000)));
+}
+/** Cache-Control + eigen verlooptijd, of null (= niet cachen) als de grens al voorbij is of binnen 1 s komt.
+ *  `start` = tijd vóór het ophalen van de dataset: loopt een grens tijdens het ophalen voorbij, dan is de inhoud oud.
+ *  swr (alleen `metSwr`) wordt zo begrensd dat max-age + swr nooit voorbij de grens komt. */
+export function overzichtBeleid(start: number, nu: number, gegenereerd?: string, metSwr = false): { cc: string; tot: string } | null {
+  if (volgendeGrens(start, gegenereerd) <= nu) return null;
+  const ttl = overzichtTtl(nu, gegenereerd);
+  if (ttl < 1) return null;
+  const swr = metSwr ? Math.min(600, Math.floor((volgendeGrens(nu, gegenereerd) - nu) / 1000) - ttl) : 0;
+  return { cc: `public, max-age=${ttl}${swr > 0 ? `, stale-while-revalidate=${swr}` : ""}`, tot: String(nu + ttl * 1000) };
 }
 /** Eigen verlooptijd in de cache-entry, zodat ook een cache zonder eigen expiry (of een mock) geen oud antwoord geeft. */
 export const GELDIG_TOT = "X-Geldig-Tot";

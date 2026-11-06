@@ -1,1 +1,2 @@
 - Gecachte overzichten `/vandaag` en `/sitemap-nieuws.xml` verlopen uiterlijk bij de volgende Amsterdamse middernacht of 06:00-grens (ook op DST-wisseldagen); na een grens wordt geen oude cache-entry meer gebruikt (#679).
+- Ook `stale-while-revalidate` van `/vandaag` blijft binnen de grens, een antwoord dat tijdens het ophalen over een grens loopt of binnen 1 s ervoor valt wordt niet gecachet (`no-store`) (#679).

@@ -59,6 +59,24 @@ try {
       r = await vraag(fn, pad, maak(dagGen, reads)); await Promise.all(pending.splice(0));
       assert.ok(reads.n > leesVoor, `${naam} ${direct}: oude entry niet gebruikt`); assert.equal(puts, 2);
     }
+    // swr mag de grens niet overschrijden: 5 min + 1 s voor middernacht → max-age + swr ≤ rest
+    opslag.clear(); Date.now = () => t("2026-11-04T22:54:59Z");
+    let sw = await vraag(fn, pad, maak("2026-11-04T22:00:00Z")); await Promise.all(pending.splice(0));
+    const cc = sw.headers.get("cache-control")!, swr = Number(/stale-while-revalidate=(\d+)/.exec(cc)?.[1] ?? 0);
+    assert.ok(maxAge(sw) + swr <= 301, `${naam}: max-age+swr voorbij grens (${cc})`);
+    // sub-seconde voor de grens: niet cachen
+    opslag.clear(); puts = 0; Date.now = () => t("2026-11-04T22:59:59.500Z");
+    sw = await vraag(fn, pad, maak("2026-11-04T22:00:00Z")); await Promise.all(pending.splice(0));
+    assert.equal(sw.headers.get("cache-control"), "no-store"); assert.equal(puts, 0);
+    // klok springt tijdens het ophalen over de grens (middernacht en 06:00): niet cachen
+    for (const [voor, na, gen] of [["2026-11-04T22:59:00Z", "2026-11-04T23:00:05Z", "2026-11-04T22:00:00Z"], ["2026-11-05T04:59:00Z", "2026-11-05T05:00:05Z", "2026-11-04T22:00:00Z"]]) {
+      opslag.clear(); puts = 0;
+      Date.now = () => t(voor);
+      // dataset via de statische terugval (de vooraf-sleutel is na de dagwissel niet meer van "vandaag")
+      const env = { NIEUWS: { get: async () => null }, ASSETS: { fetch: async () => { Date.now = () => t(na); return Response.json({ gegenereerd: gen, items: [{ ...item, t: t(gen) }] }); } } }; // klok springt tijdens het ophalen
+      const sw2 = await vraag(fn, pad, env); await Promise.all(pending.splice(0));
+      assert.equal(sw2.headers.get("cache-control"), "no-store", `${naam} ${voor}`); assert.equal(puts, 0);
+    }
     // midden op de dag: 300 s en behoud van caching
     opslag.clear(); Date.now = () => t("2026-11-04T12:00:00Z");
     const r = await vraag(fn, pad, maak("2026-11-04T10:00:00Z")); await Promise.all(pending.splice(0));
