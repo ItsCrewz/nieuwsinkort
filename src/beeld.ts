@@ -21,8 +21,11 @@ export function goedBeeld(u?: string | null): u is string {
   return !SKIP.test(u) && !tooSmall(u);
 }
 
-/** Mapsegment dat alleen een maat/transformatie is ('1200x675', 'w800', 's640-c', 'w_800,h_450,c_fill', 'large'): hoort niet bij de identiteit. */
-const MAATMAP = /^(\d{2,4}x\d{2,4}[a-z]?|w\d{2,4}|h\d{2,4}|s\d{2,4}(-c)?|(?:[a-z]{1,3}_[^/,]+,?)+|thumbs?|thumbnails?|large|medium|small|full|orig|original|scaled|resized?|crop(ped)?)$/i;
+/** Mapsegment dat alleen een maat/transformatie is ('1200x675', 'w800', '640', 's640-c', 'w_800,h_450,c_fill', 'large'): hoort niet bij de identiteit.
+ *  Cloudinary-tokens zijn per komma gescheiden en bevatten zelf geen komma, dus de regex is eenduidig (geen backtracking-explosie);
+ *  'id_123' is bewust géén maat. Getal-mappen alleen bij gangbare breedtes, zodat jaartallen en artikel-id's blijven tellen. */
+const CLD = "(?:w|h|c|q|f|g|ar|dpr|e)_[^/,]+";
+const MAATMAP = new RegExp(`^(\\d{2,4}x\\d{2,4}[a-z]?|w\\d{2,4}|h\\d{2,4}|s\\d{2,4}(-c)?|${CLD}(?:,${CLD})*|(?:100|150|200|240|300|320|400|480|500|600|640|720|768|800|960|1024|1080|1200|1280|1440|1600|1920|2048)|[wh]|q\\d{2,3}|thumbs?|thumbnails?|large|medium|small|full|orig|original|scaled|resize|resized|crop(ped)?)$`);
 
 /** Sleutel voor 'zelfde foto': host-familie + inhoudspad + bestandsnaam zonder maat/kwaliteit/extensie. */
 export function beeldKey(u: string): string {
@@ -39,7 +42,7 @@ export function beeldKey(u: string): string {
   // maatmappen ('/1200x675/abc.jpg', '/w_800,h_450,c_fill/abc.jpg') negeren; de overige map telt mee,
   // zodat dezelfde bestandsnaam in een andere artikelmap een andere foto blijft
   segs.length = 0;
-  for (const m of alle) if (!MAATMAP.test(m)) segs.push(m);
+  for (const m of alle) if (!MAATMAP.test(m.toLowerCase())) segs.push(m.toLowerCase());
   file = file
     .replace(/\.(jpe?g|png|webp|avif)$/i, "")
     .replace(/[@_-]\d{2,4}x\d{0,4}$/, "").replace(/[@_-]\d{2,4}w$/, "").replace(/@\dx$/, "")

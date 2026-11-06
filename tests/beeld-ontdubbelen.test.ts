@@ -60,4 +60,28 @@ t("zelfde bestandsnaam in andere artikelmap blijft behouden (#649)", () => {
   assert.notEqual(beeldKey("https://cdn.nos.nl/image/2026-10-28/1234/1200x675a.jpg"), beeldKey("https://cdn.nos.nl/image/2026-10-28/5678/1200x675a.jpg"));
 });
 
+t("maatmappen: ruime herkenning, maar geen echte mappen (#649)", () => {
+  const k = (u: string) => beeldKey(u);
+  // id_123 is geen transformatie
+  assert.notEqual(k("https://cdn.voorbeeld.nl/media/id_123/foto.jpg"), k("https://cdn.voorbeeld.nl/media/id_456/foto.jpg"));
+  assert.notEqual(k("https://cdn.voorbeeld.nl/media/img_55/foto.jpg"), k("https://cdn.voorbeeld.nl/media/wp_x/foto.jpg"));
+  // numerieke en overige maatmappen blijven samengevoegd
+  assert.equal(k("https://cdn.voorbeeld.nl/a/640/foto.jpg"), k("https://cdn.voorbeeld.nl/a/1280/foto.jpg"));
+  assert.equal(k("https://cdn.voorbeeld.nl/a/w/800/foto.jpg"), k("https://cdn.voorbeeld.nl/a/w/400/foto.jpg"));
+  assert.equal(k("https://cdn.voorbeeld.nl/a/resize/q80/foto.jpg"), k("https://cdn.voorbeeld.nl/a/foto.jpg"));
+  assert.equal(k("https://cdn.voorbeeld.nl/a/s640-c/foto.jpg"), k("https://cdn.voorbeeld.nl/a/thumb/foto.jpg"));
+  assert.equal(k("https://cdn.voorbeeld.nl/a/large/foto.jpg"), k("https://cdn.voorbeeld.nl/a/medium/foto.jpg"));
+  // jaar-/maandmappen en hoofdletters
+  assert.notEqual(k("https://x.nl/uploads/2026/10/foto.jpg"), k("https://x.nl/uploads/2025/10/foto.jpg"));
+  assert.equal(k("https://x.nl/Artikel-A/foto.jpg"), k("https://x.nl/artikel-a/foto.jpg"));
+  // generieke bestandsnamen in verschillende mappen
+  assert.notEqual(k("https://x.nl/a/image.jpg"), k("https://x.nl/b/image.jpg"));
+  assert.notEqual(k("https://x.nl/a/1.jpg"), k("https://x.nl/b/1.jpg"));
+  // proxy en wp.com
+  assert.equal(k("https://proxy.nl/img?url=" + encodeURIComponent("https://x.nl/a/640/foto.jpg")), k("https://x.nl/a/foto.jpg"));
+  assert.equal(k("https://i1.wp.com/x.nl/wp-content/uploads/2026/10/foto.jpg?w=300"), k("https://x.nl/wp-content/uploads/2026/10/foto-300x200.jpg"));
+  // geen backtracking-explosie
+  const t0 = Date.now(); k("https://x.nl/" + "a_".repeat(40) + ",,/foto.jpg"); assert.ok(Date.now() - t0 < 200);
+});
+
 console.log(`\n${n} tests geslaagd`);
