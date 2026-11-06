@@ -1,0 +1,1 @@
+- De lokale controle controleert ook de TypeScript-types van tests (#269).
