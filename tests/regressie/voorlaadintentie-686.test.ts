@@ -1,6 +1,7 @@
 // useVoorladen: aan/uit-voorwaarden van de hook, zonder DOM-bibliotheek: React-dispatcher en browserglobals zijn kleine doubles.
 import assert from "node:assert/strict";
-import type { Video } from "../src/types";
+import type { Video } from "../../src/types";
+import fixture from "./fixtures/voorlaadintentie-686.json";
 
 const wacht = (ms = 20) => new Promise((ok) => setTimeout(ok, ms));
 const tests: [string, () => Promise<void>][] = [];
@@ -39,7 +40,7 @@ g.Image = class {
 g.fetch = async (u: string) => (fetches.push(String(u)), new Response("", { status: 404 }));
 
 // dynamisch: video.tsx leest window bij het laden, dus pas importeren na het opzetten van de globals
-const { useVoorladen } = await import("../src/usevoorladen");
+const { useVoorladen } = await import("../../src/usevoorladen");
 const React: any = (await import("react")).default;
 
 // --- minimale hook-runner (React 18-dispatcher met alleen useRef en useEffect) ---
@@ -61,6 +62,8 @@ function maakHook() {
           wacht.push(() => { if (typeof prev.weg === "function") prev.weg(); prev.deps = deps; prev.weg = f(); });
         },
       };
+      // De testdispatcher bootst React na zonder component.
+      // eslint-disable-next-line react-hooks/rules-of-hooks
       try { useVoorladen(...a); } finally { intern.current = null; }
       wacht.forEach((f) => f());
     },
@@ -267,6 +270,33 @@ t("intentie op een video-route start niets; unmount ruimt listeners op", async (
   assert.equal(fetches.length, 0);
   h.unmount();
   assert.equal((abonnees.pointerdown || []).length, 0);
+});
+
+t("overgeslagen intentie op videoroute blijft mogelijk na terugkeer en bij nieuwe data", async () => {
+  reset();
+  const h = maakHook();
+  const l = { filmpjes: [], dumpert: [fixture] };
+  h.render(l, "2026-03-01T10:00", true);
+  intentie("focusin");
+  intentie("mouseover");
+  await wacht();
+  assert.equal(fetches.length, 0);
+  assert.equal((abonnees.mouseover || []).length, 1, "listeners blijven beschikbaar");
+  h.render(l, "2026-03-01T10:00", false);
+  intentie("mouseover");
+  await wacht();
+  assert.ok(fetches.some(alsVideo));
+  const n = fetches.length;
+  intentie("focusin");
+  await wacht();
+  assert.equal(fetches.length, n);
+  assert.equal((abonnees.mouseover || []).length, 0);
+  h.render(lijsten("reg686nieuw"), "2026-03-01T11:00", false);
+  intentie("focusin");
+  await wacht();
+  assert.ok(fetches.some((u) => u.includes("reg686nieuw")));
+  h.unmount();
+  assert.equal((abonnees.focusin || []).length, 0);
 });
 
 for (const [naam, f] of tests) {
