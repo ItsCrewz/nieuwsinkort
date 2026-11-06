@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Herstel de videopositie via de geschiedenis als sessieopslag niet beschikbaar is of ongeldige gegevens bevat (#732).
+- Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
