@@ -1,4 +1,5 @@
 // Extra tekst per bericht (/meer), apart zodat de lijst kan voorladen zonder het detailscherm (eigen chunk) te laden.
+import { useEffect, useState } from "react";
 import type { Item, Meer } from "./types";
 import { verzamelUrl } from "./puntenrelevantie";
 
@@ -35,4 +36,16 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
     meerCache.set(k, p);
   }
   return p;
+}
+
+export function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
+  const [st, setSt] = useState<MeerState>({ meer: null, laden: !!item.meer });
+  useEffect(() => {
+    let weg = false;
+    if (!item.meer) { setSt({ meer: null, laden: false }); return; }
+    setSt({ k: item.meer, meer: null, laden: true });
+    prefetchMeer(item).then((m) => { if (!weg) setSt({ k: item.meer, meer: m, laden: false }); });
+    return () => { weg = true; };
+  }, [item]);
+  return meerVoor(st, item.meer);
 }
