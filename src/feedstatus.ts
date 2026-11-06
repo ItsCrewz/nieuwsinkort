@@ -13,6 +13,16 @@ export function herstelFeed(status: FeedStatus | null, cat: FeedStatus["cat"], s
   const gekozen = gevonden || bron[Math.min(Math.max(oud, 0), bron.length - 1)];
   return { lijst: bron, slug: gekozen ? videoSlug(gekozen) : slug };
 }
+// Vastgezette feedlijst bijwerken met de actuele lijst: volgorde blijft stabiel tijdens swipen, maar
+// verdwenen items (ververst, bron uit) gaan eruit en de rest krijgt verse gegevens. Zelfde array als er niets wijzigt.
+export function vastLijst(vast: Video[] | null, status: FeedStatus | null, cat: FeedStatus["cat"], slug: string, lijst: Video[]): Video[] | null {
+  if (!lijst.length) return null;
+  if (!vast) return herstelFeed(status, cat, slug, lijst).lijst;
+  const actueel = new Map(lijst.map((v) => [videoSlug(v), v]));
+  const bij = vast.flatMap((v) => actueel.get(videoSlug(v)) ?? []);
+  if (!bij.length) return herstelFeed(status, cat, slug, lijst).lijst;
+  return bij.length === vast.length && bij.every((v, i) => v === vast[i]) ? vast : bij;
+}
 export function leesFeed(): FeedStatus | null {
   try {
     const s = JSON.parse(sessionStorage.getItem(KEY) || "null") || history.state?.feed;

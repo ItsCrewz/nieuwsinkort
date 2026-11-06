@@ -7,7 +7,7 @@ import { videoSlug } from "./slug";
 import { groepeer, heeftGroepen } from "./filmgroep";
 import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort";
 import { veiligeUrl } from "./url";
-import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
+import { bewaarFeed, herstelFeed, vastLijst, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
 import { ytOndertitelsBijBericht } from "./ytstart";
 
@@ -104,7 +104,7 @@ export function VideoGrid({
   const opgeslagen = useRef(leesFeed());
   const vast = useRef<Video[] | null>(null);
   if (!video) vast.current = null;
-  else if (!vast.current && list.length) vast.current = herstelFeed(opgeslagen.current, cat, video, list).lijst; // pas vastzetten bij actuele items
+  else vast.current = vastLijst(vast.current, opgeslagen.current, cat, video, list);
   const feedVideos = vast.current ?? list;
   const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
   useEffect(() => {

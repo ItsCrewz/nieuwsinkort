@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { bewaarFeed, leesFeed, herstelFeed, wisFeed, type FeedStatus } from "../src/feedstatus";
+import { bewaarFeed, leesFeed, herstelFeed, vastLijst, wisFeed, type FeedStatus } from "../src/feedstatus";
 import { videoSlug } from "../src/slug";
 import type { Video } from "../src/types";
 const opslag = new Map<string, string>();
@@ -52,4 +52,12 @@ try {
 } finally {
   Object.assign(globalThis, { sessionStorage: oorspronkelijkeOpslag, history: oorspronkelijkeGeschiedenis });
 }
+// Overgang in VideoGrid: vastgezette lijst volgt de actuele data (verversen, bron uitschakelen).
+const vast = vastLijst(null, status, "dumpert", status.slug, lijst)!;
+assert.equal(vastLijst(vast, status, "dumpert", status.slug, lijst), vast); // ongewijzigd: zelfde array
+assert.deepEqual(vastLijst(vast, status, "dumpert", status.slug, [lijst[2], lijst[0]]), [lijst[0], lijst[2]]); // uitgesloten item weg, volgorde stabiel
+const vers = { ...lijst[0], populariteit: "9" } as Video;
+assert.equal(vastLijst(vast, status, "dumpert", status.slug, lijst.map((v) => (v === lijst[0] ? vers : v)))![0], vers); // verse gegevens
+assert.equal(vastLijst(vast, status, "dumpert", status.slug, []), null); // definitief leeg: niets vasthouden
+assert.deepEqual(vastLijst(vast, status, "dumpert", status.slug, [video("nieuw")]).map(videoSlug), [videoSlug(video("nieuw"))]); // niets meer gemeen: nieuwe lijst
 console.log("feedstatus-randgevallen: geslaagd");
