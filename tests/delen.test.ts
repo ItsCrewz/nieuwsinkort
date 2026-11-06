@@ -9,3 +9,13 @@ assert.equal(await deel({ share: async () => { throw new DOMException("", "Abort
 assert.equal(await deel({ share: async () => { throw Error(); }, clipboard: { writeText: async (s) => { gekopieerd = s; } } }, "Titel", url), "gekopieerd");
 assert.equal(gekopieerd, url);
 assert.equal(await deel({ clipboard: { writeText: async () => { throw Error(); } } }, "Titel", url), "handmatig");
+// #702: zonder eigen link: homepage, geen berichtkop in het deelvenster en overal een zichtbare uitleg.
+import { GEEN_LINK, deelMelding, deelTitel } from "../src/delen";
+const kaal = { kop: "Bronloos" }, kaalUrl = artikelUrl(kaal, "2026-11-04");
+assert.equal(kaalUrl, "https://nieuwsinkort.nl/");
+let titel: string | undefined;
+assert.equal(await deel({ share: async (d) => { titel = d.title; } }, deelTitel(kaal.kop, false), kaalUrl), "gedeeld");
+assert.equal(titel, "Nieuws in het kort");
+assert.equal(deelTitel("Kop", true), "Kop");
+for (const st of ["gedeeld", "gekopieerd", "handmatig"]) assert.ok(deelMelding(st, false).includes(GEEN_LINK), st);
+assert.equal(deelMelding("gekopieerd", true), "Link gekopieerd"); assert.equal(deelMelding("gedeeld", true), ""); assert.equal(deelMelding("geannuleerd", false), "");

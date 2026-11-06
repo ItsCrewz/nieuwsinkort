@@ -14,7 +14,6 @@ const b1 = { kop: "Eerste", cat: "nl", t: 1762300000000 }, b2 = { kop: "Tweede",
 assert.equal(artikelId(b1), ""); assert.equal(artikelId({ ...b2, bronnen: [{ href: "" }] }), "");
 assert.equal(artikelPad(b1, "2026-11-04"), ""); assert.equal(artikelPad(b2, "2026-11-04"), "");
 assert.equal(artikelPad(goed, "2026-11-04"), "/bericht/2026-11-04/abcd1234-goed");
-assert.equal(artikelPad({ id: linkId(""), kop: "x" }, "2026-11-04"), "");
 assert.equal(artikelUrl(b1, "2026-11-04"), "https://nieuwsinkort.nl/");
 assert.equal(artikelUrl(goed, "2026-11-04"), "https://nieuwsinkort.nl/bericht/2026-11-04/abcd1234-goed");
 const xml = nieuwsSitemap([b1, b2, goed], "2026-11-04");
@@ -22,3 +21,7 @@ assert.equal((xml.match(/<url>/g) || []).length, 1); assert.ok(xml.includes("abc
 const html = vandaagHtml([b1, b2, goed], "2026-11-04");
 assert.ok(html.includes("<li>Eerste</li>") && html.includes("<li>Tweede</li>") && html.includes('href="/bericht/2026-11-04/abcd1234-goed"'));
 assert.equal((html.match(/href="\/bericht\//g) || []).length, 1);
+// Een expliciete id die gelijk is aan de hash van een lege tekst blijft een geldig artikel (sitemap en link).
+const leeg = linkId("");
+assert.equal(artikelPad({ id: leeg, kop: "x" }, "2026-11-04"), `/bericht/2026-11-04/${leeg}-x`);
+assert.ok(nieuwsSitemap([{ id: leeg, kop: "x", cat: "nl", t: 1762300000000 }], "2026-11-04").includes(leeg));

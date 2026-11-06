@@ -114,4 +114,11 @@ try {
   // ruw → som: de som houdt de id van het anker, dus dezelfde pagina (geen botsing met andere items)
   const anker = "https://nos.nl/anker";
   assert.equal(artikelId({ id: linkId(anker), kop: "Ruwe kop" }), artikelId({ id: linkId(anker), kop: "Nette AI-kop" }));
+  // #702: een bericht met expliciete id = hash van lege tekst blijft bereikbaar; een bronloos bericht zonder id nooit.
+  { const leeg = linkId(""), expl = { ...item, id: leeg }, p2 = artikelPad(expl, dag);
+    assert.ok(p2.includes(leeg));
+    assert.equal((await bezoek(maakEnv(dag, [expl], { reads: 0 }), p2)).status, 200);
+    const kaal = { kop: "Bronloos", cat: "nl" };
+    r = await bezoek(maakEnv(dag, [kaal], { reads: 0 }), `/bericht/${dag}/${leeg}-bronloos`);
+    assert.equal(r.status, 302); assert.equal(r.headers.get("location"), "/"); }
 } finally { Date.now = echteNu; }

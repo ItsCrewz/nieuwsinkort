@@ -1,4 +1,4 @@
-import { LEEG_ID, artikelId, artikelPad, linkId, parsePad } from "../../src/artikelid";
+import { artikelId, artikelPad, linkId, normArtikelLink, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
 import { ams } from "../../src/tijd";
@@ -26,8 +26,8 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
   const dag = await data.json() as { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
   const items = dag.gegenereerd && ams(Date.parse(dag.gegenereerd)).iso === pad.dag ? dag.items || [] : [];
-  // De id van een lege tekst hoort bij geen enkel bericht (bronloos zonder id).
-  const item = pad.id === LEEG_ID ? undefined : items.find((i) => artikelId(i) === pad.id) || items.find((i) => i.bronnen?.some((b) => b.href && linkId(b.href) === pad.id));
+  // Een bronlink zonder inhoud (lege normalisatie) is geen identiteit; een expliciete id telt altijd.
+  const item = items.find((i) => artikelId(i) === pad.id) || items.find((i) => i.bronnen?.some((b) => b.href && normArtikelLink(b.href) && linkId(b.href) === pad.id));
   if (!item || !artikelPad(item, pad.dag)) return redirect(302, "/", "no-store");
   const canoniek = artikelPad(item, pad.dag);
   if (u.pathname !== canoniek) return redirect(301, canoniek, "no-store");

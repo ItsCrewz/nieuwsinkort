@@ -8,3 +8,11 @@ export async function deel(navigator: DeelNavigator, titel: string, url: string)
   }
   try { if (!navigator.clipboard) throw new Error(); await navigator.clipboard.writeText(url); return "gekopieerd"; } catch { return "handmatig"; }
 }
+// Deeltitel en zichtbare melding: zonder eigen link wijst de link naar de homepage, dat zeggen we in elk deelpad (ook native delen en handmatig kopiëren) en sturen we de berichtkop niet mee.
+export const GEEN_LINK = "Dit bericht heeft geen eigen link: je deelt de link naar Nieuws in het kort.";
+export const deelTitel = (kop: string, eigenLink: boolean) => eigenLink ? kop : "Nieuws in het kort";
+export function deelMelding(status: string, eigenLink: boolean): string {
+  const basis = status === "gekopieerd" ? "Link gekopieerd" : status === "handmatig" ? "Kopieer de link handmatig" : "";
+  if (status !== "gekopieerd" && status !== "handmatig" && status !== "gedeeld") return "";
+  return eigenLink ? basis : `${basis ? basis + ". " : ""}${GEEN_LINK}`;
+}
