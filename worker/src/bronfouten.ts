@@ -8,11 +8,12 @@ export function foutcode(e: unknown, status = 0): Broncode {
   return "SRC_PARSE";
 }
 
-export async function batchesOphalen<J extends { url: string }, R extends { url: string; ok: boolean; ms: number; code?: Broncode }>(batches: J[][], haal: (batch: J[], i: number) => Promise<R[]>, fout: (url: string, code: Broncode, ms: number) => R): Promise<R[]> {
+export async function batchesOphalen<J extends { url: string }, R extends { url: string; ok: boolean; ms: number; code?: Broncode }>(batches: J[][], haal: (batch: J[], i: number) => Promise<R[]>, fout: (url: string, code: Broncode, ms: number) => R, timeoutMs = 180000): Promise<R[]> {
   const uit = await Promise.all(batches.map(async (batch, i) => {
     const t = Date.now();
     try {
-      const rs = await haal(batch, i);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const rs = await Promise.race([haal(batch, i), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("batch timeout")), timeoutMs); })]).finally(() => clearTimeout(timer));
       if (!Array.isArray(rs)) throw new Error("ongeldig batchantwoord");
       return batch.map((j) => rs.find((r) => r?.url === j.url) || fout(j.url, "SRC_PARSE", Date.now() - t));
     } catch (e) {

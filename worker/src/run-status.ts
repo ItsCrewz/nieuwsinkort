@@ -4,7 +4,7 @@ export interface RunStatus { faalReeks: number; laatsteFout: string | null; laat
 interface Storage { get<T>(key: string): Promise<T | undefined>; put(key: string, value: RunStatus): Promise<void> }
 interface KV { put(key: string, value: string): Promise<void> }
 
-/** Beleid voor de KV-kopie (#452). */
+/** Beleid voor de KV-kopie (#452): `laatsteOk` verandert bij elke geslaagde run, dus zonder beleid is dat een KV-write per run. */
 export interface KvBeleid { mag(nieuw: RunStatus, oud: RunStatus): Promise<boolean>; gedaan(): Promise<void> }
 
 export async function bewaakteRun(run: () => Promise<unknown>, storage: Storage, kv: KV, kvBeleid?: KvBeleid, bronfouten?: () => Bronfout[]): Promise<Response> {

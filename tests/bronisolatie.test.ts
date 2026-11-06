@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { Runner } from "../worker/src/index";
-import { foutcode } from "../worker/src/bronfouten";
+import { Runner, runJob } from "../worker/src/index";
+import { batchesOphalen, foutcode } from "../worker/src/bronfouten";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 const urls = Array.from({ length: 4 }, (_, i) => `https://bron${i}.nl/rss`);
@@ -23,5 +23,19 @@ try {
   }
   assert.equal(foutcode(new DOMException("timed out", "TimeoutError")), "SRC_TIMEOUT");
   assert.equal(foutcode(new Error("HTTP 503")), "SRC_HTTP");
+  const maakFout = (url: string, code: any, ms: number) => ({ url, ok: false, code, ms });
+  const vast = await batchesOphalen([[{ url: urls[0] }]], () => new Promise(() => {}), maakFout, 10);
+  assert.equal(vast[0].code, "SRC_TIMEOUT");
+  const ongeldig = await batchesOphalen([[{ url: urls[0] }]], async () => null as any, maakFout);
+  assert.equal(ongeldig[0].code, "SRC_PARSE");
+  const verkeerd = await batchesOphalen([[{ url: urls[0] }]], async () => [{ url: urls[1], ok: true, ms: 1 }], maakFout);
+  assert.equal(verkeerd[0].code, "SRC_PARSE");
+  for (const [antwoord, code] of [[new Response("", { status: 500 }), "SRC_HTTP"], [new Response(""), "SRC_EMPTY"], [new Response("<html>fout</html>"), "SRC_PARSE"]] as const) {
+    globalThis.fetch = (async () => antwoord.clone()) as any;
+    const resultaat = await runJob({ url: urls[0], kind: "feed" }, 0);
+    assert.equal(resultaat.code, code);
+  }
+  globalThis.fetch = (async () => { throw new DOMException("timed out", "TimeoutError"); }) as any;
+  assert.equal((await runJob({ url: urls[0], kind: "feed" }, 0)).code, "SRC_TIMEOUT");
   console.log("✓ bronuitval bij één, helft, bijna alle en alle nieuwsfeeds");
 } finally { globalThis.fetch = echte; }

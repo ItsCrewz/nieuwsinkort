@@ -203,7 +203,7 @@ async function viaRedlib(url: string): Promise<Response | null> {
   return null;
 }
 
-async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
+export async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
   const t0 = Date.now();
   let status = 0;
   try {
@@ -260,15 +260,13 @@ async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
     status = r.status;
     if (!r.ok) return { url: j.url, ok: false, status, code: "SRC_HTTP", err: `HTTP ${status}`, ms: Date.now() - t0 };
     const body = await r.text();
-    if (!body.trim()) return { url: j.url, ok: false, status, code: "SRC_EMPTY", err: "lege respons", ms: Date.now() - t0 };
     const base: Res = { url: j.url, ok: true, status, ms: 0, ...(ytPad ? { ytPad } : {}) };
     if (j.kind === "json") base.json = JSON.parse(body);
     else if (j.kind === "text") base.text = body.length > 400000 ? body.slice(0, 400000) : body;
     else if (j.kind === "dumpert") base.videos = parseDumpert(body, hhmm);
     else {
+      if (!body.trim()) return { url: j.url, ok: false, status, code: "SRC_EMPTY", err: "lege respons", ms: Date.now() - t0 };
       if (/^\s*<!doctype html|^\s*<html/i.test(body.slice(0, 300))) throw new Error("HTML i.p.v. feed");
-      if (!/^[\s]*[\[{]/.test(body) && !/<(?:rss|feed|rdf:RDF|(?:\w+:)?searchRetrieveResponse)\b/i.test(body)) throw new Error("ongeldige feed");
-      if (!/^[\s]*[\[{]/.test(body) && !/<\/(?:rss|feed|rdf:RDF|(?:\w+:)?searchRetrieveResponse)\s*>/i.test(body)) throw new Error("onvolledige feed");
       const all = parseFeed(body, j.url, j.pad);
       const now = Date.now();
       base.total = all.length;
