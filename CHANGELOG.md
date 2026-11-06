@@ -4,6 +4,8 @@
 
 Het fragment voor documentatieonderhoud (#304) staat in `changelog.d/304-documentatie.md`.
 
+- Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
