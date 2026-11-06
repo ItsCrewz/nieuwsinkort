@@ -1,6 +1,6 @@
 # Architectuur
 
-Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq Whisper en de Groq-chatketen. Audio boven 25 MB en mislukte of begrensde Groq-verzoeken vallen terug op Cloudflare binnen het bestaande budget. KV houdt UTC-dagtellers en minuut- en uurvensters bij; KV is niet atomair, waardoor gelijktijdige verzoeken de limieten kunnen overschrijden. Groq-gebruik telt niet mee in video-neuronen.
+Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq Whisper en de Groq-chatketen. Audio boven 25 MB en mislukte of begrensde Groq-verzoeken vallen terug op Cloudflare binnen het bestaande budget. KV houdt UTC-dagtellers en minuut- en uurvensters bij; KV is niet atomair, waardoor gelijktijdige verzoeken de limieten kunnen overschrijden. Groq-gebruik telt niet mee in video-neuronen. HLS-segmenten worden na elkaar gelezen, samen maximaal 12 MB; een downloadfout of overschrijding geeft een tijdelijke fout zonder AI-aanroep.
 
 
 Alles draait op Cloudflare (Free plan). Geen eigen server.
