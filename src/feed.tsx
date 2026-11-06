@@ -10,6 +10,7 @@ import type { Video } from "./types";
 import { Icon } from "./icons";
 import { rustig, scrollGedrag } from "./beweging";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
+import { tabToets } from "./tabs";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 
@@ -1639,7 +1640,7 @@ export function Feed({
             {gs ? (
               <div className="f-tabs" role="tablist" aria-label="Soort filmpjes">
                 {gs.map((g, k) => (
-                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} onClick={() => pickGroup(k)}>
+                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} tabIndex={k === Math.min(gi, gs.length - 1) ? 0 : -1} onKeyDown={tabToets} onClick={() => pickGroup(k)}>
                     {g.label}
                     <span className="tnum">{g.list.length}</span>
                   </button>
