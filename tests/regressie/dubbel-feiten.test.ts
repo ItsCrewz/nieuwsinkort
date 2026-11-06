@@ -46,3 +46,17 @@ for (const [eerste, tweede] of [
 const item = { ...JSON.parse(readFileSync("tests/fixtures/joey/delhaize.json", "utf8")).item, ai: "Importheffingen van de EU treffen de VS.", samenvatting: "", punten: ["Importheffingen van de VS treffen de EU."] };
 const html = renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false, dag: "2026-11-03" }));
 assert.ok(html.includes("Importheffingen van de VS treffen de EU."));
+
+// Onzekerheid (#789): kan/zou/mogelijk/waarschijnlijk verschilt van zekerheid, in beide richtingen; echte herhaling blijft weg.
+for (const woord of ["kan", "zou", "mogelijk", "waarschijnlijk"]) {
+  const zeker = "De verdachte komt vrij.";
+  const onzeker = woord === "mogelijk" || woord === "waarschijnlijk" ? `De verdachte komt ${woord} vrij.` : `De verdachte ${woord} vrij komen.`;
+  for (const [bron, nieuw] of [[zeker, onzeker], [onzeker, zeker]]) {
+    assert.deepEqual(nieuwePunten([nieuw], bron, ""), [nieuw], `${woord}: punt`);
+    assert.deepEqual(nieuweAlineas([nieuw], [bron]), [nieuw], `${woord}: uitleg`);
+  }
+  assert.deepEqual(nieuwePunten([onzeker], onzeker, ""), [], `${woord}: identiek punt`);
+  assert.deepEqual(nieuweAlineas([onzeker], [onzeker]), [], `${woord}: identieke zin`);
+}
+assert.deepEqual(nieuweAlineas(["De verdachte komt vrij. Dit is zeker.", ], ["De verdachte zou vrij komen."]), ["De verdachte komt vrij. Dit is zeker."]);
+console.log("ok - onzekerheid blijft zichtbaar");
