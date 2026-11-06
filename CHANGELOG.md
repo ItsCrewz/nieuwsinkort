@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Artikelverdieping geeft bij een KV-storing 503 in plaats van 404 en is na herstel opnieuw op te halen (#839).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
