@@ -1,0 +1,1 @@
+- Ontdubbeling van de filmpjespipeline afgesplitst en stille fouten voorzien van een melding op stderr (#571).

@@ -1,0 +1,1 @@
+- Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
