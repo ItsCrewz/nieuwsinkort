@@ -1,12 +1,10 @@
-import { useState,type ReactNode } from "react";
-import { Theme,afwijzingen } from "./app-data";
+import { useState, type ReactNode } from "react";
+import { Theme, afwijzingen } from "./app-data";
 import { intro } from "./app-status";
 import { rustig } from "./beweging";
 import { debug } from "./debug";
-import { Icon,IconSprite } from "./icons";
+import { Icon, IconSprite } from "./icons";
 import { FocusSwitch } from "./ui";
-
-
 
 // ---------------------------------------------------------------- app
 export function TopBar({
@@ -71,7 +69,6 @@ export function TopBar({
   );
 }
 
-
 // true zodra data.json van de uur-Worker komt (functions/data.json.ts zet "uur")
 export const UUR_ACTIEF = { actief: false };
 
@@ -93,12 +90,10 @@ export function Footer() {
   );
 }
 
-
 export function Front({ children }: { children: ReactNode }) {
   const [enter] = useState(() => !intro.done && !rustig());
   return <div className={`front ${enter ? "enter" : ""}`}>{children}</div>;
 }
-
 
 export function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; feed?: boolean }) {
   return (

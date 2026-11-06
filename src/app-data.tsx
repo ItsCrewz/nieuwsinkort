@@ -1,17 +1,15 @@
-import { useCallback,useEffect,useLayoutEffect,useRef,useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { sorteerOpGroep } from "./filmgroep";
 import { herindeel } from "./regio";
 import { zaaiSamenvattingen } from "./samenvattingcache";
 import { schoon } from "./schoon";
 import type { Data } from "./types";
 import { valideer } from "./valideer";
-import { kiesNieuweData,verwijderGisteren } from "./vandaag";
-import { playerFor,soortVan } from "./videosoort";
-import { laadData,neemVroegeData } from "./vroeg";
+import { kiesNieuweData, verwijderGisteren } from "./vandaag";
+import { playerFor, soortVan } from "./videosoort";
+import { laadData, neemVroegeData } from "./vroeg";
 
- // op "Home" eerst zoveel kaarten, daarna "Toon alle"
 export const THEME_KEY = "nieuwsinkort-thema";
-
 
 export const afwijzingen = { aantal: 0 };
 
@@ -57,7 +55,6 @@ export function useData() {
   }, [load]);
   return { data, error, reload: load };
 }
-
 
 export type Theme = "light" | "dark";
 

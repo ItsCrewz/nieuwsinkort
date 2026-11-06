@@ -1,12 +1,10 @@
-import { useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { rustig } from "./beweging";
 import { Icon } from "./icons";
 import { bronnenTekst } from "./leesverder";
-import { tabOpties,volgendeTab,type TabOpt } from "./tabs";
-import type { Data,View } from "./types";
+import { tabOpties, volgendeTab, type TabOpt } from "./tabs";
+import type { Data, View } from "./types";
 import { BionicText } from "./ui";
-
-
 
 export function Briefing({ text, bionic, sources, time, note }: { text: string; bionic: boolean; sources: number; time: string; note?: string }) {
   return (
@@ -29,7 +27,6 @@ export function Briefing({ text, bionic, sources, time, note }: { text: string; 
     </section>
   );
 }
-
 
 export // ---------------------------------------------------------------- tabs
 // Gesegmenteerde rubriekkeuze. Past alles niet op één regel, dan gaan de laatste rubrieken in "Meer"

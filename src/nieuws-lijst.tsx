@@ -1,18 +1,16 @@
 import { laadDetail } from "./artikel-detail";
-import { memo,useMemo,useState,type ReactNode } from "react";
+import { memo, useMemo, useState, type ReactNode } from "react";
 import { intro } from "./app-status";
-import { Beelden,Thumb } from "./beelden";
+import { Beelden, Thumb } from "./beelden";
 import { rustig } from "./beweging";
 import { Icon } from "./icons";
-import { bronnenTekst,fotos } from "./leesverder";
-import { bronLabel,itemKey,pickLead,sortItems } from "./nieuws-hulp";
+import { bronnenTekst, fotos } from "./leesverder";
+import { bronLabel, itemKey, pickLead, sortItems } from "./nieuws-hulp";
 import { CAT_LABEL } from "./tabs";
-import type { Item,View } from "./types";
+import type { Item, View } from "./types";
 import { BionicText } from "./ui";
 
 const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
-
-
 
 export type OpenFn = (k: string) => void;
 
@@ -23,7 +21,6 @@ export function useOpen(key: string, onOpen: OpenFn) {
     onOpen(key);
   };
 }
-
 
 export const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { item: Item; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
   const key = itemKey(item);
@@ -49,7 +46,6 @@ export const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }
     </a>
   );
 });
-
 
 export const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item: Item; i: number; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
   const key = itemKey(item);
@@ -87,7 +83,6 @@ export const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }:
     </a>
   );
 });
-
 
 export function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: { items: Item[]; view: View; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const [enter] = useState(() => !intro.done && !rustig());

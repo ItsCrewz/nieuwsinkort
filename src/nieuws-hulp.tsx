@@ -1,13 +1,10 @@
 import { artikelSlug } from "./artikelid";
-import type { Bron,Item } from "./types";
-
-
+import type { Bron, Item } from "./types";
 
 // ---------------------------------------------------------------- helpers
 export const slugify = artikelSlug;
 
 export const itemKey = (i: Item) => slugify(i.kop) || i.bronnen?.[0]?.href || i.kop;
-
 
 export function bronLabel(bronnen: Bron[]) {
   const names: string[] = [];
@@ -17,7 +14,6 @@ export function bronLabel(bronnen: Bron[]) {
   return `${names[0]} + ${names.length - 1}`;
 }
 
-
 export function amsterdamTime(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -26,7 +22,6 @@ export function amsterdamTime(iso?: string) {
 }
 
 export const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-
 
 // ---------------------------------------------------------------- nieuws
 export function sortItems(items: Item[]) {

@@ -1,14 +1,12 @@
-import { useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Footer } from "./app-frame";
-import { rustig,scrollGedrag } from "./beweging";
+import { rustig, scrollGedrag } from "./beweging";
 import { FeedNavigatie } from "./feednavigatie";
 import { Icon } from "./icons";
-import { itemKey,pickLead,sortItems } from "./nieuws-hulp";
-import { KAARTEN_VOORAF,KAARTEN_VOORUIT,NewsCard } from "./nieuws-kaart";
+import { itemKey, pickLead, sortItems } from "./nieuws-hulp";
+import { KAARTEN_VOORAF, KAARTEN_VOORUIT, NewsCard } from "./nieuws-kaart";
 import { OpenFn } from "./nieuws-lijst";
 import type { Item } from "./types";
-
-
 
 export function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {

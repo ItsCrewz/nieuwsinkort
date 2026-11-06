@@ -1,10 +1,8 @@
-import { Icon,type IconName } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { cap } from "./nieuws-hulp";
-import type { Weer,WeerDag } from "./types";
+import type { Weer, WeerDag } from "./types";
 import { BionicText } from "./ui";
 import { veiligeUrl } from "./url";
-
-
 
 // ---------------------------------------------------------------- weer
 export type Kind = "sun" | "rain" | "partly" | "cloud";
@@ -42,7 +40,6 @@ export function dayDates(dagen: WeerDag[]) {
   return out;
 }
 
-
 export function WarnBanner({ text }: { text: string }) {
   const t = text.toLowerCase();
   const lvl = t.includes("rood") ? "lvl-rood" : t.includes("oranje") ? "lvl-oranje" : "";
@@ -54,7 +51,6 @@ export function WarnBanner({ text }: { text: string }) {
     </div>
   );
 }
-
 
 export function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   const nu = W?.nu ?? {};

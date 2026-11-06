@@ -1,19 +1,17 @@
 import { laadDetail } from "./artikel-detail";
-import { memo,useCallback,useLayoutEffect,useMemo,useRef } from "react";
+import { memo, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { Beelden } from "./beelden";
 import { toonBekendmaking } from "./bekendmaking";
 import { Icon } from "./icons";
-import { fotos,heeftLeesVerder } from "./leesverder";
+import { fotos, heeftLeesVerder } from "./leesverder";
 import { prefetchMeer } from "./meer";
-import { bronLabel,itemKey } from "./nieuws-hulp";
-import { OpenFn,useOpen } from "./nieuws-lijst";
-import { relevantePunten,verzamelUrl } from "./puntenrelevantie";
+import { bronLabel, itemKey } from "./nieuws-hulp";
+import { OpenFn, useOpen } from "./nieuws-lijst";
+import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { CAT_LABEL } from "./tabs";
 import type { Item } from "./types";
 import { BionicText } from "./ui";
 import { veiligeUrl } from "./url";
-
-
 
 export // ---------------------------------------------------------------- nieuwsfeed (TikTok-achtig)
 // Eén bericht per kaart op schermhoogte, met scroll-snap. De bovenbalk en de rubrieken staan vast
@@ -59,7 +57,6 @@ function fitCard(el: HTMLElement) {
   el.classList.add("fit-scroll");
 }
 
-
 export const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6;
  export // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
@@ -72,7 +69,6 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg }
     </div>
   );
 });
-
 
 export function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn }) {
   const key = itemKey(item);

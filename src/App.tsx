@@ -1,54 +1,41 @@
 import { flushSync } from "react-dom";
-import { Suspense,lazy,startTransition,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState } from "react";
-import { useData,useTheme } from "./app-data";
+import { Suspense, lazy, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useData, useTheme } from "./app-data";
 export { useData };
-import { Footer,Frame,Front,TopBar,UUR_ACTIEF } from "./app-frame";
+import { Footer, Frame, Front, TopBar, UUR_ACTIEF } from "./app-frame";
 import { intro } from "./app-status";
-import { Briefing,Tabs } from "./app-tabs";
+import { Briefing, Tabs } from "./app-tabs";
 import { WeatherBox } from "./app-weer";
 import { artikelId } from "./artikelid";
-import { DUUR,animeer,kanOvergang,metOvergang,rustig,scrollGedrag } from "./beweging";
-import { ArtikelDetail,laadDetail } from "./artikel-detail";
+import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
+import { ArtikelDetail, laadDetail } from "./artikel-detail";
 import { wisselRichting } from "./tabs";
-import { FilterBalk,filterNieuws,filterVideos,useFilters } from "./filters";
-import { bewaarFocusKeuze,browserStorage,leesFocusKeuze,ruimOudeFocusKeuzeOp } from "./focuslezen";
+import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
+import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { Foutgrens } from "./foutgrens";
 import { Icon } from "./icons";
 import { touchNu } from "./invoer";
 import { LeegMelding } from "./leegmelding";
 import { NewsFeed } from "./nieuws-feed";
-import { amsterdamTime,cap,itemKey } from "./nieuws-hulp";
+import { amsterdamTime, cap, itemKey } from "./nieuws-hulp";
 import { NewsList } from "./nieuws-lijst";
-import { parseHash,viewHash,viewTitel,type Route } from "./route";
+import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { videoSlug } from "./slug";
-import { buildSources,useCatalog,useFiltered,useSourceFilter } from "./sources";
-import { TabBriefing,kopKompact } from "./tabbriefing";
+import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { TabBriefing, kopKompact } from "./tabbriefing";
 import { ams } from "./tijd";
 import type { View } from "./types";
 import { useVoorladen } from "./usevoorladen";
-import { soortVan,startSoort } from "./videosoort";
-import { normaliseer,zoekItems } from "./zoek";
-import { ZoekLeeg,Zoekbalk } from "./zoekbalk";
-
-
-
+import { soortVan, startSoort } from "./videosoort";
+import { normaliseer, zoekItems } from "./zoek";
+import { ZoekLeeg, Zoekbalk } from "./zoekbalk";
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
-
 const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
-
-
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
-
-
-
-
 let openedInside = false;
-
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
 let feedPushed = false;
-
-
 // De oude Alles-route vervangen zonder een extra geschiedenisitem.
 function huidigeRoute(): Route {
   if (window.location.hash === "#/alles") {
@@ -56,8 +43,6 @@ function huidigeRoute(): Route {
   }
   return parseHash(window.location.hash);
 }
-
-
 export default function App() {
   const { data: raw, error, reload } = useData();
   // Rustige melding i.p.v. stil falen: bijwerken mislukt, of de AI-dagruimte is (bijna) op.
@@ -96,7 +81,6 @@ export default function App() {
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const routeRef = useRef(route);
   routeRef.current = route;
-
   const geveegd = useRef(false);
   useEffect(() => {
     ruimOudeFocusKeuzeOp(browserStorage());
@@ -131,7 +115,6 @@ export default function App() {
     window.addEventListener("hashchange", onHash);
     return () => { volgnummer++; window.removeEventListener("hashchange", onHash); };
   }, []);
-
   // Scroll na het wisselen van pagina: naar boven bij detail, terug naar het bericht bij "terug".
   const prevSel = useRef(route.selected);
   useLayoutEffect(() => {
@@ -150,11 +133,9 @@ export default function App() {
       } else window.scrollTo(0, 0);
     }
   }, [route.selected]);
-
   useEffect(() => {
     if (data) intro.done = true;
   }, [data]);
-
   const setBionicPersist = (v: boolean) => {
     setBionic(v);
     bewaarFocusKeuze(browserStorage(), v);
