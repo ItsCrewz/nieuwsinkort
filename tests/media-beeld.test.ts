@@ -354,6 +354,9 @@ await t("Pubble: alleen Rodi-beeldpaden zonder query, ook bij redirects", async 
   assert.ok(upstreamUrl(pad.replace("/1920/", "/840/"), ""));
   assert.equal(beeldProxyPad("https://images.nu.nl/a.jpg?width=2400&x=1"), "/media/beeld/images.nu.nl/a.jpg?width=1200&x=1");
   assert.equal(beeldProxyPad("https://images.nu.nl/a.jpg?w=800"), "/media/beeld/images.nu.nl/a.jpg?w=800");
+  // zonder breedte-parameter of met andere bronconventie (RTL `width=` na andere params, NRC/NOS in pad) blijft de URL ongemoeid
+  assert.equal(beeldProxyPad("https://images.nu.nl/m/abc_wd.jpg"), "/media/beeld/images.nu.nl/m/abc_wd.jpg");
+  assert.equal(beeldProxyPad("https://redactie.rtl.nl/sites/default/files/content/a.jpg?itok=x&width=1900&height=900"), "/media/beeld/redactie.rtl.nl/sites/default/files/content/a.jpg?itok=x&width=1200&height=900");
   const r = await vraag(pad);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-type"), "image/jpeg");
