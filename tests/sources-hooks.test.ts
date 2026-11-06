@@ -85,7 +85,9 @@ await t("useCatalog laadt /bronnen.json zonder cache", async () => {
   }, null);
   assert.equal(eerste, null);
   assert.deepEqual(h.result.current, cat);
-  assert.deepEqual(calls, [{ url: "/bronnen.json", init: { cache: "no-cache" } }]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "/bronnen.json");
+  assert.equal((calls[0].init as RequestInit).cache, "no-cache");
   await h.rerender(null);
   assert.equal(calls.length, 1);
   await h.unmount();
@@ -138,6 +140,24 @@ await t("useCatalog geeft na een blijvende fout op en ruimt timers op", async ()
   await h2.unmount();
   await wacht(80);
   assert.equal(c2.length, 1);
+});
+
+await t("useCatalog begrenst ook online-events en breekt een lopend verzoek af bij unmount", async () => {
+  CATALOG_RETRY_MS.splice(0, 3, 5, 5, 5);
+  const calls = mockFetch(async () => ({ ok: false, json: async () => ({}) }));
+  const h = await renderHook(() => useCatalog(), null);
+  await wacht(60);
+  assert.equal(calls.length, 4);
+  for (let i = 0; i < 3; i++) await act(async () => void win.dispatchEvent(new Event("online")));
+  await wacht(20);
+  assert.equal(calls.length, 4);
+  await h.unmount();
+  let signal: AbortSignal | undefined;
+  g.fetch = (_u: unknown, init: RequestInit) => ((signal = init.signal as AbortSignal), new Promise(() => {}));
+  const h2 = await renderHook(() => useCatalog(), null);
+  assert.equal(signal?.aborted, false);
+  await h2.unmount();
+  assert.equal(signal?.aborted, true);
 });
 
 // useSourceFilter

@@ -61,12 +61,17 @@ export function useCatalog() {
     let poging = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let bezig = false;
+    let gestart = 0;
+    const ctrl = new AbortController();
     const leeg: Catalog = { groepen: [] };
     const laad = () => {
       if (weg || bezig) return;
+      // eerste poging + de retries; ook online-events tellen mee
+      if (gestart > CATALOG_RETRY_MS.length) return void window.removeEventListener("online", laad);
+      gestart++;
       bezig = true;
       clearTimeout(timer);
-      fetch("/bronnen.json", { cache: "no-cache" })
+      fetch("/bronnen.json", { cache: "no-cache", signal: ctrl.signal })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error("http"))))
         .then((c: Catalog) => {
           if (!(c && Array.isArray(c.groepen))) throw new Error("vorm");
@@ -82,12 +87,14 @@ export function useCatalog() {
           // eerder geladen gegevens blijven staan; anders leeg tot het lukt
           setCat((vorig) => vorig ?? leeg);
           if (poging < CATALOG_RETRY_MS.length) timer = setTimeout(laad, CATALOG_RETRY_MS[poging++]);
+          else window.removeEventListener("online", laad);
         });
     };
     window.addEventListener("online", laad);
     laad();
     return () => {
       weg = true;
+      ctrl.abort();
       clearTimeout(timer);
       window.removeEventListener("online", laad);
     };
