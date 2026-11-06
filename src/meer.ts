@@ -2,15 +2,15 @@
 import type { Item, Meer } from "./types";
 import { verzamelUrl } from "./puntenrelevantie";
 
+const object = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const tekstlijst = (v: unknown): v is string[] => Array.isArray(v) && v.every((p) => typeof p === "string");
 function geldigMeer(v: unknown): v is Meer {
-  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
-  const m = v as Record<string, unknown>;
-  const teksten = (x: unknown) => Array.isArray(x) && x.every((s) => typeof s === "string");
-  const bronnen = (x: unknown, veld: string) => Array.isArray(x) && x.every((b) =>
-    b && typeof b === "object" && !Array.isArray(b) && typeof b.site === "string" && typeof b.href === "string" && teksten(b[veld]));
-  return (m.uitleg === undefined || teksten(m.uitleg))
-    && (m.perBron === undefined || bronnen(m.perBron, "punten"))
-    && (m.uittreksel === undefined || bronnen(m.uittreksel, "alineas"));
+  if (!object(v) || !("uitleg" in v || "perBron" in v || "uittreksel" in v)) return false;
+  const bronnen = (lijst: unknown, veld: "punten" | "alineas") => Array.isArray(lijst) && lijst.every((b) =>
+    object(b) && typeof b.site === "string" && typeof b.href === "string" && tekstlijst(b[veld]));
+  return (v.uitleg === undefined || tekstlijst(v.uitleg))
+    && (v.perBron === undefined || bronnen(v.perBron, "punten"))
+    && (v.uittreksel === undefined || bronnen(v.uittreksel, "alineas"));
 }
 
 // Eén keer per sessie opgehaald; al vooraf bij aanraken van "Lees verder".
@@ -21,8 +21,8 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
   let p = meerCache.get(k);
   if (!p) {
     p = fetch(`/meer?k=${encodeURIComponent(k)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((m: unknown) => geldigMeer(m) ? m : null)
+      .then((r) => (r.ok ? r.json() as Promise<unknown> : null))
+      .then((data) => geldigMeer(data) ? data : null)
       .catch(() => null);
     p.then((m) => { if (!m) meerCache.delete(k); });
     meerCache.set(k, p);
