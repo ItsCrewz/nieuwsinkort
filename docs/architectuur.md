@@ -312,12 +312,13 @@ De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daar
 
 De uurdata bevat optioneel `tab_samenvatting`, met per rubriekcode `tekst`, `ai`, `bron` en `gegenereerd`. Home gebruikt de bestaande `dag_samenvatting`. De Worker gebruikt uur- en routineartikelen en bewaart succesvolle AI-teksten met een volgordeonafhankelijke inhoudshash maximaal zeven dagen in de bestaande KV onder `tabsam:<tab>:laatste`. Bij wijzigingen blijft de vorige tekst minstens zes uur staan; voor AI worden maximaal tien korte berichten gebruikt. Bij cachemissers zonder AI ontstaat extractieve tekst; die wordt niet gecachet zodat een volgende run AI kan proberen. Filmpjes en Dumpert krijgen geen overzicht. Oude data zonder dit veld toont geen taboverzicht.
 
-Workers AI-aanroepen zijn begrensd op 20 seconden per poging. Bij een timeout
-of HTTP 5xx volgt eenmaal een nieuwe poging na 250 ms; bij HTTP 429 of dagquota
-volgt geen nieuwe poging, zodat de neuronenmeting niet dubbel telt. Fouten worden
-zonder invoertekst gelogd met model, duur en een code (`LLM_TIMEOUT`,
-`LLM_RATE_LIMIT`, `LLM_HTTP_5XX` of `LLM_FOUT`). Een timeout kan de onderliggende
-Workers AI-aanroep niet afbreken; die kan nog neuronen kosten.
+Tekstaanroepen naar Workers AI zijn begrensd op 20 seconden. Na een fout volgt
+waar beschikbaar de externe keten; bij ontbrekende samenvattingen gebruikt de run
+extractieve tekst. Workers AI wordt niet opnieuw aangeroepen: een timeout breekt
+de onderliggende aanroep niet af en een extra poging kan neuronen kosten. De
+mislukte aanroep wordt eenmaal geschat. De logregel bevat model, duur en een code
+(`LLM_TIMEOUT`, `LLM_RATE_LIMIT`, `LLM_HTTP_5XX`, `LLM_BUDGET` of `LLM_FOUT`).
+Whisper behoudt zijn bestaande reservering en wordt niet automatisch herhaald.
 
 Bij YouTube bewaakt een activatieklok het starten: een actieve iframe krijgt maximaal drie startpogingen en na 1,5 seconde zonder afspelen of bufferen een tikvlak dat de melding afdekt en de tik doorlaat naar de iframe. Buurspelers blijven gepauzeerd. Geluid wordt pas na een gebruikersgebaar in dezelfde sessie geprobeerd; bij blokkering speelt de video weer gedempt. De debug-overlay toont de activatietijd, laatste opdracht en eventuele autoplayblokkade.
 

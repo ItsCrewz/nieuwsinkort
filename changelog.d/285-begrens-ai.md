@@ -1,1 +1,1 @@
-- Begrens aanroepen naar Workers AI met een timeout en herhaal tijdelijke fouten eenmaal (#285).
+- Begrens tekstaanroepen naar Workers AI en log fouten met een vaste code; behoud de bestaande Whisper-budgettering (#285).

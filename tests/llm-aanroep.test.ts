@@ -2,28 +2,25 @@ import assert from "node:assert/strict";
 import { llmAanroep } from "../worker/src/llm-aanroep";
 
 const foutlog = console.error;
-const logs: unknown[][] = [];
-console.error = (...args) => { logs.push(args); };
+const logs: string[] = [];
+console.error = (regel) => { logs.push(String(regel)); };
 const slaap = async () => {};
 try {
-  // timeout: tweede poging slaagt
   let n = 0;
-  const r = await llmAanroep("m", () => (++n === 1 ? new Promise<string>(() => {}) : Promise.resolve("ok")), { timeout: 5, slaap });
-  assert.equal(r, "ok"); assert.equal(n, 2); assert.equal(logs[0][0], "LLM_TIMEOUT");
-
-  // 5xx: eenmaal herhaald
-  n = 0;
-  assert.equal(await llmAanroep("m", async () => { if (++n === 1) throw Object.assign(new Error("boem"), { status: 503 }); return "ok"; }, { slaap }), "ok");
-  assert.equal(n, 2);
-
-  // 5xx blijft: na één herpoging gooit hij
-  n = 0;
-  await assert.rejects(llmAanroep("m", async () => { n++; throw new Error("HTTP 500"); }, { slaap }));
-  assert.equal(n, 2);
-
-  // 429: geen herpoging
-  n = 0; logs.length = 0;
-  await assert.rejects(llmAanroep("m", async () => { n++; throw new Error("429 too many requests"); }, { slaap }));
-  assert.equal(n, 1); assert.equal(logs[0][0], "LLM_RATE_LIMIT");
+  const timer = () => ({ wacht: ++n === 1 ? Promise.reject(new Error("LLM_TIMEOUT")) : new Promise<never>(() => {}), stop: () => {} });
+  assert.equal(await llmAanroep("m", async () => "ok", { timer, slaap }), "ok");
+  assert.match(logs[0], /code=LLM_TIMEOUT model=m duur=\d+ms/);
+  let pogingen = 0;
+  assert.equal(await llmAanroep("m", async () => { if (++pogingen === 1) throw Object.assign(new Error("fout"), { status: 503 }); return "ok"; }, { slaap }), "ok");
+  assert.equal(pogingen, 2);
+  for (const [fout, code] of [[Object.assign(new Error("fout"), { status: 429 }), "LLM_RATE_LIMIT"], [new Error("daily free allocation"), "LLM_BUDGET"], [new Error("500 tokens"), "LLM_FOUT"]] as const) {
+    pogingen = 0;
+    await assert.rejects(llmAanroep("m", async () => { pogingen++; throw fout; }, { slaap }));
+    assert.equal(pogingen, 1);
+    assert.ok(logs.at(-1)?.includes(`code=${code}`));
+  }
+  pogingen = 0;
+  assert.equal(await llmAanroep("m", async () => { if (++pogingen === 1) throw new Error("timed out"); return "ok"; }, { slaap }), "ok");
+  assert.equal(pogingen, 2);
 } finally { console.error = foutlog; }
 console.log("llm-aanroep ok");
