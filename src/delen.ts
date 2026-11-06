@@ -1,5 +1,6 @@
 import { artikelPad } from "./artikelid";
-export const artikelUrl = (item: Parameters<typeof artikelPad>[0], dag: string) => `https://nieuwsinkort.nl${artikelPad(item, dag)}`;
+// Zonder bruikbare artikellink (bronloos bericht zonder id) delen we de homepage, nooit een link die naar een ander bericht kan wijzen.
+export const artikelUrl = (item: Parameters<typeof artikelPad>[0], dag: string) => { const pad = artikelPad(item, dag); return pad ? `https://nieuwsinkort.nl${pad}` : "https://nieuwsinkort.nl/"; };
 type DeelNavigator = { share?: (data: ShareData) => Promise<void>; canShare?: (data: ShareData) => boolean; clipboard?: { writeText: (tekst: string) => Promise<void> } };
 export async function deel(navigator: DeelNavigator, titel: string, url: string): Promise<"gedeeld" | "gekopieerd" | "handmatig" | "geannuleerd"> {
   if (navigator.share && (!navigator.canShare || navigator.canShare({ url }))) {

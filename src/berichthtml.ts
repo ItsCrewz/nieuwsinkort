@@ -12,7 +12,7 @@ function zetMeta(html: string, attr: "name" | "property", sleutel: string, waard
   return re.test(html) ? html.replace(re, () => tag) : html.replace("</head>", () => `${tag}</head>`);
 }
 export function berichtHtml(sjabloon: string, item: Bericht, dag: string): string {
-  const url = `https://nieuwsinkort.nl${artikelPad(item, dag)}`, title = item.kop, indexeer = !item.ruw && item.cat !== "politiek";
+  const pad = artikelPad(item, dag), url = `https://nieuwsinkort.nl${pad || "/"}`, title = item.kop, indexeer = !item.ruw && item.cat !== "politiek";
   const tekst = indexeer ? item.ai || "" : "", desc = tekst.slice(0, 160) || "Het nieuws van vandaag in het kort.";
   const bronnen = (item.bronnen || []).filter((b) => veiligeUrl(b.href));
   const tms = item.t ? new Date(item.t).getTime() : NaN, datum = Number.isFinite(tms) ? new Date(tms).toISOString() : `${dag}T00:00:00+01:00`; // ongeldige t mag de pagina niet breken

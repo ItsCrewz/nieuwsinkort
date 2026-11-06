@@ -15,6 +15,7 @@ import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
 import { prefetchMeer } from "./meer";
+import { artikelPad } from "./artikelid";
 import { artikelUrl, deel } from "./delen";
 import { useTerugvegen } from "./terugvegen";
 
@@ -118,7 +119,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
 
 export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string }) {
   const [deelStatus, setDeelStatus] = useState("");
-  const url = artikelUrl(item, dag);
+  const url = artikelUrl(item, dag), eigenLink = !!artikelPad(item, dag); // zonder eigen link delen we de homepage
   useEffect(() => {
     if (deelStatus !== "gekopieerd") return;
     const t = setTimeout(() => setDeelStatus(""), 3000);
@@ -152,10 +153,10 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
   // Buiten .shell renderen: container-type:inline-size maakt daar het blok voor position:fixed van, dan scrolt de knop mee.
   const deelBlok = (
     <>
-        <button type="button" className="deel-knop" aria-label="Deel dit bericht" onClick={async () => { setDeelStatus(await deel(navigator, item.kop, url)); }}>
+        <button type="button" className="deel-knop" aria-label={eigenLink ? "Deel dit bericht" : "Deel Nieuws in het kort (dit bericht heeft geen eigen link)"} onClick={async () => { setDeelStatus(await deel(navigator, item.kop, url)); }}>
           <Icon name="share" />
         </button>
-        <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
+        <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? (eigenLink ? "Link gekopieerd" : "Link naar Nieuws in het kort gekopieerd (dit bericht heeft geen eigen link)") : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
         {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
     </>
   );
