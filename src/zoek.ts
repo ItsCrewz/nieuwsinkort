@@ -16,7 +16,7 @@ export function zoekItems(items: Item[], query: string): Item[] {
   if (!woorden.length && !groepen.length) return items;
   return items.filter((item) => {
     const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).map((veld) => normaliseer(veld!));
-    const tekst = velden.join(" ");
-    return woorden.every((woord) => tekst.includes(woord)) && groepen.every((groep) => velden.some((veld) => veld.includes(groep)));
+    const tekst = " " + velden.join(" ");
+    return woorden.every((woord) => tekst.includes(" " + woord)) && groepen.every((groep) => velden.some((veld) => veld.includes(groep)));
   });
 }
