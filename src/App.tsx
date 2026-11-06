@@ -1,3 +1,4 @@
+import { buitenFeedBediening } from "./feedtoets";
 import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
@@ -802,6 +803,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.closest("input,textarea,select,[contenteditable],.sheet,.menu,[role=dialog]") || document.querySelector(".sheet,.feed"))) return;
+      if (buitenFeedBediening(t)) return; // eigen toetsenbordgedrag laten staan
       const k = e.key;
       // spatie/Enter op een knop, link of ander bedienbaar element: native activatie laten werken
       if ((k === " " || k === "Enter") && t && t.closest("button,a,input,textarea,select,summary,[role=button],[contenteditable]")) return;
