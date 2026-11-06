@@ -84,12 +84,15 @@ export function merge(S: any, H: any) {
     const k = (i.bronnen || []).map((b: any) => norm(b.href)).find((x: string) => mk.has(x));
     return k ? { ...i, meer: k } : i;
   };
+  // Rubriektekst per rubriek van de recentste bron; ontbrekende rubrieken vallen terug op de andere.
+  const [tabNieuw, tabOud] = hNieuwer ? [H.tab_samenvatting, base.tab_samenvatting] : [base.tab_samenvatting, H.tab_samenvatting];
+  const tabSam = tabNieuw || tabOud ? { ...tabOud, ...tabNieuw } : undefined;
   const routineItems = (base.items || []).map(metMeer);
   return {
     ...base,
     datum: H.datum || base.datum,
     dag_samenvatting: (hNieuwer && H.dag_samenvatting) || base.dag_samenvatting || H.dag_samenvatting || "",
-    tab_samenvatting: H.tab_samenvatting,
+    tab_samenvatting: tabSam,
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
     items: ontdubbelVerhalen([...nieuw.map(metMeer), ...routineItems], new Set(routineItems)),
     filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
