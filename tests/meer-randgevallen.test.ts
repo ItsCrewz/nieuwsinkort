@@ -55,11 +55,11 @@ await t("onbekende sleutel, lege KV en zonder items geven 404 met no-store", asy
   }
 });
 
-await t("bekende sleutel geeft 200 met max-age=600 en beveiligingsheaders", async () => {
+await t("bekende sleutel geeft 200 met hervalidatie en beveiligingsheaders", async () => {
   const m = { uitleg: ["Extra tekst"], perBron: [{ site: "a.nl", href: "https://a.nl/x", punten: ["p"] }] };
   const r = await meer({ request: req("/meer?k=bericht"), env: { NIEUWS: kvMet({ items: { bericht: m } }) } });
   assert.equal(r.status, 200);
-  check(r, "public, max-age=600");
+  check(r, "public, max-age=0, must-revalidate");
   assert.deepEqual(await r.json(), m);
 });
 
