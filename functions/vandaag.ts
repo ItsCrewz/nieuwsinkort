@@ -8,7 +8,7 @@ interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cache
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
 type CacheMetDefault = CacheStorage & { default?: Cache };
 type Item = { id?: string; kop: string; ruw?: boolean; cat?: string; bronnen?: { href: string }[] };
-const HDR = { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=86400", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'" };
+const HDR = { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=604800", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'" };
 const RUBRIEKEN: [string, string][] = [["nl", "Nederland"], ["buitenland", "Buitenland"], ["haarlem", "Haarlem"], ["tech", "Tech"], ["sport", "Sport"], ["voetbal", "Voetbal"], ["f1", "Formule 1"], ["auto", "Auto"], ["showbizz", "Showbizz"]];
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 export function vandaagHtml(items: Item[], dag: string): string {

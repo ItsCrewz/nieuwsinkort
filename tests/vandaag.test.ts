@@ -21,7 +21,7 @@ try {
 
   const env = { ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify({ gegenereerd: "2026-11-04T10:00:00Z", items: [a] })}` } };
   let r = await onRequestGet({ request: new Request("https://nieuwsinkort.nl/vandaag?x=1"), env, waitUntil: () => {} });
-  assert.equal(r.status, 200); assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("strict-transport-security"), "max-age=86400");
+  assert.equal(r.status, 200); assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("strict-transport-security"), "max-age=604800");
   assert.ok(!r.headers.get("content-security-policy")!.includes("script-src") && r.headers.get("content-security-policy")!.includes("default-src 'none'"), "geen scripts toegestaan");
   assert.ok((await r.text()).includes(artikelPad(a, dag)));
   r = await onRequestGet({ request: new Request("https://nieuwsinkort.nl/vandaag"), env: { ASSETS: { fetch: async () => new Response("", { status: 500 }) }, NIEUWS: { get: async () => null } }, waitUntil: () => {} });
