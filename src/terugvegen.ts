@@ -101,7 +101,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       stand = "uit";
       if (was !== "veeg") return;
       const breed = window.innerWidth;
-      if (ev.type !== "touchcancel" && sluit(dx, breed, ev.timeStamp - t0)) {
+      if (ev.type !== "touchcancel" && !selectie() && sluit(dx, breed, ev.timeStamp - t0)) {
         if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
         stand = "sluit";
         zet(breed, true);

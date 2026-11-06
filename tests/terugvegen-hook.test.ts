@@ -92,6 +92,22 @@ await t("terugvegen-hook: selectie midden in een veeg herstelt", async () => {
   assert.equal(body.style.overflowX, "scroll");
   await h.unmount();
 });
+await t("terugvegen-hook: selectie tussen laatste touchmove en touchend sluit niet", async () => {
+  for (const r of [false, true]) {
+    rustigAan = r;
+    let n = 0;
+    const h = await maak(() => n++);
+    veeg(300);
+    selectieAan = true;
+    touch("touchend", [], 20);
+    loop();
+    assert.equal(n, 0);
+    assert.equal(h.art.style.transform, "");
+    assert.equal(body.style.overflowX, "scroll");
+    await h.unmount();
+    selectieAan = false;
+  }
+});
 await t("terugvegen-hook: touchcancel herstelt en sluit niet, ook met reduced motion", async () => {
   for (const r of [false, true]) {
     rustigAan = r;
