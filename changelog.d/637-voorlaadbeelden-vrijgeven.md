@@ -1,0 +1,1 @@
+- Voorladen houdt een `Image` alleen vast zolang de taak loopt en laat hem bij load én error los, zodat lange sessies geen afgeronde beelden ophopen (#637).

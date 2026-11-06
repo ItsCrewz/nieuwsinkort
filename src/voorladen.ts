@@ -89,7 +89,8 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
-const vast: unknown[] = []; // voorkomt dat Image-objecten voortijdig worden opgeruimd
+const vast = new Set<unknown>(); // Image-objecten van lopende taken (tegen voortijdig opruimen); na load/error weer los
+export const vastAantal = () => vast.size;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
 const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
@@ -119,6 +120,13 @@ async function warmMp4(src: string) {
   rd.cancel().catch(() => {});
 }
 
+const wachtrij: (() => Promise<unknown>)[] = [];
+let actief = 0;
+async function loop() {
+  for (let t = wachtrij.shift(); t; t = wachtrij.shift()) await t().catch(() => {});
+  actief--;
+}
+
 export function voerUit(p: Plan) {
   for (const o of p.preconnect) {
     if (!nieuw(`pc:${o}`)) continue;
@@ -138,9 +146,13 @@ export function voerUit(p: Plan) {
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
-          im.onload = im.onerror = () => ok();
+          im.onload = im.onerror = () => {
+            im.onload = im.onerror = null;
+            vast.delete(im);
+            ok();
+          };
+          vast.add(im);
           im.src = t;
-          vast.push(im);
         })
     );
   }
@@ -148,12 +160,12 @@ export function voerUit(p: Plan) {
   if (p.hlsChunk && nieuw("hls.js")) taken.push(() => import("hls.js"));
   for (const m of p.hls) if (nieuw(`hls:${m}`)) taken.push(() => warmHls(m));
   if (p.mp4 && nieuw(`mp4:${p.mp4}`)) taken.push(() => warmMp4(p.mp4!));
-  // kleine pool: hooguit GELIJK taken tegelijk, in volgorde van belang
-  let i = 0;
-  const loop = async () => {
-    while (i < taken.length) await taken[i++]().catch(() => {});
-  };
-  for (let k = 0; k < GELIJK; k++) loop();
+  // één pool voor de hele sessie: hooguit GELIJK taken tegelijk, ook als een nieuw plan start terwijl eerdere taken nog lopen
+  wachtrij.push(...taken);
+  while (actief < GELIJK && wachtrij.length) {
+    actief++;
+    loop();
+  }
 }
 
 /** Wacht op load + een idle-moment (en op zichtbaarheid); geeft een annuleerfunctie terug. */
