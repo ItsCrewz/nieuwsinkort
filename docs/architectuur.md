@@ -376,3 +376,7 @@ Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="sea
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
+
+## Zoeken (#804)
+
+`src/zoek.ts` matcht alle termen op woordbegin (na accent- en leestekennormalisatie). Een numerieke term van ≥4 cijfers (jaartal) moet het hele getal zijn: `2024` vindt `20240` en `12024` niet. Kortere cijfers (`20`) blijven woordbegin. Decimalen als `3,5` worden door `normaliseer` al `3 5`; de aparte decimalentaak kan dat aanpassen, de tests in `tests/zoek.test.ts` bewaken het huidige gedrag.
