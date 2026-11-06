@@ -6,7 +6,7 @@ import { CATS } from "./tabs";
 import type { View } from "./types";
 
 /** Waarin gezocht wordt en wat het resultaat beperkt (rubriek, tijd, bronnen, extra filters, Politiek op Home). Pure functie, getest. */
-export type ZoekScope = { scope: string; beperkt: string[] };
+export type ZoekScope = { scope: string; beperkt: string[]; breedScope: string };
 export function zoekScope(view: View, f: Filters, tijd: Exclude<Tijd, "auto">, bronnenUit: number): ZoekScope {
   const alles = view === "alles";
   const label = (id: string) => CAT_OPT.find((c) => c.id === id)?.label ?? CATS.find((c) => c.id === id)?.label ?? id;
@@ -17,10 +17,11 @@ export function zoekScope(view: View, f: Filters, tijd: Exclude<Tijd, "auto">, b
   const extra = aantalExtra(f, false); // rubriekkeuze staat al in `scope`
   if (extra) beperkt.push(`${extra} ${extra === 1 ? "extra filter" : "extra filters"}`);
   if (alles && !f.cats.length) beperkt.push("Politiek niet inbegrepen");
-  return { scope, beperkt };
+  // Zonder filters blijft de rubriek van het scherm gelden (zoekBasis in App.tsx); alleen Home zoekt overal.
+  return { scope, beperkt, breedScope: alles ? "alle rubrieken en bronnen" : `${scope} (alle bronnen)` };
 }
 /** Eén zin voor scherm en schermlezer; bij `breed` zijn de filters voor deze zoekopdracht genegeerd. */
-export const scopeZin = (s: ZoekScope, breed: boolean) => breed ? "Zoekt in alle rubrieken en bronnen, zonder filters (je filterkeuzes blijven staan)" : `Zoekt in ${s.scope}${s.beperkt.length ? `. Beperkt door: ${s.beperkt.join(", ")}` : ""}`;
+export const scopeZin = (s: ZoekScope, breed: boolean) => breed ? `Zoekt in ${s.breedScope}, zonder filters (je filterkeuzes blijven staan)` : `Zoekt in ${s.scope}${s.beperkt.length ? `. Beperkt door: ${s.beperkt.join(", ")}` : ""}`;
 
 export type ZoekProps = { scope?: ZoekScope; breed?: boolean; onBreed?: (breed: boolean) => void };
 
