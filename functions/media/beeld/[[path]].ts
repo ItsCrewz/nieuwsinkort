@@ -43,6 +43,8 @@ export const uitgesloten = (accept: string | null, type: string): boolean =>
     return naam === type.split(";")[0].trim().toLowerCase() && params.some((x) => /^q\s*=\s*0*(\.0*)?$/.test(x));
   });
 export const acceptEmmer = (accept: string | null): Emmer => (accepteert(accept || "", "image/avif") ? "avif" : accepteert(accept || "", "image/webp") ? "webp" : "basis");
+// Upstream-Accept van de emmer zonder formaten die de bezoeker uitsloot (q=0); anders levert de uitgever een formaat dat we daarna afwijzen.
+export const upstreamAccept = (emmer: Emmer, accept: string | null): string => ACCEPT[emmer].split(",").filter((t) => !uitgesloten(accept, t)).join(",");
 /** Synthetische Cache API-sleutel; de emmer zit erin, dus nooit vermenging tussen formaten. */
 export const cacheSleutel = (emmer: Emmer, u: URL): string => `https://nieuwsinkort.nl/__beeldcache/${emmer}/${u.host}${u.pathname}${u.search}`;
 
@@ -86,7 +88,7 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
     try {
       r = await fetch(doel.toString(), {
         method: request.method,
-        headers: { "User-Agent": UA, Accept: ACCEPT[emmer] }, // bewust zonder Cookie/Authorization/Referer van de bezoeker
+        headers: { "User-Agent": UA, Accept: upstreamAccept(emmer, accept) }, // bewust zonder Cookie/Authorization/Referer van de bezoeker
         redirect: "manual",
         cache: "no-store", // geen randcache op URL-basis: die kent geen Accept en zou emmers mengen
         // @ts-ignore - Cloudflare-specifieke opties; cacheTtl -1 = ook cf-kant geen opslag (cacheKey werkt alleen op Enterprise)

@@ -1,6 +1,6 @@
 // Draai: npm test  (artikelbeeldproxy functions/media/beeld/[[path]].ts en src/beeldhost.ts, zonder netwerk)
 import assert from "node:assert/strict";
-import { onRequest, acceptEmmer, uitgesloten, cacheSleutel } from "../functions/media/beeld/[[path]]";
+import { onRequest, acceptEmmer, uitgesloten, cacheSleutel, upstreamAccept } from "../functions/media/beeld/[[path]]";
 import { upstreamUrl } from "../functions/media/beeld/[[path]]";
 import { beeldViaProxy, beeldHostToegestaan, beeldProxyPad } from "../src/beeldhost";
 
@@ -236,6 +236,17 @@ await t("uitgesloten formaat wordt nooit geleverd: upstream-avif bij avif;q=0 ge
     const r2 = await onRequest(ctx("image/avif;q=0,image/webp"));
     assert.equal(r2.headers.get("content-type"), "image/jpeg");
   } finally { zonderCache(); }
+});
+
+await t("upstream-Accept laat uitgesloten formaten weg: avif,webp;q=0 vraagt geen webp, webp-antwoord geeft dan 415", async () => {
+  const A = "image/avif,image/webp;q=0";
+  assert.equal(upstreamAccept(acceptEmmer(A), A), "image/avif,image/jpeg,image/png,image/gif");
+  assert.equal(upstreamAccept("webp", "image/webp,image/jpeg;q=0"), "image/webp,image/png,image/gif");
+  assert.equal(upstreamAccept("basis", null), "image/png,image/jpeg,image/gif");
+  mock(() => new Response("w", { headers: { "content-type": "image/webp" } }));
+  const r = await vraag("images.nu.nl/a.jpg", "GET", { Accept: A });
+  assert.equal(r.status, 415);
+  assert.ok(!String(calls[0].init.headers.Accept).includes("webp"));
 });
 
 await t("cachesleutel verschilt per emmer en bevat host, pad en query", () => {

@@ -1,1 +1,2 @@
 - Beeldproxy: `Accept`-onderhandeling respecteert `q=0`; een uitgesloten formaat (bijv. `image/avif;q=0`) wordt niet meer gekozen (#609).
+- Beeldproxy: de upstream-`Accept` laat formaten met `q=0` weg, zodat een toegestaan formaat geleverd kan worden (#609).
