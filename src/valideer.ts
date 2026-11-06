@@ -14,7 +14,7 @@ const video = (v: unknown): v is Video => obj(v) && [v.titel, v.ai, v.bron, v.hr
 
 /** Ongeldige berichten overslaan; een onbruikbare hoofdstructuur geeft een laadfout. */
 export function valideer(v: unknown): { data: Data; afgewezen: number } {
-  if (!obj(v) || !tekst(v.datum) || !tekst(v.dag_samenvatting) || !obj(v.weer) || !Array.isArray(v.items) || !Array.isArray(v.filmpjes) || !Array.isArray(v.dumpert)) throw new Error("Ongeldige data.json");
+  if (!obj(v) || !tekst(v.gegenereerd) || !Number.isFinite(Date.parse(v.gegenereerd)) || !tekst(v.datum) || !tekst(v.dag_samenvatting) || !obj(v.weer) || !Array.isArray(v.items) || !Array.isArray(v.filmpjes) || !Array.isArray(v.dumpert)) throw new Error("Ongeldige data.json");
   const items = v.items.filter(item), filmpjes = v.filmpjes.filter(video), dumpert = v.dumpert.filter(video);
   return { data: { ...v, items, filmpjes, dumpert } as Data, afgewezen: v.items.length + v.filmpjes.length + v.dumpert.length - items.length - filmpjes.length - dumpert.length };
 }

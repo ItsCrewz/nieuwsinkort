@@ -1277,7 +1277,7 @@ export default function App() {
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
-              dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
+              dag={ams(Date.parse(raw.gegenereerd!)).iso}
               bionic={bionic}
               onBack={(opties) => {
                 geveegd.current = !!opties?.geveegd;
