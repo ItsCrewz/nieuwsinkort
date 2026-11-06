@@ -25,6 +25,18 @@ export function besluit(afstand: number, laatste: number | null, nu: number): Be
   return magVerversen(laatste, nu) ? "ververs" : "bij";
 }
 
+/** Rem op moduleniveau: overleeft het opnieuw mounten van NewsFeed (key={view}) bij rubriekwissel. */
+let laatsteVerversing: number | null = null;
+export const verversTijd = () => laatsteVerversing;
+export const zetVerversTijd = (t: number | null) => { laatsteVerversing = t; };
+/** Is `gegenereerd` echt nieuwer dan de vorige? Onbekende vorige = nieuw; ongeldige of oudere tijd = niet nieuw. */
+export function isNieuwer(nieuw: string | undefined, oud: string | undefined) {
+  const n = Date.parse(nieuw ?? "");
+  if (Number.isNaN(n)) return false;
+  const o = Date.parse(oud ?? "");
+  return Number.isNaN(o) || n > o;
+}
+
 /** load() geeft true als `gegenereerd` nieuwer is, false als gelijk, null bij een fout. */
 export type Ververs = () => Promise<boolean | null>;
 
@@ -36,7 +48,6 @@ export function useTrekVerversen(scroller: RefObject<HTMLElement | null>, ptr: R
   const [tekst, setTekst] = useState("");
   const verversRef = useRef(ververs);
   verversRef.current = ververs;
-  const laatste = useRef<number | null>(null);
   useEffect(() => {
     const el = scroller.current;
     const p = ptr.current;
@@ -89,7 +100,7 @@ export function useTrekVerversen(scroller: RefObject<HTMLElement | null>, ptr: R
     const eind = async () => {
       if (y0 === null) return;
       y0 = null;
-      const b = besluit(afstand, laatste.current, Date.now());
+      const b = besluit(afstand, laatsteVerversing, Date.now());
       const f = verversRef.current;
       afstand = 0;
       if (b === "geen" || !f) { terug(); setTekst(""); return; }
@@ -98,7 +109,7 @@ export function useTrekVerversen(scroller: RefObject<HTMLElement | null>, ptr: R
       bezig = true;
       let status = "Je bent bij";
       if (b === "ververs") {
-        laatste.current = Date.now();
+        laatsteVerversing = Date.now();
         setTekst("Verversen…");
         const nieuw = await f();
         if (nieuw === null) status = "Verversen lukt even niet";

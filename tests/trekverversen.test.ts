@@ -1,7 +1,7 @@
 // Trek-om-te-verversen (#540): drempel, weerstand, rem en passieve listeners. Draai: npm test
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { DREMPEL, MAX_TREK, REM_MS, besluit, magVerversen, overDrempel, trekAfstand, voortgang } from "../src/trekverversen";
+import { DREMPEL, MAX_TREK, REM_MS, besluit, isNieuwer, magVerversen, verversTijd, zetVerversTijd, overDrempel, trekAfstand, voortgang } from "../src/trekverversen";
 
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
@@ -33,6 +33,30 @@ t("besluit: onder de drempel niets, erboven verversen, binnen de rem alleen 'bij
   assert.equal(besluit(MAX_TREK, 5000, 5000 + 10_000), "bij");
   assert.equal(besluit(MAX_TREK, 5000, 5000 + REM_MS), "ververs");
   assert.equal(besluit(10, 5000, 5000 + 10_000), "geen");
+});
+
+t("rem staat op moduleniveau (overleeft remount bij rubriekwissel)", () => {
+  zetVerversTijd(1000);
+  assert.equal(verversTijd(), 1000);
+  assert.equal(magVerversen(verversTijd(), 1000 + 5000), false);
+  zetVerversTijd(null);
+  const src = readFileSync("src/trekverversen.ts", "utf8");
+  assert.doesNotMatch(src, /useRef<number \| null>/);
+});
+
+t("isNieuwer: alleen echt nieuwere tijd telt, oudere of ongeldige niet", () => {
+  assert.equal(isNieuwer("2026-01-01T10:00:00Z", "2026-01-01T09:00:00Z"), true);
+  assert.equal(isNieuwer("2026-01-01T10:00:00Z", "2026-01-01T10:00:00Z"), false);
+  assert.equal(isNieuwer("2026-01-01T08:00:00Z", "2026-01-01T09:00:00Z"), false);
+  assert.equal(isNieuwer(undefined, "2026-01-01T09:00:00Z"), false);
+  assert.equal(isNieuwer("kapot", "2026-01-01T09:00:00Z"), false);
+  assert.equal(isNieuwer("2026-01-01T10:00:00Z", undefined), true);
+});
+
+t("CSS: indicator gebruikt --card/--i2 en accent bij .klaar", () => {
+  const css = readFileSync("src/index.css", "utf8");
+  assert.match(css, /\.ptr\{[^}]*background:var\(--card\)[^}]*color:var\(--i2\)/);
+  assert.match(css, /\.ptr\.klaar\{color:var\(--a\)\}/);
 });
 
 t("alle touch-listeners van de PTR zijn passief en preventDefault ontbreekt", () => {

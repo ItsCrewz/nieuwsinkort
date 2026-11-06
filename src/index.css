@@ -673,5 +673,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
 
 /* Trek-om-te-verversen (#540): alleen de indicator beweegt (transform/opacity); stand via inline style vanuit useTrekVerversen */
-.ptr{top:8px;bottom:auto;pointer-events:none;animation:none}
+.ptr{top:8px;bottom:auto;pointer-events:none;animation:none;background:var(--card);color:var(--i2);border:1px solid var(--cl)}
+.ptr.klaar{color:var(--a)}
 /* Artikel en overzicht bewegen onder de stilstaande topbalk. */

@@ -2,7 +2,7 @@ import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
-import { useTrekVerversen, type Ververs } from "./trekverversen";
+import { isNieuwer, useTrekVerversen, type Ververs } from "./trekverversen";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
@@ -902,8 +902,8 @@ export function useData() {
       d.filmpjes = sorteerOpGroep(d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }))); // Shorts of Journaals; op onderwerpgroep (#459): Sport onderaan, ook voor de volgorde van doorlopend kijken
       setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
       setError(false);
-      const nieuw = !!d.gegenereerd && d.gegenereerd !== laatsteGen.current;
-      laatsteGen.current = d.gegenereerd;
+      const nieuw = isNieuwer(d.gegenereerd, laatsteGen.current);
+      if (nieuw || laatsteGen.current === undefined) laatsteGen.current = d.gegenereerd;
       return nieuw;
     } catch {
       if (aanvraag === volgnummer.current) setError(true);
