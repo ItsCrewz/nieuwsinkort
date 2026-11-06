@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Behoud vooraf-data van de vorige Amsterdamse kalenderdag tot 06:00, ook na de zomertijdwisseling (#799).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
