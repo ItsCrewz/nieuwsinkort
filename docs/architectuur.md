@@ -225,6 +225,8 @@ nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project
 
 Statische pagina `/over` (`public/over.html`, #518): over de site (wat, AI-gebruik, bronnen, fouten, privacy), zonder persoonsnaam of verzonnen contactadres en zonder script. Pages serveert hem zonder `.html`; link in de voetregel (`App.tsx`) en in `sitemap.xml`. Test: `tests/seo-meta.test.ts`.
 
+Nieuwssitemap (`/sitemap-nieuws.xml`, `functions/sitemap-nieuws.xml.ts`, #712): per bericht `loc`, `news:publication_date` en titel; bewust geen `lastmod`, omdat de dagdata alleen de publicatietijd `t` kent en geen werkelijke wijzigingstijd. Voeg `lastmod` pas toe als items een betrouwbaar wijzigingsveld krijgen.
+
 ## Bezoekersstatistieken
 
 Cloudflare Web Analytics is op 1-11-2026 aangezet. De app laadt de beacon na de eerste render, behalve wanneer `nik_nietmeten` in localStorage `1` is. `?nietmeten=1` slaat die keuze op; `?nietmeten=0` verwijdert haar. De parameter wordt daarna uit de URL verwijderd met behoud van de hash. Een gedeelde artikellink (`/bericht/…`) wordt in `src/gedeeldelink.ts` vóór `startAnalytics` omgezet naar `/<query>#/` en `/<query>#/bericht/<id>`: de query blijft letterlijk behouden, dus `?nietmeten=1` werkt daar ook (test `tests/regressie/gedeelde-link-query-607.test.ts`). Zonder beschikbare localStorage laadt de beacon gewoon. De publieke site-token moet vóór de deploy in `src/analytics.ts` worden ingevuld.
