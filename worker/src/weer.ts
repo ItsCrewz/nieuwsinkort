@@ -5,7 +5,7 @@ import { decode } from "./parse";
 export const BR_URL = "https://data.buienradar.nl/2.0/feed/json";
 export const OM_URL = "https://api.open-meteo.com/v1/forecast?latitude=53.22,52.10,50.85&longitude=6.57,5.18,5.69&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m&daily=temperature_2m_min,temperature_2m_max,precipitation_probability_max,weather_code,wind_speed_10m_max,wind_direction_10m_dominant&timezone=Europe%2FAmsterdam&forecast_days=4&wind_speed_unit=ms";
 export const KNMI_VERW = "https://www.knmi.nl/nederland-nu/weer/verwachtingen";
-export const KNMI_WAARSCH = "https://www.knmi.nl/nederland-nu/weer/waarschuwingen";
+const KNMI_WAARSCH = "https://www.knmi.nl/nederland-nu/weer/waarschuwingen";
 const DAGEN = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 const WMO: Record<number, string> = { 0: "Zonnig", 1: "Overwegend zonnig", 2: "Half bewolkt", 3: "Bewolkt", 45: "Mist", 48: "Mist", 51: "Motregen", 53: "Motregen", 55: "Motregen", 56: "IJzel", 57: "IJzel", 61: "Lichte regen", 63: "Regen", 65: "Zware regen", 66: "IJzel", 67: "IJzel", 71: "Lichte sneeuw", 73: "Sneeuw", 75: "Zware sneeuw", 77: "Sneeuw", 80: "Buien", 81: "Buien", 82: "Zware buien", 85: "Sneeuwbuien", 86: "Sneeuwbuien", 95: "Onweer", 96: "Onweer met hagel", 99: "Onweer met hagel" };
 

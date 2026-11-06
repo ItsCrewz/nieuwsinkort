@@ -1,4 +1,4 @@
-export type YtStart = { actief: boolean; gepauzeerd: boolean; klaar: boolean; status: number | null; pogingen: number; sinds: number; nu: number; gespeeld?: boolean; fout?: boolean };
+type YtStart = { actief: boolean; gepauzeerd: boolean; klaar: boolean; status: number | null; pogingen: number; sinds: number; nu: number; gespeeld?: boolean; fout?: boolean };
 
 export function ytEmbedUrl(id: string, actief: boolean, origin: string): string {
   const params = new URLSearchParams({ autoplay: actief ? "1" : "0", cc_load_policy: "0", mute: "1", playsinline: "1", enablejsapi: "1", controls: "1", rel: "0", modestbranding: "1", iv_load_policy: "3", loop: "1", playlist: id, origin });
@@ -51,11 +51,6 @@ export function ytStatusNaam(status: number | null): string {
     case 5: return "cued";
     default: return "onbekend";
   }
-}
-
-// Een actieve slide wordt maar één keer per activatie overgeslagen.
-export function ytSkipBesluit(code: unknown, actief: boolean, alOvergeslagen: boolean, volgende: boolean): boolean {
-  return actief && ytEchteFout(code) && !alOvergeslagen && volgende;
 }
 
 // Bij teruggaan blijft de eerste geblokkeerde video als vangnet staan.
