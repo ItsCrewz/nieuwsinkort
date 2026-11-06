@@ -37,4 +37,12 @@ try {
   r = await bezoek(`/bericht/${dag}/aaaaaaaa-onbekend`); assert.equal(r.status, 302); assert.equal(r.headers.get("cache-control"), "no-store");
   reads = 0; r = await bezoek("/bericht/2026-11-02/aaaaaaaa-oud"); assert.equal(r.status, 301); assert.equal(reads, 0);
   r = await bezoek("/bericht/2026-11-05/aaaaaaaa-toekomst"); assert.equal(r.status, 404);
+  // #832: afgebroken sjabloonbody (of mislukte fetch) geeft een tijdelijke terugval met query; na herstel slaagt de pagina weer.
+  let stuk = true, wegval = false;
+  const env2 = { ...env, ASSETS: { fetch: async (r: Request | string) => { if (wegval) throw new Error("weg"); return String((r as Request).url ?? r).endsWith("/data.json") ? Response.json({}) : new Response(stuk ? new ReadableStream({ start(c) { c.error(new Error("afgebroken")); } }) : sjabloon, { headers: { "Content-Type": "text/html; charset=utf-8" } }); } } };
+  const bezoek2 = (path: string) => onRequestGet({ request: new Request(`https://nieuwsinkort.nl${path}`), env: env2, waitUntil: () => {} });
+  const doel = `/?nietmeten=1#/bericht/${(await import("../src/artikelid")).artikelId(item)}`;
+  r = await bezoek2(`${pad}?nietmeten=1`); assert.equal(r.status, 302); assert.equal(r.headers.get("location"), doel); assert.equal(r.headers.get("cache-control"), "no-store");
+  wegval = true; r = await bezoek2(`${pad}?nietmeten=1`); assert.equal(r.status, 302); assert.equal(r.headers.get("location"), doel);
+  wegval = false; stuk = false; r = await bezoek2(pad); assert.equal(r.status, 200); assert.ok((await r.text()).includes("<h1>Nieuws &lt;script&gt;</h1>"));
 } finally { Date.now = origineel; }
