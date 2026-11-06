@@ -1,0 +1,1 @@
+- Nieuwe respons met dezelfde generatietijd maar gewijzigde artikelen, briefing of weer wordt nu getoond; alleen een identieke respons behoudt de huidige state (#605).
