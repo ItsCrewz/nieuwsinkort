@@ -94,7 +94,7 @@ const minVan = (d: Date) => {
 };
 export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   const m = /^(\d{1,2})[:.](\d{2})$/.exec(hhmm || "");
-  if (!m) return null;
+  if (!m || +m[1] > 23 || +m[2] > 59) return null; // onmogelijke kloktijd = onbekend
   const t = +m[1] * 60 + +m[2];
   const g = new Date(gen);
   const gm = minVan(g);
