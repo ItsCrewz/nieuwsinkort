@@ -1,0 +1,1 @@
+- Voeg een handmatige live-rooktest toe voor kernpagina's, feed en berichtpagina's (#582).
