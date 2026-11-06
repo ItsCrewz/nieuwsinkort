@@ -158,7 +158,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
   const deelBlok = (
     <>
         <button type="button" className={`deel-knop ${deelStatus === "gekopieerd" ? "ok" : ""}`} aria-label="Deel dit bericht" onClick={async () => { setDeelStatus(await deel(navigator, item.kop, url)); }}>
-          <Icon name={deelStatus === "gekopieerd" ? "vink" : "share"} />
+          <span className="ti"><Icon name="share" className={deelStatus === "gekopieerd" ? "" : "aan"} /><Icon name="vink" className={deelStatus === "gekopieerd" ? "aan" : ""} /></span>
         </button>
         <span className={`deel-melding ${deelStatus === "gekopieerd" ? `ok${meldingUit ? " uit" : ""}` : ""}`} role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : ""}</span>
         {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}

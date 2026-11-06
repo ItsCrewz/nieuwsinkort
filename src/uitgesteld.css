@@ -4,7 +4,12 @@
 .mark{transition:transform var(--f) var(--e)}
 .iconbtn{transition:transform var(--f) var(--e)}
 .srcbtn{transition:transform var(--f) var(--e)}
-.ti .ic{transition:all var(--dur-2) var(--ease-veer)}
+.ti .ic{transition:transform var(--dur-2) var(--ease-veer),opacity var(--dur-2) var(--ease-veer)}
+.fpill{transition:transform var(--f) var(--e)}
+.deel-melding{animation:fadein var(--dur-2) var(--e) both;transition:opacity var(--dur-2) var(--e)}
+.deel-melding.uit{opacity:0}
+.deel-knop.ok .aan{animation:pop var(--dur-2) var(--ease-veer) both}
+.srcbtn .badge{animation:pop var(--dur-2) var(--ease-veer) both}
 .sw::before{transition:opacity var(--bs) var(--e)}
 .sw-k{transition:transform 240ms cubic-bezier(.3,1.4,.5,1)}
 .tab,.tab-m{transition:color var(--f) var(--e),transform var(--f) var(--e)}
@@ -41,11 +46,12 @@
 .f-tab[aria-selected="true"]::after{animation:tbl var(--dur-2) var(--ease-standaard) both}
 .feed-scroll.g0,.feed-scroll.g1{animation:fadein 180ms var(--e) backwards}
 .bl-slide img{transition:opacity 260ms var(--e)}
-.bl-dots span{transition:width 220ms var(--e),background 220ms var(--e)}
+.bl-dots span{transition:transform 220ms var(--e),background-color 220ms var(--e)}
 .row-img img{transition:opacity 260ms var(--e)}
 .sv-wrap{animation:fadein 180ms var(--e) both}
 .sv-sheet{animation:svup 220ms var(--e) both}
 .sv-dot{animation:svs .8s linear infinite}
+.btn:active,.iconbtn:active,.srcbtn:active,.chip:active,.f-btn:active,.textbtn:active,.back:active,.fpill:active,.tab:active,.nf-btn:active,.vseg button:active{transition-duration:min(80ms,var(--f))}
 .tab:active{transform:scale(.97)}
 .lead:active,.row:active{transform:scale(.995)}
 .vcard:hover .vthumb img{transform:scale(1.025)}
@@ -55,7 +61,6 @@
 .deel-knop,.zoek-knop{transition:transform var(--dur-1) var(--e)}
 .deel-knop:active,.zoek-knop:active{transform:scale(.96)}
 .f-icon:active{transform:scale(.94)}
-.nf-btn:active{transform:scale(.92)}
 .nf-start:active{transform:translateX(-50%) scale(.98)}
 .nf-pos{transition:opacity 200ms var(--e),transform 240ms var(--e)}
 .nf-start{animation:nfs 300ms var(--e) backwards;transition:opacity 180ms var(--e),transform 220ms var(--e)}
