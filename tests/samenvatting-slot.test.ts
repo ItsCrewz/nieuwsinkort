@@ -67,4 +67,30 @@ const svOmgeving = () => {
   n++; console.log("✓ samenvatting: slot, foutcache, 415/403, uurrem, geen why");
 }
 
+// ---- #855: onbekend filmpje (404) alleen als beide lijsten gelezen zijn, anders 503 zonder cache
+{
+  const mk = (uurFout: boolean, assetFout: boolean) => {
+    const e = svOmgeving();
+    const uur = e.m.get("uur")!;
+    const env: any = { ...e.env, NIEUWS: { ...e.env.NIEUWS, get: async (k: string, ty?: string) => { if (k === "uur" && uurFout) throw new Error("kv"); return e.env.NIEUWS.get(k, ty); } }, ASSETS: { fetch: async () => { if (assetFout) throw new Error("assets"); return new Response("{}"); } } };
+    const post = (id: string) => svPost({ request: new Request("https://nieuwsinkort.test/samenvatting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }), env });
+    return { env, post, e, uur };
+  };
+  for (const [uf, af] of [[true, false], [false, true], [true, true]] as const) {
+    const o = mk(uf, af);
+    const r = await o.post("bestaat-niet-123");
+    assert.equal(r.status, 503, `leesfout uur=${uf} assets=${af}: 503`);
+    assert.equal((await r.json() as any).code, "fout");
+    assert.equal(o.e.schrijf.length, 0, "mislukte lijstlezing niet gecachet");
+  }
+  // echte ontbrekende id: beide lijsten gelezen
+  assert.equal((await mk(false, false).post("bestaat-niet-123")).status, 404);
+  // herstel bij een volgend verzoek (zelfde KV-binding): geen cache van de mislukte lezing
+  const h = mk(false, true);
+  assert.equal((await h.post("bestaat-niet-456")).status, 503);
+  const ok = svOmgeving();
+  assert.equal((await ok.post({ id: "bestaat-niet-456" })).status, 404);
+  n++; console.log("✓ samenvatting: lijststoring 503 versus onbekend 404");
+}
+
 console.log(`\n${n} tests geslaagd`);

@@ -1,0 +1,1 @@
+- Bug: `/samenvatting` geeft een tijdelijke 503 (niet gecachet) in plaats van een misleidende 404 als de videolijst (`uur` of statische `data.json`) niet leesbaar was; 404 alleen als beide lijsten gelezen zijn (#855).
