@@ -1,0 +1,1 @@
+- Videofeed: de frame-waakhond herkent een wisseling van tellerbron (decode naar presentatie) en herijkt dan de meting zonder melding; daarna wordt de gekozen teller opnieuw bewaakt, herstelbudgetten ongewijzigd (#821).

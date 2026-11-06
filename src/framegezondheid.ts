@@ -6,9 +6,12 @@ export type FrameTik = {
   seekRecent: boolean;
   /** Teller van gepresenteerde (rVFC) of gedecodeerde beelden sinds de bron; null = geen teller beschikbaar. */
   frames: number | null;
+  /** Welke teller `frames` levert (frameTellerBron); een wisseling herijkt de meting. */
+  bron?: TellerBron;
   videoWidth: number;
   readyState: number;
 };
+export type TellerBron = "presentatie" | "decode" | null;
 type FrameBesluit = "ok" | "frame-vast" | "geen-eerste-frame";
 
 /** Zonder nieuw beeld ten minste zo lang (wandklok) én zoveel klokvoortgang: beeld staat vast. */
@@ -21,6 +24,7 @@ export class FrameGezondheid {
   private vorigeT: number | null = null;
   private vorigeNu = 0;
   private vorigeFrames: number | null = null;
+  private vorigeBron: TellerBron | undefined;
   private frameOp = 0;
   private klokSindsFrame = 0;
   private startOp = 0;
@@ -31,6 +35,7 @@ export class FrameGezondheid {
     this.vorigeT = t.currentTime;
     this.vorigeNu = t.now;
     this.vorigeFrames = t.frames;
+    this.vorigeBron = t.bron;
     this.frameOp = t.now;
     this.klokSindsFrame = 0;
     this.startOp = t.now;
@@ -51,7 +56,13 @@ export class FrameGezondheid {
     }
     this.vorigeT = t.currentTime;
     this.vorigeNu = t.now;
-    if (t.frames !== null && t.frames !== this.vorigeFrames) {
+    if (t.bron !== this.vorigeBron) {
+      // Decode- en presentatieteller hebben andere grootheden en startpunten: geen voortgang, wel een nieuw ijkpunt (geen valse melding).
+      this.vorigeBron = t.bron;
+      this.vorigeFrames = t.frames;
+      this.frameOp = t.now;
+      this.klokSindsFrame = 0;
+    } else if (t.frames !== null && t.frames !== this.vorigeFrames) {
       this.vorigeFrames = t.frames;
       this.frameOp = t.now;
       this.klokSindsFrame = 0;
@@ -90,6 +101,11 @@ export class HerstelBudget {
 }
 
 /** Teller voor de waakhond: rVFC zodra die vuurde, anders de decodeerteller; null = geen teller. */
+export function frameTellerBron(s: { gepresenteerd: number; rvfc: boolean; decode: boolean }): TellerBron {
+  if (s.rvfc && s.gepresenteerd > 0) return "presentatie";
+  return s.decode ? "decode" : null;
+}
+
 export function frameTeller(s: { gepresenteerd: number; gedecodeerd: number; rvfc: boolean; decode: boolean }): number | null {
   if (s.rvfc && s.gepresenteerd > 0) return s.gepresenteerd;
   if (s.decode) return s.gedecodeerd;
