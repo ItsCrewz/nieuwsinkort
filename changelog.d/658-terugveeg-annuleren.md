@@ -1,0 +1,1 @@
+- Voorkom dat een uitgestelde terugveeg na navigatie een ander scherm sluit (#658).
