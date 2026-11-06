@@ -138,20 +138,30 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
     try { stat = await env.ASSETS.fetch(new Request(assetUrl)); } catch { stat = undefined; }
     if (stat?.ok) break;
   }
-  if (!stat?.ok) return new Response(JSON.stringify({ fout: "Data tijdelijk niet beschikbaar" }), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
-  if (u.searchParams.has("statisch") || !env.NIEUWS) {
+  const onbeschikbaar = () => new Response(JSON.stringify({ fout: "Data tijdelijk niet beschikbaar" }), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  const kv = env.NIEUWS;
+  if (u.searchParams.has("statisch") || !kv) {
+    if (!stat?.ok) return onbeschikbaar();
     return new Response(stat.body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
   }
-  const S: any = await stat.json();
+  // Bruikbaar = object met een items-lijst; uurdata moet ook een geldig tijdstip hebben, anders telt de bron niet mee.
+  const bruikbaar = (d: any) => !!d && typeof d === "object" && !Array.isArray(d) && Array.isArray(d.items);
+  const bruikbaarUur = (d: any) => bruikbaar(d) && typeof d.gegenereerd === "string" && !isNaN(Date.parse(d.gegenereerd));
+  // Ontbrekende, onleesbare of defecte statische data is geen reden om te falen: dan telt alleen de uurdata.
+  let S: any = null;
+  if (stat?.ok) { try { const j = await stat.json(); if (bruikbaar(j)) S = j; } catch { console.error("data.json: statische data onleesbaar"); } }
+  else console.error("data.json: statische data niet op te halen");
   let H: any = null;
-  try { H = await env.NIEUWS.get("uur", kvOpt("json")); } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
+  try { const j = await kv.get("uur", kvOpt("json")); if (bruikbaarUur(j)) H = j; } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
   let out: any = S;
   try { out = merge(S, H); } catch { console.error("data.json: merge mislukt"); out = S; }
+  // Zonder bruikbare statische data moet de uurdata van vandaag het dragen; anders een gecontroleerde 503.
+  if (!out || !Array.isArray(out.items)) return onbeschikbaar();
   try { out = alleenVandaag(out, Date.now()); } catch { console.error("data.json: dagfilter mislukt"); }
   try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
   // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
   try {
-    const sv: any = video ? await env.NIEUWS.get("sv-klaar", kvOpt("json")) : null;
+    const sv: any = video ? await kv.get("sv-klaar", kvOpt("json")) : null;
     if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
   } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
   const body = JSON.stringify(slim(out));
