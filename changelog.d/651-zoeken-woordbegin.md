@@ -1,0 +1,1 @@
+- Zoeken: een zoekterm matcht nu op het begin van een woord, dus `kat` vindt `katten` maar niet meer `politiek` (#651).
