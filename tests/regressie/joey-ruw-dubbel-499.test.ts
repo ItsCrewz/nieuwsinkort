@@ -7,7 +7,7 @@ import { DetailView } from "../../src/detail";
 import type { Item } from "../../src/types";
 
 const items = JSON.parse(readFileSync("tests/fixtures/joey/ruw-dubbel-499.json", "utf8")) as Item[];
-const html = (item: Item) => renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false }));
+const html = (item: Item) => renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false, dag: "2026-11-03" }));
 const escaped = (s: string) => renderToStaticMarkup(createElement("span", null, s)).slice(6, -7);
 for (const item of items.slice(0, 7)) {
   test(`ruw: ${item.kop}`, () => {
