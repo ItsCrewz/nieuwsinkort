@@ -48,6 +48,23 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   expect(verzoeken).toEqual([]);
 });
 
+test("sneltoets opent zoeken en Escape brengt focus terug", async ({ page, isMobile }) => {
+  test.skip(isMobile, "De sneltoets is voor desktop.");
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await expect(knop).toBeVisible();
+  await page.keyboard.press("/");
+  await expect(invoer).toBeFocused();
+  await page.keyboard.type("nieuws/");
+  await expect(invoer).toHaveValue("nieuws/");
+  await page.getByRole("button", { name: "Sluiten" }).focus();
+  await page.keyboard.press("Escape");
+  await expect(invoer).toBeHidden();
+  await expect(knop).toBeFocused();
+});
+
 for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["mobiel klein", 360, 740], ["desktop", 1280, 800]]) test(`zoekknop dekt geen kaartactie of open-knop af, ook niet bij de laatste kaart (${naam})`, async ({ page }) => {
   await page.setViewportSize({ width: breedte, height: hoogte });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
