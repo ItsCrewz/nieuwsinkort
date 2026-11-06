@@ -118,7 +118,7 @@ export function SourcesSheet({
                       </h3>
                       <span className="sh-gmeta">
                         {g.sources.length} {g.sources.length === 1 ? "bron" : "bronnen"} ·{" "}
-                        {g.published != null ? `${g.published} berichten vandaag` : `${g.total} in overzicht`}
+                        {g.published != null ? g.onvolledig ? `minstens ${g.published} berichten vandaag (onvolledig)` : `${g.published} berichten vandaag` : `${g.total} in overzicht`}
                       </span>
                     </div>
                     <label className="sh-all">
