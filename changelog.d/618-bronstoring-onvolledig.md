@@ -1,0 +1,1 @@
+- Bronnenlijst: bij nul berichten en een deels mislukte ophaling (of storingvlag) staat er "Stand onvolledig" in plaats van "Vandaag niets" (#618).
