@@ -33,6 +33,20 @@ try {
     assert.equal(r.headers.get("cache-control"), "no-store");
   }
 
+  // Lege/defecte bronnen tellen niet als bruikbaar.
+  for (const [stat, uur] of [[Response.json({}), null], [Response.json({}), {}], [kapot(), {}], [kapot(), { items: [] }], [new Response("", { status: 404 }), null]] as const) {
+    r = await draai(stat, uur);
+    assert.equal(r.status, 503);
+  }
+  // Statisch asset ontbreekt: geldige uurdata draagt.
+  r = await draai(new Response("", { status: 404 }), H);
+  assert.equal(r.status, 200);
+  d = await r.json();
+  assert.deepEqual(d.items.map((i: any) => i.titel), ["Uur"]);
+  // Geldige statische data met defecte uurdata: statisch blijft.
+  r = await draai(Response.json(S), {});
+  assert.equal(r.status, 200);
+
   r = await draai(Response.json(S), H);
   d = await r.json();
   assert.deepEqual(d.items.map((i: any) => i.titel).sort(), ["Routine", "Uur"]);
