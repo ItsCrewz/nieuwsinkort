@@ -39,7 +39,11 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   expect(await invoer.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
   await invoer.fill("onvindbarezoekterm506");
   await expect(page.locator("[aria-live=polite]").filter({ hasText: "0 resultaten" })).toBeAttached();
-  await expect(page.getByText("Geen berichten gevonden voor", { exact: false })).toBeAttached();
+  await expect(page.getByText("Niets gevonden voor “onvindbarezoekterm506”")).toBeVisible();
+  await page.getByRole("button", { name: "Wis zoekopdracht" }).click();
+  await expect(invoer).toHaveValue("");
+  await expect(invoer).toBeFocused();
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await invoer.press("Escape");
   await expect(invoer).toBeHidden();
