@@ -1,8 +1,11 @@
 import { CAT_LABEL } from "./tabs";
 import type { Item } from "./types";
 
+// Letters die NFD niet ontleedt: beperkte transliteratie zodat "Soren" ook "Søren" vindt (#735).
+const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "ß": "ss" };
+
 export function normaliseer(tekst: string): string {
-  return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c]).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 export function zoekItems(items: Item[], query: string): Item[] {
