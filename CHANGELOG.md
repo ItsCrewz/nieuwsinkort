@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Het filter voor het vorige bezoek werkt ook als sessieopslag geblokkeerd is (#752).
+- Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
