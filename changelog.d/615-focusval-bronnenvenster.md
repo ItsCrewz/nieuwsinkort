@@ -1,0 +1,1 @@
+- Bronnenvenster houdt toetsenbordfocus vast: Tab en Shift+Tab blijven binnen de zichtbare, ingeschakelde bediening en lopen rond; Escape en sluiten herstellen de focus naar de opener (#615).
