@@ -110,7 +110,7 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 | `feed` | `Feed`, spelers, `debug-overlay` | op touch + videoroute |
 | `hls` | hls.js | door `feed` en het voorladen |
 
-Filterblad (#627): `aria-modal` met focusval: Tab/Shift+Tab wisselen binnen het blad rond (uitgeschakelde knoppen tellen niet mee), focus buiten het blad gaat terug naar de sluitknop, Escape en de sluitknop geven focus terug aan de opener.
+Filterblad (#627): `aria-modal` met focusval: Tab/Shift+Tab wisselen binnen het blad rond (uitgeschakelde knoppen tellen niet mee), focus buiten het blad gaat terug naar de sluitknop, Escape en de sluitknop geven focus terug aan de opener. Echte Tab/Shift+Tab/Escape in Chrome (nieuws en filmpjes, met en zonder reduced motion): `e2e/filterblad-focus.spec.mjs`.
 
 Daarom staan pure helpers die het hoofdscherm of het voorladen nodig hebben los van de lazy modules: `videosoort.ts` (`playerFor`, `soortVan`, `viaProxy`), `samenvattingcache.ts` (`zaaiSamenvattingen`), `meer.ts` (`prefetchMeer`) en `leesverder.ts` (`fotos`, `bronnenTekst`). Importeer die niet via `video.tsx`/`feed.tsx`, anders komt de lazy chunk terug in `index`. Meting (gzip, `npm run build`): hoofdchunk 89,0 kB → 69,2 kB (−22%); de ondergrens is React + react-dom (≈46 kB gzip).
 
