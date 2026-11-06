@@ -156,6 +156,7 @@ export function voerUit(p: Plan) {
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
           im.onload = () => ok();
           im.onerror = () => fout(new Error("img"));
+          im.onabort = () => fout(new Error("img")); // afgebroken laden mag de sleutel niet vasthouden
           im.src = t;
           vast.push(im);
         })

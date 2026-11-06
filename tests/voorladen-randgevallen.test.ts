@@ -52,14 +52,14 @@ const wacht = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 try {
   const links: { rel: string; href: string; crossOrigin: string }[] = [];
-  const afbeeldingen: { src: string; decoding: string; referrerPolicy: string; fetchPriority: string; onload: (() => void) | null; onerror: (() => void) | null }[] = [];
+  const afbeeldingen: { src: string; decoding: string; referrerPolicy: string; fetchPriority: string; onload: (() => void) | null; onerror: (() => void) | null; onabort: (() => void) | null }[] = [];
   installeer("document", {
     head: { appendChild: (link: typeof links[number]) => links.push(link) },
     createElement: () => ({ rel: "", href: "", crossOrigin: "niet-ingesteld" }),
   });
   installeer("Image", class {
     src = ""; decoding = ""; referrerPolicy = ""; fetchPriority = "";
-    onload: (() => void) | null = null; onerror: (() => void) | null = null;
+    onload: (() => void) | null = null; onerror: (() => void) | null = null; onabort: (() => void) | null = null;
     constructor() { afbeeldingen.push(this); }
   });
   installeer("location", { href: "https://site.example/" });
@@ -136,6 +136,20 @@ try {
     await wacht();
     assert.equal(afbeeldingen.length - begin, 2);
     assert.equal(verzoeken.length, 2);
+  });
+
+  await test("afgebroken afbeelding komt vrij en wordt opnieuw geprobeerd", async () => {
+    const p = { ...leeg(), thumbs: ["https://abort.example/a.jpg"] };
+    const begin = afbeeldingen.length;
+    voerUit(p);
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 1);
+    afbeeldingen[begin].onabort!();
+    await wacht();
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 2);
+    afbeeldingen[begin + 1].onload!();
+    await wacht();
   });
 
   await test("HLS haalt laagste variant en hooguit twee segmenten op", async () => {
