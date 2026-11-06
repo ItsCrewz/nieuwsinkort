@@ -13,7 +13,7 @@ export async function batchesOphalen<J extends { url: string }, R extends { url:
     const t = Date.now();
     try {
       let timer: ReturnType<typeof setTimeout> | undefined;
-      const rs = await Promise.race([haal(batch, i), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("batch timeout")), timeoutMs); })]).finally(() => clearTimeout(timer));
+      const rs = await Promise.race([haal(batch, i), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("batch timeout")), timeoutMs); })]).finally(() => { if (timer !== undefined) clearTimeout(timer); });
       if (!Array.isArray(rs)) throw new Error("ongeldig batchantwoord");
       return batch.map((j) => rs.find((r) => r?.url === j.url) || fout(j.url, "SRC_PARSE", Date.now() - t));
     } catch (e) {
