@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Verlopen artikellinks behouden queryparameters, waaronder de meetvoorkeur, bij de redirect naar de homepage (#784).
+- Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
