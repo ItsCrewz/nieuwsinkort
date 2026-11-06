@@ -292,19 +292,20 @@ export function kvPoort(env: Env): Poort {
 // ---------------- welke filmpjes staan er nu op de site
 // Elke cache-miss parste uur (±330 KB) en data.json (±120 KB) opnieuw: CPU-zwaar (#409). De videolijst
 // blijft per isolate en per KV-binding 60 s staan; alleen gelukte lezingen worden bewaard.
-const lijstCache = new WeakMap<object, { at: number; lists: any[] }>();
-async function vindVideo(env: Env, req: Request, id: string): Promise<any | null> {
+const lijstCache = new WeakMap<object, { at: number; lists: any[]; ok: boolean }>();
+// `volledig` = beide lijsten betrouwbaar gelezen; alleen dan betekent "geen treffer" echt onbekend (404), anders tijdelijk 503.
+async function vindVideo(env: Env, req: Request, id: string): Promise<{ v: any | null; volledig: boolean }> {
   let c = lijstCache.get(env.NIEUWS);
   if (!c || Date.now() - c.at >= 60e3) {
     const lists: any[] = [];
     let ok = true;
-    try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
-    try { const S: any = await (await env.ASSETS.fetch(new URL("/data.json", req.url).toString())).json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
-    c = { at: Date.now(), lists };
+    try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); else ok = false; } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
+    try { const res = await env.ASSETS.fetch(new URL("/data.json", req.url).toString()); if (!res.ok) throw new Error("status"); const S: any = await res.json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
+    c = { at: Date.now(), lists, ok };
     if (ok) lijstCache.set(env.NIEUWS, c);
   }
   const { videoSlug } = await import("../src/slug");
-  return c.lists.find((v) => v?.href && videoSlug(v) === id) || null;
+  return { v: c.lists.find((v) => v?.href && videoSlug(v) === id) || null, volledig: c.ok };
 }
 
 export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> => {
@@ -321,8 +322,8 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   const key = `vs:${id}`;
   const hit = await env.NIEUWS.get(key, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   if (hit) return json({ ...hit, cached: true });
-  const v = await vindVideo(env, request, id);
-  if (!v) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 404);
+  const { v, volledig } = await vindVideo(env, request, id);
+  if (!v) return volledig ? json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 404) : json({ ok: false, code: "fout", fout: MSG.fout }, 503); // 503 niet cachen: lijst tijdelijk onleesbaar
   // slot vóór budget en media
   const poort = env.BUDGET_DO ? doPoort(env.BUDGET_DO) : kvPoort(env);
   const nietBeschikbaar = () => json({ ok: false, code: "fout", fout: MSG.fout }, 503); // niet cachen: tijdelijk
