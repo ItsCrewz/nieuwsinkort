@@ -2,6 +2,8 @@
 
 ## Onuitgebracht
 
+- Zoeken behoudt de focus in het zoekveld na Enter (#820).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
