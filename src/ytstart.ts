@@ -28,6 +28,19 @@ export function ytIsGereed(e: { origin: string; source: unknown; data: unknown }
   try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; return (d as { event?: string } | null)?.event === "onReady"; } catch { return false; }
 }
 
+// Onthoudt per frame-venster dat het gereed meldde, los van welk frame op dat moment actief is:
+// een vooraf geladen buur meldt vaak vóór de wissel, en na terugkeer komt er geen nieuwe onReady.
+export function ytGereedLijst() {
+  const gereed = new WeakSet<object>();
+  return {
+    meld(e: { origin: string; source: unknown; data: unknown }, frames: Iterable<{ contentWindow: unknown }>): boolean {
+      for (const f of frames) if (ytIsGereed(e, f)) { gereed.add(f.contentWindow as object); return true; }
+      return false;
+    },
+    is: (win: unknown) => !!win && gereed.has(win as object),
+  };
+}
+
 // De activatieklok loopt door bij pauze en statuswissels, ook zonder onReady.
 export function ytStartBesluit(s: YtStart): "wacht" | "probeer" | "vangnet" {
   if (!s.actief || s.fout || s.status === 1 || s.status === 3 || s.gespeeld) return "wacht";
