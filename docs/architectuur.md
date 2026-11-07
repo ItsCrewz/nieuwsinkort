@@ -388,4 +388,6 @@ Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
+Bij nieuwe berichtdata behoudt de fotocarrousel de actieve foto op URL; ontbreekt die, dan kiest hij de eerste foto en past hij de scrollpositie aan.
+
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
