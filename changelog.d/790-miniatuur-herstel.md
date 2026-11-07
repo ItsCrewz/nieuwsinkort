@@ -1,0 +1,1 @@
+- Filmpjes tonen een nieuwe miniatuur weer als de eerdere beeld-URL is mislukt (#790).

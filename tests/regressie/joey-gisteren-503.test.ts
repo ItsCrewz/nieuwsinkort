@@ -7,7 +7,7 @@ const oud = { id: "oud", t: ms("2026-11-02T22:40:00Z") };
 const vandaag = { id: "nieuw", t: ms("2026-11-03T05:00:00Z") };
 const test = (nu: string, lijst: typeof oud[]) => dag.selecteerVideodag(lijst, ms(nu), (v) => v.t);
 const zeven = "2026-11-03T06:00:00Z";
-const data = (tijd: string, filmpjes: unknown[], dumpert: unknown[]) => ({ gegenereerd: tijd, items: [], filmpjes, dumpert });
+const data = (tijd: string, filmpjes: (typeof oud & { gisteren?: boolean })[], dumpert: (typeof oud & { gisteren?: boolean })[]) => ({ gegenereerd: tijd, items: [], filmpjes, dumpert });
 const vroeg = alleenVandaag(data(zeven, [oud], [oud]), ms(zeven));
 assert.deepEqual(vroeg.filmpjes, [{ ...oud, gisteren: true }]);
 assert.deepEqual(test(zeven, [oud]), [{ ...oud, gisteren: true }]);
