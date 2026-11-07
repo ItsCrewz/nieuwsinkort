@@ -96,6 +96,12 @@ function register(r: Reg) {
   return () => { regs.delete(r); zichtbaar.delete(r); ordered = null; visIO?.unobserve(r.el); };
 }
 
+/** Actieve index na verwijderen van de foto op `weg`: eerdere foto weg schuift mee, actieve/laatste weg klemt binnen de lijst. */
+export function indexNaVerwijderen(i: number, weg: number, nieuweLengte: number): number {
+  const n = weg < i ? i - 1 : i;
+  return Math.max(0, Math.min(nieuweLengte - 1, n));
+}
+
 export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = eager, className = "", onChange }: { urls: string[]; eager?: boolean; voorrang?: boolean; className?: string; onChange?: () => void }) {
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
@@ -125,7 +131,19 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   iRef.current = i;
   useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
   useEffect(() => { onChange?.(); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  const drop = useCallback((u: string) => setList((l) => l.filter((x) => x !== u)), []);
+  const drop = useCallback((u: string) => {
+    const weg = listRef.current.indexOf(u);
+    if (weg < 0) return;
+    const rest = listRef.current.filter((x) => x !== u);
+    listRef.current = rest; // direct bijwerken: meerdere drops in één batch rekenen op de actuele lijst
+    setList(rest);
+    setI((v) => indexNaVerwijderen(v, weg, rest.length));
+  }, []);
+  // Na verwijderen de track weer op de actieve foto zetten (scroll-snap schuift anders mee naar een buurfoto).
+  useEffect(() => {
+    const el = track.current;
+    if (el && el.clientWidth && list.length > 1 && Math.round(el.scrollLeft / el.clientWidth) !== i) el.scrollLeft = i * el.clientWidth;
+  }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const onScroll = useCallback(() => {
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
