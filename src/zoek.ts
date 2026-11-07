@@ -2,7 +2,7 @@ import { CAT_LABEL } from "./tabs";
 import type { Item } from "./types";
 
 export function normaliseer(tekst: string): string {
-  return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ß/g, "ss").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 function afkortingen(tekst: string): string {
