@@ -2,7 +2,7 @@
 
 Zoeken normaliseert hoofdletters, accenten en leestekens. Een lege invoer toont het overzicht; invoer zonder letters of cijfers geeft een zichtbare aanwijzing en kondigt die ook via de live-status aan (#626).
 
-Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq Whisper en de Groq-chatketen. Audio boven 25 MB en mislukte of begrensde Groq-verzoeken vallen terug op Cloudflare binnen het bestaande budget. KV houdt UTC-dagtellers en minuut- en uurvensters bij; KV is niet atomair, waardoor gelijktijdige verzoeken de limieten kunnen overschrijden. Groq-gebruik telt niet mee in video-neuronen.
+Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq Whisper en de Groq-chatketen. Audio boven 25 MB en mislukte of begrensde Groq-verzoeken vallen terug op Cloudflare binnen het bestaande budget. KV houdt UTC-dagtellers en minuut- en uurvensters bij; KV is niet atomair, waardoor gelijktijdige verzoeken de limieten kunnen overschrijden. Groq-gebruik telt niet mee in video-neuronen. HLS-segmenten worden na elkaar gelezen, samen maximaal 12 MB; een downloadfout of overschrijding geeft een tijdelijke fout zonder AI-aanroep.
 
 
 Alles draait op Cloudflare (Free plan). Geen eigen server.
@@ -209,6 +209,7 @@ Alle verzoeken met UA `nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)`, beha
 - **Instagram**: profiel-embed, reels als filmpjes.
 - **Dumpert**: toppers-pagina en HLS via de proxy (max 720p, H.264). `parseDumpert` leest uit dezelfde pagina (zelfde `__DUMPERT_CONTEXT__`, geen extra fetch) eerst de toppers-lijst en vult aan met de `list=latest`-lijst, ontdubbeld op item-id en met dezelfde filters (nsfw, partner_content, secret, views_today, embed). Reden (#394): de rollende toppers-lijst bevat 's ochtends vrijwel alleen items van gisteren, waardoor het dagfilter (alleen vandaag, #56) alles weghaalde. Ontbreekt één lijst, dan volstaat de andere; ontbreken beide, dan een fout.
 - **Reddit**: RSS (`top/.rss?t=day`) → old.reddit → Redlib-instances (roterend, HTML omgezet naar Atom) → laatste gelukte kopie van vandaag. Publieke Redlib-instances blokkeren Cloudflare nu vaak.
+- Video-ontdubbeling (`src/dedup.ts`) vergelijkt media- en thumbnail-URL’s met behoud van betekenisvolle queryparameters; bekende trackingparameters en fragmenten tellen niet mee. Platform-ID’s en de overige herkenningsregels blijven zelfstandig gelden. Test: `tests/regressie/media-query-847.test.ts`.
 - Ontdubbelen over platforms per uitgever (#429, `sameUitgever` in `src/dedup.ts`): zelfde uitgever (`_k`/`_kanaal`, bijv. YouTube-kanaal "NU.nl" ↔ Instagram-account "NU.nl"), verschillend platform, ≤ 6 uur uit elkaar, en de titel van de één staat in titel + beschrijving (`ai`) van de ander (min. 16 tekens en 2 titelwoorden). Een bekende `duur` die meer dan 3 s of 15% afwijkt, voorkomt samenvoegen. Onbekende uitgever of zelfde platform: nooit via deze regel. YouTube blijft staan, de rest komt in `ook`. De Worker ontdubbelt vóór `_k` wordt weggehaald. Test: `tests/dedup.test.ts`.
 - Filmpjes worden eerst ontdubbeld en op score geselecteerd: maximaal 18 Shorts en 14 Journaals. Binnen die plafonds krijgen Reddit, X en Instagram elk maximaal twee beschikbare unieke filmpjes voorrang; de resterende plaatsen volgen de scorevolgorde. Dumpert heeft een eigen tab.
 - Reddit-filmpjes spelen `v.redd.it` rechtstreeks af via HLS, zonder proxy. YouTube-links in posts gebruiken de YouTube-embed; andere videolinks worden overgeslagen. De verwijzing naar de Reddit-post blijft bewaard voor ontdubbeling.
@@ -398,7 +399,11 @@ React-foutgrenzen beschermen de app als laatste vangnet en afzonderlijk de nieuw
 
 Gedeelde berichtpagina (#541): `functions/bericht/[[pad]].ts` levert geen eigen opmaak maar de app-`index.html` (via `ASSETS`, met de echte CSP uit `_headers`) met per bericht eigen `title`, description, canonical, OG, JSON-LD en crawlertekst in `#root` (`src/berichthtml.ts`). `src/main.tsx` zet het pad om naar `/#/` + `/#/bericht/<id>` (home erachter, `history.state.binnen`), zodat sluiten en terugvegen naar het overzicht gaan. De deelknop (`src/detail.tsx`) is een SVG-icoon dat via een portal in `document.body` staat: `.shell` heeft `container-type:inline-size`, wat `position:fixed` binnen `.shell` laat meescrollen. Onbruikbare dagdata of data voor een andere dag geeft tijdelijk 503 met `no-store`; een onbekend bericht in geldige dagdata geeft 302. Verlopen links: 301 naar `/`. Het bestaande JSON-LD-blok wordt vervangen door één `NewsArticle` met canonieke URL, datums met tijdzone, taal `nl-NL` en dezelfde uitgever met logo als de homepage; `<` wordt ge-escaped voor veilige HTML (#581). Deelkaarten gebruiken een geschikt artikelbeeld via `/media/beeld` met een bekende breedte rond maximaal 1200 pixels; voor andere beelden en ontbrekend beeld geldt het sitelogo. Tests: `e2e/bericht.spec.mjs`, `tests/bericht-pagina.test.ts`, `tests/bericht-routing.test.ts`.
 
+Zoeken (#816): `src/zoek.ts` verwijdert accenttekens bij Latijnse letters, maar behoudt markeringen in andere schriften; zoeken blijft op woordbegin en is ongevoelig voor hoofdletters. Tests: `tests/zoek.test.ts`.
+
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
+
+Zoeken (`src/zoek.ts`) normaliseert zoektermen en berichttekst gelijk: hoofdletters en accenten verdwijnen en ß/ẞ wordt ss. Elk zoekwoord moet aan het begin van een woord staan. Tests: `tests/zoek.test.ts` en `tests/regressie/zoeken-854.test.ts`.
 
 Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters ook in compacte vorm, zoals `V.S.` en `VS`, in beide richtingen. Andere leestekens en de bestaande woordbegin- en accentregels blijven gelijk. Tests: `tests/regressie/zoeken-afkortingen-786.test.ts`.
 
@@ -407,3 +412,7 @@ Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de d
 Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de detailweergave vergelijkt artikel-URL's met de actieve bronnen, ook wanneer het filter tijdens het lezen verandert. Algemene uitleg blijft beschikbaar. Zonder filter blijft de bestaande weergave behouden (#691).
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
+
+## Zoeken (#735)
+
+`normaliseer()` in `src/zoek.ts` maakt zoekterm en artikeltekst gelijk: NFD zonder accenten, kleine letters, en een beperkte transliteratie voor letters die NFD niet ontleedt (ø→o, ł→l, æ→ae, œ→oe, đ→d, ß→ss), zodat `Soren` ook `Søren` vindt. Woordbegin-matching en meerwoordzoeken zijn ongewijzigd. Tests: `tests/zoek.test.ts`.
