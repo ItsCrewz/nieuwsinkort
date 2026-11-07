@@ -53,12 +53,22 @@ export function SourcesSheet({
   const [closing, setClosing] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const sluiting = useRef<{ bezig: boolean; klaar: boolean; timer?: number }>({ bezig: false, klaar: false });
+  const afronden = () => {
+    if (sluiting.current.klaar) return;
+    sluiting.current.klaar = true;
+    window.clearTimeout(sluiting.current.timer);
+    onClose();
+  };
   const close = () => {
-    if (rustig()) return onClose();
+    if (sluiting.current.bezig || sluiting.current.klaar) return;
+    sluiting.current.bezig = true;
+    if (rustig()) return afronden();
     setClosing(true);
-    window.setTimeout(onClose, 360); // vangnet als animationend niet komt
+    sluiting.current.timer = window.setTimeout(afronden, 360); // vangnet als animationend niet komt
   };
   useEffect(() => {
+    sluiting.current.klaar = false;
     const prevFocus = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") return close();
@@ -78,6 +88,8 @@ export function SourcesSheet({
     document.body.style.overflow = "hidden";
     closeBtn.current?.focus({ preventScroll: true });
     return () => {
+      sluiting.current.klaar = true;
+      window.clearTimeout(sluiting.current.timer);
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
       prevFocus?.focus?.({ preventScroll: true });
@@ -93,7 +105,7 @@ export function SourcesSheet({
           className="sheet"
           ref={panel}
           onAnimationEnd={(e) => {
-            if (closing && e.target === panel.current) onClose();
+            if (closing && e.target === panel.current) afronden();
           }}
         >
           <div className="sh-head">
