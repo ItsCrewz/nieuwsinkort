@@ -51,6 +51,8 @@
 .vcard:hover .playbtn{transform:scale(1.08)}
 .vcard:active .vthumb{transform:scale(.985)}
 .back:hover .ic{transform:translateX(-3px)}
+.deel-knop,.zoek-knop{transition:transform var(--dur-1) var(--e)}
+.deel-knop:active,.zoek-knop:active{transform:scale(.96)}
 .f-icon:active{transform:scale(.94)}
 .nf-btn:active{transform:scale(.92)}
 .nf-start:active{transform:translateX(-50%) scale(.98)}
@@ -84,5 +86,6 @@ html[data-overgang="open"]::view-transition-new(root){animation:von var(--dur-3)
 html[data-overgang="terug"]::view-transition-old(root){animation:glans var(--dur-3) var(--eo) both;z-index:2}
 html[data-overgang="terug"]::view-transition-new(root){animation:vtn var(--dur-3) var(--eo) both}
 @media (prefers-reduced-motion:reduce){
+  .deel-knop:active,.zoek-knop:active{transform:none}
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none !important}
 }

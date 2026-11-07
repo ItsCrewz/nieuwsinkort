@@ -33,7 +33,7 @@ export function berichtHtml(sjabloon: string, item: Bericht, dag: string): strin
   const beeld = deelbeeld(item);
   const bronnen = (item.bronnen || []).filter((b) => veiligeUrl(b.href));
   const tms = item.t ? new Date(item.t).getTime() : NaN, datum = Number.isFinite(tms) ? new Date(tms).toISOString() : `${dag}T00:00:00+01:00`; // ongeldige t mag de pagina niet breken
-  const json = JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: title.slice(0, 110), datePublished: datum, dateModified: datum, inLanguage: "nl", mainEntityOfPage: url, publisher: { "@type": "NewsMediaOrganization", name: "Nieuws in het kort", url: "https://nieuwsinkort.nl" }, image: "https://nieuwsinkort.nl/og-image.png", isBasedOn: bronnen.map((b) => b.href), citation: bronnen.map((b) => b.href) }).replace(/</g, "\\u003c");
+  const json = JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: title.slice(0, 110), datePublished: datum, dateModified: datum, inLanguage: "nl-NL", mainEntityOfPage: url, publisher: { "@type": "NewsMediaOrganization", name: "Nieuws in het kort", url: "https://nieuwsinkort.nl/", logo: { "@type": "ImageObject", url: "https://nieuwsinkort.nl/icon-512.png", width: 512, height: 512 } }, image: "https://nieuwsinkort.nl/og-image.png", isBasedOn: bronnen.map((b) => b.href), citation: bronnen.map((b) => b.href) }).replace(/</g, "\\u003c");
   let h = sjabloon.replace(/<title>[\s\S]*?<\/title>/, () => `<title>${esc(title)} – Nieuws in het kort</title>`)
     .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${esc(url)}" />`)
     .replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, () => `<script type="application/ld+json">${json}</script>`);
