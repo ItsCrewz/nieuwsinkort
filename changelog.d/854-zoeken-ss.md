@@ -1,0 +1,1 @@
+- Zoeken vindt Duitse namen met ß ook wanneer je ss typt, en andersom.

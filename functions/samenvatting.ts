@@ -37,6 +37,7 @@ const MAIN = "@cf/google/gemma-4-26b-a4b-it", SMALL = "@cf/meta/llama-3.2-1b-ins
 const WHISPER = "@cf/openai/whisper-large-v3-turbo";
 const WHISPER_PER_MIN = 46.64; // $0.000513 per audiominuut / $0.011 per 1000 neuronen
 const MAX_SEC = 180; // hooguit de eerste 3 minuten geluid
+const MAX_HLS = 12e6; // gezamenlijke grens voor daadwerkelijk gelezen segmentbytes
 const MAX_MP4 = 12e6; // mp4 zonder knippen: alleen korte filmpjes
 const PER_RUN = 260;
 const PRE_MAX = 0.85, PRE_MARGE = 600; // vooraf maken: niet boven 85% van het budget, en 600 neuronen marge // reserve per nog komend uur-nieuws (gemiddelde run ±210–480)
@@ -144,8 +145,31 @@ async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{
   const take: string[] = [];
   for (const s of segs) { if (d >= maxSec || take.length >= 40) break; take.push(s.u); d += s.d; }
   if (!take.length) { why.push("HLS: geen stukjes"); return null; }
-  const parts = await Promise.all(take.map(async (u) => new Uint8Array(await (await get(u)).arrayBuffer())));
-  const n = parts.reduce((a, p) => a + p.length, 0), bytes = new Uint8Array(n);
+  const parts: Uint8Array[] = [];
+  let n = 0;
+  for (const u of take) {
+    const r = await get(u);
+    const lengte = r.headers.get("content-length");
+    if (lengte && /^\d+$/.test(lengte) && Number(lengte) > MAX_HLS - n) {
+      await r.body?.cancel();
+      throw new Error("HLS: geluid te groot");
+    }
+    if (!r.body) throw new Error("HLS: leeg antwoord");
+    const lezer = r.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await lezer.read();
+        if (done) break;
+        n += value.byteLength;
+        if (n > MAX_HLS) throw new Error("HLS: geluid te groot");
+        parts.push(value);
+      }
+    } catch (e) {
+      await lezer.cancel().catch(() => {});
+      throw e;
+    } finally { lezer.releaseLock(); }
+  }
+  const bytes = new Uint8Array(n);
   let o = 0; for (const p of parts) { bytes.set(p, o); o += p.length; }
   return { bytes, sec: d };
 }
@@ -382,7 +406,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
         if (/\.m3u8(\?|$)/.test(media)) a = await hlsAudio(media, why, maxSec);
         else if (/\.mp4(\?|$)/.test(media) || /cdninstagram|fbcdn|twimg/.test(media)) a = await mp4Audio(media, why, maxMp4);
         else why.push("geen geluidsbron");
-      } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`geluid ophalen: ${String(e?.message || e).slice(0, 60)}`); }
+      } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`geluid ophalen: ${String(e?.message || e).slice(0, 60)}`); return uit({ ok: false, code: "fout", fout: MSG.fout }, 503); }
       if (a && a.sec < 0) { await env.NIEUWS.put(key, JSON.stringify({ ok: false, code: "te-lang", fout: MSG.teLang }), { expirationTtl: 6 * 3600 }); return uit({ ok: false, code: "te-lang", fout: MSG.teLang }); }
       if (a && a.bytes.length) {
         const estMin = a.sec ? a.sec / 60 : Math.min(4, a.bytes.length / 1.2e6); // mp4: ruwe schatting

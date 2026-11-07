@@ -97,13 +97,13 @@ const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
 
 async function warmHls(master: string) {
-  const get = (u: string) => fetch(u, LOW).then((r) => (r.ok ? r.text() : ""));
-  const base = new URL(master, location.href).href;
-  let txt = await get(master);
-  let b = base;
+  // Basis voor relatieve verwijzingen is de uiteindelijke respons-URL: fetch volgt redirects naar andere mappen.
+  const get = (u: string) => fetch(u, LOW).then(async (r) => (r.ok ? { txt: await r.text(), base: r.url || u } : { txt: "", base: u }));
+  let { txt, base: b } = await get(master);
+  if (!b.includes("://")) b = new URL(b, location.href).href;
   if (/#EXT-X-STREAM-INF/.test(txt)) {
-    b = laagsteVariant(txt, base);
-    txt = b ? await get(b) : "";
+    const v = laagsteVariant(txt, b);
+    ({ txt, base: b } = v ? await get(v) : { txt: "", base: b });
   }
   for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => r.arrayBuffer());
 }

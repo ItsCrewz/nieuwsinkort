@@ -1,0 +1,1 @@
+- Regressietest voor #678: na een ongeldig `/meer`-antwoord geeft het detailscherm een veilige lege sectie en herstelt het bij het volgende verzoek (de validatie zelf kwam via #647).

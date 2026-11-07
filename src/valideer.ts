@@ -12,9 +12,31 @@ const item = (v: unknown): v is Item => obj(v) && ["nl", "buitenland", "tech", "
 const video = (v: unknown): v is Video => obj(v) && [v.titel, v.ai, v.bron, v.href, v.thumb, v.populariteit, v.tijd].every(tekst) &&
   opt(v.embed, tekst) && opt(v.soort, (x) => x === "short" || x === "journaal") && opt(v.groep, tekst) && opt(v.ook, (x) => lijst(x, (b) => obj(b) && tekst(b.bron) && tekst(b.href)));
 
+const getal = (v: unknown) => typeof v === "number" && Number.isFinite(v);
+function velden(v: Record<string, any>, tekstvelden: string[], getalvelden: string[] = []) {
+  const resultaat = { ...v };
+  for (const k of tekstvelden) if (k in resultaat && !tekst(resultaat[k])) delete resultaat[k];
+  for (const k of getalvelden) if (k in resultaat && !getal(resultaat[k])) delete resultaat[k];
+  return resultaat;
+}
+function weer(v: Record<string, any>) {
+  const w = velden(v, ["plaats", "bijgewerkt", "verwachting", "waarschuwing"]);
+  for (const [k, teksten, getallen] of [
+    ["nu", ["omschrijving"], ["temp", "gevoel", "van", "tot"]],
+    ["vandaag", ["wind"], ["min", "max", "neerslagkans"]],
+  ] as const) {
+    if (obj(w[k])) w[k] = velden(w[k], [...teksten], [...getallen]);
+    else delete w[k];
+  }
+  if (w.dagen !== undefined) w.dagen = Array.isArray(w.dagen)
+    ? w.dagen.filter((d: unknown) => obj(d) && tekst(d.dag)).map((d: Record<string, any>) => velden(d, ["omschrijving"], ["min", "max"])) : [];
+  if (w.bronnen !== undefined) w.bronnen = Array.isArray(w.bronnen) ? w.bronnen.filter(bron) : [];
+  return w;
+}
+
 /** Ongeldige berichten overslaan; een onbruikbare hoofdstructuur geeft een laadfout. */
 export function valideer(v: unknown): { data: Data; afgewezen: number } {
-  if (!obj(v) || !tekst(v.datum) || !tekst(v.dag_samenvatting) || !obj(v.weer) || !Array.isArray(v.items) || !Array.isArray(v.filmpjes) || !Array.isArray(v.dumpert)) throw new Error("Ongeldige data.json");
+  if (!obj(v) || !tekst(v.gegenereerd) || !Number.isFinite(Date.parse(v.gegenereerd)) || !tekst(v.datum) || !tekst(v.dag_samenvatting) || !obj(v.weer) || !Array.isArray(v.items) || !Array.isArray(v.filmpjes) || !Array.isArray(v.dumpert)) throw new Error("Ongeldige data.json");
   const items = v.items.filter(item), filmpjes = v.filmpjes.filter(video), dumpert = v.dumpert.filter(video);
-  return { data: { ...v, items, filmpjes, dumpert } as Data, afgewezen: v.items.length + v.filmpjes.length + v.dumpert.length - items.length - filmpjes.length - dumpert.length };
+  return { data: { ...v, weer: weer(v.weer), items, filmpjes, dumpert } as Data, afgewezen: v.items.length + v.filmpjes.length + v.dumpert.length - items.length - filmpjes.length - dumpert.length };
 }
