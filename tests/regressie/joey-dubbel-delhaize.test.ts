@@ -8,7 +8,7 @@ import { DetailView } from "../../src/detail";
 import type { Item } from "../../src/types";
 
 const fx = JSON.parse(readFileSync("tests/fixtures/joey/delhaize.json", "utf8")) as { item: Item; puntenDubbel: Item };
-const html = (item: Item) => renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false }));
+const html = (item: Item) => renderToStaticMarkup(createElement(DetailView, { item, onBack: () => {}, bionic: false, dag: "2026-11-03" }));
 const t = (naam: string, f: () => void | Promise<void>) => Promise.resolve(f()).then(() => console.log("ok -", naam));
 
 await t("Delhaize-item zonder /meer: geen Uitgebreid dat intro+samenvatting herhaalt, wel intro, samenvatting en bronnen", () => {

@@ -1,0 +1,1 @@
+- Ongeldige verdieping blijft niet meer in de sessiecache staan, zodat een latere aanvraag kan herstellen (#647).

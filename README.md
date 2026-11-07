@@ -16,7 +16,7 @@ Vite 8, React 18, TypeScript 5, Tailwind 3, hls.js. Backend op Cloudflare: Pages
 
 Onbekende paden geven op Cloudflare Pages een 404 met `public/404.html`; de app gebruikt hash-routes en deeplinks blijven onder `/`. Controleer een Pages-preview of productie met `node scripts/check-status.mjs <basis-url>`. De controle gebruikt veilige foutverzoeken voor Functions en start geen AI.
 
-Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home.
+Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home. Een hash met ongeldige percent-codering valt terug op Home.
 
 Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen.
 Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
@@ -109,7 +109,7 @@ De CSP staat het Cloudflare Web Analytics-script van `static.cloudflareinsights.
 
 ## Bezoekersstatistieken (Cloudflare Web Analytics)
 
-De app laadt Cloudflare Web Analytics na de eerste render. Met `?nietmeten=1` sluit je bezoeken in deze browser uit; met `?nietmeten=0` zet je meting weer aan. De keuze wordt in localStorage bewaard. Gemeten worden visits, paginaweergaven, laadtijd en Core Web Vitals (LCP, INP, CLS), met filters op onder meer land, pad, verwijzer en apparaat. Kosten: €0. Er zijn geen cookies, geen localStorage en geen fingerprinting; volgens Cloudflare worden geen persoonsgegevens van bezoekers verzameld (niet juridisch getoetst). Adblockers blokkeren de beacon, dus de cijfers zijn een ondergrens. Hash-routes (`#/filmpjes`, `#/sport`) worden niet apart geteld: alle bezoeken verschijnen als `/`. Bekijken: Cloudflare-dashboard → Web Analytics → de site. Bij ingebruikname moet de coördinator bij dezelfde deploy de automatische injectie uitschakelen onder Pages → nieuwsinkort → Metrics → Web Analytics; de site blijft bestaan. Details: [architectuur](docs/architectuur.md#bezoekersstatistieken).
+De app laadt Cloudflare Web Analytics na de eerste render. Met `?nietmeten=1` sluit je bezoeken in deze browser uit; met `?nietmeten=0` zet je meting weer aan. De keuze wordt in localStorage bewaard. Als opslag geblokkeerd is, blijft de keuze in de URL staan en meldt de site dat je haar op een andere pagina opnieuw moet maken. Gemeten worden visits, paginaweergaven, laadtijd en Core Web Vitals (LCP, INP, CLS), met filters op onder meer land, pad, verwijzer en apparaat. Kosten: €0. Er zijn geen cookies, geen localStorage en geen fingerprinting; volgens Cloudflare worden geen persoonsgegevens van bezoekers verzameld (niet juridisch getoetst). Adblockers blokkeren de beacon, dus de cijfers zijn een ondergrens. Hash-routes (`#/filmpjes`, `#/sport`) worden niet apart geteld: alle bezoeken verschijnen als `/`. Bekijken: Cloudflare-dashboard → Web Analytics → de site. Bij ingebruikname moet de coördinator bij dezelfde deploy de automatische injectie uitschakelen onder Pages → nieuwsinkort → Metrics → Web Analytics; de site blijft bestaan. Details: [architectuur](docs/architectuur.md#bezoekersstatistieken).
 
 ### KV-schrijflimiet uur-Worker
 
@@ -143,3 +143,5 @@ Browserrookproeven staan beschreven in [docs/browser-tests.md](docs/browser-test
 Focus lezen (#383): `src/focuslezen.ts` — standaard uit; alleen een expliciete klik wordt bewaard in localStorage-sleutel `nieuwsinkort-focus-lezen-keuze` (waarden `aan`/`uit`). De oude sleutel `dagelijks-nieuws-focus-lezen-v2` werd volgens de git-historie alleen bij een klik geschreven, maar wordt genegeerd en opgeruimd (een oude waarde kan niet van een standaard worden onderscheiden). De beginstand wordt lazy gelezen, dus geen flits. Zonder of met falende storage: uit. Tests: `tests/focuslezen.test.ts`.
 
 Bij het afdrukken van een bericht verdwijnen navigatie, bediening en media. De tekst is zwart op wit en bij bronlinks staat de URL.
+
+Na een deploy kan de orchestrator `npm run rooktest:live` uitvoeren (of `npm run rooktest:live -- https://voorbeeld.nl` voor een andere basis-URL). De rooktest controleert de kernpagina's, minstens 20 feeditems, minstens 10 koppen en een berichtpagina; elk verzoek heeft een timeout van 10 seconden. De test wordt niet automatisch bij deploy uitgevoerd en start geen AI.
