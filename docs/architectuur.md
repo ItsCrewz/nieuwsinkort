@@ -400,6 +400,8 @@ Gedeelde berichtpagina (#541): `functions/bericht/[[pad]].ts` levert geen eigen 
 
 Zoeken (#816): `src/zoek.ts` verwijdert accenttekens bij Latijnse letters, maar behoudt markeringen in andere schriften; zoeken blijft op woordbegin en is ongevoelig voor hoofdletters. Tests: `tests/zoek.test.ts`.
 
+Terugvegen begint alleen bij een aanraking op het artikel of een kind daarvan; het aparte deelportaal valt daarbuiten. Invoer, media, horizontaal scrollbare inhoud en de Safari-rand blijven uitgesloten. Browserproef: `e2e/terugvegen.spec.mjs` (#740).
+
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
 
 Zoeken (`src/zoek.ts`) normaliseert zoektermen en berichttekst gelijk: hoofdletters en accenten verdwijnen en ß/ẞ wordt ss. Elk zoekwoord moet aan het begin van een woord staan. Tests: `tests/zoek.test.ts` en `tests/regressie/zoeken-854.test.ts`.
