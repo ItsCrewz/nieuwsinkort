@@ -1,0 +1,1 @@
+- Directe artikelverzoeken geven tijdelijk 503 bij onbruikbare of onvolledige dagdata (#624).
