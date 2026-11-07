@@ -36,6 +36,27 @@ t("statische data van gisteren met verse uur-data: alleen uur-data, geen routine
   assert.deepEqual(out.items.map((i: any) => i.kop), ["Nieuw"]);
 });
 
+t("rubrieksamenvattingen volgen de recentste dataset met terugval per rubriek", () => {
+  const sam = (tekst: string) => ({ tekst, ai: false, bron: "extractief", gegenereerd: ROUTINE });
+  const S = { gegenereerd: ROUTINE, dag_samenvatting: "routine", tab_samenvatting: { nl: sam("routine NL"), sport: sam("routine sport") }, items: [item("Routine", "https://nos.nl/routine")] };
+  const H = { gegenereerd: UUR, dag_samenvatting: "uur", tab_samenvatting: { nl: sam("uur NL"), tech: sam("uur tech") }, items: [item("Uur", "https://nos.nl/uur")] };
+  for (const uurNieuwer of [true, false]) {
+    const routine = { ...S, gegenereerd: uurNieuwer ? ROUTINE : UUR };
+    const uur = { ...H, gegenereerd: uurNieuwer ? UUR : ROUTINE };
+    const uit = merge(routine, uur);
+    assert.deepEqual(uit.tab_samenvatting, { nl: sam(uurNieuwer ? "uur NL" : "routine NL"), sport: sam("routine sport"), tech: sam("uur tech") });
+    assert.equal(uit.dag_samenvatting, uurNieuwer ? "uur" : "routine");
+    assert.equal(uit.gegenereerd, UUR);
+    assert.deepEqual(uit.items.map((i: any) => i.kop), ["Uur", "Routine"]);
+    assert.deepEqual(merge({ ...routine, tab_samenvatting: undefined }, uur).tab_samenvatting, H.tab_samenvatting);
+    assert.deepEqual(merge(routine, { ...uur, tab_samenvatting: undefined }).tab_samenvatting, S.tab_samenvatting);
+    assert.equal(merge({ ...routine, tab_samenvatting: undefined }, { ...uur, tab_samenvatting: undefined }).tab_samenvatting, undefined);
+    const leeg = { nl: sam("") };
+    assert.equal(merge({ ...routine, tab_samenvatting: uurNieuwer ? S.tab_samenvatting : leeg }, { ...uur, tab_samenvatting: uurNieuwer ? leeg : H.tab_samenvatting }).tab_samenvatting.nl.tekst, uurNieuwer ? "routine NL" : "uur NL");
+  }
+  assert.deepEqual(merge({ ...S, gegenereerd: GISTEREN }, { ...H, tab_samenvatting: undefined }).tab_samenvatting, undefined);
+});
+
 t("dubbele berichten via genormaliseerde bronlinks (www, https, query, slash, hoofdletters)", () => {
   const S = { gegenereerd: ROUTINE, items: [item("A", "https://www.nos.nl/artikel/1/"), item("B", "http://Krant.nl/b?utm=1#x")], filmpjes: [], dumpert: [] };
   const H = { gegenereerd: UUR, dumpert: [], filmpjes: [], items: [

@@ -57,6 +57,13 @@ export function merge(S: any, H: any) {
     nieuw.length = 150;
   }
   const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
+  // Per rubriek valt een ontbrekende of lege tekst terug op de andere bruikbare dataset.
+  const oudsteTabs = (hNieuwer ? base : H).tab_samenvatting || {};
+  const nieuwsteTabs = (hNieuwer ? H : base).tab_samenvatting || {};
+  const tabs = { ...oudsteTabs };
+  for (const [rubriek, samenvatting] of Object.entries(nieuwsteTabs)) {
+    if ((samenvatting as any)?.tekst) tabs[rubriek] = samenvatting;
+  }
   // Selecteer de dag vóór de keuze tussen routine en uurdata.
   const nu = Date.now();
   for (const key of ["filmpjes", "dumpert"] as const) {
@@ -89,7 +96,7 @@ export function merge(S: any, H: any) {
     ...base,
     datum: H.datum || base.datum,
     dag_samenvatting: (hNieuwer && H.dag_samenvatting) || base.dag_samenvatting || H.dag_samenvatting || "",
-    tab_samenvatting: H.tab_samenvatting,
+    tab_samenvatting: Object.keys(tabs).length ? tabs : undefined,
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
     items: ontdubbelVerhalen([...nieuw.map(metMeer), ...routineItems], new Set(routineItems)),
     filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
