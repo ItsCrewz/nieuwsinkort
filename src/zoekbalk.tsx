@@ -1,3 +1,5 @@
+import { Icon } from "./icons";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { normaliseer } from "./zoek";
 
@@ -9,9 +11,11 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
   const invoer = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) invoer.current?.focus(); }, [open]);
   const sluit = () => { onChange(""); setOpen(false); knop.current?.focus(); };
+  // Buiten .shell renderen (container-type:inline-size), anders scrolt de vaste knop mee, net als de deelknop.
+  const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} aria-label="Zoeken" title="Zoeken" onClick={() => open ? sluit() : setOpen(true)}><Icon name="search" /></button>;
   return (
     <div className="zoek-container">
-      <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} onClick={() => open ? sluit() : setOpen(true)}>Zoek</button>
+      {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
       {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} />}
       <span className="zoek-status" aria-live="polite">{query.trim() ? normaliseer(query) ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}` : zoekAanwijzing : ""}</span>
     </div>
