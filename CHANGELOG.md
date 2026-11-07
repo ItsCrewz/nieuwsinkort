@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Vastgelopen aanvragen voor extra artikeltekst stoppen na 10 seconden, zodat een latere poging kan herstellen (#742).
 - Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
