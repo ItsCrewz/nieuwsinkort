@@ -7,7 +7,8 @@ export type Item = {
   samenvatting: string;
   punten: string[];
   tijd: string;
-  t?: number; // Publicatietijd in milliseconden sinds de Unix-epoch.
+  /** Absolute publicatietijd in milliseconden sinds de Unix-epoch. */
+  t?: number;
   bronnen: Bron[];
   beeld?: string; // oud veld: één afbeelding
   /** Foto's uit alle bronnen van dit bericht (ontdubbeld, eerste = beste). */
