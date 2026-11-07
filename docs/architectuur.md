@@ -386,3 +386,5 @@ Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
+
+- **Zoeken en koppeltekens (#811)**: `src/zoek.ts` zoekt op woordbegin; een koppelteken tussen letters/cijfers wordt ook weggelaten in een tweede tekstvariant, zodat "coronamaatregelen" "corona-maatregelen" vindt. Een zoekterm met koppelteken matcht de aaneengesloten reeks (binnen één veld) of de aaneengeschreven vorm, niet twee verspreide woorden. Meerwoordzoekopdrachten (spaties), accentnormalisatie en woordbegin blijven gelijk. Tests: `tests/zoek.test.ts`.
