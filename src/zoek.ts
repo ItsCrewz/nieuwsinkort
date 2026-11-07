@@ -5,8 +5,8 @@ export function normaliseer(tekst: string): string {
   return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
-// Koppelteken tussen twee letters/cijfers: "corona-maatregelen" is dezelfde samenstelling als "coronamaatregelen".
-const KOPPEL = /(?<=[\p{L}\p{N}])[-\u2010\u2011](?=[\p{L}\p{N}])/gu;
+// Koppelteken tussen twee letters/cijfers, behalve tussen twee losse tekens ("V-S" blijft geen "VS"): "corona-maatregelen" is dezelfde samenstelling als "coronamaatregelen".
+const KOPPEL = /(?<=[\p{L}\p{N}]{2})[-\u2010\u2011](?=[\p{L}\p{N}])|(?<=[\p{L}\p{N}])[-\u2010\u2011](?=[\p{L}\p{N}]{2})/gu;
 
 // "N.O.S." wordt ook als "NOS" doorzoekbaar (zowel in de zoekterm als in de tekst).
 function afkortingen(tekst: string): string {
