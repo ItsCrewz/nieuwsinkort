@@ -379,4 +379,6 @@ Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="sea
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
+Zoekmeldingen (#711): de resultaten reageren direct; het live-gebied meldt het actuele aantal na 400 ms zonder wijziging. Wissen, sluiten en het verlaten van de zoekbalk annuleren een uitstaande melding.
+
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
