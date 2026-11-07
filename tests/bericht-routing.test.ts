@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 // Routering, verloop en Cache API van /bericht/…: vaste klok, KV- en cachemocks, geen netwerk.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
