@@ -1,0 +1,1 @@
+- Zoeken herkent afkortingen met en zonder punten, zoals VS en V.S. (#786).
