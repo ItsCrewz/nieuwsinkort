@@ -33,7 +33,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, normaliseer } from "./zoek";
+import { zoekItems } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
@@ -1318,7 +1318,7 @@ export default function App() {
             key={view}
             items={zoekUitkomst}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
