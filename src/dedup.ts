@@ -14,8 +14,8 @@ export function canonUrl(u: string): string {
     const host = x.hostname.replace(/^(www|m|mobile|old|new)\./, "").toLowerCase().replace(/^twitter\.com$/, "x.com");
     const keep: [string, string][] = [];
     x.searchParams.forEach((v, k) => keep.push([k, v]));
-    const kept = keep.filter(([k]) => !TRACK.test(k)).sort(([a], [b]) => a.localeCompare(b));
-    const q = kept.length ? "?" + kept.map(([k, v]) => `${k}=${v}`).join("&") : "";
+    const kept = keep.filter(([k]) => !TRACK.test(k)).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)); // stabiel: herhaalde sleutels houden hun volgorde
+    const q = kept.length ? "?" + kept.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&") : "";
     return `${host}${x.pathname.replace(/\/+$/, "")}${q}`;
   } catch {
     return u.trim().toLowerCase();
