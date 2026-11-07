@@ -16,6 +16,7 @@ try {
   assert.ok(xml.includes(`<loc>https://nieuwsinkort.nl${artikelPad(a, dag)}</loc>`), "zelfde URL als de pagina");
   assert.ok(xml.includes("<news:title>Rook &amp; vuur &lt;b&gt;</news:title>"), "escaping");
   assert.ok(xml.includes("<news:publication_date>2026-11-04T09:30:00.000Z</news:publication_date>"));
+  assert.ok(!xml.includes("lastmod"), "geen verzonnen lastmod (#712)");
   assert.ok(xml.includes("<news:language>nl</news:language>"));
   assert.equal((xml.match(/<url>/g) || []).length, 1, "ruw, politiek en zonder tijd ontbreken");
   const veel = Array.from({ length: 1200 }, (_, i) => ({ kop: `Bericht ${i}`, t, bronnen: [{ site: "x", href: `https://x.nl/${i}` }] }));
@@ -29,7 +30,7 @@ try {
   assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("cache-control"), "public, max-age=300");
   assert.equal(r.headers.get("strict-transport-security"), "max-age=86400");
   assert.ok((await r.text()).includes(artikelPad(a, dag)));
-  r = await vraag(data("", [a])); assert.equal(r.status, 200); assert.ok(!(await r.text()).includes("<url>"), "ongeldige dag = lege urlset");
+  r = await vraag(data("", [a])); assert.equal(r.status, 503);
   r = await vraag({ ASSETS: { fetch: async () => new Response("", { status: 500 }) }, NIEUWS: { get: async () => null } });
   assert.equal(r.status, 503); assert.equal(r.headers.get("cache-control"), "no-store");
 
