@@ -1,0 +1,1 @@
+- SEO (#779): berichtpagina's krijgen een beschrijving op woordgrens, de artikelfoto (via de eigen beeldproxy) in `og:image` en JSON-LD, auteur/logo in NewsArticle en links naar verwante berichten en `/vandaag`; `/sitemap.xml` is nu een Function met de vaste pagina's plus alle indexeerbare berichten van vandaag.
