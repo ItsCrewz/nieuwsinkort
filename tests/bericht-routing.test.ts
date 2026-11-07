@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 // Routering, verloop en Cache API van /bericht/…: vaste klok, KV- en cachemocks, geen netwerk.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -67,9 +66,9 @@ try {
   // vandaag maar onbekend
   r = await bezoek(env2, `/bericht/${dag}/zzzzzzzz-niet`, wu);
   assert.equal(r.status, 302); assert.equal(r.headers.get("location"), "/"); assert.equal(r.headers.get("cache-control"), "no-store"); assert.equal(r.headers.get("x-robots-tag"), "noindex");
-  // dataset van een andere dag: ook onbekend, geen permanente redirect
+  // dataset van een andere dag is tijdelijk onvolledig
   const envOud = maakEnv("2026-11-03", [item], { reads: 0 }); zet("2026-11-04T12:00:00Z");
-  r = await bezoek(envOud, pad, wu); assert.equal(r.status, 302);
+  r = await bezoek(envOud, pad, wu); assert.equal(r.status, 503); assert.equal(r.headers.get("cache-control"), "no-store");
   // ongeldig: 404
   for (const p of ["/bericht/2026-02-30/aaaaaaaa-x", "/bericht/2026-11-05/aaaaaaaa-x", "/bericht/2026-11-04/kort-x", "/bericht/2026-11-04"]) assert.equal((await bezoek(env2, p, wu)).status, 404, p);
 

@@ -23,17 +23,22 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
     if (etagMatch(request.headers.get("If-None-Match"), bestaand.headers.get("ETag"))) return new Response(null, { status: 304, headers: bestaand.headers });
     return bestaand;
   }
-  const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env }, false);
-  if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
-  const dag = await data.json() as { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
-  const items = dag.gegenereerd && ams(Date.parse(dag.gegenereerd)).iso === pad.dag ? dag.items || [] : [];
+  const tijdelijk = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
+  let dag: { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
+  try {
+    const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env }, false);
+    if (!data.ok) return tijdelijk();
+    dag = await data.json();
+  } catch { return tijdelijk(); }
+  if (!dag || typeof dag.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items) || ams(Date.parse(dag.gegenereerd)).iso !== pad.dag) return tijdelijk();
+  const items = dag.items;
   const item = items.find((i) => artikelId(i) === pad.id) || items.find((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id));
   if (!item) return redirect(302, "/", "no-store");
   const canoniek = artikelPad(item, pad.dag);
-  if (u.pathname !== canoniek) return redirect(301, canoniek, "no-store");
+  if (u.pathname !== canoniek) return redirect(301, `${canoniek}${u.search}`, "no-store");
   // De pagina is de app zelf (index.html met eigen kop-tags); lukt dat ophalen niet, dan opent de hash-route in de app.
   const sjabloon = await env.ASSETS.fetch(new Request(`${u.origin}/`)).catch(() => null);
-  if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return redirect(302, `/#/bericht/${artikelId(item)}`, "no-store");
+  if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return redirect(302, `/${u.search}#/bericht/${artikelId(item)}`, "no-store");
   const html = berichtHtml(await sjabloon.text(), item, pad.dag), tag = await etag(html);
   const headers = new Headers(sjabloon.headers);
   for (const [k, v] of Object.entries({ ...basis, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300, stale-while-revalidate=600", ETag: tag })) headers.set(k, v);
