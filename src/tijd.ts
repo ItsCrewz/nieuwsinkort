@@ -18,3 +18,17 @@ export function midnight(t = Date.now()) {
   }
   return guess;
 }
+
+const WD = ["zo", "ma", "di", "wo", "do", "vr", "za"];
+const MO = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+
+export function dayDates(dagen: { dag?: string }[], t = Date.now()) {
+  const a = ams(t);
+  const cur = new Date(Date.UTC(a.y, a.m - 1, a.d));
+  return dagen.map(({ dag }) => {
+    const want = WD.indexOf((dag || "").slice(0, 2).toLowerCase());
+    if (want < 0) return "";
+    do { cur.setUTCDate(cur.getUTCDate() + 1); } while (cur.getUTCDay() !== want);
+    return `${cur.getUTCDate()} ${MO[cur.getUTCMonth()]}`;
+  });
+}
