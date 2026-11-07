@@ -1,1 +1,1 @@
-- Ongeldige extra artikeltekst breekt de detailpagina niet meer en een volgend verzoek kan herstellen (#678).
+- Regressietest voor #678: na een ongeldig `/meer`-antwoord geeft het detailscherm een veilige lege sectie en herstelt het bij het volgende verzoek (de validatie zelf kwam via #647).

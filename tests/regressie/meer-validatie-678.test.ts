@@ -16,9 +16,10 @@ try {
     const eerste = prefetchMeer(item);
     assert.equal(prefetchMeer(item), eerste, "lopende verzoeken worden gedeeld");
     assert.equal(await eerste, null);
-    assert.doesNotThrow(() => uitgebreidOntdubbeld(item, null));
+    assert.deepEqual(uitgebreidOntdubbeld(item, null), { punten: [], uitgebreid: [], uitleg: false }, "zonder extra tekst: geen crash, lege sectie, geen uitleg");
     assert.deepEqual(await prefetchMeer(item), geldig, "een volgend verzoek herstelt");
     assert.deepEqual(await prefetchMeer(item), geldig, "geldig antwoord blijft bewaard");
+    assert.deepEqual(uitgebreidOntdubbeld(item, await prefetchMeer(item)), { punten: [], uitgebreid: fixture.meer.uitleg ?? [], uitleg: true }, "na herstel verschijnt de extra tekst");
     assert.equal(aantal, 2);
   }
 } finally { globalThis.fetch = echteFetch; }
