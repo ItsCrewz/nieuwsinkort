@@ -90,7 +90,9 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
-const vast: unknown[] = []; // voorkomt dat Image-objecten voortijdig worden opgeruimd
+const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
+export const aantalActievePosters = () => vast.size;
+const POSTER_TIMEOUT = 15000;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
 const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
@@ -155,9 +157,16 @@ export function voerUit(p: Plan) {
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
-          im.onload = im.onerror = () => ok();
-          im.src = t;
-          vast.push(im);
+          const klaar = () => {
+            clearTimeout(timer);
+            im.onload = im.onerror = null;
+            vast.delete(im);
+            ok();
+          };
+          const timer = setTimeout(klaar, POSTER_TIMEOUT);
+          im.onload = im.onerror = klaar;
+          vast.add(im);
+          try { im.src = t; } catch { klaar(); }
         })
     );
   }
