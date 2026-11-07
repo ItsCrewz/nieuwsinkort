@@ -19,6 +19,11 @@ export function midnight(t = Date.now()) {
   return guess;
 }
 
+// De milliseconde vóór middernacht ligt altijd op de vorige kalenderdag.
+export function vorigeDag(t = Date.now()) {
+  return ams(midnight(t) - 1).iso;
+}
+
 const WD = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 const MO = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 
