@@ -32,7 +32,7 @@ try {
   tijd = Date.parse("2026-03-28T22:59:00Z");
   for (const [handler, pad] of [[vandaag, "/vandaag"], [sitemap, "/sitemap-nieuws.xml"]] as const) {
     const r = await vraag(handler, pad);
-    assert.equal(r.headers.get("cache-control"), "public, max-age=60, must-revalidate");
+    assert.equal(r.headers.get("cache-control"), "public, max-age=60");
     assert.ok((await r.text()).includes(artikelPad(item, dag)));
     const voor = reads; await vraag(handler, pad); assert.equal(reads, voor);
   }
@@ -46,7 +46,7 @@ try {
   assert.equal(r.status, 200); assert.equal(r.headers.get("cache-control"), "public, max-age=60, must-revalidate");
   for (const [handler, pad] of [[vandaag, "/vandaag"], [sitemap, "/sitemap-nieuws.xml"]] as const) {
     r = await vraag(handler, pad);
-    assert.equal(r.headers.get("cache-control"), "public, max-age=60, must-revalidate");
+    assert.equal(r.headers.get("cache-control"), "public, max-age=60");
   }
   tijd = Date.parse("2026-03-29T04:00:00Z");
   r = await vraag(bericht, artikel); assert.equal(r.status, 301); assert.equal(r.headers.get("location"), "/");

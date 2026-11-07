@@ -1,8 +1,9 @@
-import { begrensCache, dagCache, geldigeDag } from "./cache-dag";
+import { dagCache, geldigeDag } from "./cache-dag";
 // Lichte server-HTML met links naar alle berichtpagina's van vandaag: zonder JavaScript hebben crawlers anders geen interne links.
 import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
+import { GELDIG_TOT, nogGeldig, overzichtBeleid } from "../src/overzichtcache";
 import { ICOON_TAGS } from "../src/icoontags";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
@@ -25,15 +26,19 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
   const sleutel = new Request(`${u.origin}${u.pathname}?cache-dag=${dagCache().periode}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
-  if (bestaand) return begrensCache(bestaand);
+  const start = Date.now();
+  if (bestaand && nogGeldig(bestaand, start)) return bestaand;
   const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
   if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
-  let html = vandaagHtml([], "");
+  let html = vandaagHtml([], ""), gegenereerd: string | undefined;
   try {
     const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd)) && geldigeDag(ams(Date.parse(dag.gegenereerd)).iso)) html = vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso);
+    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) gegenereerd = dag.gegenereerd; // ook bij een verlopen dag: de grens hoort bij de dataset
+    if (gegenereerd && geldigeDag(ams(Date.parse(dag.gegenereerd)).iso)) html = (vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso));
   } catch { console.error("vandaag: data lezen mislukt"); }
-  const response = new Response(html, { headers: { ...HDR, "Cache-Control": dagCache().header } });
+  const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
+  if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
+  const response = new Response(html, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   return response;
 }
