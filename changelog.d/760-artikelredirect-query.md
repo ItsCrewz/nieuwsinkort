@@ -1,0 +1,1 @@
+- Artikelredirects en de terugval bij een ontbrekend sjabloon behouden queryparameters, waaronder de meetvoorkeur (#760).
