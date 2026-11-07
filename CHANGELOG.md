@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Voorkom dat bij verversing van een geopend bericht extra tekst van een eerdere sleutel verschijnt (#677).
 - Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
