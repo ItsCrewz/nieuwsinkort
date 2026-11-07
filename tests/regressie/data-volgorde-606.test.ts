@@ -35,14 +35,15 @@ async function start() {
   await act(async () => root.render(createElement(Component)));
   return { verzoeken, huidig: () => huidig, renders: () => renders, unmount: () => act(async () => root.unmount()) };
 }
-const antwoord = (naam: string) => Response.json({ ...fixture, gegenereerd: naam });
+const datums: Record<string, string> = { nieuw: "2026-11-06T12:00:00Z", oud: "2026-11-06T11:00:00Z", hersteld: "2026-11-06T13:00:00Z", laat: "2026-11-06T14:00:00Z" };
+const antwoord = (naam: string) => Response.json({ ...fixture, gegenereerd: datums[naam] });
 {
   const h = await start();
   let tweede!: Promise<void>;
   await act(async () => { tweede = h.huidig().reload(); });
   await act(async () => { h.verzoeken[1].resolve(antwoord("nieuw")); await tweede; });
   await act(async () => { h.verzoeken[0].resolve(antwoord("oud")); });
-  assert.equal(h.huidig().data?.gegenereerd, "nieuw");
+  assert.equal(h.huidig().data?.gegenereerd, datums.nieuw);
   assert.equal(h.huidig().error, false);
   await h.unmount();
 }
@@ -53,7 +54,7 @@ const antwoord = (naam: string) => Response.json({ ...fixture, gegenereerd: naam
   await act(async () => { h.verzoeken[1].resolve(antwoord("nieuw")); await tweede; });
   await act(async () => { h.verzoeken[0].reject(new Error("offline")); });
   await act(async () => { h.verzoeken[2].reject(new Error("offline")); });
-  assert.equal(h.huidig().data?.gegenereerd, "nieuw");
+  assert.equal(h.huidig().data?.gegenereerd, datums.nieuw);
   assert.equal(h.huidig().error, false);
   let derde!: Promise<void>;
   await act(async () => { derde = h.huidig().reload(); });
@@ -64,7 +65,7 @@ const antwoord = (naam: string) => Response.json({ ...fixture, gegenereerd: naam
   await act(async () => { herstel = h.huidig().reload(); });
   await act(async () => { h.verzoeken[5].resolve(antwoord("hersteld")); await herstel; });
   assert.equal(h.huidig().error, false);
-  assert.equal(h.huidig().data?.gegenereerd, "hersteld");
+  assert.equal(h.huidig().data?.gegenereerd, datums.hersteld);
   await h.unmount();
 }
 {
