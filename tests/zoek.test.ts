@@ -20,4 +20,14 @@ assert.deepEqual(zoekItems([katten], "kat asiel"), [katten]);
 assert.deepEqual(zoekItems([katten], "kat debat"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 100 van 2026" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "00"), []);
+const kop = (k: string) => ({ cat: "nl", kop: k }) as Item;
+const markt = kop("Drukte op de markt"), beide = kop("Mark bezoekt de markt"), brand = kop("Brand bij brand");
+assert.deepEqual(zoekItems([markt, beide], "mark markt"), [beide]);
+assert.deepEqual(zoekItems([markt, beide], "markt mark"), [beide]);
+assert.deepEqual(zoekItems([markt, brand, kop("Een brand")], "brand brand"), [brand]);
+// korte term die op meerdere woorden past: volgorde van termen maakt niet uit
+const mar = kop("Markt en Maria");
+for (const q of ["mar maria", "maria mar", "mar markt", "markt mar"]) assert.deepEqual(zoekItems([mar], q), [mar], q);
+assert.deepEqual(zoekItems([mar], "mar mar mar"), []);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "Café", ai: "café-eigenaar" } as Item], "cafe cafe"), [{ cat: "nl", kop: "Café", ai: "café-eigenaar" }]);
 console.log("zoek: tests geslaagd");

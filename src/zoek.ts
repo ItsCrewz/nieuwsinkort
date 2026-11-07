@@ -5,6 +5,20 @@ export function normaliseer(tekst: string): string {
   return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
+// Bipartiete koppeling (Kuhn): de uitkomst hangt zo niet af van de volgorde van de termen.
+function alleTermenPassen(termen: string[], tekstWoorden: string[]): boolean {
+  const eigenaar: number[] = new Array(tekstWoorden.length).fill(-1);
+  const plaats = (t: number, gezien: boolean[]): boolean => {
+    for (let w = 0; w < tekstWoorden.length; w++) {
+      if (gezien[w] || !tekstWoorden[w].startsWith(termen[t])) continue;
+      gezien[w] = true;
+      if (eigenaar[w] < 0 || plaats(eigenaar[w], gezien)) { eigenaar[w] = t; return true; }
+    }
+    return false;
+  };
+  return termen.every((_, t) => plaats(t, []));
+}
+
 function afkortingen(tekst: string): string {
   return tekst.replace(/(?<![\p{L}\p{N}])(?:\p{L}\.)+\p{L}\.?(?![\p{L}\p{N}])/gu, (afkorting) => afkorting.replace(/\./g, ""));
 }
@@ -14,9 +28,10 @@ export function zoekItems(items: Item[], query: string): Item[] {
   if (!woorden.length) return items;
   return items.filter((item) => {
     const origineel = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).join(" ");
-    const tekst = normaliseer(origineel + " " + afkortingen(origineel));
-    // Woordbegin: " " ervoor zodat "kat" niet in "politiek" valt, maar wel "katten" vindt.
-    const haystack = " " + tekst;
-    return woorden.every((woord) => haystack.includes(" " + woord));
+    const zonderPunten = afkortingen(origineel);
+    // Alleen toevoegen als er een afkorting was: een dubbele tekst zou twee termen op hetzelfde woord laten vallen.
+    const tekst = normaliseer(zonderPunten === origineel ? origineel : origineel + " " + zonderPunten);
+    // Woordbegin: elke term moet op een eigen woord vallen ("mark markt" vraagt twee woorden).
+    return alleTermenPassen(woorden, tekst.split(" "));
   });
 }
