@@ -57,10 +57,13 @@ export function laagsteVariant(txt: string, base: string): string {
   let best = "";
   let bw = Infinity;
   lines.forEach((l, i) => {
-    const m = /^#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)/.exec(l);
+    if (!l.startsWith("#EXT-X-STREAM-INF:")) return;
+    const attrs = l.slice("#EXT-X-STREAM-INF:".length).matchAll(/(?:^|,)([A-Z0-9-]+)=("[^"]*"|[^,]*)/g);
+    const waarde = Array.from(attrs).find((m) => m[1] === "BANDWIDTH")?.[2] ?? "";
+    const getal = /^\d+$/.test(waarde) ? Number(waarde) : 0;
     const u = lines[i + 1];
-    if (m && u && !u.startsWith("#") && +m[1] < bw) {
-      bw = +m[1];
+    if (Number.isSafeInteger(getal) && getal > 0 && u && !u.startsWith("#") && getal < bw) {
+      bw = getal;
       best = u;
     }
   });
@@ -87,7 +90,8 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
 export const POSTER_MAX_MS = 8000; // langste wachttijd per poster-taak
-const vast: unknown[] = []; // voorkomt dat Image-objecten voortijdig worden opgeruimd
+const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
+export const aantalActievePosters = () => vast.size;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
 const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
@@ -140,8 +144,7 @@ export function voerUit(p: Plan) {
           const klaar = () => {
             clearTimeout(timer);
             im.onload = im.onerror = null;
-            const n = vast.indexOf(im);
-            if (n >= 0) vast.splice(n, 1);
+            vast.delete(im);
             ok();
           };
           const timer = setTimeout(() => {
@@ -149,8 +152,8 @@ export function voerUit(p: Plan) {
             klaar();
           }, POSTER_MAX_MS);
           im.onload = im.onerror = klaar;
-          im.src = t;
-          vast.push(im);
+          vast.add(im);
+          try { im.src = t; } catch { klaar(); }
         })
     );
   }
