@@ -1,0 +1,1 @@
+- Bug: `preloadBeeld` zet de `load`/`error`-handlers nu vóór `src` in de terugval zonder `decode()` en handelt een al voltooide afbeelding direct af, zodat de voorlaadpromise niet blijft hangen (#772).
