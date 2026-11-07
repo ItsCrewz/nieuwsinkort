@@ -240,6 +240,8 @@ Cloudflare Web Analytics is op 1-11-2026 aangezet. De app laadt de beacon na de 
 
 Redirects voor een gewijzigde artikelslug of alias behouden de query. Ook bij een niet beschikbaar HTML-sjabloon blijft die vóór de hash-route naar het artikel staan (test `tests/regressie/bericht-redirect-query-760.test.ts`).
 
+Een verlopen artikellink verwijst vanaf 06:00 Amsterdamse tijd op de volgende dag met een 301 naar de homepage en behoudt daarbij de query, zodat ook daar de meetvoorkeur wordt toegepast. De redirect blijft 24 uur cachebaar (test `tests/regressie/verlopen-link-query-784.test.ts`).
+
 Bij dezelfde deploy moet de coördinator onder Pages → nieuwsinkort → Metrics → Web Analytics de automatische injectie uitzetten, met behoud van de site. Controleer daarna dat de beacon zonder opt-out precies eenmaal en met opt-out niet in de DOM staat.
 
 **Wat gemeten wordt** (volgens de Cloudflare-docs): visits, paginaweergaven, laadtijd en Core Web Vitals (LCP, INP en CLS; CLS alleen in Chromium-browsers), met filters op land, host, pad, verwijzer, apparaattype, browser en besturingssysteem. Er zijn geen UTM-parameters (querystrings worden niet gelogd) en geen custom events. Adblockers blokkeren de beacon, dus de cijfers zijn een ondergrens. Data is 7 dagen ongesampled, daarna geaggregeerd; er kan 6 maanden terug worden gekeken.

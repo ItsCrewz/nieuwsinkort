@@ -14,7 +14,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const geldig = pad && /^\d{4}-\d{2}-\d{2}$/.test(pad.dag) && !Number.isNaN(Date.parse(`${pad.dag}T00:00:00Z`)) && new Date(`${pad.dag}T00:00:00Z`).toISOString().slice(0, 10) === pad.dag;
   if (!pad || !geldig || pad.dag > nu.iso) return new Response("Niet gevonden", { status: 404, headers: { ...basis, "Cache-Control": "no-store" } });
   const gisteren = new Date(Date.UTC(nu.y, nu.m - 1, nu.d - 1)).toISOString().slice(0, 10);
-  if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, "/", "public, max-age=86400");
+  if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, `/${u.search}`, "public, max-age=86400");
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
