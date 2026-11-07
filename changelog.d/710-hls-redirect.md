@@ -1,0 +1,1 @@
+- Voorladen: relatieve HLS-varianten en segmenten worden opgelost tegen de uiteindelijke respons-URL na een redirect van master of mediaplaylist (#710).

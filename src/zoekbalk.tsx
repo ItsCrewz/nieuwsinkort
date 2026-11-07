@@ -1,6 +1,9 @@
 import { Icon } from "./icons";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
+import { normaliseer } from "./zoek";
+
+const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 
 export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange: (query: string) => void; aantal: number }) {
   const [open, setOpen] = useState(!!query);
@@ -14,7 +17,7 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
       {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} />}
-      <span className="zoek-status" aria-live="polite">{query.trim() ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}` : ""}</span>
+      <span className="zoek-status" aria-live="polite">{query.trim() ? normaliseer(query) ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}` : zoekAanwijzing : ""}</span>
     </div>
   );
 }
@@ -29,5 +32,5 @@ export function ZoekFormulier({ query, onChange, sluit, invoer }: { query: strin
 }
 
 export function ZoekLeeg({ query, onWis }: { query: string; onWis: () => void }) {
-  return <div className="zoek-leeg">Geen berichten gevonden voor ‘{query}’ <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button></div>;
+  return <div className="zoek-leeg">{normaliseer(query) ? <>Geen berichten gevonden voor ‘{query}’</> : zoekAanwijzing} <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button></div>;
 }
