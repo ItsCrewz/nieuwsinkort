@@ -2,6 +2,7 @@
 import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
+import { GELDIG_TOT, nogGeldig, overzichtBeleid } from "../src/overzichtcache";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
@@ -26,15 +27,21 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de sitemap niet breken
-  if (bestaand) return bestaand;
-  const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
-  let xml = leeg("");
-  if (!data.ok) return new Response(xml, { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  const start = Date.now();
+  if (bestaand && nogGeldig(bestaand, start)) return bestaand;
+  const fout = () => new Response(leeg(""), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  let xml: string, gegenereerd: string;
   try {
-    const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) xml = nieuwsSitemap(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso);
-  } catch { console.error("sitemap-nieuws: data lezen mislukt"); }
-  const response = new Response(xml, { headers: { ...HDR, "Cache-Control": "public, max-age=300" } });
+    const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
+    if (!data.ok) return fout();
+    const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
+    if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
+    gegenereerd = dag.gegenereerd;
+    xml = nieuwsSitemap(dag.items, ams(Date.parse(gegenereerd)).iso);
+  } catch { console.error("sitemap-nieuws: data lezen mislukt"); return fout(); }
+  const beleid = overzichtBeleid(start, Date.now(), gegenereerd);
+  if (!beleid) return new Response(xml, { headers: { ...HDR, "Cache-Control": "no-store" } });
+  const response = new Response(xml, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   return response;
 }

@@ -52,13 +52,53 @@ function hostOf(href: string) {
   }
 }
 
+// Na een fout hooguit drie nieuwe pogingen (met uitstel), of eerder zodra de verbinding terug is; daarna niet meer.
+export const CATALOG_RETRY_MS = [3000, 10000, 30000];
+
 export function useCatalog() {
   const [cat, setCat] = useState<Catalog | null>(null);
   useEffect(() => {
-    fetch("/bronnen.json", { cache: "no-cache" })
-      .then((r) => (r.ok ? r.json() : { groepen: [] }))
-      .then((c: Catalog) => setCat(c && Array.isArray(c.groepen) ? c : { groepen: [] }))
-      .catch(() => setCat({ groepen: [] }));
+    let weg = false;
+    let poging = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let bezig = false;
+    let gestart = 0;
+    const ctrl = new AbortController();
+    const leeg: Catalog = { groepen: [] };
+    const laad = () => {
+      if (weg || bezig) return;
+      // eerste poging + de retries; ook online-events tellen mee
+      if (gestart > CATALOG_RETRY_MS.length) return void window.removeEventListener("online", laad);
+      gestart++;
+      bezig = true;
+      clearTimeout(timer);
+      fetch("/bronnen.json", { cache: "no-cache", signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("http"))))
+        .then((c: Catalog) => {
+          if (!(c && Array.isArray(c.groepen))) throw new Error("vorm");
+          if (!weg) setCat(c);
+          bezig = false;
+          // geladen: niet opnieuw proberen
+          weg = true;
+          window.removeEventListener("online", laad);
+        })
+        .catch(() => {
+          bezig = false;
+          if (weg) return;
+          // eerder geladen gegevens blijven staan; anders leeg tot het lukt
+          setCat((vorig) => vorig ?? leeg);
+          if (poging < CATALOG_RETRY_MS.length) timer = setTimeout(laad, CATALOG_RETRY_MS[poging++]);
+          else window.removeEventListener("online", laad);
+        });
+    };
+    window.addEventListener("online", laad);
+    laad();
+    return () => {
+      weg = true;
+      ctrl.abort();
+      clearTimeout(timer);
+      window.removeEventListener("online", laad);
+    };
   }, []);
   return cat;
 }
@@ -146,7 +186,7 @@ export function sourceKey(index: Index, gid: GroupId, site: string, href: string
 export function filterArtikelBronnen(it: Item, index: Index, off: Set<string>): Item | null {
   const bronnen = it.bronnen ?? [];
   if (!bronnen.length || !index.has(groepVan(it))) return it;
-  const active: Bron[] = bronnen.filter((b) => !off.has(sourceKey(index, groepVan(it), b.site, b.href)));
+  const active = actieveBronnen(it, index, off);
   if (!active.length) return null;
   return active.length === bronnen.length ? it : { ...it, id: artikelId(it), bronnen: active };
 }
@@ -192,6 +232,10 @@ export function useSourceFilter() {
     return () => window.removeEventListener("storage", on);
   }, []);
   return { off, setMany, reset };
+}
+
+export function actieveBronnen(item: Item, index: Index, off: Set<string>): Bron[] {
+  return (item.bronnen ?? []).filter((b) => !off.has(sourceKey(index, groepVan(item), b.site, b.href)));
 }
 
 /** Data met de filter toegepast. Berichten zonder bronnen blijven altijd zichtbaar. */
