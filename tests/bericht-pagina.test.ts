@@ -12,7 +12,21 @@ try {
   const dag = "2026-11-04", pad = artikelPad(item, dag), html = berichtHtml(sjabloon, item, dag);
   assert.ok(html.includes("&lt;script&gt;")); assert.ok(!html.includes("javascript:alert"));
   assert.ok(html.includes(`https://nieuwsinkort.nl${pad}`)); assert.ok(html.includes('property="og:image"'));
-  const json = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)![1]); assert.equal(json["@type"], "NewsArticle");
+  const gevaarlijkeKop = 'Nieuws </script> "geciteerd" ' + "x".repeat(110);
+  const fixtureHtml = berichtHtml(sjabloon, { ...item, kop: gevaarlijkeKop }, dag);
+  const blokken = [...fixtureHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+  assert.equal(blokken.length, 1);
+  const json = JSON.parse(blokken[0][1]);
+  assert.equal(json["@context"], "https://schema.org"); assert.equal(json["@type"], "NewsArticle");
+  assert.equal(json.headline, gevaarlijkeKop.slice(0, 110)); assert.ok(json.headline.length <= 110);
+  for (const datum of [json.datePublished, json.dateModified]) {
+    assert.match(datum, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/);
+    assert.ok(Number.isFinite(Date.parse(datum)));
+  }
+  assert.equal(json.mainEntityOfPage, `https://nieuwsinkort.nl${artikelPad({ ...item, kop: gevaarlijkeKop }, dag)}`);
+  assert.equal(json.inLanguage, "nl-NL"); assert.equal(new URL(json.image).protocol, "https:");
+  const indexJson = JSON.parse(sjabloon.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]);
+  assert.deepEqual(json.publisher, indexJson["@graph"].find((x: { "@type": string }) => x["@type"] === "NewsMediaOrganization"));
   const sjabloonMetTijd = sjabloon.replace("</head>", '<meta content="oud" property="article:published_time" /></head>');
   for (const t of [undefined, "ongeldig", ""]) {
     const zonderTijd = berichtHtml(sjabloonMetTijd, { ...item, t }, dag);
