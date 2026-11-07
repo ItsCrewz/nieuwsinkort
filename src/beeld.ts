@@ -3,7 +3,8 @@
 // Dubbel = zelfde URL zonder query/maat, of hetzelfde CDN-beeld-id in een andere maat (bv. /1200x675/ vs /600x338/).
 // Bijna-gelijke foto's (zelfde persfoto bij twee sites) vangt de routine met een perceptuele hash (scripts/add-beelden.mjs).
 
-const SKIP = /logo|placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|1x1|no[-_]?image|og[-_]default|share[-_]default|brand|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
+const LOGO = /(?:^|[^\p{L}\p{N}])logo(?=$|[^\p{L}\p{N}])/iu;
+const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|1x1|no[-_]?image|og[-_]default|share[-_]default|brand|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
 
 /** Klein plaatje volgens de URL zelf (?w=120, /100x100/, _thumb, s72-c …). */
 function tooSmall(u: string): boolean {
@@ -18,7 +19,7 @@ function tooSmall(u: string): boolean {
 export function goedBeeld(u?: string | null): u is string {
   if (!u || typeof u !== "string" || !/^https?:\/\//.test(u) || u.length > 1200) return false;
   if (/youtube\.com\/(v|embed|watch)\b|youtu\.be\//i.test(u)) return false; // video-link, geen foto
-  return !SKIP.test(u) && !tooSmall(u);
+  return !LOGO.test(u) && !SKIP.test(u) && !tooSmall(u);
 }
 
 /** Sleutel voor 'zelfde foto': host-familie + bestandsnaam zonder maat/kwaliteit/extensie. */
