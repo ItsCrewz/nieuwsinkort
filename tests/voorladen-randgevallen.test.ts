@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, HLS_BYTES, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -122,7 +122,46 @@ try {
     voerUit({ ...leeg(), hls: ["/master-test.m3u8"] });
     await wacht();
     assert.deepEqual(verzoeken, ["/master-test.m3u8", "https://site.example/laag.m3u8", "https://site.example/1.ts", "https://site.example/2.ts"]);
-    assert.deepEqual(optiesLijst, verzoeken.map(() => ({ credentials: "omit", priority: "low" })));
+    assert.deepEqual(optiesLijst.slice(0, 2), [{ credentials: "omit", priority: "low" }, { credentials: "omit", priority: "low" }]);
+    assert.deepEqual(optiesLijst[2], { credentials: "omit", priority: "low", headers: { Range: `bytes=0-${HLS_BYTES - 1}` } });
+  });
+
+  const stroom = (stuk: number, status: number, headers: Record<string, string>, teller: { gelezen: number; gestopt: boolean }) => ({
+    ok: true, status, headers: { get: (k: string) => headers[k.toLowerCase()] ?? null },
+    body: { getReader: () => ({
+      read: async () => { teller.gelezen += stuk; return { done: false, value: new Uint8Array(stuk) }; },
+      cancel: async () => { teller.gestopt = true; },
+    }) },
+  });
+
+  await test("HLS-segmenten: 200 zonder Range-ondersteuning en groot of ontbrekend Content-Length stoppen op het totaalbudget", async () => {
+    for (const [naam, status, headers] of [["groot", 200, { "content-length": "999999999" }], ["ontbreekt", 200, {}], ["206", 206, { "content-length": "999999999" }]] as const) {
+      const t = { gelezen: 0, gestopt: false };
+      const verzoeken: string[] = [];
+      installeer("fetch", async (url: string) => {
+        verzoeken.push(url);
+        if (url.endsWith(".m3u8")) return { ok: true, text: async () => "#EXTM3U\n1.ts\n2.ts" };
+        return stroom(HLS_BYTES / 4, status, headers, t);
+      });
+      voerUit({ ...leeg(), hls: [`/budget-${naam}.m3u8`] });
+      await wacht();
+      assert.equal(t.gelezen, HLS_BYTES, naam); // eerste segment haalt het hele budget leeg, tweede wordt niet gestart
+      assert.equal(t.gestopt, true, naam);
+      assert.deepEqual(verzoeken, [`/budget-${naam}.m3u8`, `https://site.example/1.ts`], naam);
+    }
+  });
+
+  await test("HLS-wachtrij gaat door na een mislukt segment en een lege body", async () => {
+    const verzoeken: string[] = [];
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (url.endsWith(".m3u8")) return { ok: true, text: async () => "#EXTM3U\n1.ts\n2.ts" };
+      if (url.endsWith("1.ts")) return { ok: true, body: null };
+      return { ok: true, body: { getReader: () => ({ read: async () => ({ done: true }), cancel: async () => {} }) } };
+    });
+    voerUit({ ...leeg(), hls: ["/wachtrij.m3u8"], mp4: "https://wachtrij.example/a.mp4" });
+    await wacht();
+    assert.deepEqual(verzoeken, ["/wachtrij.m3u8", "https://wachtrij.example/a.mp4", "https://site.example/1.ts", "https://site.example/2.ts"]);
   });
 
   await test("mp4-stream stopt bij de bytegrens", async () => {

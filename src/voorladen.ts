@@ -17,6 +17,7 @@ const THUMBS = 6;
 const KIJK = 3; // zoveel items per tab telt als "eerste"
 const HLS_MAX = 2;
 export const MP4_BYTES = 256 * 1024;
+export const HLS_BYTES = 256 * 1024; // totaal over de voorgeladen segmenten van één stream
 export const GELIJK = 3;
 
 const uniek = <T,>(l: T[]) => [...new Set(l)];
@@ -105,20 +106,36 @@ async function warmHls(master: string) {
     b = laagsteVariant(txt, base);
     txt = b ? await get(b) : "";
   }
-  for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => r.arrayBuffer());
+  // Totaalbudget met Range; negeert de server die (200, of 206 met te veel), dan stoppen we het lezen en annuleren de body.
+  let rest = HLS_BYTES;
+  for (const s of segmenten(txt, b)) {
+    if (rest <= 0) break;
+    const r = await fetch(s, { ...LOW, headers: { Range: `bytes=0-${rest - 1}` } });
+    rest -= await leesTot(r, rest);
+  }
+}
+
+/** Leest hooguit `max` bytes van de body en annuleert de rest; geeft het aantal gelezen bytes terug. */
+async function leesTot(r: Response, max: number): Promise<number> {
+  const rd = r.body?.getReader();
+  if (!rd) return 0;
+  let got = 0;
+  try {
+    while (got < max) {
+      const { done, value } = await rd.read();
+      if (done) return got;
+      got += value.length;
+    }
+  } finally {
+    rd.cancel().catch(() => {});
+  }
+  return Math.min(got, max);
 }
 
 async function warmMp4(src: string) {
   // Alleen het begin: een Range-aanvraag (Instagram-CDN: CORS *, Range ok). Geeft de server toch 200, dan stoppen we zelf.
   const r = await fetch(src, { ...LOW, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
-  const rd = r.body?.getReader();
-  if (!rd) return;
-  for (let got = 0; got < MP4_BYTES; ) {
-    const { done, value } = await rd.read();
-    if (done) return;
-    got += value.length;
-  }
-  rd.cancel().catch(() => {});
+  await leesTot(r, MP4_BYTES);
 }
 
 export function voerUit(p: Plan) {
