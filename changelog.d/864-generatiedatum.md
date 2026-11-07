@@ -1,0 +1,1 @@
+- Ongeldige of ontbrekende generatiedatums geven een herstelbare laadfout in plaats van een crash bij artikelen (#864).
