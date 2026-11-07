@@ -12,6 +12,7 @@ export type Filters = { tijd: Tijd; cats: Cat[]; video: boolean; samen: boolean;
 const KEY = "nieuwsinkort-filters";
 const BEZOEK = "nieuwsinkort-laatste-bezoek";
 const BEZOEK_SESSIE = "nieuwsinkort-bezoek-ref";
+const BEZOEK_INTERVAL = 60_000; // hartslag voor een lang zichtbaar tabblad
 const GENOEG = 5; // zoveel nieuwe berichten sinds je laatste bezoek = automatisch "Sinds je laatste bezoek"
 export const STANDAARD: Filters = { tijd: "auto", cats: [], video: false, samen: false, regio: [], sort: "nieuw" };
 
@@ -84,7 +85,12 @@ export function useFilters() {
     bewaarBezoek();
     const onHide = () => document.visibilityState === "hidden" && bewaarBezoek();
     document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
+    // Lang open tabblad: houd de bezoektijd vers (alleen opslag; `vorig` is een vaste sessiereferentie en verschuift niet).
+    const timer = setInterval(() => document.visibilityState === "visible" && bewaarBezoek(), BEZOEK_INTERVAL);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      clearInterval(timer);
+    };
   }, []);
   const set = useCallback((p: Partial<Filters>) => {
     setF((o) => {
