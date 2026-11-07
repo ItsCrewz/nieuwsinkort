@@ -20,7 +20,7 @@ function proef(adres: string, begin: string | null, opslagWerkt = true, bestaand
         assert.match(selector, /script\[data-cf-beacon\]/);
         return bestaand ? {} : null;
       },
-      createElement: () => ({ src: "", defer: false, attrs: {} as Record<string, string>, style: { cssText: "" }, textContent: "", className: "", setAttribute(k: string, v: string) { this.attrs[k] = v; }, remove() {} }),
+      createElement: () => ({ src: "", defer: false, attrs: {} as Record<string, string>, style: { cssText: "" }, textContent: "", className: "", setAttribute(k: string, v: string) { this.attrs[k] = v; }, addEventListener() {}, appendChild() {}, remove() {} }),
       head: { appendChild: (el: typeof scripts[number]) => scripts.push(el) },
       body: { appendChild: (el: { textContent: string }) => meldingen.push(el.textContent) },
     },
@@ -46,3 +46,9 @@ assert.equal(aan.scripts.length, 1);
 assert.equal(aan.meldingen[0], "Je bezoeken worden weer meegeteld");
 assert.equal(proef("https://voorbeeld.nl/", null, false).scripts.length, 1);
 assert.equal(proef("https://voorbeeld.nl/", null, true, true).scripts.length, 0);
+const geblokkeerd = proef("https://voorbeeld.nl/?nietmeten=1#/sport", null, false);
+assert.equal(geblokkeerd.nieuwAdres, "");
+assert.equal(geblokkeerd.scripts.length, 0);
+assert.match(geblokkeerd.meldingen[0], /Opslag is geblokkeerd.*andere pagina/);
+assert.equal(proef("https://voorbeeld.nl/?nietmeten=1#/filmpjes", null, false).scripts.length, 0);
+assert.equal(proef("https://voorbeeld.nl/?nietmeten=0#/sport", null, false).scripts.length, 1);
