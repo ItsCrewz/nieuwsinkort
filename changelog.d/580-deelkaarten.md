@@ -1,0 +1,1 @@
+- Deelkaarten van berichten tonen waar mogelijk een begrensd artikelbeeld via de eigen beeldproxy (#580).

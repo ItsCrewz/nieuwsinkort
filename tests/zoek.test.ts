@@ -4,11 +4,14 @@ import type { Item } from "../src/types";
 
 const item: Item = { cat: "buitenland", kop: "Ajax", ai: "Wedstrijd", samenvatting: "Café bij PSV", punten: ["Supporters"], bronnen: [{ site: "NOS", href: "" }], tijd: "" };
 assert.equal(normaliseer("  CAFÉ,  nieuws! "), "cafe nieuws");
+assert.equal(normaliseer("Straße STRAẞE"), "strasse strasse");
 for (const term of ["ajax", "wedstrijd", "cafe", "supporters", "nos", "buitenland", "ajax psv", "CAFÉ"]) assert.deepEqual(zoekItems([item], term), [item], term);
 assert.deepEqual(zoekItems([item], "ajax onbekend"), []);
 const items = [item];
 assert.equal(zoekItems(items, "  "), items);
 assert.equal(zoekItems(items, ""), items);
+for (const term of ["!!!", "😀", " ! 😀 "]) assert.deepEqual(zoekItems(items, term), []);
+assert.deepEqual(zoekItems(items, "!!!CAFÉ 😀"), [item]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "cafe" } as Item], "Café" ).length, 1);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "test" } as Item], "onbekend"), []);
 const politiek = { cat: "nl", kop: "Politiek debat" } as Item;
@@ -30,4 +33,12 @@ const mar = kop("Markt en Maria");
 for (const q of ["mar maria", "maria mar", "mar markt", "markt mar"]) assert.deepEqual(zoekItems([mar], q), [mar], q);
 assert.deepEqual(zoekItems([mar], "mar mar mar"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Café", ai: "café-eigenaar" } as Item], "cafe cafe"), [{ cat: "nl", kop: "Café", ai: "café-eigenaar" }]);
+// De klinkertekens onderscheiden woorden en blijven bij canonieke normalisatie behouden.
+for (const [eerste, tweede] of [["कल", "काल"], ["عَلَم", "عِلْم"]]) {
+  const artikelen = [eerste, tweede].map((kop) => ({ cat: "nl", kop } as Item));
+  assert.notEqual(normaliseer(eerste), normaliseer(tweede));
+  assert.deepEqual(zoekItems(artikelen, eerste), [artikelen[0]]);
+  assert.deepEqual(zoekItems(artikelen, tweede), [artikelen[1]]);
+}
+assert.equal(normaliseer("José"), normaliseer("Jose\u0301"));
 console.log("zoek: tests geslaagd");

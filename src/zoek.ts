@@ -2,7 +2,7 @@ import { CAT_LABEL } from "./tabs";
 import type { Item } from "./types";
 
 export function normaliseer(tekst: string): string {
-  return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ß/g, "ss").replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim();
 }
 
 // Bipartiete koppeling (Kuhn): de uitkomst hangt zo niet af van de volgorde van de termen.
@@ -25,7 +25,7 @@ function afkortingen(tekst: string): string {
 
 export function zoekItems(items: Item[], query: string): Item[] {
   const woorden = normaliseer(afkortingen(query)).split(" ").filter(Boolean);
-  if (!woorden.length) return items;
+  if (!woorden.length) return query.trim() ? [] : items;
   return items.filter((item) => {
     const origineel = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).join(" ");
     const zonderPunten = afkortingen(origineel);
