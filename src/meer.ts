@@ -1,6 +1,14 @@
 // Extra tekst per bericht (/meer), apart zodat de lijst kan voorladen zonder het detailscherm (eigen chunk) te laden.
+import { useEffect, useState } from "react";
 import type { Item, Meer } from "./types";
 import { verzamelUrl } from "./puntenrelevantie";
+
+// Verdieping alleen tonen als de sleutel van de state bij het huidige item hoort (#646); anders laden, zonder sleutel niets.
+export type MeerState = { k?: string; meer: Meer | null; laden: boolean };
+export function meerVoor(st: MeerState, k: string | undefined): { meer: Meer | null; laden: boolean } {
+  if (!k) return { meer: null, laden: false };
+  return st.k === k ? { meer: st.meer, laden: st.laden } : { meer: null, laden: true };
+}
 
 const object = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const tekstlijst = (v: unknown): v is string[] => Array.isArray(v) && v.every((p) => typeof p === "string");
@@ -35,4 +43,16 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
     });
   meerCache.set(k, nieuw);
   return nieuw.p;
+}
+
+export function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
+  const [st, setSt] = useState<MeerState>({ meer: null, laden: !!item.meer });
+  useEffect(() => {
+    let weg = false;
+    if (!item.meer) { setSt({ meer: null, laden: false }); return; }
+    setSt({ k: item.meer, meer: null, laden: true });
+    prefetchMeer(item).then((m) => { if (!weg) setSt({ k: item.meer, meer: m, laden: false }); });
+    return () => { weg = true; };
+  }, [item]);
+  return meerVoor(st, item.meer);
 }

@@ -1,0 +1,1 @@
+- Videofeed sluiten voert `onClose` nu precies één keer uit (dubbel tikken, herhaald Escape, timer + animationend); een lopende sluittimer wordt opgeruimd (#648).
