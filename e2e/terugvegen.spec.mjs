@@ -27,8 +27,14 @@ async function openArtikel(page) {
 
 // Startpunt op de leadtekst: een vast y-punt raakt soms een afbeelding in een horizontaal scrollbaar blok (laadvolgorde), en dat negeert de hook bewust.
 async function startY(page) {
-  const b = await page.locator("article.detail .d-lead").first().boundingBox();
-  return Math.round(b.y + Math.min(b.height / 2, 12));
+  // Wacht tot de intree-animatie klaar is: pas dan raakt het punt echt het artikel (de hook negeert aanrakingen erbuiten).
+  let y = 0;
+  await expect.poll(async () => {
+    const b = await page.locator("article.detail .d-lead").first().boundingBox();
+    y = Math.round(b.y + Math.min(b.height / 2, 12));
+    return page.evaluate(([px, py]) => !!document.elementFromPoint(px, py)?.closest("article.detail"), [60, y]);
+  }).toBe(true);
+  return y;
 }
 
 test("veeg naar rechts sluit het artikel", async ({ page }) => {
