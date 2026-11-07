@@ -1,0 +1,1 @@
+- Bewaar het laatste bezoek ook tijdens een lang zichtbaar tabblad (elke minuut), zonder de sessiereferentie te verschuiven (#724).
