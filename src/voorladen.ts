@@ -57,10 +57,13 @@ export function laagsteVariant(txt: string, base: string): string {
   let best = "";
   let bw = Infinity;
   lines.forEach((l, i) => {
-    const m = /^#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)/.exec(l);
+    if (!l.startsWith("#EXT-X-STREAM-INF:")) return;
+    const attrs = l.slice("#EXT-X-STREAM-INF:".length).matchAll(/(?:^|,)([A-Z0-9-]+)=("[^"]*"|[^,]*)/g);
+    const waarde = Array.from(attrs).find((m) => m[1] === "BANDWIDTH")?.[2] ?? "";
+    const getal = /^\d+$/.test(waarde) ? Number(waarde) : 0;
     const u = lines[i + 1];
-    if (m && u && !u.startsWith("#") && +m[1] < bw) {
-      bw = +m[1];
+    if (Number.isSafeInteger(getal) && getal > 0 && u && !u.startsWith("#") && getal < bw) {
+      bw = getal;
       best = u;
     }
   });
@@ -87,7 +90,9 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
 const bezig = new Set<string>(); // lopend of in de wachtrij: gelijktijdige verzoeken voor dezelfde URL delen die ene taak
-const vast: unknown[] = []; // voorkomt dat Image-objecten voortijdig worden opgeruimd
+const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
+export const aantalActievePosters = () => vast.size;
+const POSTER_TIMEOUT = 15000;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
 const mag = (k: string) => !gedaan.has(k) && !bezig.has(k);
@@ -154,11 +159,18 @@ export function voerUit(p: Plan) {
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
-          im.onload = () => ok();
-          im.onerror = () => fout(new Error("img"));
-          im.onabort = () => fout(new Error("img")); // afgebroken laden mag de sleutel niet vasthouden
-          im.src = t;
-          vast.push(im);
+          const klaar = (fout_?: Error) => {
+            clearTimeout(timer);
+            im.onload = im.onerror = im.onabort = null;
+            vast.delete(im);
+            if (fout_) fout(fout_); // mislukt of te traag: de sleutel komt vrij voor een volgend voorlaadmoment (#636)
+            else ok();
+          };
+          const timer = setTimeout(() => klaar(new Error("img")), POSTER_TIMEOUT);
+          im.onload = () => klaar();
+          im.onerror = im.onabort = () => klaar(new Error("img")); // afgebroken laden mag de sleutel niet vasthouden
+          vast.add(im);
+          try { im.src = t; } catch { klaar(new Error("img")); }
         })
       )
     );
