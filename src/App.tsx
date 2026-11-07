@@ -2,11 +2,11 @@ import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
-import { ams } from "./tijd";
+import { ams, dayDates } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
+import type { Bron, Data, Item, View, Weer } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
@@ -33,7 +33,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, normaliseer, markeerDelen } from "./zoek";
+import { zoekItems, markeerDelen } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
@@ -97,26 +97,6 @@ function weatherKind(s?: string): Kind {
   return "cloud";
 }
 const KIND_CLASS: Record<Kind, string> = { sun: "ic-sun", rain: "ic-rain", partly: "ic-partly", cloud: "" };
-const WD = ["zo", "ma", "di", "wo", "do", "vr", "za"];
-const MO = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-function dayDates(dagen: WeerDag[]) {
-  // koppel "do", "vr"… aan de eerstvolgende datums (vanaf morgen)
-  const out: string[] = [];
-  const cur = new Date();
-  for (const d of dagen) {
-    const want = WD.indexOf((d.dag || "").slice(0, 2).toLowerCase());
-    if (want < 0) {
-      out.push("");
-      continue;
-    }
-    for (let k = 0; k < 8; k++) {
-      cur.setDate(cur.getDate() + 1);
-      if (cur.getDay() === want) break;
-    }
-    out.push(`${cur.getDate()} ${MO[cur.getMonth()]}`);
-  }
-  return out;
-}
 
 function WarnBanner({ text }: { text: string }) {
   const t = text.toLowerCase();
@@ -133,7 +113,7 @@ function WarnBanner({ text }: { text: string }) {
 function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   const nu = W?.nu ?? {};
   const vd = W?.vandaag ?? {};
-  const dagen = (W?.dagen ?? []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
+  const dagen = (Array.isArray(W?.dagen) ? W.dagen : []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
   const heeftNu = typeof nu.temp === "number";
   const stats: { k: string; v: string }[] = [];
   if (typeof nu.van === "number" && typeof nu.tot === "number" && nu.van !== nu.tot) stats.push({ k: "Nu in het land", v: `${nu.van}° tot ${nu.tot}°` });
@@ -1282,7 +1262,7 @@ export default function App() {
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
-              dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
+              dag={ams(Date.parse(raw.gegenereerd!)).iso}
               bionic={bionic}
               onBack={(opties) => {
                 geveegd.current = !!opties?.geveegd;
@@ -1344,7 +1324,7 @@ export default function App() {
             items={zoekUitkomst}
             zoekterm={zoekterm}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => { setZoekterm(""); zoekInvoer.current?.focus(); }} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => { setZoekterm(""); zoekInvoer.current?.focus(); }} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
