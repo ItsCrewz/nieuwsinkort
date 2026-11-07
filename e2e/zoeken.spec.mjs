@@ -115,3 +115,26 @@ test("spatie bladert nog door de feed als de focus niet op een bedienbaar elemen
   await page.keyboard.press("Shift+Space");
   await expect.poll(top).toBeLessThan(na);
 });
+
+for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 800]]) test(`zoeken behoudt toetsenbordfocus na Enter (${naam})`, async ({ page }) => {
+  await page.setViewportSize({ width: breedte, height: hoogte });
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  await knop.click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill("onvindbarezoekterm506");
+  await expect(page.getByText("Geen berichten gevonden voor", { exact: false })).toBeVisible();
+  const url = page.url();
+  await invoer.press("Enter");
+  await expect(invoer).toBeFocused();
+  expect(page.url()).toBe(url);
+  await page.keyboard.type("x");
+  await expect(invoer).toHaveValue("onvindbarezoekterm506x");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Sluiten", exact: true })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await invoer.press("Escape");
+  await expect(knop).toBeFocused();
+  await expect(invoer).toBeHidden();
+});
