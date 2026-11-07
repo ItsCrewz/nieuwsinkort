@@ -34,8 +34,16 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
     const im = new Image();
     im.referrerPolicy = "no-referrer";
     im.decoding = "async";
-    im.src = src;
-    return im.decode ? im.decode() : new Promise<void>((ok, nok) => { im.onload = () => ok(); im.onerror = nok; });
+    if (im.decode) { im.src = src; return im.decode(); }
+    // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
+    // voltooide afbeelding direct afhandelen; handlers daarna opruimen.
+    return new Promise<void>((ok, nok) => {
+      const af = (goed: boolean) => { im.onload = im.onerror = null; if (goed) ok(); else nok(new Error("laden mislukt")); };
+      im.onload = () => af(true);
+      im.onerror = () => af(false);
+      im.src = src;
+      if (im.complete) af(im.naturalWidth > 0);
+    });
   };
   const p = laad(bronUrl(u)) // zelfde URL als de <img src>, anders dubbele downloads
     .catch(() => (naarRechtstreeks(u) ? laad(u) : Promise.reject()))

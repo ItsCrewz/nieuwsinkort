@@ -100,6 +100,34 @@ try {
   assert.equal(NepImage.beelden.length, aantal + 7);
   assert.equal(bronUrl("https://images.nu.nl/m/goed.jpg"), "/media/beeld/images.nu.nl/m/goed.jpg");
   assert.equal(naarRechtstreeks("https://voorbeeld.nl/x.jpg"), false);
+
+  // Zonder decode(): handlers staan vóór src; al voltooide cachehit en laadfout ronden af, handlers opgeruimd
+  class ZonderDecode {
+    static beelden: ZonderDecode[] = [];
+    referrerPolicy = ""; decoding = ""; complete = false; naturalWidth = 0;
+    onload: (() => void) | null = null; onerror: (() => void) | null = null;
+    private _src = "";
+    constructor() { ZonderDecode.beelden.push(this); }
+    get src() { return this._src; }
+    set src(v: string) {
+      assert.ok(this.onload && this.onerror, "handlers vóór src");
+      this._src = v;
+      if (v.includes("cachehit")) { this.complete = true; this.naturalWidth = 10; }
+    }
+  }
+  Object.defineProperty(globalThis, "Image", { configurable: true, writable: true, value: ZonderDecode });
+  await preloadBeeld("https://voorbeeld.nl/cachehit.jpg"); // direct klaar, geen gebeurtenis
+  assert.equal(ZonderDecode.beelden[0].onload, null);
+  assert.equal(ZonderDecode.beelden[0].onerror, null);
+  const fout = preloadBeeld("https://voorbeeld.nl/stuk.jpg");
+  ZonderDecode.beelden[1].onerror!();
+  await fout;
+  assert.equal(ZonderDecode.beelden[1].onload, null);
+  assert.equal(ZonderDecode.beelden.length, 2, "geen proxy: geen rechtstreekse herhaling");
+  const laat = preloadBeeld("https://voorbeeld.nl/laat.jpg");
+  ZonderDecode.beelden[2].onload!();
+  await laat;
+  assert.equal(ZonderDecode.beelden[2].onerror, null);
 } finally {
   if (origineel) Object.defineProperty(globalThis, "Image", origineel);
   else Reflect.deleteProperty(globalThis, "Image");
