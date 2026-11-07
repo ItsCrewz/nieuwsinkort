@@ -2,6 +2,7 @@
 import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
+import { GELDIG_TOT, nogGeldig, overzichtBeleid } from "../src/overzichtcache";
 import { ICOON_TAGS } from "../src/icoontags";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
@@ -24,17 +25,21 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
-  if (bestaand) return bestaand;
+  const start = Date.now();
+  if (bestaand && nogGeldig(bestaand, start)) return bestaand;
   const fout = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
-  let html: string;
+  let html: string, gegenereerd: string;
   try {
     const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
     if (!data.ok) return fout();
     const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
     if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
-    html = vandaagHtml(dag.items, ams(Date.parse(dag.gegenereerd)).iso);
+    gegenereerd = dag.gegenereerd;
+    html = vandaagHtml(dag.items, ams(Date.parse(gegenereerd)).iso);
   } catch { console.error("vandaag: data lezen mislukt"); return fout(); }
-  const response = new Response(html, { headers: { ...HDR, "Cache-Control": "public, max-age=300, stale-while-revalidate=600" } });
+  const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
+  if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
+  const response = new Response(html, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   return response;
 }
