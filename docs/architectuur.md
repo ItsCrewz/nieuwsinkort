@@ -388,4 +388,6 @@ Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
+Bij gedeelde artikelpagina’s bevat `article:published_time` alleen een geldige publicatietijd uit het bericht, omgezet naar ISO-formaat. Ontbreekt die tijd, dan ontbreekt ook deze meta-tag.
+
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
