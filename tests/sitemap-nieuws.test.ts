@@ -29,7 +29,7 @@ try {
   assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("cache-control"), "public, max-age=300");
   assert.equal(r.headers.get("strict-transport-security"), "max-age=604800");
   assert.ok((await r.text()).includes(artikelPad(a, dag)));
-  r = await vraag(data("", [a])); assert.equal(r.status, 200); assert.ok(!(await r.text()).includes("<url>"), "ongeldige dag = lege urlset");
+  r = await vraag(data("", [a])); assert.equal(r.status, 503);
   r = await vraag({ ASSETS: { fetch: async () => new Response("", { status: 500 }) }, NIEUWS: { get: async () => null } });
   assert.equal(r.status, 503); assert.equal(r.headers.get("cache-control"), "no-store");
 

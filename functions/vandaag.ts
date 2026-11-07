@@ -27,13 +27,16 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   const start = Date.now();
   if (bestaand && nogGeldig(bestaand, start)) return bestaand;
-  const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
-  if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
-  let html = vandaagHtml([], ""), gegenereerd: string | undefined;
+  const fout = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  let html: string, gegenereerd: string;
   try {
-    const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) html = (gegenereerd = dag.gegenereerd,  vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso));
-  } catch { console.error("vandaag: data lezen mislukt"); }
+    const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
+    if (!data.ok) return fout();
+    const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
+    if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
+    gegenereerd = dag.gegenereerd;
+    html = vandaagHtml(dag.items, ams(Date.parse(gegenereerd)).iso);
+  } catch { console.error("vandaag: data lezen mislukt"); return fout(); }
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
   if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
   const response = new Response(html, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });
