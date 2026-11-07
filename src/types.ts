@@ -1,6 +1,7 @@
 export type Cat = "nl" | "buitenland" | "tech" | "haarlem" | "showbizz" | "politiek" | "voetbal" | "f1" | "auto" | "sport";
 export type Bron = { site: string; href: string };
 export type Item = {
+  id?: string;
   cat: Cat;
   kop: string;
   ai: string;
