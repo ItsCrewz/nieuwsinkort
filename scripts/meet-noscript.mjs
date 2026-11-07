@@ -8,7 +8,9 @@ const browser = await chromium.launch();
 
 const zonder = await browser.newContext({ ...opties, javaScriptEnabled: false });
 const p0 = await zonder.newPage();
-await p0.goto(basis + "/", { waitUntil: "load" });
+const t0 = Date.now();
+const antwoord = await p0.goto(basis + "/", { waitUntil: "load" });
+const ttfbMs = Date.now() - t0;
 const koppen = await p0.locator("main ul li").count();
 const links = await p0.locator("main ul li a[href^='http']").count();
 const h1 = await p0.locator("main h1").isVisible();
@@ -28,6 +30,6 @@ await p1.waitForTimeout(3000);
 const cls = await p1.evaluate(() => window.__cls);
 const noscriptZichtbaar = await p1.locator("noscript main").count();
 await browser.close();
-console.log(JSON.stringify({ basis, apparaat: opties.userAgent ? "iPhone 15" : "desktop", zonderJs: { koppen, bronlinks: links, h1, samenvatting }, metJs: { cls: +cls.toFixed(4), noscriptZichtbaar, fouten } }));
+console.log(JSON.stringify({ basis, cacheControl: antwoord.headers()["cache-control"], laadMs: ttfbMs, apparaat: opties.userAgent ? "iPhone 15" : "desktop", zonderJs: { koppen, bronlinks: links, h1, samenvatting }, metJs: { cls: +cls.toFixed(4), noscriptZichtbaar, fouten } }));
 const ok = koppen >= 10 && links >= 10 && h1 && cls <= 0.01 && !fouten.length && !noscriptZichtbaar;
 process.exit(ok ? 0 : 1);
