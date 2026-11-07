@@ -23,8 +23,10 @@ export function useVoorladen(vids: Lijsten, gegenereerd: string | undefined, opV
       // zoals de UI het toont: Filmpjes opent in de startsoort, met de actieve filters
       const s = startSoort(l.filmpjes);
       const apple = /Apple/.test(navigator.vendor || "") || /iP(hone|ad|od)/.test(navigator.userAgent);
-      voerUit(planVoorladen(l.filmpjes.filter((v) => soortVan(v) === s), l.dumpert, apple, { playerFor, viaProxy }, video));
-      return true;
+      const plan = planVoorladen(l.filmpjes.filter((v) => soortVan(v) === s), l.dumpert, apple, { playerFor, viaProxy }, video);
+      voerUit(plan);
+      // een intentie telt pas als er videowerk is gestart; bij een leeg plan blijft een latere intentie mogelijk
+      return !video || plan.hlsChunk || plan.hls.length > 0 || !!plan.mp4 || plan.preconnect.length > 0;
     };
     // video (chunk, playlists, segmenten, mp4) pas bij intentie; op Home blijft het bij thumbs
     const intent = (e: Event) => {
