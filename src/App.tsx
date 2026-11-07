@@ -35,6 +35,7 @@ import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
+import { maakFeedNavigatie } from "./feedsluiten";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -55,7 +56,7 @@ const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
-let feedPushed = false;
+const feedNav = maakFeedNavigatie({ get location() { return window.location; }, get history() { return window.history; } });
 // Intro-animatie alleen bij de eerste keer laden; daarna (tabwissel, herladen) niet opnieuw.
 let introDone = false;
 
@@ -1146,7 +1147,7 @@ export default function App() {
       const fl = vids ?? data;
       const list = v === "filmpjes" ? fl.filmpjes.filter((x) => soortVan(x) === startSoort(fl.filmpjes)) : fl.dumpert;
       if (list.length) {
-        feedPushed = false;
+        feedNav.geopend(false);
         window.location.hash = `#/${v}/${encodeURIComponent(videoSlug(list[0]))}`;
         return;
       }
@@ -1155,16 +1156,11 @@ export default function App() {
     window.location.hash = viewHash(v);
   };
   const openFeed = useCallback((cat: "filmpjes" | "dumpert", slug: string) => {
-    feedPushed = true;
+    feedNav.geopend(true);
     window.location.hash = `#/${cat}/${encodeURIComponent(slug)}`;
   }, []);
   const closeFeed = useCallback((cat: "filmpjes" | "dumpert") => {
-    if (feedPushed) {
-      feedPushed = false;
-      window.history.back();
-    } else {
-      window.location.replace(`${window.location.pathname}${window.location.search}#/${cat}`);
-    }
+    feedNav.sluit(cat);
   }, []);
   const open = useCallback((key: string) => {
     openedInside = true;
