@@ -7,7 +7,7 @@ import { videoSlug } from "./slug";
 import { groepeer, heeftGroepen } from "./filmgroep";
 import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort";
 import { veiligeUrl } from "./url";
-import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
+import { bewaarFeed, herstelFeed, vastLijst, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
 import { ytOndertitelsBijBericht } from "./ytstart";
 
@@ -104,12 +104,13 @@ export function VideoGrid({
   const opgeslagen = useRef(leesFeed());
   const vast = useRef<Video[] | null>(null);
   if (!video) vast.current = null;
-  else if (!vast.current) vast.current = herstelFeed(opgeslagen.current, cat, video, list).lijst;
+  else vast.current = vastLijst(vast.current, opgeslagen.current, cat, video, list);
   const feedVideos = vast.current ?? list;
   const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
   useEffect(() => {
     if (!touch) return;
     if (!video) { wisFeed(); return; }
+    if (!feedVideos.length) return; // niets te bewaren; bewaarde status blijft voor als data terugkomt
     let vorigeSlug = "";
     let positie = 0;
     let speelt = true;
@@ -170,7 +171,17 @@ export function VideoGrid({
         return { id: s.id, label: s.label, list: f.length ? f : l };
       }).filter((g) => g.list.length)
     : undefined;
-  if (list.length === 0 && !video) {
+  if (list.length === 0 && video) {
+    // Deep link of herstel naar een video die niet meer beschikbaar is (leeg, uitgefilterd of bron uit).
+    return (
+      <div className="empty">
+        <Icon name="film" />
+        Deze video is niet meer beschikbaar.{" "}
+        <button type="button" className="textbtn" onClick={onCloseFeed}>Terug naar het overzicht</button>
+      </div>
+    );
+  }
+  if (list.length === 0) {
     return (
       <div className="empty">
         <Icon name="film" />

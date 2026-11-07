@@ -15,6 +15,7 @@ import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
+import { syncFeed } from "./feedstatus";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
 import { bronIndexen, gebruiktNativeHls, maakBronvrij, PoolEigenaars, POOL_GROOTTE, slotVan } from "./videopool";
@@ -1231,6 +1232,8 @@ export function Feed({
   });
   const [items, setItems] = useState(() => (gs ? gs[gi].list : list));
   const [first] = useState(() => Math.max(0, items.findIndex((v) => videoSlug(v) === start)));
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const [active, setActive] = useState(first);
   // Wisselen tussen Shorts en Journaals: nieuwe lijst, vanaf de eerste video (de scroller wordt vers opgebouwd).
   const pickGroup = useCallback(
@@ -1364,6 +1367,17 @@ export function Feed({
     if (s) s.scrollTop = nieuwTop;
   }, [items.length]);
   const ytSpeelt = useCallback(() => {}, []);
+
+  // Lijst vastgezet, maar uitgesloten of verdwenen video's (filter, bron uit, verversing) gaan er live uit.
+  const actueel = gs ? groups!.flatMap((g) => g.list) : list;
+  useLayoutEffect(() => {
+    const r = syncFeed(itemsRef.current, activeRef.current, actueel);
+    if (r.items === itemsRef.current || !r.items.length) return;
+    const s = scroller.current;
+    activeRef.current = r.actief;
+    flushSync(() => { setItems(r.items); setActive(r.actief); });
+    if (s) s.scrollTop = r.actief * s.clientHeight;
+  });
 
   // Start op de gekozen video, vóór de eerste paint.
   useLayoutEffect(() => {

@@ -1,0 +1,1 @@
+- Videofeed toont na herladen alleen actuele, toegestane video's; een lege of gefilterde lijst toont een lege toestand en tijdens swipen uitgesloten of verdwenen video's verdwijnen ook uit de open feed (#659).
