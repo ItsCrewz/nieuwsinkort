@@ -7,6 +7,7 @@ export type Item = {
   samenvatting: string;
   punten: string[];
   tijd: string;
+  t?: number; // Publicatietijd in milliseconden sinds de Unix-epoch.
   bronnen: Bron[];
   beeld?: string; // oud veld: één afbeelding
   /** Foto's uit alle bronnen van dit bericht (ontdubbeld, eerste = beste). */
@@ -50,7 +51,7 @@ export type Video = {
   /** Zelfde filmpje bij andere bronnen (na ontdubbelen). */
   ook?: Bron2[];
 };
-export type Bron2 = { bron: string; href: string };
+type Bron2 = { bron: string; href: string };
 export type Soort = "short" | "journaal";
 export type Data = {
   datum: string;
@@ -68,5 +69,5 @@ export type Data = {
   uur?: { gegenereerd?: string; nieuw?: number; model?: string; ai?: string };
 };
 /** vandaag = items gepubliceerd sinds 00:00 Europe/Amsterdam; null = feed niet bereikbaar/onleesbaar. */
-export type BronStat = { vandaag: number | null; laatste?: string; fout?: string; /** laatste keer dat ophalen lukte */ ok?: string };
+export type BronStat = { vandaag: number | null; laatste?: string; fout?: string; /** storing zonder fouttekst */ storing?: boolean; /** laatste keer dat ophalen lukte */ ok?: string };
 export type View = "alles" | Cat | "filmpjes" | "dumpert";
