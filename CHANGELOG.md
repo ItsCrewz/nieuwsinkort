@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Vastgelopen aanvragen voor extra artikeltekst stoppen na 10 seconden, zodat een latere poging kan herstellen (#742).
+- Herstel de videopositie via de geschiedenis als sessieopslag niet beschikbaar is of ongeldige gegevens bevat (#732).
 - Voorkom caching van lege SEO-pagina’s bij ongeldige dagdata (#599).
 - Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
