@@ -7,7 +7,7 @@ import type { Item } from "../../src/types";
 
 const [item] = JSON.parse(readFileSync("tests/fixtures/joey/punten-ahold-508.json", "utf8")) as Item[];
 const key = item.meer!;
-const oud = { uitleg: ["Delft organiseert een festival over kunst en robotica."], perBron: [{ site: "Computable", punten: ["NorthC investeert in datacenters."] }] };
+const oud = { uitleg: ["Delft organiseert een festival over kunst en robotica."], perBron: [{ site: "Computable", href: "https://voorbeeld.nl/nieuws", punten: ["NorthC investeert in datacenters."] }] };
 const nu = Date.parse("2026-11-04T12:45:00Z");
 const data = new Map<string, string>([["state", JSON.stringify({ datum: "2026-11-04", neuronDag: "2026-11-04", neurons: 9000, calls: 0, runs: 1, sums: {}, links: {}, diep: { [key]: { ...oud, at: nu } } })], ["meer", JSON.stringify({ datum: "2026-11-04", items: { [key]: oud } })]]);
 const opslag = new Map<string, unknown>();

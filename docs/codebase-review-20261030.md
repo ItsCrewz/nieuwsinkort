@@ -15,6 +15,8 @@ Er is niets aan de code veranderd, dus de meting vóór is gelijk aan de meting 
 
 ## 1. Dode code
 
+Dit is een historische momentopname. Bij #301 zijn de vervallen YouTube-helper en overbodige exports verwijderd; de genoemde CSS was inmiddels al weg. De actuele code heeft op deze punten voorrang.
+
 | Wat | Waar | Opmerking |
 |---|---|---|
 | `ytSkipBesluit` | `src/ytstart.ts:39` | Alleen nog gebruikt in `tests/ytstart.test.ts:47-52`. De productiecode gebruikt sinds #348 `ytVerwijderBesluit`. |

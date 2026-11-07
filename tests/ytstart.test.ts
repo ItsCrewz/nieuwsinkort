@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ytStartBesluit, ytSkipBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint } from "../src/ytstart";
+import { ytStartBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint } from "../src/ytstart";
 
 for (const actief of [true, false]) {
   const url = new URL(ytEmbedUrl("abc123", actief, "https://voorbeeld.nl"));
@@ -54,10 +54,3 @@ assert.equal(geluidMag(true, false, false), false);
 assert.equal(geluidMag(true, true, true), false);
 assert.equal(geluidMag(false, true, false), false);
 assert.equal(ytStatusNaam(-1), "unstarted");
-
-for (const code of [100, 101, 150, 152]) assert.equal(ytSkipBesluit(code, true, false, true), true);
-assert.equal(ytSkipBesluit(5, true, false, true), false);
-assert.equal(ytSkipBesluit(150, false, false, true), false);
-assert.equal(ytSkipBesluit(150, true, true, true), false);
-assert.equal(ytSkipBesluit(150, true, false, true), true);
-assert.equal(ytSkipBesluit(150, true, false, false), false);
