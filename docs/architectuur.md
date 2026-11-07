@@ -1,5 +1,7 @@
 # Architectuur
 
+MP4-downloads voor videosamenvattingen lezen maximaal 12 MB (bij vooraf maken 4 of 8 MB); bij overschrijding wordt de stream geannuleerd en volgt de bestaande melding dat het filmpje te lang is. Een correct bytebereik met de index vooraan blijft bruikbaar.
+
 Video-samenvattingen gebruiken met de Pages-secret `GROQ_API_KEY` Groq Whisper en de Groq-chatketen. Audio boven 25 MB en mislukte of begrensde Groq-verzoeken vallen terug op Cloudflare binnen het bestaande budget. KV houdt UTC-dagtellers en minuut- en uurvensters bij; KV is niet atomair, waardoor gelijktijdige verzoeken de limieten kunnen overschrijden. Groq-gebruik telt niet mee in video-neuronen.
 
 

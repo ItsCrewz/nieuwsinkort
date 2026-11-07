@@ -2,7 +2,10 @@
 
 ## Onuitgebracht
 
+- Begrens MP4-downloads voor videosamenvattingen, ook als de server het bytebereik negeert (#852).
+
 - Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
+
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
