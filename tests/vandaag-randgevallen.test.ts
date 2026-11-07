@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { TOEKOMST_MARGE, TZ_MARGE, alleenVandaag, nieuwsteTijd, publicatieTijd, vanVandaag } from "../src/vandaag";
+import { TOEKOMST_MARGE, TZ_MARGE, alleenVandaag, kiesNieuweData, nieuwsteTijd, publicatieTijd, vanVandaag } from "../src/vandaag";
 import { midnight } from "../src/tijd";
 
 const now = Date.parse("2026-10-30T10:00:00+01:00");
@@ -102,3 +102,15 @@ assert.equal(alleenVandaag("tekst", now), "tekst");
 console.log("✓ ongeldige invoer");
 
 console.log("vandaag-randgevallen: geslaagd");
+
+// #605: dezelfde generatietijd en video's, maar gewijzigde inhoud moet zichtbaar worden; identiek blijft hetzelfde object.
+{
+  const basis = { gegenereerd: "2026-10-30T09:00:00Z", items: [{ kop: "A" }], dag_samenvatting: "Briefing", weer: { tekst: "zon" }, filmpjes: [{ id: "x" }], dumpert: [] };
+  assert.equal(kiesNieuweData(basis, JSON.parse(JSON.stringify(basis))), basis, "identiek: oud object");
+  assert.deepEqual(kiesNieuweData(basis, { ...basis, items: [{ kop: "B" }] }).items, [{ kop: "B" }], "artikelen");
+  assert.equal(kiesNieuweData(basis, { ...basis, dag_samenvatting: "Nieuw" }).dag_samenvatting, "Nieuw", "briefing");
+  assert.deepEqual(kiesNieuweData(basis, { ...basis, weer: { tekst: "regen" } }).weer, { tekst: "regen" }, "weer");
+  const ander = { ...basis, filmpjes: [] };
+  assert.equal(kiesNieuweData(basis, ander), ander, "andere video's");
+  assert.equal(kiesNieuweData(null, basis), basis);
+}

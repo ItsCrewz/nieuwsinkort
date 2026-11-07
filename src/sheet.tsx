@@ -20,7 +20,10 @@ function sourceLine(s: SourceRow): string {
   // Ophalen mislukt is iets anders dan "vandaag niets": zeg het eerlijk, met wanneer het voor het laatst wél lukte.
   if (st.vandaag == null) return ["Ophalen mislukt", st.ok ? `laatst gelukt ${hhmm(st.ok)}` : st.laatste ? `laatste bericht ${hhmm(st.laatste)}` : "", inOverzicht].filter(Boolean).join(" · ");
   const bij = st.ok ? `bijgewerkt ${hhmm(st.ok)}` : ""; // laatste gelukte ophaalronde (elk kwartier)
-  const deels = st.fout ? "deels mislukt" : "";
+  const gestoord = !!(st.fout || st.storing);
+  const deels = gestoord ? "deels mislukt" : "";
+  // Nul gevonden bij een deels mislukte ophaling: stand onvolledig, niet beweren dat de bron niets publiceerde.
+  if (st.vandaag === 0 && gestoord) return [`Stand onvolledig${st.laatste ? ` · laatste ${hhmm(st.laatste)}` : ""}`, bij, deels].filter(Boolean).join(" · ");
   if (st.vandaag === 0) return [`Vandaag niets${st.laatste ? ` · laatste ${hhmm(st.laatste)}` : ""}`, bij, deels].filter(Boolean).join(" · ");
   return [`${st.vandaag} vandaag`, inOverzicht, bij, deels].filter(Boolean).join(" · ");
 }
@@ -49,12 +52,22 @@ export function SourcesSheet({
   const [closing, setClosing] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const sluiting = useRef<{ bezig: boolean; klaar: boolean; timer?: number }>({ bezig: false, klaar: false });
+  const afronden = () => {
+    if (sluiting.current.klaar) return;
+    sluiting.current.klaar = true;
+    window.clearTimeout(sluiting.current.timer);
+    onClose();
+  };
   const close = () => {
-    if (rustig()) return onClose();
+    if (sluiting.current.bezig || sluiting.current.klaar) return;
+    sluiting.current.bezig = true;
+    if (rustig()) return afronden();
     setClosing(true);
-    window.setTimeout(onClose, 360); // vangnet als animationend niet komt
+    sluiting.current.timer = window.setTimeout(afronden, 360); // vangnet als animationend niet komt
   };
   useEffect(() => {
+    sluiting.current.klaar = false;
     const prevFocus = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -64,6 +77,8 @@ export function SourcesSheet({
     document.body.style.overflow = "hidden";
     closeBtn.current?.focus({ preventScroll: true });
     return () => {
+      sluiting.current.klaar = true;
+      window.clearTimeout(sluiting.current.timer);
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
       prevFocus?.focus?.({ preventScroll: true });
@@ -79,7 +94,7 @@ export function SourcesSheet({
           className="sheet"
           ref={panel}
           onAnimationEnd={(e) => {
-            if (closing && e.target === panel.current) onClose();
+            if (closing && e.target === panel.current) afronden();
           }}
         >
           <div className="sh-head">

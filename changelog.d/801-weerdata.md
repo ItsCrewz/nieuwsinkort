@@ -1,0 +1,1 @@
+- Ongeldige onderdelen van het weerbericht blokkeren de nieuwsweergave niet meer (#801).
