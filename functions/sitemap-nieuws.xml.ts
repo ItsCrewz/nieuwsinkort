@@ -36,7 +36,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   try {
     const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
     if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) gegenereerd = dag.gegenereerd; // ook bij een verlopen dag: de grens hoort bij de dataset
-    if (gegenereerd && geldigeDag(ams(Date.parse(dag.gegenereerd)).iso)) xml = (nieuwsSitemap(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso));
+    if (gegenereerd && geldigeDag(ams(Date.parse(gegenereerd)).iso)) xml = (nieuwsSitemap(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(gegenereerd)).iso));
   } catch { console.error("sitemap-nieuws: data lezen mislukt"); }
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd);
   if (!beleid) return new Response(xml, { headers: { ...HDR, "Cache-Control": "no-store" } });

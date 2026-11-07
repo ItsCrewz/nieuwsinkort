@@ -34,7 +34,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   try {
     const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
     if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) gegenereerd = dag.gegenereerd; // ook bij een verlopen dag: de grens hoort bij de dataset
-    if (gegenereerd && geldigeDag(ams(Date.parse(dag.gegenereerd)).iso)) html = (vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso));
+    if (gegenereerd && geldigeDag(ams(Date.parse(gegenereerd)).iso)) html = (vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(gegenereerd)).iso));
   } catch { console.error("vandaag: data lezen mislukt"); }
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
   if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
