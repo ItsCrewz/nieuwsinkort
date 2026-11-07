@@ -18,6 +18,7 @@ const KIJK = 3; // zoveel items per tab telt als "eerste"
 const HLS_MAX = 2;
 export const MP4_BYTES = 256 * 1024;
 export const GELIJK = 3;
+export const NETWERK_TIMEOUT = 10000;
 
 const uniek = <T,>(l: T[]) => [...new Set(l)];
 const origin = (u: string) => {
@@ -96,29 +97,55 @@ const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
 const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
 
-async function warmHls(master: string) {
-  const get = (u: string) => fetch(u, LOW).then((r) => (r.ok ? r.text() : ""));
+async function warmHls(master: string, signal: AbortSignal) {
+  const get = (u: string) => fetch(u, { ...LOW, signal }).then((r) => (r.ok ? r.text() : ""));
   const base = new URL(master, location.href).href;
   let txt = await get(master);
   let b = base;
+  signal.throwIfAborted();
   if (/#EXT-X-STREAM-INF/.test(txt)) {
     b = laagsteVariant(txt, base);
     txt = b ? await get(b) : "";
   }
-  for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => r.arrayBuffer());
+  for (const s of segmenten(txt, b)) {
+    signal.throwIfAborted();
+    await fetch(s, { ...LOW, signal }).then((r) => r.arrayBuffer());
+  }
 }
 
-async function warmMp4(src: string) {
+async function warmMp4(src: string, signal: AbortSignal) {
   // Alleen het begin: een Range-aanvraag (Instagram-CDN: CORS *, Range ok). Geeft de server toch 200, dan stoppen we zelf.
-  const r = await fetch(src, { ...LOW, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+  const r = await fetch(src, { ...LOW, signal, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+  signal.throwIfAborted();
   const rd = r.body?.getReader();
   if (!rd) return;
-  for (let got = 0; got < MP4_BYTES; ) {
-    const { done, value } = await rd.read();
-    if (done) return;
-    got += value.length;
+  const stop = () => { rd.cancel().catch(() => {}); };
+  signal.addEventListener("abort", stop, { once: true });
+  try {
+    for (let got = 0; got < MP4_BYTES; ) {
+      const { done, value } = await rd.read();
+      signal.throwIfAborted();
+      if (done) return;
+      got += value.length;
+    }
+    stop();
+  } finally {
+    signal.removeEventListener("abort", stop);
   }
-  rd.cancel().catch(() => {});
+}
+
+// Een vastgelopen fetch of stream mag geen plaats in de wachtrij vasthouden.
+async function netwerktaak(taak: (signal: AbortSignal) => Promise<void>) {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<void>((ok) => {
+    timer = setTimeout(() => { controller.abort(); ok(); }, NETWERK_TIMEOUT);
+  });
+  try {
+    await Promise.race([taak(controller.signal), timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
 }
 
 export function voerUit(p: Plan) {
@@ -155,8 +182,8 @@ export function voerUit(p: Plan) {
   }
   // zelfde specifier als feed.tsx: Vite deelt de chunk, de eerste speler vindt hem dus al in de cache
   if (p.hlsChunk && nieuw("hls.js")) taken.push(() => import("hls.js"));
-  for (const m of p.hls) if (nieuw(`hls:${m}`)) taken.push(() => warmHls(m));
-  if (p.mp4 && nieuw(`mp4:${p.mp4}`)) taken.push(() => warmMp4(p.mp4!));
+  for (const m of p.hls) if (nieuw(`hls:${m}`)) taken.push(() => netwerktaak((signal) => warmHls(m, signal)));
+  if (p.mp4 && nieuw(`mp4:${p.mp4}`)) taken.push(() => netwerktaak((signal) => warmMp4(p.mp4!, signal)));
   // kleine pool: hooguit GELIJK taken tegelijk, in volgorde van belang
   let i = 0;
   const loop = async () => {
