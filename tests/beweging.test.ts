@@ -12,6 +12,9 @@ const g = globalThis as unknown as G;
 const zetWindow = (matchMedia: unknown) => { g.window = { matchMedia }; };
 const mq = (reduce: boolean) => (q: string) => ({ matches: reduce && q.includes("prefers-reduced-motion") });
 const css = readFileSync("src/index.css", "utf8");
+// Transities/animaties/keyframes staan in het uitgestelde bestand (css-kritiek); layout, intro (kaart-in) en reduced motion in index.css.
+const uitgesteld = readFileSync("src/uitgesteld.css", "utf8");
+const alles = css + "\n" + uitgesteld;
 
 await t("rustig/scrollGedrag volgen prefers-reduced-motion", () => {
   zetWindow(mq(true));
@@ -115,8 +118,9 @@ await t("reduced motion is één centraal blok voor het hele document", () => {
   assert.match(einde, /transition-duration:\.01ms !important/);
   assert.match(einde, /animation-iteration-count:1 !important/);
   assert.match(einde, /scroll-behavior:auto !important/);
-  assert.match(einde, /::view-transition-old\(\*\)[^}]*animation:none/);
   assert.doesNotMatch(einde, /\.app/);
+  // View-transition-pseudo's bestaan alleen in het uitgestelde bestand; daar ook de uitzetting bij reduced motion
+  assert.match(uitgesteld.slice(uitgesteld.indexOf("@media (prefers-reduced-motion:reduce)")), /::view-transition-old\(\*\)[^}]*animation:none !important/);
 });
 
 await t("kaart-entree: alleen opacity/transform, nooit op .nc-head of de kaart zelf", () => {
@@ -140,11 +144,11 @@ await t("rubriekwissel/shimmer (#538): richting, keyframes alleen transform, 300
   assert.equal(wisselRichting("alles", "nl"), 1);
   assert.equal(wisselRichting("dumpert", "filmpjes"), -1);
   assert.equal(wisselRichting("nl", "nl"), 0);
-  const kf = /@keyframes glans\{([^@]*?\}?)\}\n/.exec(css)![1];
+  const kf = /@keyframes glans\{([^@]*?\}?)\}\n/.exec(uitgesteld)![1];
   assert.match(kf, /transform/);
   assert.doesNotMatch(kf, /opacity|left|width|margin/);
-  assert.match(css, /\.skel::after[^{]*\{[^}]*animation:glans 1\.4s var\(--ease-standaard\) 300ms infinite/);
-  assert.match(css, /\.skel::after,\.d-meer-laden span::after\{display:none\}/);
-  assert.doesNotMatch(css, /animation:pulse|animation:ml /);
-  assert.match(css, /\.seg-ind\{[^}]*transition:transform var\(--dur-3\) var\(--ease-in\)/);
+  assert.match(alles, /\.skel::after[^{]*\{[^}]*animation:glans 1\.4s var\(--ease-standaard\) 300ms infinite/);
+  assert.match(alles, /\.skel::after,\.d-meer-laden span::after\{display:none\}/);
+  assert.doesNotMatch(alles, /animation:pulse|animation:ml /);
+  assert.match(alles, /\.seg-ind\{[^}]*transition:transform var\(--dur-3\) var\(--ease-in\)/);
 });

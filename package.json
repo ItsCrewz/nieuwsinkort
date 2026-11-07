@@ -19,7 +19,8 @@
     "coverage": "vitest run --coverage && node scripts/coverage-groepen.mjs",
     "check:bronlinks": "node scripts/bronlinkcheck.mjs",
     "lint:css": "stylelint \"src/**/*.css\"",
-    "lint:html": "html-validate index.html dist/index.html"
+    "lint:html": "html-validate index.html dist/index.html",
+    "rooktest:live": "node scripts/rooktest-live.mjs"
   },
   "dependencies": {
     "hls.js": "^1.5.0",

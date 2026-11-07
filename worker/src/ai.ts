@@ -20,7 +20,7 @@ export type Usage = Meting & { fAanroep?: number; fOutput?: number; laatsteFout?
 
 // Alleen een echte Cloudflare-dagquota-fout (zelfde regel als #79) telt als "Cloudflare op"; geen brede regex.
 export const ketenQuota = (e: unknown) => e instanceof KetenFout && !!e.cloudflare && isDagQuota(e.cloudflare);
-export class KetenFout extends Error {
+class KetenFout extends Error {
   constructor(public cloudflare?: string, public laatste?: { bron?: AiBron; bericht: string }) { super(`AI-keten uitgeput${cloudflare ? `; cloudflare: ${cloudflare}` : ""}`); }
 }
 const LEEG = "Leeg AI-antwoord";
@@ -221,7 +221,7 @@ export async function simpelWeer(ai: Ai, model: string, knmi: string, u: Usage):
 }
 
 // "Lees verder": per bericht een langere uitleg (3–5 alinea's) en per bron de kernpunten, uit de artikeltekst zelf.
-export type DiepIn = { id: number; kop: string; kort: string; bronnen: { site: string; tekst: string }[] };
+type DiepIn = { id: number; kop: string; kort: string; bronnen: { site: string; tekst: string }[] };
 export type Diep = { uitleg: string[]; perBron: { site: string; punten: string[] }[] };
 export async function verdiep(ai: Ai, model: string, items: DiepIn[], u: Usage): Promise<Map<number, Diep>> {
   const sys = STIJL + " Antwoord alleen met geldige JSON, zonder uitleg of markdown.";

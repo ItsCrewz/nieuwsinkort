@@ -1,0 +1,36 @@
+[
+  [
+    {
+      "titel": "Grote brand in oude fabriek",
+      "bron": "Eén",
+      "href": "https://www.youtube.com/watch?v=abcdefghijk&utm_source=test",
+      "ook": [
+        {
+          "bron": "Twee",
+          "href": null
+        },
+        {
+          "bron": "Drie",
+          "href": "https://example.org/brand"
+        }
+      ]
+    },
+    {
+      "titel": "Ander onderwerp",
+      "bron": "Vier",
+      "href": "https://m.example.org/video/?utm_source=test&id=7",
+      "ook": [
+        {
+          "bron": "Vijf",
+          "href": "https://www.example.org/video?id=7&fbclid=abc"
+        }
+      ]
+    },
+    {
+      "titel": "Eigen verhaal over treinverkeer",
+      "bron": "Zeven",
+      "href": "https://example.org/trein"
+    }
+  ],
+  4
+]
