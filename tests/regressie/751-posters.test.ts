@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { aantalActievePosters, GELIJK, voerUit } from "../../src/voorladen";
+import { aantalActievePosters, GELIJK, POSTER_MAX_MS, voerUit } from "../../src/voorladen";
 
 const origineel = Object.getOwnPropertyDescriptors(globalThis);
 const installeer = (naam: string, waarde: unknown) => Object.defineProperty(globalThis, naam, { value: waarde, configurable: true, writable: true });
@@ -12,7 +12,7 @@ installeer("Image", class {
   constructor() { afbeeldingen.push(this); }
 });
 installeer("setTimeout", (fn: () => void, ms: number) => {
-  assert.equal(ms, 15000);
+  assert.equal(ms, POSTER_MAX_MS);
   timers.set(++teller, fn);
   return teller;
 });
