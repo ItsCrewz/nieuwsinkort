@@ -12,10 +12,12 @@ export function herstelFeed(status: FeedStatus | null, cat: FeedStatus["cat"], s
   return { lijst: bron, slug: gekozen ? videoSlug(gekozen) : slug };
 }
 export function leesFeed(): FeedStatus | null {
+  const geldig = (s: FeedStatus | null): s is FeedStatus => !!s && (s.cat === "dumpert" || s.cat === "filmpjes") && typeof s.slug === "string" && Array.isArray(s.lijst);
   try {
-    const s = JSON.parse(sessionStorage.getItem(KEY) || "null") || history.state?.feed;
-    return s && (s.cat === "dumpert" || s.cat === "filmpjes") && typeof s.slug === "string" && Array.isArray(s.lijst) ? s : null;
-  } catch { return null; }
+    const s = JSON.parse(sessionStorage.getItem(KEY) || "null");
+    if (geldig(s)) return s;
+  } catch { /* opslag kan uitstaan of ongeldige JSON bevatten */ }
+  try { const s = history.state?.feed; return geldig(s) ? s : null; } catch { return null; }
 }
 export function bewaarFeed(s: FeedStatus) {
   try { sessionStorage.setItem(KEY, JSON.stringify(s)); } catch { /* opslag kan uitstaan */ }

@@ -10,6 +10,8 @@ const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|
 function tooSmall(u: string): boolean {
   const q = /[?&](?:w|width|resize|imwidth|im_w)=(\d+)/i.exec(u);
   if (q && +q[1] < 300) return true;
+  const h = /[?&](?:h|height)=(\d+)(?=&|#|$)/i.exec(u);
+  if (h && +h[1] < 160) return true;
   const d = /[/_-](\d{2,4})x(\d{2,4})(?:[/_.-]|$)/.exec(u);
   if (d && (+d[1] < 300 || +d[2] < 160)) return true;
   if (/\/s(\d{2,3})(-c)?\//.test(u) && +(/\/s(\d{2,3})/.exec(u)![1]) < 300) return true;
@@ -73,8 +75,8 @@ export function uniekeBeelden(urls: (string | null | undefined)[], max = 6): str
 /** og:image / twitter:image uit (het begin van) een HTML-pagina. */
 export function ogImage(html: string, base: string): string {
   const m =
-    /<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["'][^>]*content=["']([^"']+)["']/i.exec(html) ||
-    /<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["']/i.exec(html);
-  if (!m) return "";
+    /<meta[^>]+(?:property|name)\s*=\s*["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["'][^>]*content\s*=\s*["']([^"']+)["']/i.exec(html) ||
+    /<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]*(?:property|name)\s*=\s*["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["']/i.exec(html);
+  if (!m || !m[1].trim()) return "";
   try { return new URL(m[1].replace(/&amp;/g, "&"), base).toString(); } catch { return ""; }
 }
