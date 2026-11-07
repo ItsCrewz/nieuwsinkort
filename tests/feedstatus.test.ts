@@ -29,10 +29,10 @@ assert.deepEqual(leesFeed(), status);
 opslag.set("nieuwsinkort-feedstatus", "null");
 assert.deepEqual(leesFeed(), status);
 opslag.set("nieuwsinkort-feedstatus", "{");
-assert.equal(leesFeed(), null);
+assert.deepEqual(leesFeed(), status);
 for (const ongeldig of [{ ...status, cat: "anders" }, { ...status, slug: null }, { ...status, lijst: null }]) {
   opslag.set("nieuwsinkort-feedstatus", JSON.stringify(ongeldig));
-  assert.equal(leesFeed(), null);
+  assert.deepEqual(leesFeed(), status);
 }
 const oorspronkelijkeOpslag = globalThis.sessionStorage;
 const oorspronkelijkeGeschiedenis = globalThis.history;
