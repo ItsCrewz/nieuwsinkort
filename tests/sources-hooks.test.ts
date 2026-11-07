@@ -1,7 +1,7 @@
 // Hooks uit src/sources.ts in Node, zonder DOM-bibliotheek: minimale window/container-stubs, fetch en localStorage gemockt.
 import assert from "node:assert/strict";
 import { act, createElement } from "react";
-import { buildSources, useCatalog, useFiltered, useSourceFilter } from "../src/sources";
+import { buildSources, CATALOG_RETRY_MS, useCatalog, useFiltered, useSourceFilter } from "../src/sources";
 import type { Catalog } from "../src/sources";
 import type { Data, Item, Video } from "../src/types";
 
@@ -85,7 +85,9 @@ await t("useCatalog laadt /bronnen.json zonder cache", async () => {
   }, null);
   assert.equal(eerste, null);
   assert.deepEqual(h.result.current, cat);
-  assert.deepEqual(calls, [{ url: "/bronnen.json", init: { cache: "no-cache" } }]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "/bronnen.json");
+  assert.equal((calls[0].init as RequestInit).cache, "no-cache");
   await h.rerender(null);
   assert.equal(calls.length, 1);
   await h.unmount();
@@ -106,6 +108,56 @@ await t("useCatalog valt terug op lege groepen", async () => {
     await h.unmount();
   }
   assert.equal(jsonGelezen, false);
+});
+
+const wacht = (ms: number) => act(async () => void (await new Promise((r) => setTimeout(r, ms))));
+await t("useCatalog herstelt na een tijdelijke fout en stopt daarna", async () => {
+  CATALOG_RETRY_MS.splice(0, 3, 5, 5, 5);
+  const cat: Catalog = { groepen: [{ id: "nl", label: "Nederland", bronnen: [{ id: "nos", naam: "NOS" }] }] };
+  let n = 0;
+  const calls = mockFetch(async () => (++n === 1 ? Promise.reject(new TypeError("offline")) : { ok: true, json: async () => cat }));
+  const h = await renderHook(() => useCatalog(), null);
+  assert.deepEqual(h.result.current, { groepen: [] });
+  await wacht(40);
+  assert.deepEqual(h.result.current, cat);
+  assert.equal(calls.length, 2);
+  await wacht(40);
+  assert.equal(calls.length, 2);
+  await h.unmount();
+});
+await t("useCatalog geeft na een blijvende fout op en ruimt timers op", async () => {
+  CATALOG_RETRY_MS.splice(0, 3, 5, 5, 5);
+  const calls = mockFetch(async () => ({ ok: false, json: async () => ({}) }));
+  const h = await renderHook(() => useCatalog(), null);
+  await wacht(60);
+  assert.equal(calls.length, 4);
+  assert.deepEqual(h.result.current, { groepen: [] });
+  await h.unmount();
+  // verlaten tijdens wachten: geen verdere verzoeken
+  CATALOG_RETRY_MS.splice(0, 3, 20, 20, 20);
+  const c2 = mockFetch(async () => Promise.reject(new TypeError("offline")));
+  const h2 = await renderHook(() => useCatalog(), null);
+  await h2.unmount();
+  await wacht(80);
+  assert.equal(c2.length, 1);
+});
+
+await t("useCatalog begrenst ook online-events en breekt een lopend verzoek af bij unmount", async () => {
+  CATALOG_RETRY_MS.splice(0, 3, 5, 5, 5);
+  const calls = mockFetch(async () => ({ ok: false, json: async () => ({}) }));
+  const h = await renderHook(() => useCatalog(), null);
+  await wacht(60);
+  assert.equal(calls.length, 4);
+  for (let i = 0; i < 3; i++) await act(async () => void win.dispatchEvent(new Event("online")));
+  await wacht(20);
+  assert.equal(calls.length, 4);
+  await h.unmount();
+  let signal: AbortSignal | undefined;
+  g.fetch = (_u: unknown, init: RequestInit) => ((signal = init.signal as AbortSignal), new Promise(() => {}));
+  const h2 = await renderHook(() => useCatalog(), null);
+  assert.equal(signal?.aborted, false);
+  await h2.unmount();
+  assert.equal(signal?.aborted, true);
 });
 
 // useSourceFilter
