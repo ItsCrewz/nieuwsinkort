@@ -379,4 +379,6 @@ Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="sea
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
+Terugvegen onderbroken (#590): `useTerugvegen` (`src/terugvegen.ts`) bewaart de `overflow-x` van `body` vóór het gebaar en zet die in `klaar()` terug (niet blind leeg). Een tweede vinger (touchstart of touchmove), tekstselectie en `touchcancel` laten het artikel open en veren terug (direct bij reduced motion). Er is één timer: een nieuw gebaar tijdens het terugveren wist hem en herstelt eerst; een nieuw gebaar tijdens de sluitanimatie annuleert de sluiting en herstelt (#658); unmount wist de timer en herstelt zonder `onBack`. Test: `tests/terugvegen-hook.test.ts` (nepklok, stubs, geen netwerk).
+
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
