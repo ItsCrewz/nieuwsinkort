@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Voorkom botsende artikel-id's bij inhoudsbepalende queryparameters; dubbelzinnige oude deellinks openen geen willekeurig bericht (#612).
 - Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 

@@ -1,4 +1,4 @@
-import { artikelId, artikelPad, linkId, parsePad } from "../../src/artikelid";
+import { artikelId, artikelPad, linkId, oudeLinkId, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
 import { ams } from "../../src/tijd";
@@ -16,7 +16,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const gisteren = new Date(Date.UTC(nu.y, nu.m - 1, nu.d - 1)).toISOString().slice(0, 10);
   if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, "/", "public, max-age=86400");
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
-  const sleutel = new Request(`${u.origin}${u.pathname}`);
+  const sleutel = new Request(`${u.origin}${u.pathname}?versie=2`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   if (bestaand) {
     if (request.headers.get("If-None-Match") === bestaand.headers.get("ETag")) return new Response(null, { status: 304, headers: bestaand.headers });
@@ -26,7 +26,8 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
   const dag = await data.json() as { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
   const items = dag.gegenereerd && ams(Date.parse(dag.gegenereerd)).iso === pad.dag ? dag.items || [] : [];
-  const item = items.find((i) => artikelId(i) === pad.id) || items.find((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id));
+  const matches = items.filter((i) => artikelId(i) === pad.id || i.bronnen?.some((b) => linkId(b.href) === pad.id || oudeLinkId(b.href) === pad.id));
+  const item = matches.length === 1 ? matches[0] : undefined;
   if (!item) return redirect(302, "/", "no-store");
   const canoniek = artikelPad(item, pad.dag);
   if (u.pathname !== canoniek) return redirect(301, `${canoniek}${u.search}`, "no-store");
