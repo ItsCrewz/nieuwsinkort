@@ -1,7 +1,7 @@
 import { Foutgrens } from "./foutgrens";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
 import { useEffect, useRef, useState } from "react";
-import type { Bron, Item, Meer } from "./types";
+import type { Bron, Item } from "./types";
 import { BionicText, host } from "./ui";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons";
@@ -14,7 +14,7 @@ import { uitgebreidOntdubbeld } from "./uitgebreid";
 import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
-import { prefetchMeer } from "./meer";
+import { useMeer } from "./meer";
 import { artikelUrl, deel } from "./delen";
 import { useTerugvegen } from "./terugvegen";
 
@@ -38,18 +38,6 @@ function SourceRow({ b }: { b: Bron }) {
       </a>
     </li>
   );
-}
-
-function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
-  const [st, setSt] = useState<{ k?: string; meer: Meer | null; laden: boolean }>({ meer: null, laden: !!item.meer });
-  useEffect(() => {
-    let weg = false;
-    if (!item.meer) { setSt({ meer: null, laden: false }); return; }
-    setSt({ k: item.meer, meer: null, laden: true });
-    prefetchMeer(item).then((m) => { if (!weg) setSt({ k: item.meer, meer: m, laden: false }); });
-    return () => { weg = true; };
-  }, [item]);
-  return st;
 }
 
 // Bron (nieuwssite) nooit als verkoper of kanaal tonen (#488): de teksten van het bericht zonder "via <bron>"-vermeldingen.
