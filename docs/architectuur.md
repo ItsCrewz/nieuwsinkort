@@ -37,6 +37,8 @@ Vite 8, React 18, TypeScript, Tailwind 3, hls.js. Mobiele feed in TikTok-stijl m
 
 Nieuwsfilters en sortering gebruiken de geldige absolute publicatietijd `t` in milliseconden. Bij oudere data zonder geldige `t` wordt `tijd` als Amsterdamse kloktijd afgeleid van `gegenereerd`; rond een klokwisseling is die terugval niet eenduidig. Relatieve filters rekenen tegen de huidige tijd.
 
+Het bronnenfilter bewaart bij een gedeeltelijk zichtbaar bericht de oorspronkelijke artikel-id, ook als oude data die uit de eerste bron afleidt. Uitgeschakelde bronnen blijven uit de zichtbare bronnenlijst; de deellink blijft gelijk aan die van de ongefilterde dagdata (#829).
+
 Video's worden naast platform-ID, media, URL, thumbnail en titel ook gekoppeld op een letterlijk gedeeld begin van de genormaliseerde caption of titel met beschrijving: minstens 80 tekens en acht verschillende inhoudswoorden, binnen drie uur. Bij twee publicatietijdstippen geldt hun werkelijke verschil; anders zijn twee geldige `tijd`-velden nodig. De beste kopie blijft staan en andere bronnen komen in `ook`. Gelijk onderwerp of afwijkende tekst is onvoldoende: de JA21-reel en het SGP-journaal blijven bijvoorbeeld apart. Een lange gedeelde standaardtekst kan nog steeds verschillende video's samenvoegen.
 
 Miniaturen in het video-overzicht bewaren een laadfout per beeld-URL. Bij een gewijzigde URL probeert de bestaande kaart het nieuwe beeld; een late fout van het oude beeld beïnvloedt dat niet. Tests: `tests/regressie/video-miniatuur-790.test.ts`.
