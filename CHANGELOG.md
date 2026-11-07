@@ -2,6 +2,12 @@
 
 ## Onuitgebracht
 
+- Artikelverdieping geeft bij een KV-storing 503 in plaats van 404 en is na herstel opnieuw op te halen (#839).
+- Herstel de videopositie via de geschiedenis als sessieopslag niet beschikbaar is of ongeldige gegevens bevat (#732).
+- Voorkom caching van lege SEO-pagina’s bij ongeldige dagdata (#599).
+- Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
+- Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
+
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
 
 - Verborgen feednavigatie is niet meer focusbaar; de startknop blijft bereikbaar (#275).
