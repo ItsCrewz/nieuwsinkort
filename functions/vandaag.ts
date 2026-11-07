@@ -1,3 +1,4 @@
+import { dagCache, geldigeDag } from "./cache-dag";
 // Lichte server-HTML met links naar alle berichtpagina's van vandaag: zonder JavaScript hebben crawlers anders geen interne links.
 import { artikelPad, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
@@ -23,7 +24,7 @@ export function vandaagHtml(items: Item[], dag: string): string {
 export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const u = new URL(ctx.request.url);
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
-  const sleutel = new Request(`${u.origin}${u.pathname}`);
+  const sleutel = new Request(`${u.origin}${u.pathname}?cache-dag=${dagCache().periode}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   const start = Date.now();
   if (bestaand && nogGeldig(bestaand, start)) return bestaand;
@@ -32,7 +33,8 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   let html = vandaagHtml([], ""), gegenereerd: string | undefined;
   try {
     const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) html = (gegenereerd = dag.gegenereerd,  vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso));
+    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) gegenereerd = dag.gegenereerd; // ook bij een verlopen dag: de grens hoort bij de dataset
+    if (gegenereerd && geldigeDag(ams(Date.parse(dag.gegenereerd)).iso)) html = (vandaagHtml(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso));
   } catch { console.error("vandaag: data lezen mislukt"); }
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
   if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
