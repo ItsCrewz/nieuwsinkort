@@ -57,7 +57,9 @@ try {
       // na de grens: de oude entry telt niet meer, er komt een vers antwoord
       Date.now = () => t(direct);
       r = await vraag(fn, pad, maak(dagGen, reads)); await Promise.all(pending.splice(0));
-      assert.ok(reads.n > leesVoor, `${naam} ${direct}: oude entry niet gebruikt`); assert.equal(puts, 2);
+      assert.ok(reads.n > leesVoor, `${naam} ${direct}: oude entry niet gebruikt`);
+      // verouderde dagdata (na 06:00 op D+1) is geen geldige dag: 503 no-store en niets cachen (#599), anders vers antwoord in de cache
+      if (r.status === 503) { assert.equal(r.headers.get("cache-control"), "no-store"); assert.equal(puts, 1); } else assert.equal(puts, 2);
     }
     // swr mag de grens niet overschrijden: 5 min + 1 s voor middernacht → max-age + swr ≤ rest
     opslag.clear(); Date.now = () => t("2026-11-04T22:54:59Z");

@@ -1,0 +1,1 @@
+- Extra artikeltekst respecteert het bronnenfilter, ook wanneer dit tijdens het lezen verandert (#691).
