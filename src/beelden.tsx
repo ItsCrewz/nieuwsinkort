@@ -30,17 +30,40 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
   if (!u || klaar.has(u)) return Promise.resolve();
   const p0 = bezig.get(u);
   if (p0) return p0;
-  const laad = (src: string): Promise<void> => {
-    const im = new Image();
-    im.referrerPolicy = "no-referrer";
-    im.decoding = "async";
-    im.src = src;
-    return im.decode ? im.decode() : new Promise<void>((ok, nok) => { im.onload = () => ok(); im.onerror = nok; });
-  };
-  const p = laad(bronUrl(u)) // zelfde URL als de <img src>, anders dubbele downloads
-    .catch(() => (naarRechtstreeks(u) ? laad(u) : Promise.reject()))
-    .then(() => { klaar.add(u); }, () => {})
-    .finally(() => bezig.delete(u));
+  let afgerond = false;
+  let im: HTMLImageElement | undefined;
+  let timer: ReturnType<typeof setTimeout>;
+  const p = new Promise<void>((resolve) => {
+    const stop = (gelukt: boolean) => {
+      if (afgerond) return;
+      afgerond = true;
+      clearTimeout(timer);
+      if (im) { im.onload = null; im.onerror = null; }
+      if (gelukt) klaar.add(u);
+      resolve();
+    };
+    const laad = (src: string) => {
+      im = new Image();
+      im.referrerPolicy = "no-referrer";
+      im.decoding = "async";
+      const fout = () => {
+        if (afgerond) return;
+        if (im) { im.onload = null; im.onerror = null; }
+        if (naarRechtstreeks(u)) laad(u);
+        else stop(false);
+      };
+      im.onload = () => stop(true);
+      im.onerror = fout;
+      im.src = src;
+      if (im.decode) {
+        im.onload = null;
+        im.onerror = null;
+        im.decode().then(() => stop(true), fout);
+      }
+    };
+    timer = setTimeout(() => stop(false), 10000);
+    laad(bronUrl(u)); // zelfde URL als de <img src>, anders dubbele downloads
+  }).finally(() => { if (bezig.get(u) === p) bezig.delete(u); });
   bezig.set(u, p);
   return p;
 }
