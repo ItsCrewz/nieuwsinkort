@@ -1,0 +1,1 @@
+- Mislukte bronfeeds staan met HTTP-status afzonderlijk in de run-meta, ook bij gedeeltelijk bereikbare bronnen (#572).
