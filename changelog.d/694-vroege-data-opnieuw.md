@@ -1,0 +1,1 @@
+- Na een mislukte vroege data-aanvraag wordt actuele data opnieuw opgehaald voordat de statische terugval wordt gebruikt (#694).

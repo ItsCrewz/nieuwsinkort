@@ -23,16 +23,46 @@ await t("vroeg: een afgewezen promise wordt ongewijzigd teruggegeven", async () 
   assert.equal(neemVroegeData(w), null);
 });
 
-await t("laadData valt eenmaal terug op statische data bij fout of ongeldige JSON", async () => {
+await t("laadData probeert actuele data opnieuw na een onbruikbare vroege respons", async () => {
   const { laadData } = await import("../src/vroeg");
-  for (const respons of [new Response("fout", { status: 503 }), new Response("geen json")]) {
+  for (const vroeg of [Promise.reject(new Error("netwerk")), Promise.resolve(new Response("fout", { status: 503 })), Promise.resolve(new Response("geen json")), Promise.resolve(Response.json([]))]) {
     const paden: string[] = [];
     const ophalen = (async (pad: string | URL | Request, opties?: RequestInit) => {
       paden.push(String(pad));
       assert.equal(opties?.cache, "no-cache");
-      return Response.json({ items: [] });
+      return Response.json({ actueel: true });
     }) as typeof fetch;
-    assert.deepEqual(await laadData(Promise.resolve(respons), ophalen), { items: [] });
-    assert.deepEqual(paden, ["/data.json?statisch=1"]);
+    assert.deepEqual(await laadData(vroeg, ophalen), { actueel: true });
+    assert.deepEqual(paden, ["/data.json"]);
   }
+});
+
+await t("laadData gebruikt statische data na twee mislukte actuele aanvragen", async () => {
+  const { laadData } = await import("../src/vroeg");
+  const paden: string[] = [];
+  const ophalen = (async (pad: string | URL | Request, opties?: RequestInit) => {
+    paden.push(String(pad));
+    assert.equal(opties?.cache, "no-cache");
+    return paden.length === 1 ? new Response("fout", { status: 503 }) : Response.json({ statisch: true });
+  }) as typeof fetch;
+  assert.deepEqual(await laadData(Promise.reject(new Error("netwerk")), ophalen), { statisch: true });
+  assert.deepEqual(paden, ["/data.json", "/data.json?statisch=1"]);
+});
+
+await t("laadData gebruikt een succesvolle vroege respons zonder extra aanvraag", async () => {
+  const { laadData } = await import("../src/vroeg");
+  const ophalen = (async () => { throw new Error("onverwachte aanvraag"); }) as typeof fetch;
+  assert.deepEqual(await laadData(Promise.resolve(Response.json({ actueel: true })), ophalen), { actueel: true });
+});
+
+await t("laadData doet zonder vroege promise één actuele aanvraag en geeft een terugvalfout door", async () => {
+  const { laadData } = await import("../src/vroeg");
+  const paden: string[] = [];
+  const ophalen = (async (pad: string | URL | Request, opties?: RequestInit) => {
+    paden.push(String(pad));
+    assert.equal(opties?.cache, "no-cache");
+    return new Response("fout", { status: paden.length === 1 ? 503 : 404 });
+  }) as typeof fetch;
+  await assert.rejects(laadData(null, ophalen), /404/);
+  assert.deepEqual(paden, ["/data.json", "/data.json?statisch=1"]);
 });
