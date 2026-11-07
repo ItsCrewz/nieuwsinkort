@@ -5,7 +5,7 @@ import type { Item } from "./types";
 const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "ß": "ss" };
 
 export function normaliseer(tekst: string): string {
-  return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c]).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c]).replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim();
 }
 
 function afkortingen(tekst: string): string {
