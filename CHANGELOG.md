@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
 - Een vertraagde deelactie toont geen kopieermelding meer bij een ander artikel (#680).
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
