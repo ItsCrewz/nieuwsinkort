@@ -3,7 +3,7 @@
 ## Onuitgebracht
 
 - Begrens MP4-downloads voor videosamenvattingen, ook als de server het bytebereik negeert (#852).
-
+- Voorkom caching van lege SEO-pagina’s bij ongeldige dagdata (#599).
 - Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
 
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
