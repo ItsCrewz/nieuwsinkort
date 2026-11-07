@@ -49,6 +49,7 @@ test("Home: tab Dumpert aanwijzen start daarna wel het voorladen van video", asy
   await expect(page.locator(".nc-title a").first()).toBeVisible();
   await page.locator('[data-video-tab]').first().hover();
   await expect.poll(() => verzoeken.filter((u) => /\/media\/dumpert\/.*\.m3u8/.test(u)).length).toBeGreaterThan(0);
+  await expect.poll(() => verzoeken.filter((u) => /hls/i.test(new URL(u).pathname)).length).toBeGreaterThan(0);
 });
 
 // #473: artikelfoto's lopen via /media/beeld (geen cookies van derden); Home en artikel praten niet rechtstreeks met uitgeversbeeldhosts.

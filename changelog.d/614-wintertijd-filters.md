@@ -1,0 +1,1 @@
+- Nieuwsfilters en sortering gebruiken de absolute publicatietijd, zodat berichten rond de wintertijdwissel juist worden ingedeeld (#614).

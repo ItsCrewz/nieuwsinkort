@@ -9,6 +9,7 @@ import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
 import { rustig, scrollGedrag } from "./beweging";
+import { maakSluiter } from "./feedsluiten";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
@@ -63,7 +64,7 @@ function useBar(ref: React.RefObject<HTMLElement>): Bar {
 }
 
 // Doorspoelen: de speler meldt zich hier aan, de balk onderaan stuurt hem aan.
-export type SeekApi = { dur: () => number; cur: () => number; seek: (t: number) => void };
+type SeekApi = { dur: () => number; cur: () => number; seek: (t: number) => void };
 type SeekRef = React.MutableRefObject<SeekApi | null>;
 
 type PlayerProps = {
@@ -1206,7 +1207,7 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
 }
 
 // ------------------------------------------------------------- de feed
-export type FeedGroup = { id: string; label: string; list: Video[] };
+type FeedGroup = { id: string; label: string; list: Video[] };
 export function Feed({
   list,
   cat,
@@ -1282,11 +1283,13 @@ export function Feed({
     };
   }, [pool]);
 
-  const close = useCallback(() => {
-    if (rustig()) return onClose();
-    setClosing(true);
-    window.setTimeout(onClose, 220);
-  }, [onClose]);
+  // Sluiten gebeurt precies één keer (timer én animationend, dubbel tikken, herhaald Escape); timer opruimen bij verdwijnen.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const [sluiter] = useState(() => maakSluiter({ rustig, start: () => setClosing(true), onClose: () => onCloseRef.current() }));
+  useEffect(() => sluiter.opruimen, [sluiter]);
+  const rondAf = sluiter.rondAf;
+  const close = sluiter.sluit;
 
   const metingen = useRef<SwipeMeting[]>([]);
   const lopendeMeting = useRef<SwipeMeting | null>(null);
@@ -1595,7 +1598,7 @@ export function Feed({
         aria-modal="true"
         aria-label={`${label}: video ${active + 1} van ${items.length}`}
         onAnimationEnd={(e) => {
-          if (e.target === root.current && closing) onClose();
+          if (e.target === root.current && closing) rondAf();
         }}
       >
         <div className={`feed-scroll ${gi ? "g1" : "g0"}`} id="feed-paneel" role={gs ? "tabpanel" : undefined} key={gi} ref={scroller} tabIndex={-1}>
