@@ -1,0 +1,1 @@
+- Miniatuur (`Thumb`) begint opnieuw bij de eerste foto als de beeldlijst van een ververst bericht verandert; een gewone rerender met dezelfde lijst herstart niet (#635).

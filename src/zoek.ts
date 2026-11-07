@@ -5,18 +5,23 @@ export function normaliseer(tekst: string): string {
   return tekst.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
+function afkortingen(tekst: string): string {
+  return tekst.replace(/(?<![\p{L}\p{N}])(?:\p{L}\.)+\p{L}\.?(?![\p{L}\p{N}])/gu, (afkorting) => afkorting.replace(/\./g, ""));
+}
+
 export function zoekItems(items: Item[], query: string): Item[] {
   const groepen: string[] = [];
   const los = query.replace(/"([^"]*)"/g, (_, groep: string) => {
-    const tekst = normaliseer(groep);
+    const tekst = normaliseer(afkortingen(groep));
     if (tekst) groepen.push(tekst);
     return " ";
   });
-  const woorden = normaliseer(los).split(" ").filter(Boolean);
+  const woorden = normaliseer(afkortingen(los)).split(" ").filter(Boolean);
   if (!woorden.length && !groepen.length) return items;
   return items.filter((item) => {
-    const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).map((veld) => normaliseer(veld!));
-    const tekst = " " + velden.join(" ");
-    return woorden.every((woord) => tekst.includes(" " + woord)) && groepen.every((groep) => velden.some((veld) => veld.includes(groep)));
+    const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).map((veld) => normaliseer(veld! + " " + afkortingen(veld!)));
+    // Woordbegin: " " ervoor zodat "kat" niet in "politiek" valt, maar wel "katten" vindt.
+    const haystack = " " + velden.join(" ");
+    return woorden.every((woord) => haystack.includes(" " + woord)) && groepen.every((groep) => velden.some((veld) => veld.includes(groep)));
   });
 }
