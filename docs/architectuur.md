@@ -386,6 +386,8 @@ Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="sea
 
 Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters ook in compacte vorm, zoals `V.S.` en `VS`, in beide richtingen. Andere leestekens en de bestaande woordbegin- en accentregels blijven gelijk. Tests: `tests/regressie/zoeken-afkortingen-786.test.ts`.
 
+Zoeken (`src/zoek.ts`) vergelijkt woordbeginnen zonder accenten. Decimale getallen blijven bij normalisatie bijeen; een komma en punt zijn gelijkwaardig en losse cijfers gelden niet als hetzelfde getal (#788). Test: `tests/regressie/zoeken-decimaal-788.test.ts`.
+
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
