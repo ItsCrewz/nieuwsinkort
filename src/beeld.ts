@@ -9,6 +9,8 @@ const SKIP = /logo|placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sp
 function tooSmall(u: string): boolean {
   const q = /[?&](?:w|width|resize|imwidth|im_w)=(\d+)/i.exec(u);
   if (q && +q[1] < 300) return true;
+  const h = /[?&](?:h|height)=(\d+)(?=&|#|$)/i.exec(u);
+  if (h && +h[1] < 160) return true;
   const d = /[/_-](\d{2,4})x(\d{2,4})(?:[/_.-]|$)/.exec(u);
   if (d && (+d[1] < 300 || +d[2] < 160)) return true;
   if (/\/s(\d{2,3})(-c)?\//.test(u) && +(/\/s(\d{2,3})/.exec(u)![1]) < 300) return true;
