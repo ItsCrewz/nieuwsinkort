@@ -1,0 +1,1 @@
+- Datums bij de weersverwachting volgen de Amsterdamse kalender, ook buiten Nederland (#803).
