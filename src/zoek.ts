@@ -10,13 +10,18 @@ function afkortingen(tekst: string): string {
 }
 
 export function zoekItems(items: Item[], query: string): Item[] {
-  const woorden = normaliseer(afkortingen(query)).split(" ").filter(Boolean);
-  if (!woorden.length) return items;
+  const groepen: string[] = [];
+  const los = query.replace(/"([^"]*)"/g, (_, groep: string) => {
+    const tekst = normaliseer(afkortingen(groep));
+    if (tekst) groepen.push(tekst);
+    return " ";
+  });
+  const woorden = normaliseer(afkortingen(los)).split(" ").filter(Boolean);
+  if (!woorden.length && !groepen.length) return items;
   return items.filter((item) => {
-    const origineel = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).join(" ");
-    const tekst = normaliseer(origineel + " " + afkortingen(origineel));
+    const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).map((veld) => normaliseer(veld! + " " + afkortingen(veld!)));
     // Woordbegin: " " ervoor zodat "kat" niet in "politiek" valt, maar wel "katten" vindt.
-    const haystack = " " + tekst;
-    return woorden.every((woord) => haystack.includes(" " + woord));
+    const haystack = " " + velden.join(" ");
+    return woorden.every((woord) => haystack.includes(" " + woord)) && groepen.every((groep) => velden.some((veld) => veld.includes(groep)));
   });
 }
