@@ -19,8 +19,9 @@ export function nieuwsSitemap(items: Item[], dag: string): string {
     if (regels.length >= 1000) break;
     const ms = i.t ? new Date(i.t).getTime() : NaN;
     if (!indexeerbaar(i) || !i.kop || !Number.isFinite(ms)) continue; // news:publication_date is verplicht; zonder geldige tijd overslaan
+    // Geen <lastmod>: de dagdata kent per bericht alleen de publicatietijd `t`, geen werkelijke wijzigingstijd; die als lastmod opgeven is misleidend (#712).
     const datum = new Date(ms).toISOString();
-    regels.push(`<url><loc>https://nieuwsinkort.nl${esc(artikelPad(i, dag))}</loc><lastmod>${datum}</lastmod><news:news><news:publication><news:name>Nieuws in het kort</news:name><news:language>nl</news:language></news:publication><news:publication_date>${datum}</news:publication_date><news:title>${esc(i.kop)}</news:title></news:news></url>`);
+    regels.push(`<url><loc>https://nieuwsinkort.nl${esc(artikelPad(i, dag))}</loc><news:news><news:publication><news:name>Nieuws in het kort</news:name><news:language>nl</news:language></news:publication><news:publication_date>${datum}</news:publication_date><news:title>${esc(i.kop)}</news:title></news:news></url>`);
   }
   return leeg(regels.join(""));
 }
@@ -31,13 +32,16 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de sitemap niet breken
   const start = Date.now();
   if (bestaand && nogGeldig(bestaand, start)) return bestaand;
-  const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
-  let xml = leeg(""), gegenereerd: string | undefined;
-  if (!data.ok) return new Response(xml, { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  const fout = () => new Response(leeg(""), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
+  let xml: string, gegenereerd: string;
   try {
-    const dag = await data.json() as { gegenereerd?: string; items?: Item[] };
-    if (dag.gegenereerd && Number.isFinite(Date.parse(dag.gegenereerd))) xml = (gegenereerd = dag.gegenereerd,  nieuwsSitemap(Array.isArray(dag.items) ? dag.items : [], ams(Date.parse(dag.gegenereerd)).iso));
-  } catch { console.error("sitemap-nieuws: data lezen mislukt"); }
+    const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
+    if (!data.ok) return fout();
+    const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
+    if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
+    gegenereerd = dag.gegenereerd;
+    xml = nieuwsSitemap(dag.items, ams(Date.parse(gegenereerd)).iso);
+  } catch { console.error("sitemap-nieuws: data lezen mislukt"); return fout(); }
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd);
   if (!beleid) return new Response(xml, { headers: { ...HDR, "Cache-Control": "no-store" } });
   const response = new Response(xml, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });
