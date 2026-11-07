@@ -128,7 +128,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   const drop = useCallback((u: string) => {
     if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus();
     setList((l) => l.filter((x) => x !== u));
-    setI(0);
+    setI((n) => Math.max(0, Math.min(n, listRef.current.length - 2))); // alleen terug als de huidige foto buiten de lijst valt
   }, []);
   const onScroll = useCallback(() => {
     cancelAnimationFrame(raf.current);
