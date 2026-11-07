@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Behoud nieuwsbeelden wanneer `logo` alleen deel is van een langer URL-woord (#831).
+- Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
 - Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).
