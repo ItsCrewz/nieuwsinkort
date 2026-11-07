@@ -1,0 +1,1 @@
+- Toon geen verdieping van het vorige artikel meer tijdens het wisselen: `useMeer` geeft alleen state terug waarvan de sleutel bij het huidige item hoort, anders de laadstatus (#646).

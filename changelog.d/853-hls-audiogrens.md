@@ -1,0 +1,1 @@
+- Begrens het ophalen van HLS-geluid voor videosamenvattingen en meld downloadfouten tijdelijk (#853).
