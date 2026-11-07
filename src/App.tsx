@@ -35,6 +35,7 @@ import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems, normaliseer } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
+import { leesZoekterm, schrijfZoekterm } from "./zoekurl";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -1086,7 +1087,20 @@ export default function App() {
   const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
-  const [zoekterm, setZoekterm] = useState("");
+  const [zoekterm, setZoektermState] = useState(() => leesZoekterm(window.location.search));
+  const zoekRef = useRef(zoekterm);
+  const zoekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const schrijfZoekUrl = () => {
+    clearTimeout(zoekTimer.current);
+    window.history.replaceState(window.history.state, "", schrijfZoekterm(window.location.href, zoekRef.current));
+  };
+  const setZoekterm = (term: string) => {
+    zoekRef.current = term;
+    setZoektermState(term);
+    clearTimeout(zoekTimer.current);
+    if (term) zoekTimer.current = setTimeout(schrijfZoekUrl, 300);
+    else schrijfZoekUrl();
+  };
   const flt = useFilters();
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
@@ -1129,7 +1143,13 @@ export default function App() {
       }
     };
     window.addEventListener("hashchange", onHash);
-    return () => { volgnummer++; window.removeEventListener("hashchange", onHash); };
+    const onPop = () => {
+      clearTimeout(zoekTimer.current);
+      zoekRef.current = leesZoekterm(window.location.search);
+      setZoektermState(zoekRef.current);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => { volgnummer++; window.removeEventListener("hashchange", onHash); window.removeEventListener("popstate", onPop); clearTimeout(zoekTimer.current); };
   }, []);
 
   // Scroll na het wisselen van pagina: naar boven bij detail, terug naar het bericht bij "terug".
@@ -1187,6 +1207,7 @@ export default function App() {
     }
   }, []);
   const open = useCallback((key: string) => {
+    schrijfZoekUrl();
     openedInside = true;
     window.location.hash = `#/bericht/${key}`;
   }, []);

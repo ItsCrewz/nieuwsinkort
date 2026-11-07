@@ -48,6 +48,35 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   expect(verzoeken).toEqual([]);
 });
 
+test("zoekresultaten blijven bij teruggaan en herladen", async ({ page }) => {
+  await page.goto("/?nietmeten=1#/alles");
+  const eerste = page.locator(".nc-title a").first();
+  await expect(eerste).toBeVisible();
+  const term = "Israël";
+  await page.getByRole("button", { name: "Zoeken", exact: true }).click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill(term);
+  await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(term);
+  const kaart = page.locator(".nf .nc").nth(2);
+  await expect.poll(() => page.locator(".nf .nc").count()).toBeGreaterThanOrEqual(3);
+  await kaart.scrollIntoViewIfNeeded();
+  const resultaat = kaart.locator(".nc-title a");
+  await expect(resultaat).toBeVisible();
+  const resultaatTitel = await resultaat.innerText();
+  await resultaat.click();
+  await expect(page).toHaveURL(/#\/bericht\//);
+  await page.goBack();
+  await expect(invoer).toHaveValue(term);
+  await expect(kaart.locator(".nc-title a")).toHaveText(resultaatTitel);
+  await expect(kaart).toBeInViewport();
+  await page.reload();
+  await expect(invoer).toHaveValue(term);
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("nietmeten")).toBe("1");
+  await invoer.press("Escape");
+  expect(new URL(page.url()).searchParams.has("q")).toBe(false);
+});
+
 for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["mobiel klein", 360, 740], ["desktop", 1280, 800]]) test(`zoekknop dekt geen kaartactie of open-knop af, ook niet bij de laatste kaart (${naam})`, async ({ page }) => {
   await page.setViewportSize({ width: breedte, height: hoogte });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
