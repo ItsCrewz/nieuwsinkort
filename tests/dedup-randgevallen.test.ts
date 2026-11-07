@@ -1,6 +1,6 @@
 // Draai: npm test  (randgevallen voor canonUrl, titleTokens, popNum en dedupVideos)
 import assert from "node:assert/strict";
-import { canonUrl, dedupVideos, popNum, titleTokens, type DVideo } from "../src/dedup";
+import { canonUrl, dedupVideos, popNum, titleTokens, videoKeys, type DVideo } from "../src/dedup";
 
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
@@ -147,3 +147,10 @@ t("dedupVideos laat de invoer ongemoeid", () => {
 });
 
 console.log(`\n${n} tests geslaagd`);
+
+t("canonUrl houdt gecodeerde &/= in querywaarden gescheiden van echte parameters (#708)", () => {
+  assert.notEqual(canonUrl("https://nos.nl/v?a=x%26b%3Dy"), canonUrl("https://nos.nl/v?a=x&b=y"));
+  assert.notEqual(videoKeys({ titel: "a", href: "https://nos.nl/v?a=x%26b%3Dy", bron: "x" }).join(), videoKeys({ titel: "a", href: "https://nos.nl/v?a=x&b=y", bron: "x" }).join());
+  assert.equal(canonUrl("https://nos.nl/v?a=x&b=y&utm_source=z&si=1"), canonUrl("https://nos.nl/v?b=y&a=x&fbclid=q"));
+  assert.equal(canonUrl("https://nos.nl/v?id=2&id=1"), "nos.nl/v?id=2&id=1");
+});
