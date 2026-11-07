@@ -19,7 +19,7 @@ npm ci
 npm run lint       # ESLint (eslint.config.mjs): 0 errors, warnings informatief
 npm run check      # lint, tests, build en typechecks voor Worker en Functions
 npm run dev        # Vite 8 (devDependencies: vite, wrangler 4, esbuild expliciet; Node >= 20.19)
-npm run build      # build-bronnen.mjs + tsc --noEmit + vite build
+npm run build      # build-bronnen.mjs + tsc --noEmit + vite build + build-version.mjs
 npm test           # esbuild-bundels van regressietests, draaien met node
 npm run bronnen    # alleen public/bronnen.json opnieuw bouwen
 ```
@@ -33,8 +33,8 @@ Worker-endpoints `/run` en `/uur` vereisen `Authorization: Bearer <RUN_KEY>`; ze
 - `src/vandaag.ts`: gedeeld dagfilter en publicatietijden voor Worker en Pages.
 - `src/`: frontend. `App.tsx` (hoofdscherm), `feed.tsx` (nieuwsfeed), `video.tsx` (spelers), `filters.tsx`, `beelden.tsx`/`beeld.ts` (foto's, ontdubbelen), `dedup.ts` (video's ontdubbelen), `buffer.ts` (bufferregels per netwerkniveau voor de videofeed; getest in `tests/buffer.test.ts`), `sources.ts`, `types.ts`.
 - `functions/`: Pages Functions. `data.json.ts` (merge KV `uur` + statische data; exporteert `merge`, getest), `samenvatting.ts` (video-samenvatting, POST; eist JSON-Content-Type, weigert vreemde Origin, cachet ook fouten, `why` alleen bij `pre:true`), `meer.ts` ("Lees verder"), `media/dumpert/[[path]].ts` (HLS-proxy), `media/beeld/[[path]].ts` (artikelbeeldproxy #473; allowlist in `src/beeldhost.ts`, client via `beeldViaProxy()`).
-- `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf).
-- `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`. `export_from_canvas.mjs` in de root.
+- `worker/src/`: `index.ts` (cron, Durable Objects `Runner`/`Fetcher`, endpoints), `budget.ts` (Durable Object `Budget`), `ai.ts` (modellen en tarieven), `parse.ts` (feedparser), `videos.ts`, `x.ts`, `redlib.ts`, `weer.ts` (landelijk weer voor heel Nederland: Buienradar-landstations, Open-Meteo noord/midden/zuid, KNMI-tekst en -waarschuwingsregel; `simpelWeer` blijft één AI-aanroep, prompt "heel Nederland", invoer max 1500 tekens; geen Haarlem-focus, de rubriek Haarlem is los daarvan), `artikel.ts`, `vooraf.ts` (video-samenvattingen vooraf), `llm.ts`, `extractief.ts`, `tabsam.ts`, `clusterhash.ts`, `run-status.ts`, `showcat.ts`, `sportcat.ts`, `url.ts` en `reddit.ts`.
+- `scripts/`: `build-bronnen.mjs`, `fix-dumpert.mjs`, `add-beelden.mts`, `dhash.py`, `build-version.mjs`, `changelog.mjs`, `check.sh`, `run-tests.mjs`, `coverage-groepen.mjs`, `feedtitels.mts` en `meet-swipe.mjs`. `export_from_canvas.mjs` in de root.
 - `tests/`: één `*.test.ts` per onderwerp, o.a. `dedup.test.ts` (video-ontdubbelen), `beeld-ontdubbelen.test.ts`, `data-merge.test.ts` (`merge` + `schoon`), `links.test.ts`, `externe-url.test.ts`, `beveiligingsheaders.test.ts`, `laadprestaties.test.ts`, `samenvatting-slot.test.ts`, `kv-schrijven.test.ts`, `run-status.test.ts`, `deploy-integriteit.test.ts`, `stall.test.ts` voor videoherstel en `sources.test.ts` + `sources-hooks.test.ts` (bronnenfilter; de hooks draaien via `react-dom/client` en `act` met minimale window-/container-stubs en gemockte `fetch`/`localStorage`, zonder DOM-bibliotheek).
 - `worker/src/cluster.ts`: clusteren van feedberichten (pure module).
 
@@ -65,7 +65,7 @@ Pure module `worker/src/cluster.ts` (`toks`, `sim`, `gelijk`, `cluster`) cluster
 
 ## Vooraf laden (Filmpjes/Dumpert)
 
-Vooraf laden (issue #34): `src/voorladen.ts` (pure keuzelogica + runner), `src/usevoorladen.ts` (hook in `App.tsx`). Alleen na `load` + idle, alleen als het tabblad zichtbaar is en je niet al op een video-route zit; alles `priority: low`, hooguit 3 requests tegelijk, één keer per sessie (opnieuw alleen bij nieuwe `gegenereerd`). Geen AI, geen `/samenvatting`, geen `/meer`. Wijzig `feed.tsx`-`warmHls` en dit samen als de HLS-logica verandert (de code is bewust gedupliceerd).
+Vooraf laden (issue #34): `src/voorladen.ts` (pure keuzelogica + runner), `src/usevoorladen.ts` (hook in `App.tsx`). Alleen na `load` + idle, alleen als het tabblad zichtbaar is en je niet al op een video-route zit; alles `priority: low`, hooguit 3 requests tegelijk, één keer per sessie (opnieuw alleen bij nieuwe `gegenereerd`). Geen AI, geen `/samenvatting`, geen `/meer`. De voorlaadlogica staat in `src/voorladen.ts`; `NativePlayer` in `feed.tsx` laadt hls.js zelf.
 
 Op alle verbindingen, ook mobiele data en Save-Data: 6 thumbnails per tab, hls.js-chunk (niet op Safari), 2 HLS-streams via de proxy (master, laagste variant, 2 segmenten) en de eerste ~256 KB van de eerste mp4. Past binnen de CSP (`img-src https:`, `connect-src https:`).
 
@@ -90,7 +90,7 @@ Gebruik `worker/src/url.ts` voor og/artikel-fetches en controleer feedlinks vó�
 - < 70%: hoofdmodel (`MODEL`, gemma-4-26b), max 40 per run
 - 70–90%: klein model (`SMALL_MODEL`, llama-3.2-1b), max 15 per run
 - 90–100%: alleen NL en Haarlem, max 8
-- ≥ 100%: geen AI, feedtekst met `ruw: true`
+- ≥ 100% bij runstart: geen nieuwe selectie; zonder samenvatting extractieve tekst met `ruw: true`. Tijdens een run kan Groq geselecteerde groepen overnemen bij een bereikt budget.
 
 Video-samenvattingen vooraf stoppen vanaf 85%; AI-uitleg voor "Lees verder" alleen onder 65%. Elke nieuwe AI-aanroep moet hierin passen: tel neuronen mee (zie `worker/src/ai.ts`), cache het resultaat in KV zodat iets maar één keer gemaakt wordt, en test niet in een lus tegen echte AI.
 

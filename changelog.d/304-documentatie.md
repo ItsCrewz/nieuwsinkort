@@ -1,0 +1,1 @@
+- Documentatie over buffering, vooraf laden, budget en bronnen afgestemd op de code (#304).
