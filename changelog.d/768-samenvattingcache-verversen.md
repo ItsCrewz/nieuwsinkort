@@ -1,0 +1,1 @@
+- Ververs vooraf gemaakte videosamenvattingen in de sessiecache wanneer een latere `/data.json` een nieuwere bevat; identieke of ongeldige gegevens wijzigen niets (#768).

@@ -9,6 +9,8 @@ assert.deepEqual(zoekItems([item], "ajax onbekend"), []);
 const items = [item];
 assert.equal(zoekItems(items, "  "), items);
 assert.equal(zoekItems(items, ""), items);
+for (const term of ["!!!", "😀", " ! 😀 "]) assert.deepEqual(zoekItems(items, term), []);
+assert.deepEqual(zoekItems(items, "!!!CAFÉ 😀"), [item]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "cafe" } as Item], "Café" ).length, 1);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "test" } as Item], "onbekend"), []);
 const politiek = { cat: "nl", kop: "Politiek debat" } as Item;
