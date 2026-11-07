@@ -1,7 +1,7 @@
 // Dubbele filmpjes eruit, over alle bronnen heen (YouTube, Instagram, X, Reddit, Dumpert, Politiek).
 // Gedeeld door de site (src/), de Pages Function (functions/data.json.ts) en de uur-Worker (worker/).
 // Twee filmpjes zijn hetzelfde als ze een sleutel delen: video-id (YouTube/Instagram/X/Reddit/Dumpert),
-// hetzelfde mediabestand of dezelfde thumbnail (zonder query), dezelfde URL zonder tracking, of (bijna) dezelfde titel.
+// hetzelfde mediabestand of dezelfde thumbnail zonder tracking, dezelfde URL zonder tracking, of (bijna) dezelfde titel.
 // Van elke groep blijft de beste kopie over (in de site afspeelbaar, beste kwaliteit, populairst);
 // de andere bronnen komen in `ook`.
 
@@ -21,7 +21,18 @@ export function canonUrl(u: string): string {
     return u.trim().toLowerCase();
   }
 }
-const noQuery = (u: string) => u.replace(/^https?:\/\//, "").replace(/[?#].*$/, "").toLowerCase();
+function mediaUrl(u: string): string {
+  try {
+    const x = new URL(u);
+    const params = new URLSearchParams();
+    x.searchParams.forEach((v, k) => { if (!TRACK.test(k)) params.append(k, v); });
+    params.sort();
+    const q = params.toString();
+    return `${x.host.toLowerCase()}${x.pathname}${q ? `?${q}` : ""}`;
+  } catch {
+    return u.trim();
+  }
+}
 
 export function videoKeys(v: DVideo): string[] {
   const k = new Set<string>();
@@ -41,10 +52,10 @@ export function videoKeys(v: DVideo): string[] {
     if (m) k.add(`dp:${m[1].replace(/_/g, "-")}`);
     m = /amplify_video\/(\d+)|ext_tw_video\/(\d+)/.exec(u);
     if (m) k.add(`xv:${m[1] || m[2]}`);
-    if (/\.(mp4|m3u8)(\?|$)/i.test(u)) k.add(`media:${noQuery(u)}`);
+    if (/\.(mp4|m3u8)(\?|$)/i.test(u)) k.add(`media:${mediaUrl(u)}`);
   }
   if (v.href) k.add(`url:${canonUrl(v.href)}`);
-  if (v.thumb && !/ytimg\.com/.test(v.thumb)) k.add(`thumb:${noQuery(v.thumb)}`); // YouTube-thumbs zitten al in yt:<id>
+  if (v.thumb && !/ytimg\.com/.test(v.thumb)) k.add(`thumb:${mediaUrl(v.thumb)}`); // YouTube-thumbs zitten al in yt:<id>
   return [...k];
 }
 

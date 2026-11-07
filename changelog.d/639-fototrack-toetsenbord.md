@@ -1,0 +1,1 @@
+- Eén decoratieve artikelfoto geeft geen nutteloze tabstop meer; bij een laadfout blijft toetsenbordfocus voorspelbaar (#639).
