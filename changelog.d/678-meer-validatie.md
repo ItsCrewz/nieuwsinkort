@@ -1,0 +1,1 @@
+- Ongeldige extra artikeltekst breekt de detailpagina niet meer en een volgend verzoek kan herstellen (#678).
