@@ -1,0 +1,1 @@
+- Deellinks van oudere berichten blijven gelijk wanneer een bron wordt uitgezet (#829).
