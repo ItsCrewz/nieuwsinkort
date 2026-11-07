@@ -1,0 +1,1 @@
+- Vul de NewsArticle-gegevens op berichtpagina’s aan met taal en uitgeverslogo en controleer de veilige JSON-LD-uitvoer (#581).
