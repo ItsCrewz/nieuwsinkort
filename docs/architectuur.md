@@ -380,3 +380,7 @@ Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="sea
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
+
+## Zoekscope (#613)
+
+Zoeken werkt op het resultaat van rubriek-, bron-, tijd- en extra filters (op Home zonder Politiek, tenzij een rubriek is gekozen). `zoekScope()` in `src/zoekbalk.tsx` benoemt de rubriek en de beperkende filters; de zoekbalk (`aria-describedby`, live-status) en de lege-staat melden dat, ook bij nul resultaten. "Zoek zonder filters" zet alleen de component-state `zoekBreed` in `App.tsx` aan (alle bronnen en tijden binnen de rubriek, `raw.items`); rubriekkeuze, bronvoorkeuren en tijdfilter in localStorage blijven ongewijzigd. Sluiten van de zoekbalk zet de state terug. Tests: `tests/zoekbalk.test.tsx`.

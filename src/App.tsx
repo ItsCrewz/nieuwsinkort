@@ -34,7 +34,7 @@ import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems, normaliseer } from "./zoek";
-import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
+import { Zoekbalk, ZoekLeeg, zoekScope } from "./zoekbalk";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -1087,6 +1087,7 @@ export default function App() {
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const [zoekterm, setZoekterm] = useState("");
+  const [zoekBreed, setZoekBreed] = useState(false); // alleen voor het zoeken: filters genegeerd, opgeslagen keuzes blijven
   const flt = useFilters();
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
@@ -1216,10 +1217,13 @@ export default function App() {
       </div>
   );
   const isFeedView = !!data && !route.selected && route.view !== "filmpjes" && route.view !== "dumpert";
-  const zoekUitkomst = isFeedView && data && raw ? zoekItems(filterNieuws(route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view), flt.f, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm) : [];
+  const zoekFilter = isFeedView && data && raw ? filterNieuws(route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view), flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null;
+  const zoekScopeInfo = zoekFilter ? zoekScope(route.view, flt.f, zoekFilter.tijd, off.size) : undefined;
+  const zoekBasis = zoekBreed && raw ? (route.view === "alles" ? raw.items : raw.items.filter((i) => i.cat === route.view)) : zoekFilter?.items ?? [];
+  const zoekUitkomst = isFeedView ? zoekItems(zoekBasis, zoekterm) : [];
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} /> : undefined} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} scope={zoekScopeInfo} breed={zoekBreed} onBreed={setZoekBreed} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>
@@ -1338,7 +1342,7 @@ export default function App() {
             key={view}
             items={zoekUitkomst}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
+            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} scope={zoekScopeInfo} breed={zoekBreed} onBreed={setZoekBreed} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

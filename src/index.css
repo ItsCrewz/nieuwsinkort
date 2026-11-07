@@ -666,9 +666,11 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-sluit,.zoek-wis{min-width:44px;min-height:44px;padding:0 8px;color:var(--i2);border-radius:8px}
 .zoek-knop{right:auto;left:max(16px,env(safe-area-inset-left))}
 .zoek-knop:focus-visible,.zoek-sluit:focus-visible,.zoek-wis:focus-visible,.zoek-invoer:focus-visible{outline:2px solid var(--a);outline-offset:2px}
-.zoek-formulier{position:absolute;top:100%;left:0;right:0;display:flex;gap:8px;padding:10px 16px;background:var(--p);border-bottom:1px solid var(--rl)}
+.zoek-formulier{flex-wrap:wrap;position:absolute;top:100%;left:0;right:0;display:flex;gap:8px;padding:10px 16px;background:var(--p);border-bottom:1px solid var(--rl)}
 .zoek-invoer{min-width:0;flex:1;padding:8px;border:1px solid var(--rl);border-radius:8px;background:var(--p);color:var(--ink);font-size:16px}
 .zoek-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.zoek-scope{flex-basis:100%;margin:0;color:var(--i2);font-size:13px;overflow-wrap:anywhere}
+.zoek-scope .zoek-wis{display:inline;min-height:44px;margin:0}
 .zoek-leeg{padding:24px;text-align:center;overflow-wrap:anywhere}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
 

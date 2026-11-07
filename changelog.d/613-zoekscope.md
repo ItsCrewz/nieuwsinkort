@@ -1,0 +1,1 @@
+- Zoeken noemt nu waarin gezocht wordt (rubriek, tijd-, bron- en extra filters, Politiek op Home), ook voor schermlezers en bij nul resultaten; "Zoek zonder filters" zoekt eenmalig overal zonder je opgeslagen filters te wijzigen (#613).
