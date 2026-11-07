@@ -72,8 +72,8 @@ export function uniekeBeelden(urls: (string | null | undefined)[], max = 6): str
 /** og:image / twitter:image uit (het begin van) een HTML-pagina. */
 export function ogImage(html: string, base: string): string {
   const m =
-    /<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["'][^>]*content=["']([^"']+)["']/i.exec(html) ||
-    /<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["']/i.exec(html);
-  if (!m) return "";
+    /<meta[^>]+(?:property|name)\s*=\s*["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["'][^>]*content\s*=\s*["']([^"']+)["']/i.exec(html) ||
+    /<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]*(?:property|name)\s*=\s*["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["']/i.exec(html);
+  if (!m || !m[1].trim()) return "";
   try { return new URL(m[1].replace(/&amp;/g, "&"), base).toString(); } catch { return ""; }
 }
