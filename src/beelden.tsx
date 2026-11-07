@@ -125,7 +125,11 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   iRef.current = i;
   useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
   useEffect(() => { onChange?.(); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  const drop = useCallback((u: string) => setList((l) => l.filter((x) => x !== u)), []);
+  const drop = useCallback((u: string) => {
+    if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus();
+    setList((l) => l.filter((x) => x !== u));
+    setI(0);
+  }, []);
   const onScroll = useCallback(() => {
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
@@ -146,9 +150,9 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       <div
         className="bl-track"
         ref={track}
-        tabIndex={0}
-        role="group"
-        aria-label="Foto's"
+        tabIndex={multi ? 0 : -1}
+        role={multi ? "group" : undefined}
+        aria-label={multi ? "Foto's" : undefined}
         onKeyDown={multi ? (e) => {
           if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
             e.preventDefault();
