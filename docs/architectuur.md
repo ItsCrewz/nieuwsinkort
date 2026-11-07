@@ -232,6 +232,8 @@ handmatige checks op echte data en draaien niet mee met `npm test`.
 
 nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project (nieuwsinkort.pages.dev blijft werken). `functions/_middleware.ts` stuurt www met een 301 door naar `https://nieuwsinkort.nl` met pad en query behouden (de Cloudflare-login mag geen Redirect Rules schrijven, vandaar code); apex en `*.pages.dev` blijven ongemoeid. `public/_routes.json` houdt `/assets/*`, `/fonts/*` en de exacte bestandsnamen van iconen en vaste bestanden buiten de Functions (geen wildcards als `/*.png`: `*` matcht ook diepere paden en sloot `/media/beeld/…/x.png` uit, #473; voeg een nieuw statisch bestand dus bij naam toe, de test in `tests/www-redirect.test.ts` waakt hierover) (Free-plan-quotum, max 100 regels); HTML-navigaties en de functieroutes (`/data.json`, `/meer`, `/samenvatting`, `/media/dumpert/*`, `/media/beeld/*`) lopen er wel doorheen. Test: `tests/www-redirect.test.ts`. Controleer bij de koppeling ook `public/robots.txt` en `public/sitemap.xml`.
 
+De SEO-routes `/vandaag` en `/sitemap-nieuws.xml` geven bij onleesbare of onvolledige dagdata een 503 met `no-store` en `Retry-After`; geldige data met een lege berichtenlijst blijft een cachebaar leeg overzicht (#599).
+
 Statische pagina `/over` (`public/over.html`, #518): over de site (wat, AI-gebruik, bronnen, fouten, privacy), zonder persoonsnaam of verzonnen contactadres en zonder script. Pages serveert hem zonder `.html`; link in de voetregel (`App.tsx`) en in `sitemap.xml`. Test: `tests/seo-meta.test.ts`.
 
 ## Bezoekersstatistieken
