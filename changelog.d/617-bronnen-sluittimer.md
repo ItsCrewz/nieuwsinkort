@@ -1,0 +1,1 @@
+- Het bronnenvenster blijft open na snel sluiten en heropenen; oude sluittimers worden opgeruimd (#617).
