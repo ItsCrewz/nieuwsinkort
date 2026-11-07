@@ -18,7 +18,7 @@ Onbekende paden geven op Cloudflare Pages een 404 met `public/404.html`; de app 
 
 Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home. Een hash met ongeldige percent-codering valt terug op Home.
 
-Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen.
+Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen. Bij meerdere bronnen en sorteren op bronnen telt elke uitgever eenmaal, ook bij meerdere links of rubrieknamen van dezelfde bron; uitgeschakelde bronnen tellen niet mee.
 Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
 Bij Nieuwste eerst staat het openingsartikel met de meeste bronnen bovenaan, gevolgd door de overige artikelen op tijd.
 Bij Oudste eerst en Meeste bronnen geldt de gekozen volgorde ook voor het openingsartikel.
