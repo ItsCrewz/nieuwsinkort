@@ -17,7 +17,7 @@ const dispatcher = (React as any).__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_F
 let effect: (() => void | (() => void)) | undefined;
 dispatcher.current = {
   useState: (v: any) => [typeof v === "function" ? v() : v, (fn: any) => { if (typeof fn === "function") fn(STANDAARD); }],
-  useRef: () => ({ current: { focus() {} } }),
+  useRef: (v: any) => ({ current: v }),
   useCallback: (fn: any) => fn,
   useMemo: (fn: any) => fn(),
   useEffect: (fn: any) => { effect = fn; },
