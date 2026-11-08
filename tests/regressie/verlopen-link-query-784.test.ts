@@ -5,7 +5,7 @@ import { startAnalytics } from "../../src/analytics";
 const origineelNu = Date.now;
 const pad = "/bericht/2026-11-04/abcd1234-een-kop";
 const query = "?nietmeten=1&a=b%20c&volgende=https%3A%2F%2Fkwaad.example%2F";
-const env = { ASSETS: { fetch: async () => Response.json({}) } };
+const env = { ASSETS: { fetch: async () => Response.json({ gegenereerd: "2026-11-04T10:00:00Z", items: [] }) } };
 const bezoek = (zoek: string) => onRequestGet({ request: new Request(`https://nieuwsinkort.nl${pad}${zoek}`), env, waitUntil: () => {} });
 
 try {

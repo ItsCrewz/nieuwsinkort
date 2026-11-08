@@ -1,6 +1,7 @@
 import { artikelId, artikelPad, linkId, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
+import { etagMatch } from "../../src/etagmatch";
 import { ams } from "../../src/tijd";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
@@ -19,13 +20,18 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   if (bestaand) {
-    if (request.headers.get("If-None-Match") === bestaand.headers.get("ETag")) return new Response(null, { status: 304, headers: bestaand.headers });
+    if (etagMatch(request.headers.get("If-None-Match"), bestaand.headers.get("ETag"))) return new Response(null, { status: 304, headers: bestaand.headers });
     return bestaand;
   }
-  const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env }, false);
-  if (!data.ok) return new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
-  const dag = await data.json() as { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
-  const items = dag.gegenereerd && ams(Date.parse(dag.gegenereerd)).iso === pad.dag ? dag.items || [] : [];
+  const tijdelijk = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
+  let dag: { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
+  try {
+    const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env }, false);
+    if (!data.ok) return tijdelijk();
+    dag = await data.json();
+  } catch { return tijdelijk(); }
+  if (!dag || typeof dag.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items) || ams(Date.parse(dag.gegenereerd)).iso !== pad.dag) return tijdelijk();
+  const items = dag.items;
   const item = items.find((i) => artikelId(i) === pad.id) || items.find((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id));
   if (!item) return redirect(302, "/", "no-store");
   const canoniek = artikelPad(item, pad.dag);
@@ -39,6 +45,6 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   headers.delete("Content-Length"); headers.delete("Content-Encoding");
   const response = new Response(html, { headers });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
-  if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers });
+  if (etagMatch(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers });
   return response;
 }
