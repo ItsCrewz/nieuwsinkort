@@ -83,7 +83,7 @@ Opgeslagen nieuwsfilters (localStorage `nieuwsinkort-filters`) gaan via `schoonF
 
 Een lege nieuwsrubriek toont dat er nog geen berichten zijn; als nieuwsfilters alle beschikbare berichten uitsluiten, toont de leegmelding knoppen om de filters aan te passen of te herstellen. Zie `src/leegmelding.tsx` en `tests/leegmelding.test.ts`.
 
-De rubriektabs vormen een tablist; de knop Meer staat daarbuiten. Links en rechts selecteren en focussen de volgende zichtbare tab, met doorloop aan de uiteinden; alleen de geselecteerde tab staat in de tabvolgorde.
+De rubriektabs vormen een tablist; de knop Meer staat daarbuiten. Links en rechts selecteren en focussen de volgende zichtbare tab, met doorloop aan de uiteinden; alleen de geselecteerde tab staat in de tabvolgorde. Home en End gaan naar de eerste en laatste tab. Dezelfde bediening (`tabToets` in `src/tabs.ts`) geldt voor de videosoort-tabs in `video.tsx` en de tabs in de videofeed (`feed.tsx`).
 
 De zoekopdracht blijft actief tijdens het lezen van een artikel. Bij terugkeer gaat de focus naar de resultaatlink, of naar de zichtbare zoekknop als het resultaat ontbreekt; de opnieuw gemonteerde zoekbalk focust het invoerveld niet. Bij bewust openen krijgt het invoerveld wel focus en bij sluiten de zoekknop (#761).
 
