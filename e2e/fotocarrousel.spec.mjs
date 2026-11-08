@@ -12,7 +12,8 @@ test("fotocarrousel geeft instructie en positie bij toetsenbordbediening", async
   await page.goto("#/");
   const kaarten = page.locator(".nc-in");
   const groep = kaarten.nth(0).getByRole("group", { name: "Foto's" });
-  const eenFoto = kaarten.nth(1).getByRole("group", { name: "Foto's" });
+  const eenFoto = kaarten.nth(1).locator(".bl-track");
+  await expect(kaarten.nth(1).getByRole("group", { name: "Foto's" })).toHaveCount(0);
   await expect(groep).toHaveAccessibleDescription("Gebruik de pijltjestoetsen links en rechts om van foto te wisselen.");
   await expect(eenFoto).not.toHaveAttribute("aria-describedby");
   await expect(kaarten.nth(1).getByText(/Gebruik de pijltjestoetsen/)).toHaveCount(0);

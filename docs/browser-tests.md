@@ -6,4 +6,6 @@ De console-allowlist staat in `e2e/rookproef.spec.mjs` (geblokkeerde externe ver
 
 `e2e/fotocarrousel.spec.mjs` controleert de toegankelijke naam, gekoppelde toetsenbordinstructie en positie bij meerdere foto's, en het ontbreken van de instructie bij één foto. De test bedient de carrousel met beide pijltjestoetsen.
 
+De beeldtest `e2e/beelden-639.spec.mjs` controleert de toetsenbordvolgorde en toegankelijke rollen bij één en meerdere foto's en na een laadfout, ook wanneer een verdwijnende knop focus heeft. Lokaal: `PW_CHROME=/usr/bin/google-chrome npx playwright test e2e/beelden-639.spec.mjs --project=chromium`. `tests/beelden-tabstop.test.ts` bewaakt dezelfde regels in `npm test` (en dus `npm run check`).
+
 `e2e/a11y-serverpaginas.spec.mjs` (#584) draait axe (wcag2a/aa, 21a/aa) op `/vandaag` en een `/bericht/…`-fixturepagina, beide via de echte Pages Functions, in licht en donker en eist 0 serious/critical. Het wacht eerst op lopende animaties, omdat axe anders tussenkleuren van een fade als contrastfout meet. Lokaal: `PW_CHROME=/usr/bin/google-chrome npx playwright test e2e/a11y-serverpaginas.spec.mjs --project=chromium`. De deelknop op `/bericht` had al `aria-label="Deel dit bericht"` en 48×48 px (test in `e2e/bericht.spec.mjs`).
