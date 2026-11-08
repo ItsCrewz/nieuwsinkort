@@ -113,13 +113,13 @@ const taak = (k: string, f: () => Promise<unknown>) => {
 };
 
 async function warmHls(master: string) {
-  const get = (u: string) => fetch(u, LOW).then((r) => (r.ok ? r.text() : Promise.reject(new Error("hls"))));
-  const base = new URL(master, location.href).href;
-  let txt = await get(master);
-  let b = base;
+  // Basis voor relatieve verwijzingen is de uiteindelijke respons-URL: fetch volgt redirects naar andere mappen.
+  const get = (u: string) => fetch(u, LOW).then(async (r) => (r.ok ? { txt: await r.text(), base: r.url || u } : Promise.reject(new Error("hls"))));
+  let { txt, base: b } = await get(master);
+  if (!b.includes("://")) b = new URL(b, location.href).href;
   if (/#EXT-X-STREAM-INF/.test(txt)) {
-    b = laagsteVariant(txt, base);
-    txt = b ? await get(b) : "";
+    const v = laagsteVariant(txt, b);
+    ({ txt, base: b } = v ? await get(v) : { txt: "", base: b });
   }
   for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("hls"))));
 }

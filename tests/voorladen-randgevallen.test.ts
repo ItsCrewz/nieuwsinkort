@@ -167,6 +167,23 @@ try {
     assert.deepEqual(optiesLijst, verzoeken.map(() => ({ credentials: "omit", priority: "low" })));
   });
 
+  await test("HLS volgt redirects: relatieve paden t.o.v. de uiteindelijke URL (master en mediaplaylist)", async () => {
+    const verzoeken: string[] = [];
+    const doel: Record<string, string> = {
+      "https://site.example/m.m3u8": "https://cdn.example/a/master.m3u8",
+      "https://cdn.example/a/laag.m3u8": "https://cdn.example/b/c/media.m3u8",
+    };
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      const eind = doel[url] || url;
+      const txt = eind.endsWith("master.m3u8") ? "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\nlaag.m3u8" : eind.endsWith("media.m3u8") ? "#EXTM3U\n1.ts\n/abs.ts" : "";
+      return { ok: true, url: eind, text: async () => txt, arrayBuffer: async () => new ArrayBuffer(0) };
+    });
+    voerUit({ ...leeg(), hls: ["https://site.example/m.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken, ["https://site.example/m.m3u8", "https://cdn.example/a/laag.m3u8", "https://cdn.example/b/c/1.ts", "https://cdn.example/abs.ts"]);
+  });
+
   await test("mp4-stream stopt bij de bytegrens", async () => {
     let gelezen = 0;
     let gestopt = false;
