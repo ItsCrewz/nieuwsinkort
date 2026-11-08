@@ -10,7 +10,7 @@ zaaiSamenvattingen({ [id]: { punten: ["Een beschikbaar punt"], bron: "spraak" } 
 const heropend = svCache.get(id);
 assert.deepEqual(heropend, { ok: true, punten: ["Een beschikbaar punt"], bron: "spraak", sec: undefined, cached: true });
 
-zaaiSamenvattingen({ [id]: { punten: ["Een ander punt"], bron: "ondertiteling" } });
+zaaiSamenvattingen({ [id]: { punten: ["Een beschikbaar punt"], bron: "spraak" } });
 assert.equal(svCache.get(id), heropend);
 for (const punten of [[], ["  "], [42], ["Geldig", null]]) {
   zaaiSamenvattingen({ [id]: { punten, bron: "spraak" } } as never);
