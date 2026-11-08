@@ -1,0 +1,1 @@
+- Vervallen YouTube-helper en ongebruikte exports verwijderd; geen gedragswijziging (#301).

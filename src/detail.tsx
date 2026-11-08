@@ -1,7 +1,7 @@
 import { Foutgrens } from "./foutgrens";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
 import { useEffect, useRef, useState } from "react";
-import type { Bron, Item, Meer } from "./types";
+import type { Bron, Item } from "./types";
 import { BionicText, host } from "./ui";
 import { createPortal } from "react-dom";
 import { Icon } from "./icons";
@@ -10,11 +10,11 @@ import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Beelden } from "./beelden";
 import { veiligeUrl } from "./url";
 import { bronnenTekst, detailInhoud, fotos } from "./leesverder";
-import { uitgebreidOntdubbeld } from "./uitgebreid";
+import { uitgebreidOntdubbeld, filterMeer } from "./uitgebreid";
 import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
-import { prefetchMeer } from "./meer";
+import { useMeer } from "./meer";
 import { artikelUrl, deel } from "./delen";
 import { useTerugvegen } from "./terugvegen";
 
@@ -27,12 +27,10 @@ function SourceRow({ b }: { b: Bron }) {
   return (
     <li>
       <a className="srcrow" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
-        <span className="mono" aria-hidden="true">
+        <span className={imgOk && h ? "mono" : "mono m"} data-m={monoOf(b.site)} aria-hidden="true">
           {imgOk && h ? (
             <img src={`https://icons.duckduckgo.com/ip3/${h}.ico`} alt="" width={16} height={16} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setImgOk(false)} />
-          ) : (
-            monoOf(b.site)
-          )}
+          ) : null}
         </span>
         <span className="s-title">{b.site}</span>
         <span className="s-out">{h}</span>
@@ -42,18 +40,6 @@ function SourceRow({ b }: { b: Bron }) {
   );
 }
 
-function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
-  const [st, setSt] = useState<{ k?: string; meer: Meer | null; laden: boolean }>({ meer: null, laden: !!item.meer });
-  useEffect(() => {
-    let weg = false;
-    if (!item.meer) { setSt({ meer: null, laden: false }); return; }
-    setSt({ k: item.meer, meer: null, laden: true });
-    prefetchMeer(item).then((m) => { if (!weg) setSt({ k: item.meer, meer: m, laden: false }); });
-    return () => { weg = true; };
-  }, [item]);
-  return st;
-}
-
 // Bron (nieuwssite) nooit als verkoper of kanaal tonen (#488): de teksten van het bericht zonder "via <bron>"-vermeldingen.
 function zonderBronvermelding(item: Item): Item {
   const sites = (item.bronnen ?? []).map((b) => b.site);
@@ -61,8 +47,9 @@ function zonderBronvermelding(item: Item): Item {
   return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten((item.punten ?? []).map(schoon), item.kop, item.ai, item.samenvatting) : (item.punten ?? []).map(schoon) };
 }
 
-function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
-  const { meer, laden } = useMeer(item);
+function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean; meerBronnen?: Bron[] }) {
+  const { meer: opgehaald, laden } = useMeer(item);
+  const meer = filterMeer(opgehaald, meerBronnen);
   if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
   const sites = (item.bronnen ?? []).map((b) => b.site);
   const o = uitgebreidOntdubbeld(zonderBronvermelding(item), meer && { ...meer, uitleg: meer.uitleg?.map((p) => stripBronvermelding(p, sites)) });
@@ -118,7 +105,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   );
 }
 
-export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: () => void; bionic: boolean; dag: string }) {
+export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string; meerBronnen?: Bron[] }) {
   const [deelStatus, setDeelStatus] = useState("");
   const url = artikelUrl(item, dag);
   useEffect(() => {
@@ -164,7 +151,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
   return (
     <article className={`detail cat-${item.cat}`} ref={artRef}>
       {typeof document === "undefined" ? deelBlok : createPortal(deelBlok, document.body)}
-      <button type="button" className="back" onClick={onBack}>
+      <button type="button" className="back" onClick={() => onBack()}>
         <Icon name="back" className="sm" />
         Terug naar het nieuws
       </button>
@@ -205,7 +192,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
           </ol>
         </section>
       ) : null}
-      <Foutgrens code="CLIENT_UITGEBREID"><MeerTekst item={item} bionic={bionic} /></Foutgrens>
+      <Foutgrens code="CLIENT_UITGEBREID"><MeerTekst item={item} bionic={bionic} meerBronnen={meerBronnen} /></Foutgrens>
       <section className="d-sec" aria-label="Bronnen">
         <h2 className="d-h">Bronnen</h2>
         {bronnen.length ? (
