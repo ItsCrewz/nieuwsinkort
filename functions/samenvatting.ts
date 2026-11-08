@@ -299,7 +299,7 @@ async function vindVideo(env: Env, req: Request, id: string): Promise<{ v: any |
   if (!c || Date.now() - c.at >= 60e3) {
     const lists: any[] = [];
     let ok = true;
-    try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); else ok = false; } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
+    try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
     try { const res = await env.ASSETS.fetch(new URL("/data.json", req.url).toString()); if (!res.ok) throw new Error("status"); const S: any = await res.json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
     c = { at: Date.now(), lists, ok };
     if (ok) lijstCache.set(env.NIEUWS, c);
