@@ -1,0 +1,1 @@
+- Herken artikelbeelden in meta-attributen met witruimte rond het gelijkteken (#734).

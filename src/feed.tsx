@@ -9,7 +9,9 @@ import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
 import { rustig, scrollGedrag } from "./beweging";
+import { maakSluiter } from "./feedsluiten";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
+import { tabToets } from "./tabs";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 
@@ -1282,11 +1284,13 @@ export function Feed({
     };
   }, [pool]);
 
-  const close = useCallback(() => {
-    if (rustig()) return onClose();
-    setClosing(true);
-    window.setTimeout(onClose, 220);
-  }, [onClose]);
+  // Sluiten gebeurt precies één keer (timer én animationend, dubbel tikken, herhaald Escape); timer opruimen bij verdwijnen.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const [sluiter] = useState(() => maakSluiter({ rustig, start: () => setClosing(true), onClose: () => onCloseRef.current() }));
+  useEffect(() => sluiter.opruimen, [sluiter]);
+  const rondAf = sluiter.rondAf;
+  const close = sluiter.sluit;
 
   const metingen = useRef<SwipeMeting[]>([]);
   const lopendeMeting = useRef<SwipeMeting | null>(null);
@@ -1595,7 +1599,7 @@ export function Feed({
         aria-modal="true"
         aria-label={`${label}: video ${active + 1} van ${items.length}`}
         onAnimationEnd={(e) => {
-          if (e.target === root.current && closing) onClose();
+          if (e.target === root.current && closing) rondAf();
         }}
       >
         <div className={`feed-scroll ${gi ? "g1" : "g0"}`} id="feed-paneel" role={gs ? "tabpanel" : undefined} key={gi} ref={scroller} tabIndex={-1}>
@@ -1636,10 +1640,11 @@ export function Feed({
               <Icon name={muted ? "mute" : "volume"} />
               {muted ? <span>{geluidHint}</span> : null}
             </button>
+            {/* gs ligt vast zolang de feed open is, dus gi blijft geldig: tabstop en aria-selected volgen dezelfde waarde. */}
             {gs ? (
               <div className="f-tabs" role="tablist" aria-label="Soort filmpjes">
                 {gs.map((g, k) => (
-                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} onClick={() => pickGroup(k)}>
+                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} tabIndex={k === gi ? 0 : -1} onKeyDown={tabToets} onClick={() => pickGroup(k)}>
                     {g.label}
                     <span className="tnum">{g.list.length}</span>
                   </button>
