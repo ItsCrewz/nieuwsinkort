@@ -1,0 +1,1 @@
+- Randgevallen van het samenvoegen van changelogfragmenten vastgelegd in tests (#257).

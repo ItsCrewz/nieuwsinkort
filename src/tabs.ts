@@ -1,0 +1,56 @@
+// Rubrieken (tabs) van het hoofdscherm: volgorde, slugs en het verbergen van lege nieuws-tabs.
+import type { Cat, View } from "./types";
+
+export const CATS: { id: Cat; label: string; slug: string }[] = [
+  { id: "nl", label: "Nederland", slug: "nederland" },
+  { id: "buitenland", label: "Buitenland", slug: "buitenland" },
+  { id: "politiek", label: "Politiek", slug: "politiek" },
+  { id: "voetbal", label: "Voetbal", slug: "voetbal" },
+  { id: "f1", label: "Formule 1", slug: "formule-1" },
+  { id: "auto", label: "Auto", slug: "auto" },
+  { id: "sport", label: "Sport", slug: "sport" },
+  { id: "tech", label: "Tech & AI", slug: "tech" },
+  { id: "haarlem", label: "Haarlem", slug: "haarlem" },
+  { id: "showbizz", label: "Showbizz", slug: "showbizz" },
+];
+export const CAT_LABEL = Object.fromEntries(CATS.map((c) => [c.id, c.label])) as Record<Cat, string>;
+
+export type TabOpt = { value: View; id: string; label: string; short: string };
+
+/** Tabbalk: nieuws-tabs zonder items verdwijnen, behalve de actieve (deeplink); Home, Filmpjes en Dumpert blijven altijd. */
+export function tabOpties(items: { cat: Cat }[], view: View): TabOpt[] {
+  const gevuld = new Set(items.map((i) => i.cat));
+  return [
+    { value: "alles", id: "all", label: "Home", short: "Home" },
+    ...CATS.filter((c) => gevuld.has(c.id) || c.id === view).map((c) => ({
+      value: c.id as View, id: c.id, label: c.label, short: c.id === "nl" ? "NL" : c.id === "tech" ? "Tech" : c.label,
+    })),
+    { value: "filmpjes", id: "filmpjes", label: "Filmpjes", short: "Filmpjes" },
+    { value: "dumpert", id: "dumpert", label: "Dumpert", short: "Dumpert" },
+  ];
+}
+
+export function volgendeTab(index: number, aantal: number, toets: string): number | null {
+  if (!aantal || index < 0) return null;
+  if (toets === "Home") return 0;
+  if (toets === "End") return aantal - 1;
+  if (toets !== "ArrowLeft" && toets !== "ArrowRight") return null;
+  return (index + (toets === "ArrowRight" ? 1 : -1) + aantal) % aantal;
+}
+
+/** Toetsenbord voor een tablijst: pijltjes/Home/End verplaatsen focus en selectie (klik) naar de buurtab. */
+export function tabToets(e: { key: string; currentTarget: HTMLElement; preventDefault(): void }): void {
+  const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLElement>('[role="tab"]')];
+  const volgende = volgendeTab(tabs.indexOf(e.currentTarget), tabs.length, e.key);
+  if (volgende === null) return;
+  e.preventDefault();
+  tabs[volgende].focus();
+  tabs[volgende].click();
+}
+
+/** Richting van de paneelwissel volgens de tabvolgorde: 1 = naar rechts (volgende tab), -1 = terug, 0 = geen wissel. */
+export function wisselRichting(van: View, naar: View): number {
+  const volgorde: View[] = ["alles", ...CATS.map((c) => c.id as View), "filmpjes", "dumpert"];
+  const a = volgorde.indexOf(van), b = volgorde.indexOf(naar);
+  return a < 0 || b < 0 || a === b ? 0 : b > a ? 1 : -1;
+}

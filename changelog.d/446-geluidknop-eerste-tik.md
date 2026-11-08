@@ -1,0 +1,1 @@
+- Filmpjes/Dumpert: de eerste tik op „Tik voor geluid” zet het geluid weer aan in plaats van uit (de tikvlag werd door touchend/pointerup gezet vóór de click; nu onthoudt een tijdstempel dat het de eerste tik was) (#446).

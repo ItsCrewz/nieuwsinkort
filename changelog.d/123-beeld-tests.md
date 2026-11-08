@@ -1,0 +1,1 @@
+- Tests toegevoegd voor beeld-URL's, ontdubbelen en og:image (#123).

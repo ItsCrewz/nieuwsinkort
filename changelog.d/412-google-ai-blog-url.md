@@ -1,0 +1,1 @@
+- Google AI-blog: feed-URL bijgewerkt naar het redirect-doel `blog.google/innovation-and-ai/technology/ai/rss/` (#412).

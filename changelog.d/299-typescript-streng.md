@@ -1,0 +1,1 @@
+- Maak de testtypecheck compleet met typen voor de browservariant van React DOM (#299).

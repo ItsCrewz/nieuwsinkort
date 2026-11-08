@@ -1,0 +1,1 @@
+- Extra randgevallen voor de dagfilter (toekomstmarge van 15 minuten, klemmen tot 2 u 15 min, ontbrekende datum, nieuwste clusterlid, Dumpert alleen vandaag) in `tests/vandaag-randgevallen.test.ts` (#200).

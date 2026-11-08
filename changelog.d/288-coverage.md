@@ -1,0 +1,1 @@
+- Voeg een aparte coverage-meting met Vitest toe voor de kritieke paden (#288).

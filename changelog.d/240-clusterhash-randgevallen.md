@@ -1,0 +1,1 @@
+- Tests voor randgevallen van `clusterHash` en `vindClusterSum` (stopwoorden, NFKC, 24-uursgrens) (#240).

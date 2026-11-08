@@ -1,0 +1,1 @@
+- Tests voor `src/sources.ts` aangevuld: randgevallen van `norm`, `buildSources` en `sourceKey`, en nieuwe hooktests voor `useCatalog`, `useSourceFilter` en `useFiltered` met gemockte `fetch` en `localStorage` (#166).

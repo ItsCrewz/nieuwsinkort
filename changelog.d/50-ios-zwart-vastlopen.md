@@ -1,0 +1,3 @@
+- Videofeed iOS: zwart beeld bij `playing` en vastlopen met volle buffer aangepakt. Poolelementen worden synchroon vrijgemaakt (pauze, hls.js weg, `src` weg, `load()`) vóór verplaatsen of parkeren, met een generatiecontrole per slot; de bron wordt pas na plaatsing gekoppeld en de vooraf geladen buur blijft staan (#50).
+- Videofeed: de poster blijft boven de video tot er een echt gepresenteerd frame is; geen opacity-overgang en geen paint-containment meer rond de video (#50).
+- Videofeed: nieuwe frame-waakhond (`src/framegezondheid.ts`) die bij doorlopende tijd zonder nieuwe frames of zonder eerste frame op hetzelfde element herstelt, begrensd op twee per minuut en vier per speler; de debug-overlay toont beeldmaat, frameteller, `src`/`currentSrc` en herstelevents (#50).

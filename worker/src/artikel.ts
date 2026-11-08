@@ -67,3 +67,23 @@ export function artikelTekst(html: string, maxLen = 2400): string[] {
   }
   return out;
 }
+
+/** Tekst uit r.jina.ai (Reader, markdown) -> alinea's, met dezelfde filters. */
+export function jinaTekst(md: string, maxLen = 2400): string[] {
+  const body = md.split(/\nMarkdown Content:\n/)[1] ?? md;
+  const ps = body.split(/\n\s*\n/).map((p) => p
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")            // afbeeldingen
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")           // links -> tekst
+    .replace(/^\s{0,3}(#{1,6}|[*+-]|>|\d+\.)\s+/gm, "") // koppen, opsommingen, citaten
+    .replace(/[*_`]{1,3}/g, "").replace(/\s+/g, " ").trim()).filter(zinnig);
+  const out: string[] = [], seen = new Set<string>();
+  let n = 0;
+  for (const p of ps) {
+    const k = p.slice(0, 80).toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (n + p.length > maxLen && out.length) break;
+    out.push(p); n += p.length;
+  }
+  return out;
+}

@@ -1,7 +1,7 @@
 // SVG-sprite uit het design (lucide-achtige iconen). Eén keer renderen, gebruiken met <Icon name="…" />.
 export type IconName =
   | "sun" | "cloud" | "rain" | "partly" | "moon" | "back" | "next" | "ext" | "play" | "x" | "pin"
-  | "alert" | "spark" | "up" | "eye" | "layers" | "clock" | "film" | "sliders" | "volume" | "mute" | "chevup" | "chevdown";
+  | "alert" | "spark" | "up" | "eye" | "layers" | "clock" | "film" | "sliders" | "volume" | "mute" | "chevup" | "chevdown" | "share" | "search";
 
 export function IconSprite() {
   return (
@@ -15,6 +15,8 @@ export function IconSprite() {
         <symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></symbol>
         <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></symbol>
         <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M8 11H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1" /></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3" /></symbol>
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></symbol>
         <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></symbol>
@@ -37,7 +39,7 @@ export function IconSprite() {
 
 export function Icon({ name, className = "", label }: { name: IconName; className?: string; label?: string }) {
   return (
-    <svg className={`ic ${className}`} aria-hidden={label ? undefined : true} role={label ? "img" : undefined} aria-label={label}>
+    <svg width="19" height="19" className={`ic ${className}`} aria-hidden={label ? undefined : true} role={label ? "img" : undefined} aria-label={label}>
       <use href={`#i-${name}`} />
     </svg>
   );

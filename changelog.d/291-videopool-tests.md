@@ -1,0 +1,1 @@
+- Breidt de tests voor de Filmpjes- en Dumpert-weergave uit en verhoogt de regeldekking van de videopoolgroep (#291).

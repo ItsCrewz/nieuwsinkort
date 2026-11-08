@@ -1,16 +1,27 @@
 // Port van /workspace/nieuws/filmpjes.py (Dumpert-toppers, YouTube-nieuwskanalen, Reddit-video's).
 import { decode, stripHtml } from "./parse";
+import { youtubeId } from "../../src/slug";
 
 export const YT_NIEUWS: Record<string, string> = {
   NOS: "UC5xziMuoFAOpX9mwUVhe2Jw", "RTL Nieuws": "UCv4NUJ5BGSpJz_leIfayDzQ", "NU.nl": "UCCw1aOc9x3sEjrUzT-qmMGw",
-  "Hart van Nederland": "UCgOkhebo_ZU8rawIXsbyPXQ", "NH Nieuws": "UCSpctzQgGRJV84At2dV73qg", PowNews: "UCHTtspK-G7Wt68awRpTSkiw",
+  "Hart van Nederland": "UCgOkhebo_ZU8rawIXsbyPXQ", "RTL Boulevard": "UC2Jbya_u-rQ0xBNHBYXvpTg", Shownieuws: "UCnZkUwDLBgLFEpXSeyEx3YA", "NH Nieuws": "UCSpctzQgGRJV84At2dV73qg", PowNews: "UCHTtspK-G7Wt68awRpTSkiw",
   WNL: "UCUSrVHoJrz68z3Q5qHZZC4w", EenVandaag: "UCjxk-pBIdYXjBQGie4uJGoA", "RTL Z": "UC3lleI2WsaIiW8IzkJ0kIYA", BNR: "UCWALr0VavEm8SgPXGafhFDQ",
+  "NOS Stories": "UCoakeH4bmdUYtptWdmoUrRQ", Nieuwsuur: "UCExcZNwh_3Mwm4fF4VSiu2w", "Omroep PowNed": "UCihqgpWn_ns1gJUdhNLsSMQ", Radar: "UCGUhzuD1eYIgJoSGe0c_rNg",
+  "NOS Sport": "UCT4oPufBQa0f6C67Fw_HXNg",
+  "Haarlem105": "UCFDVl_p6fwkloGr8lraSZgQ",
+  "GeenStijl": "UCE51aiJ30nQY14kFY021urg",
+  "De Telegraaf": "UC1Et9K-hHf-P_LzQkE_Q3Jw",
+  "Ziggo Sport": "UCueOZEvMffxjJyVO1fGiJNQ",
+  "ESPN NL": "UCXnPiEv1DoUCDAqDUXT9shQ",
+  "OnsOranje": "UCpnmJcBhJqKIHFkKvgdkdMQ",
+  "FORMULA 1": "UCB_qr75-ydFVKSF9Dmo6izg",
+  "AutoWeek": "UCzToShYR6Sw_k1i6FsdEr6g",
+  "Autovisie": "UCAkqAwuyz_qu3vfgAMQPCBw",
 };
 export const ytUrl = (cid: string) => `https://www.youtube.com/feeds/videos.xml?channel_id=${cid}`;
 export const REDDIT_SUBS = ["thenetherlands", "Netherlands", "worldnews", "europe", "Haarlem"];
 export const redditUrl = (s: string) => `https://www.reddit.com/r/${s}/top/.rss?t=day`;
 export const DUMPERT_URL = "https://www.dumpert.nl/toppers";
-const VIDEO_RE = /v\.redd\.it|youtube\.com\/watch|youtu\.be\/|youtube\.com\/shorts|streamable\.com|(?:twitter|x)\.com\/[^/]+\/status|tiktok\.com|instagram\.com\/reel|nos\.nl\/video|rtl\.nl\/video/i;
 
 export type Video = { titel: string; ai: string; bron: string; href: string; embed?: string; thumb: string; populariteit: string; tijd: string; _score?: number; _pub?: number; soort?: Soort };
 
@@ -25,6 +36,61 @@ export function kortGetal(n: number | undefined | null, eenheid: string) {
 const YT = /(?:youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|watch\?(?:.*&)?v=)|youtu\.be\/)([\w-]{6,})/;
 const isMp4 = (u?: string) => /\.mp4(\?|$)/i.test(u || "");
 const isHls = (u?: string) => /\.m3u8(\?|$)/i.test(u || "");
+// Alleen een herkenbare status van de embedspeler is bewijs; andere pagina's blijven onbekend.
+export function ytEmbedStatus(html: string): string | null {
+  return /"(?:previewPlayabilityStatus|playabilityStatus)"\s*:\s*\{\s*"status"\s*:\s*"([A-Z_]+)"/.exec(html.replace(/\\+"/g, '"'))?.[1] || null;
+}
+
+export function ytEmbedGeblokkeerd(html: string): boolean | null {
+  const tekst = html.replace(/\\+"/g, '"');
+  const m = /"(?:previewPlayabilityStatus|playabilityStatus)"\s*:\s*\{\s*"status"\s*:\s*"([A-Z_]+)"/.exec(tekst);
+  if (!m) return null;
+  if (m[1] === "OK") return false;
+  if (m[1] === "UNPLAYABLE" && /blocked it from display/i.test(tekst)) return true;
+  return null;
+}
+
+export function ytVideoId(v: { embed?: string; href?: string }): string | null {
+  for (const u of [v.embed, v.href]) {
+    const id = youtubeId(u || "");
+    if (id && /^[\w-]{11}$/.test(id)) return id;
+  }
+  return null;
+}
+
+// Deze kanalen blokkeren het insluiten van Shorts, ook als een servercontrole speelbaar meldt.
+export const YT_SHORTS_GEBLOKKEERDE_KANALEN = new Set(["FORMULA 1"]);
+export function ytGeblokkeerdeShorts(videos: (Video & { _k?: string; _kanaal?: string })[]): string[] {
+  return [...new Set(videos.filter((v) => v.bron === "YouTube" && YT_SHORTS_GEBLOKKEERDE_KANALEN.has(v._k || v._kanaal || "") && soortVan(v) === "short")
+    .map(ytVideoId).filter((id): id is string => !!id))];
+}
+
+export type YtDiag = { id: string; http: number; uitkomst: "geblokkeerd" | "speelbaar" | "onbekend"; reden?: string; status: string | null; titel: string; host: string; redirectHost: string; oembed: number };
+export function ytCombineer(id: string, embed: { status: number; json?: any; err?: string } | undefined, oembed: { status: number } | undefined): YtDiag {
+  const d = embed?.json || {};
+  const geblokkeerd = d.geblokkeerd === true || [401, 403, 404].includes(oembed?.status || 0);
+  const speelbaar = !geblokkeerd && d.geblokkeerd === false;
+  const reden = d.reden || (embed?.err ? "fout" : "geen-status");
+  return { id, http: embed?.status || 0, uitkomst: geblokkeerd ? "geblokkeerd" : speelbaar ? "speelbaar" : "onbekend", ...(!geblokkeerd && !speelbaar ? { reden } : {}), status: d.status || null, titel: d.titel || "", host: d.host || "", redirectHost: d.redirectHost || "", oembed: oembed?.status || 0 };
+}
+
+export type YtCache = Record<string, { geblokkeerd: boolean | null; at: number }>;
+
+export function ytBlokkades(ids: string[], kanaalBlokkades: string[], cache: YtCache): string[] {
+  const kanalen = new Set(kanaalBlokkades);
+  return ids.filter((id) => kanalen.has(id) || cache[id]?.geblokkeerd === true);
+}
+
+export function ruimYtCache(cache: YtCache | undefined, nu: number): YtCache {
+  return Object.fromEntries(Object.entries(cache || {}).filter(([id, v]) =>
+    /^[\w-]{11}$/.test(id) && v && (typeof v.geblokkeerd === "boolean" || v.geblokkeerd === null) && Number.isFinite(v.at) && v.at <= nu && nu - v.at < (v.geblokkeerd === null ? 3600e3 : (v.geblokkeerd ? 2 : 7) * 86400e3)
+  ).sort((a, b) => b[1].at - a[1].at).slice(0, 300));
+}
+
+export function ytNieuweControles(ids: string[], cache: YtCache, max = 15): string[] {
+  return [...new Set(ids)].filter((id) => !cache[id]).slice(0, max);
+}
+
 export function dumpertEmbed(it: any): string {
   for (const md of it?.media || []) {
     const t = String(md.mediatype || "").toUpperCase();
@@ -41,20 +107,29 @@ export function dumpertEmbed(it: any): string {
   return "";
 }
 
-/** Alle bruikbare Dumpert-toppers (gepubliceerd na `since` ms), gesorteerd op kudos vandaag. */
+/** Bruikbare Dumpert-items: toppers eerst, daarna de latest-lijst van dezelfde pagina (toppers is 's ochtends bijna alleen van gisteren), gesorteerd op kudos vandaag. */
 export function parseDumpert(html: string, hhmm: (t: number) => string): (Video & { _pub: number })[] {
   const m = /window\.__DUMPERT_CONTEXT__ = JSON\.parse\(\s*("(?:[^"\\]|\\.)*")\s*\)/.exec(html);
   if (!m) throw new Error("geen __DUMPERT_CONTEXT__");
   const st = JSON.parse(JSON.parse(m[1])).state;
-  const key = Object.keys(st).find((k) => k.includes("list=toppers"));
-  if (!key) throw new Error("geen toppers-lijst");
+  const lijst = (naam: string): any[] | null => {
+    const key = Object.keys(st).find((k) => k.includes(`list=${naam}`));
+    const items = key && st[key]?.data?.result?.data?.items;
+    return Array.isArray(items) ? items : null;
+  };
+  const toppers = lijst("toppers"), latest = lijst("latest");
+  if (!toppers && !latest) throw new Error("geen toppers-lijst");
   const out: (Video & { _pub: number })[] = [];
-  for (const it of st[key].data.result.data.items) {
+  const gezien = new Set<string>();
+  for (const it of [...(toppers || []), ...(latest || [])]) {
     if (it.nsfw || it.partner_content || it.secret) continue;
     const s = it.stats || {};
     if (!s.views_today) continue;
     const embed = dumpertEmbed(it);
     if (!embed) continue;
+    const id = String(it.id);
+    if (gezien.has(id)) continue;
+    gezien.add(id);
     const pub = Date.parse(it.published_at);
     out.push({
       titel: String(it.title).trim(), ai: stripHtml(it.description || ""), bron: "Dumpert", href: `https://www.dumpert.nl/item/${it.id}`, embed,
@@ -85,28 +160,24 @@ export function parseYouTube(xml: string, kanaal: string, since: number, hhmm: (
   return out;
 }
 
-export function parseRedditVideos(xml: string, sub: string, since: number, hhmm: (t: number) => string): Video[] {
-  const out: Video[] = [];
-  (xml.match(/<entry>[\s\S]*?<\/entry>/g) || []).forEach((e, rank) => {
-    const pub = Date.parse(/<published>(.*?)<\/published>/.exec(e)?.[1] || "");
-    if (!(pub >= since)) return;
-    const c = decode(/<content[^>]*>([\s\S]*?)<\/content>/.exec(e)?.[1] || "");
-    const vids = [...c.matchAll(/href="([^"]+)"/g)].map((m) => m[1]).filter((l) => VIDEO_RE.test(l));
-    if (!vids.length) return;
-    const vr = /v\.redd\.it\/([A-Za-z0-9]+)/.exec(vids[0]);
-    const th = /<media:thumbnail url="([^"]+)"/.exec(e);
-    out.push({
-      titel: decode(/<title>(.*?)<\/title>/.exec(e)?.[1] || "").trim(), ai: "", bron: "Reddit", href: /<link href="([^"]+)"/.exec(e)?.[1] || "",
-      embed: vr ? `https://v.redd.it/${vr[1]}/HLSPlaylist.m3u8` : "", thumb: th ? decode(th[1]) : "", populariteit: `#${rank + 1} top vandaag r/${sub}`,
-      tijd: hhmm(pub), _score: Math.max(0, 50 - rank), _pub: pub,
-    });
-  });
-  return out;
-}
+export { parseRedditVideos } from "./reddit";
 
 // ---------------------------------------------------------------- Shorts vs. Journaals
 /** "journaal" = uitzending/reportage (liggend, langer); "short" = kort clipje (YouTube Shorts, Reels, Reddit, X). */
 export type Soort = "short" | "journaal";
+// De invoer is al ontdubbeld en op score gesorteerd.
+export function selecteerFilmpjes<T extends { bron?: string; soort?: string }>(videos: T[]): T[] {
+  const gereserveerd = new Set<T>();
+  for (const bron of ["Reddit", "X", "Instagram"]) {
+    for (const video of videos.filter((v) => v.bron === bron).slice(0, 2)) gereserveerd.add(video);
+  }
+  return ([["short", 18], ["journaal", 14]] as const).flatMap(([soort, max]) => {
+    const kandidaten = videos.filter((v) => v.soort === soort);
+    const vast = kandidaten.filter((v) => gereserveerd.has(v));
+    const gekozen = new Set([...vast, ...kandidaten.filter((v) => !gereserveerd.has(v)).slice(0, max - vast.length)]);
+    return kandidaten.filter((v) => gekozen.has(v));
+  });
+}
 const JOURNAAL_RE = /journaal|nieuwsuitzending|\buitzending\b|bulletin|nieuwsoverzicht|het nieuws van|nieuws van (de dag|vandaag)|\b(nos|rtl) nieuws (om )?\d{1,2}[:.]\d{2}|\b(8|20|18|19)[:.]00 ?uur/i;
 export function soortVan(v: { titel?: string; href?: string; embed?: string; bron?: string; soort?: string }): Soort {
   if (v.soort === "short" || v.soort === "journaal") return v.soort;
@@ -123,7 +194,7 @@ export function soortVan(v: { titel?: string; href?: string; embed?: string; bro
 export const igUser = (url: string) => /kg\.meowing\.de\/([^/]+)\/atom\.xml|instagram\.com\/([\w.]+)\/?(?:embed\/?)?$/i.exec(url)?.slice(1).find(Boolean) || "";
 export const igProfileUrl = (user: string) => `https://www.instagram.com/${user}/embed/`;
 export const igPostEmbed = (code: string) => `https://www.instagram.com/p/${code}/embed/captioned/`;
-export type IgPost = { code: string; video: boolean; t: number; text: string; img: string; likes: number; user: string };
+type IgPost = { code: string; video: boolean; t: number; text: string; img: string; likes: number; user: string };
 export function parseIgProfile(html: string): IgPost[] {
   const m = /"contextJSON":"((?:[^"\\]|\\.)*)"/.exec(html);
   if (!m) throw new Error("geen Instagram-embeddata");

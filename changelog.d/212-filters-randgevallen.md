@@ -1,0 +1,1 @@
+- Tests voor de randgevallen van `src/filters.tsx` (tijdvensters, regio, sortering, tellingen) in `tests/filters-randgevallen.test.ts` (#212).

@@ -1,0 +1,1 @@
+- Tests toegevoegd voor hostnamen en het vooraf laden en cachen van beelden (#180).

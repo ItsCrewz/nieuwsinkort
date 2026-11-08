@@ -1,0 +1,1 @@
+- Plaats de documentatie van de swipe-feed en video-instellingen bij de frontend (#106).

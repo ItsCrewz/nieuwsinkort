@@ -1,11 +1,11 @@
 // Dubbele filmpjes eruit, over alle bronnen heen (YouTube, Instagram, X, Reddit, Dumpert, Politiek).
 // Gedeeld door de site (src/), de Pages Function (functions/data.json.ts) en de uur-Worker (worker/).
 // Twee filmpjes zijn hetzelfde als ze een sleutel delen: video-id (YouTube/Instagram/X/Reddit/Dumpert),
-// hetzelfde mediabestand of dezelfde thumbnail (zonder query), dezelfde URL zonder tracking, of (bijna) dezelfde titel.
+// hetzelfde mediabestand of dezelfde thumbnail zonder tracking, dezelfde URL zonder tracking, of (bijna) dezelfde titel.
 // Van elke groep blijft de beste kopie over (in de site afspeelbaar, beste kwaliteit, populairst);
 // de andere bronnen komen in `ook`.
 
-export type DVideo = { titel: string; href: string; embed?: string; thumb?: string; bron: string; populariteit?: string; ook?: { bron: string; href: string }[] };
+export type DVideo = { titel: string; href: string; embed?: string; thumb?: string; bron: string; ai?: string; tijd?: string; _pub?: number; populariteit?: string; duur?: number; _k?: string; _kanaal?: string; ook?: { bron: string; href: string }[] };
 
 const TRACK = /^(utm_\w+|si|igsh|igshid|feature|ref|ref_src|ref_url|s|fbclid|gclid|mc_\w+|share_id|context|pp)$/i;
 export function canonUrl(u: string): string {
@@ -14,14 +14,25 @@ export function canonUrl(u: string): string {
     const host = x.hostname.replace(/^(www|m|mobile|old|new)\./, "").toLowerCase().replace(/^twitter\.com$/, "x.com");
     const keep: [string, string][] = [];
     x.searchParams.forEach((v, k) => keep.push([k, v]));
-    const kept = keep.filter(([k]) => !TRACK.test(k)).sort(([a], [b]) => a.localeCompare(b));
-    const q = kept.length ? "?" + kept.map(([k, v]) => `${k}=${v}`).join("&") : "";
+    const kept = keep.filter(([k]) => !TRACK.test(k)).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)); // stabiel: herhaalde sleutels houden hun volgorde
+    const q = kept.length ? "?" + kept.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&") : "";
     return `${host}${x.pathname.replace(/\/+$/, "")}${q}`;
   } catch {
     return u.trim().toLowerCase();
   }
 }
-const noQuery = (u: string) => u.replace(/^https?:\/\//, "").replace(/[?#].*$/, "").toLowerCase();
+function mediaUrl(u: string): string {
+  try {
+    const x = new URL(u);
+    const params = new URLSearchParams();
+    x.searchParams.forEach((v, k) => { if (!TRACK.test(k)) params.append(k, v); });
+    params.sort();
+    const q = params.toString();
+    return `${x.host.toLowerCase()}${x.pathname}${q ? `?${q}` : ""}`;
+  } catch {
+    return u.trim();
+  }
+}
 
 export function videoKeys(v: DVideo): string[] {
   const k = new Set<string>();
@@ -41,10 +52,10 @@ export function videoKeys(v: DVideo): string[] {
     if (m) k.add(`dp:${m[1].replace(/_/g, "-")}`);
     m = /amplify_video\/(\d+)|ext_tw_video\/(\d+)/.exec(u);
     if (m) k.add(`xv:${m[1] || m[2]}`);
-    if (/\.(mp4|m3u8)(\?|$)/i.test(u)) k.add(`media:${noQuery(u)}`);
+    if (/\.(mp4|m3u8)(\?|$)/i.test(u)) k.add(`media:${mediaUrl(u)}`);
   }
   if (v.href) k.add(`url:${canonUrl(v.href)}`);
-  if (v.thumb && !/ytimg\.com/.test(v.thumb)) k.add(`thumb:${noQuery(v.thumb)}`); // YouTube-thumbs zitten al in yt:<id>
+  if (v.thumb && !/ytimg\.com/.test(v.thumb)) k.add(`thumb:${mediaUrl(v.thumb)}`); // YouTube-thumbs zitten al in yt:<id>
   return [...k];
 }
 
@@ -63,6 +74,52 @@ function sameTitle(a: string[], b: string[]): boolean {
   let n = 0;
   for (const w of a) if (B.has(w)) n++;
   return n / (a.length + b.length - n) >= 0.8;
+}
+
+// sameCaption vergelijkt elk paar: genormaliseerde tekst per video één keer maken (O(n) i.p.v. O(n²) regex-werk).
+const captionCache = new WeakMap<DVideo, { titel?: string; ai?: string; res: string[] }>();
+function caption(v: DVideo): string[] {
+  const c = captionCache.get(v);
+  if (c && c.titel === v.titel && c.ai === v.ai) return c.res;
+  const res = captionBereken(v);
+  captionCache.set(v, { titel: v.titel, ai: v.ai, res });
+  return res;
+}
+function captionBereken(v: DVideo): string[] {
+  const norm = (s: string) => s.replace(/#[\p{L}\d_]+/gu, " ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const titel = norm(v.titel || ""), ai = norm(v.ai || "");
+  return [...new Set([ai, ai.startsWith(titel) ? ai : `${titel} ${ai}`.trim()].filter(Boolean))];
+}
+function minutenVerschil(a: DVideo, b: DVideo): number {
+  if (Number.isFinite(a._pub) && Number.isFinite(b._pub) && a._pub! > 0 && b._pub! > 0) return Math.abs(a._pub! - b._pub!) / 60000;
+  const minuten = (t?: string) => { const m = /^(\d{2}):(\d{2})$/.exec(t || ""); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : NaN; };
+  return Math.abs(minuten(a.tijd) - minuten(b.tijd));
+}
+function sameCaption(a: DVideo, b: DVideo): boolean {
+  const verschil = minutenVerschil(a, b);
+  if (!(verschil <= 180)) return false;
+  for (const x of caption(a)) for (const y of caption(b)) {
+    const xx = x.split(" "), yy = y.split(" ");
+    let i = 0;
+    while (i < xx.length && i < yy.length && xx[i] === yy[i]) i++;
+    const begin = xx.slice(0, i).join(" ");
+    if (begin.length >= 80 && titleTokens(begin).length >= 8) return true;
+  }
+  return false;
+}
+
+// Zelfde uitgever op twee platforms (YouTube-kanaal ↔ Instagram-account): de titel van de één staat in titel + beschrijving
+// van de ander (bijv. NU.nl: Instagram-caption "Een steen als 'huisdier'?" staat in de YouTube-beschrijving).
+// Uitgever komt uit `_k`/`_kanaal` (pipeline); onbekend = nooit samenvoegen. Venster 6 uur, duur (als bekend) mag max 3 s of 15% verschillen.
+const uitgever = (v: DVideo) => (v._k || v._kanaal || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+function sameUitgever(a: DVideo, b: DVideo): boolean {
+  const u = uitgever(a);
+  if (!u || u !== uitgever(b) || a.bron === b.bron) return false;
+  if (!(minutenVerschil(a, b) <= 360)) return false;
+  if (a.duur! > 0 && b.duur! > 0 && Math.abs(a.duur! - b.duur!) > Math.max(3, 0.15 * Math.max(a.duur!, b.duur!))) return false;
+  const norm = (s: string) => ` ${s.replace(/#[\p{L}\d_]+/gu, " ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
+  const heeft = (x: DVideo, y: DVideo) => { const t = norm(x.titel || ""); return t.trim().length >= 16 && titleTokens(t).length >= 2 && norm(`${y.titel || ""} ${y.ai || ""}`).includes(t); };
+  return heeft(a, b) || heeft(b, a);
 }
 
 export function popNum(p?: string): number {
@@ -88,14 +145,14 @@ export function dedupVideos<T extends DVideo>(list: T[], against: DVideo[] = [])
   const keys = list.map(videoKeys);
   const toks = list.map((v) => titleTokens(v.titel));
   list.forEach((_, i) => { for (const k of keys[i]) { const j = byKey.get(k); if (j == null) byKey.set(k, i); else join(j, i); } });
-  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (find(i) !== find(j) && sameTitle(toks[i], toks[j])) join(i, j);
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (find(i) !== find(j) && (sameTitle(toks[i], toks[j]) || sameCaption(list[i], list[j]) || sameUitgever(list[i], list[j]))) join(i, j);
   const groups = new Map<number, number[]>();
   list.forEach((_, i) => { const r = find(i); (groups.get(r) || groups.set(r, []).get(r)!).push(i); });
   const out: { i: number; v: T }[] = [];
   let removed = 0;
   const report: string[][] = [];
   for (const idx of groups.values()) {
-    if (idx.some((i) => keys[i].some((k) => blocked.has(k)) || blockedTitles.some((t) => sameTitle(toks[i], t)))) { removed += idx.length; report.push(idx.map((i) => `${list[i].bron}: ${list[i].titel} (al bij Dumpert)`)); continue; }
+    if (idx.some((i) => keys[i].some((k) => blocked.has(k)) || blockedTitles.some((t) => sameTitle(toks[i], t)) || against.some((v) => sameCaption(list[i], v)))) { removed += idx.length; report.push(idx.map((i) => `${list[i].bron}: ${list[i].titel} (al bij Dumpert)`)); continue; }
     const best = idx.reduce((a, b) => (quality(list[b]) > quality(list[a]) ? b : a), idx[0]);
     const ook = [...(list[best].ook || [])];
     for (const i of idx) if (i !== best) {

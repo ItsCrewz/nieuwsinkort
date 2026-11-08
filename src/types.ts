@@ -1,18 +1,22 @@
-export type Cat = "nl" | "tech" | "haarlem" | "showbizz" | "politiek";
+export type Cat = "nl" | "buitenland" | "tech" | "haarlem" | "showbizz" | "politiek" | "voetbal" | "f1" | "auto" | "sport";
 export type Bron = { site: string; href: string };
 export type Item = {
+  id?: string;
   cat: Cat;
   kop: string;
   ai: string;
   samenvatting: string;
   punten: string[];
   tijd: string;
+  t?: number; // Publicatietijd in milliseconden sinds de Unix-epoch.
   bronnen: Bron[];
   beeld?: string; // oud veld: één afbeelding
   /** Foto's uit alle bronnen van dit bericht (ontdubbeld, eerste = beste). */
   beelden?: string[];
   /** Sleutel voor /meer?k=… : er staat extra tekst klaar achter "Lees verder" (uur-Worker). */
   meer?: string;
+  /** Nog niet door AI samengevat: extractieve tekst uit de feed (uur-Worker). */
+  ruw?: boolean;
 };
 /** Extra tekst achter "Lees verder" (/meer). */
 export type Meer = {
@@ -24,7 +28,7 @@ export type WeerDag = { dag: string; min: number; max: number; omschrijving?: st
 export type Weer = {
   plaats: string;
   bijgewerkt: string;
-  nu?: { temp?: number; gevoel?: number; omschrijving?: string };
+  nu?: { temp?: number; gevoel?: number; omschrijving?: string; van?: number; tot?: number };
   vandaag?: { min?: number; max?: number; neerslagkans?: number; wind?: string };
   verwachting: string;
   waarschuwing: string;
@@ -32,6 +36,7 @@ export type Weer = {
   bronnen: Bron[];
 };
 export type Video = {
+  gisteren?: boolean;
   titel: string;
   ai: string;
   bron: string;
@@ -42,14 +47,17 @@ export type Video = {
   tijd: string;
   /** "short" = kort clipje (YouTube Shorts, Reels, Reddit, X); "journaal" = uitzending/reportage. */
   soort?: Soort;
+  /** Onderwerpgroep (#459): Nieuws, Politiek, Showbizz, Opvallend of Sport; ontbreekt in oude data (dan Nieuws). */
+  groep?: "Nieuws" | "Politiek" | "Showbizz" | "Opvallend" | "Sport";
   /** Zelfde filmpje bij andere bronnen (na ontdubbelen). */
   ook?: Bron2[];
 };
-export type Bron2 = { bron: string; href: string };
+type Bron2 = { bron: string; href: string };
 export type Soort = "short" | "journaal";
 export type Data = {
   datum: string;
   dag_samenvatting: string;
+  tab_samenvatting?: Partial<Record<View, { tekst: string; ai: boolean; bron: string; gegenereerd: string }>>;
   weer: Weer;
   filmpjes: Video[];
   samenvattingen?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>;
@@ -62,5 +70,5 @@ export type Data = {
   uur?: { gegenereerd?: string; nieuw?: number; model?: string; ai?: string };
 };
 /** vandaag = items gepubliceerd sinds 00:00 Europe/Amsterdam; null = feed niet bereikbaar/onleesbaar. */
-export type BronStat = { vandaag: number | null; laatste?: string; fout?: string; /** laatste keer dat ophalen lukte */ ok?: string };
+export type BronStat = { vandaag: number | null; laatste?: string; fout?: string; /** storing zonder fouttekst */ storing?: boolean; /** laatste keer dat ophalen lukte */ ok?: string };
 export type View = "alles" | Cat | "filmpjes" | "dumpert";

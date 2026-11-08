@@ -1,0 +1,1 @@
+- AI-fouttelling gesplitst in aanroep- en outputfouten met laatste fout, één terugval naar Groq bij een leeg of onbruikbaar Cloudflare-antwoord, en betrouwbaardere Groq- en video-neuronentellers (#431).

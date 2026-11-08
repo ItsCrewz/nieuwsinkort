@@ -1,0 +1,1 @@
+- Extra randgevallentests voor `buildWeer()` en `kort()` in het weerbericht (#225).

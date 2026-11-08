@@ -1,0 +1,1 @@
+- Changelog per PR als fragment (#98): schrijf `changelog.d/<issue>-<slug>.md` i.p.v. `CHANGELOG.md`; `npm run changelog` voegt de fragmenten samen onder "Onuitgebracht" en verwijdert ze.

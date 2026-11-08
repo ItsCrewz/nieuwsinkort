@@ -1,0 +1,1 @@
+- Maak fouten bij externe AI-aanbieders herkenbaar in de Worker-logs, zonder verzoekgegevens te loggen (#141).

@@ -12,13 +12,13 @@ const MAX_CALLS = 30;
 const PER_ALARM_MS = 8 * 60e3;
 export const MAX_ALARMS_PER_UUR = 3;
 
-type V = { titel: string; href: string; embed?: string; bron?: string; soort?: string };
+type V = { gisteren?: boolean; titel: string; href: string; embed?: string; bron?: string; soort?: string };
 const isYT = (v: V) => /youtube\.com|youtu\.be/.test(`${v.embed || ""} ${v.href}`);
 
 /** Filmpjes in de volgorde waarin de site ze toont (eerste kaart van elke feed eerst). */
 export function volgorde(d: any): V[] {
-  const f: V[] = (d?.filmpjes || []).map((v: V) => ({ ...v, soort: soortVan(v) }));
-  const feeds = [f.filter((v) => v.soort !== "journaal"), f.filter((v) => v.soort === "journaal"), (d?.dumpert || []) as V[]];
+  const f: V[] = (d?.filmpjes || []).filter((v: V) => !v.gisteren).map((v: V) => ({ ...v, soort: soortVan(v) }));
+  const feeds = [f.filter((v) => v.soort !== "journaal"), f.filter((v) => v.soort === "journaal"), ((d?.dumpert || []) as V[]).filter((v) => !v.gisteren)];
   const out: V[] = [], gezien = new Set<string>();
   for (let i = 0; feeds.some((l) => i < l.length); i++)
     for (const l of feeds) { const v = l[i]; if (v?.href && !gezien.has(videoSlug(v as any))) { gezien.add(videoSlug(v as any)); out.push(v); } }
@@ -26,7 +26,10 @@ export function volgorde(d: any): V[] {
   return [...out.filter(isYT), ...out.filter((v) => !isYT(v))];
 }
 
-export async function vooraf(env: { NIEUWS: KVNamespace; SITE: string; BUDGET?: string }, perAlarm: number) {
+const sha1 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+/** `vorig` = hash en tijd van de laatst geschreven `sv-klaar` (bewaart de Runner in DO-opslag); de nieuwe hash komt terug in `svKlaar`. */
+export async function vooraf(env: { NIEUWS: KVNamespace; SITE: string; BUDGET?: string }, perAlarm: number, vorig?: { h: string; at: number } | null) {
   const T0 = Date.now();
   const d: any = await (await fetch(`${env.SITE}/data.json?vooraf=${T0}`, { signal: AbortSignal.timeout(15000) })).json();
   const lijst = volgorde(d);
@@ -51,10 +54,13 @@ export async function vooraf(env: { NIEUWS: KVNamespace; SITE: string; BUDGET?: 
       else if (j.code !== "bezig") { fouten.push(`${id}: ${j.code}`); if (j.code === "geblokkeerd" && id.startsWith("yt-")) ytDicht = true; }
     } catch (e: any) { fouten.push(`${id}: ${String(e?.message || e).slice(0, 40)}`); }
   }
-  // klaar-lijst voor /data.json: punten van alle getoonde filmpjes met een samenvatting (1 KV-write per alarm)
+  // klaar-lijst voor /data.json: punten van alle getoonde filmpjes met een samenvatting. Alleen schrijven als de lijst
+  // inhoudelijk anders is (zonder `at`) of de vorige write 24 uur of ouder is (TTL is 2 dagen)
   const klaar: Record<string, any> = {};
   ids.forEach((id, i) => { const c: any = cache[i]; if (c?.ok) klaar[id] = { punten: c.punten, bron: c.bron, sec: c.sec || 0 }; });
-  await env.NIEUWS.put("sv-klaar", JSON.stringify({ at: new Date().toISOString(), klaar }), { expirationTtl: 2 * 86400 });
+  const h = await sha1(JSON.stringify(klaar));
+  const schrijf = !vorig || vorig.h !== h || Date.now() - vorig.at >= 24 * 3600e3 || vorig.at > Date.now();
+  if (schrijf) await env.NIEUWS.put("sv-klaar", JSON.stringify({ at: new Date().toISOString(), klaar }), { expirationTtl: 2 * 86400 });
   const rest = todo.length - calls;
-  return { totaal: ids.length, klaar: Object.keys(klaar).length, nogTeDoen: rest, verzoeken: calls, gemaakt, neuronen: Math.round(neur), stop, fouten: fouten.slice(0, 10), ms: Date.now() - T0 };
+  return { svKlaar: { h, geschreven: schrijf }, totaal: ids.length, klaar: Object.keys(klaar).length, nogTeDoen: rest, verzoeken: calls, gemaakt, neuronen: Math.round(neur), stop, fouten: fouten.slice(0, 10), ms: Date.now() - T0 };
 }

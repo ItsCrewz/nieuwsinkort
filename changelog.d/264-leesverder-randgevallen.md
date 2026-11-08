@@ -1,0 +1,1 @@
+- Randgevallen voor Lees verder en detailinhoud vastgelegd in tests (#264).

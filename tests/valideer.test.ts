@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { valideer } from "../src/valideer";
+
+const bron = JSON.parse(readFileSync("public/data.json", "utf8"));
+const geldig = valideer(bron);
+assert.equal(geldig.afgewezen, 0);
+assert.deepEqual(geldig.data, bron);
+const stuk = { ...bron, items: [bron.items[0], null, { ...bron.items[0], punten: [1] }, { ...bron.items[0], bronnen: [null] }], filmpjes: [bron.filmpjes[0], { ...bron.filmpjes[0], titel: 5 }], dumpert: [null] };
+const resultaat = valideer(stuk);
+assert.equal(resultaat.afgewezen, 5);
+assert.deepEqual(resultaat.data.items, [bron.items[0]]);
+assert.deepEqual(resultaat.data.filmpjes, [bron.filmpjes[0]]);
+assert.deepEqual(resultaat.data.dumpert, []);
+for (const waarde of [null, [], { ...bron, items: {} }, { ...bron, weer: null }]) assert.throws(() => valideer(waarde));
+for (const datum of [undefined, null, "", "ongeldig", 123]) assert.throws(() => valideer({ ...bron, gegenereerd: datum }));
+for (const datum of ["2026-01-01T22:59:59Z", "2026-01-01T23:00:00Z"]) assert.equal(valideer({ ...bron, gegenereerd: datum }).data.gegenereerd, datum);
+console.log("✓ data.json-validatie en ongeldige berichten");

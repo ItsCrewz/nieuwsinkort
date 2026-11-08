@@ -1,0 +1,1 @@
+- Elk artikel toont altijd het kopje "Uitgebreid": AI-uitleg, anders alineas uit de bron, anders de tekst van het bericht zelf (#184).

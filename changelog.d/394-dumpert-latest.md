@@ -1,0 +1,1 @@
+- Dumpert was 's ochtends leeg omdat de toppers-lijst dan bijna alleen items van gisteren bevat; de Worker leest nu ook de latest-lijst van dezelfde pagina (alleen items van vandaag blijven, #394).

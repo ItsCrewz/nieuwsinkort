@@ -9,6 +9,7 @@
 #
 # Omgeving:
 #   CANVAS_SRC=<pad>   eerst public/data.json verversen uit de canvas-bron
+#   ALLOW_DIRTY=1     vuile werkboom en gewijzigde bronnenlijst bewust toestaan
 #   SKIP_BUILD=1       niet bouwen (dist/ moet al bestaan)
 #   DRY_RUN=1          alles voorbereiden en controleren, maar niets uploaden (toont de commando's)
 #   FROZEN_BRANCH=x    (alleen om te testen) bevroren productie naar branch x i.p.v. main
@@ -19,6 +20,13 @@ cd "$(dirname "$0")"
 
 export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-bd9e60b47f14fc182568ebe9cace7135}"
 PROJECT="${CF_PAGES_PROJECT:-nieuwsinkort}"
+COMMIT="$(git rev-parse HEAD)"
+COMMIT_DIRTY=false
+[ "${ALLOW_DIRTY:-}" != "1" ] || COMMIT_DIRTY=true
+if [ "${ALLOW_DIRTY:-}" != "1" ] && [ -n "$(git status --porcelain)" ]; then
+  echo "deploy.sh: vuile werkboom; commit de wijzigingen of gebruik bewust ALLOW_DIRTY=1" >&2
+  exit 1
+fi
 
 # --- doel-branch: veilig standaard "design" als het bestand ontbreekt of leeg is
 BRANCH="design"
@@ -36,7 +44,7 @@ run() {
   if [ -n "${DRY_RUN:-}" ]; then echo "[dry-run] $*"; else "$@"; fi
 }
 pages_deploy() { # <map> <branch>
-  run npx wrangler pages deploy "$1" --project-name "$PROJECT" --branch "$2" --commit-dirty=true
+  run npx wrangler pages deploy "$1" --project-name "$PROJECT" --branch "$2" --commit-hash "$COMMIT" --commit-dirty="${COMMIT_DIRTY:-false}"
 }
 
 if [ -n "${CANVAS_SRC:-}" ]; then
@@ -49,10 +57,15 @@ fi
 [ -d node_modules ] || npm ci
 if [ -z "${SKIP_BUILD:-}" ]; then
   # npm run build draait eerst scripts/build-bronnen.mjs: public/bronnen.json wordt
-  # opnieuw opgebouwd uit ${FEEDS_JSON:-/workspace/nieuws/feeds.json} (+ filmpjes.py),
+  # opnieuw opgebouwd uit scripts/pipeline/feeds.json (+ filmpjes.py),
   # zodat het Bronnen-paneel gelijk loopt met de feeds.
   npm run build
 fi
+if [ "${ALLOW_DIRTY:-}" != "1" ] && ! git diff --exit-code HEAD -- public/bronnen.json; then
+  echo "deploy.sh: bronnenlijst wijkt af van de commit; commit de lijst of gebruik bewust ALLOW_DIRTY=1" >&2
+  exit 1
+fi
+node scripts/build-version.mjs
 test -f dist/index.html && test -f dist/data.json && test -f dist/bronnen.json
 node -e 'const d=require("./public/data.json"); if(!Array.isArray(d.items)||!d.items.length) {console.error("data.json zonder items"); process.exit(1)}'
 

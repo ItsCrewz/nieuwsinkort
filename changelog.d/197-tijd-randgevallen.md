@@ -1,0 +1,1 @@
+- Tests voor Amsterdamse middernacht rond de zomer- en wintertijdwissel toegevoegd (#197).

@@ -1,0 +1,1 @@
+- Extra unit-tests voor randgevallen van `src/tabs.ts` en `worker/src/tabsam.ts` (#171).

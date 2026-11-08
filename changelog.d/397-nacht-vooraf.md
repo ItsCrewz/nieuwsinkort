@@ -1,0 +1,1 @@
+- Toon 's nachts tot 06:00 de vooraf berekende nieuwsdata van gisteren als er nog geen data van vandaag is (#397).

@@ -1,0 +1,1 @@
+- Voorkom dat een oudere data-aanvraag een nieuwere nieuwsfeed of foutstatus overschrijft (#606).

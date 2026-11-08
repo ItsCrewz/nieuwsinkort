@@ -1,0 +1,1 @@
+- De deelknop is nu een deel-icoon rechtsonder, en een gedeelde link opent dezelfde artikelweergave als in de app (#541).

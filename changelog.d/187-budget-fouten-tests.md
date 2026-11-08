@@ -1,0 +1,1 @@
+- Tests voor de foutclassificatie in `src/budget.ts` (`isDagQuota`, `isTijdelijk`, `aiFout`, `neuronFactor`, `schatTokens`) in `tests/budget-fouten.test.ts` (#187).

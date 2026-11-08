@@ -1,0 +1,1 @@
+- Laat `npm test` automatisch alle lokale testbestanden uitvoeren (#105).

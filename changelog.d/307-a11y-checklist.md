@@ -1,0 +1,1 @@
+- Toegankelijkheid: skip-link naar de inhoud, focusbare fotocarrousel met pijltjestoetsen, videokaarten met zichtbare naam in de toegankelijke naam en een tikvlak van 24 px voor "Open bij bron" (#307).

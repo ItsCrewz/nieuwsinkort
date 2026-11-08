@@ -1,0 +1,1 @@
+- Poster dekt de YouTube-iframe niet meer af op iOS: bij YouTube verdwijnt de poster zodra de speler gemount is; native video houdt de poster tot het eerste echte frame (#255).

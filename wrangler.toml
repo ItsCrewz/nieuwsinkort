@@ -11,3 +11,10 @@ id = "bfaf3ab8bca5422dac12d33495d1f837"
 # Workers AI voor video-samenvattingen op verzoek (functions/samenvatting.ts); zelfde dagbudget als de uur-Worker.
 [ai]
 binding = "AI"
+
+# Durable Object van de Worker "nieuwsinkort-uur": enige eigenaar van slot, reservering en uurrem voor
+# functions/samenvatting.ts. Eerst de Worker deployen (klasse + migratie v2), daarna Pages.
+[[durable_objects.bindings]]
+name = "BUDGET_DO"
+class_name = "Budget"
+script_name = "nieuwsinkort-uur"

@@ -1,0 +1,1 @@
+- Regressietests toegevoegd voor randgevallen in de regio-indeling (#214).

@@ -1,0 +1,1 @@
+- Tests toegevoegd voor afwijkende fragmentnamen, ontbrekende changelogkop en fragmenten met een eigen kop (#259).

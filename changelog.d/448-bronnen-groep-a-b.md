@@ -1,0 +1,3 @@
+- Bronnenonderhoud (#448): RTL Z komt alleen nog via de economie-RSS van rtl.nl (het YouTube-kanaal is als nieuwsbron geschrapt), Computable gebruikt `/feed/`, JA21 en VVD gebruiken hun officiële YouTube-kanalen en Instagram PowNed volgt `omroeppowned`.
+- Alarmeringen Kennemerland komt weer binnen via de nieuws-sitemap; `parse.ts` leest Google-news-sitemaps en `feeds.json` kent een optioneel padfilter (`pad`).
+- Dode feedregels (rtlz.nl, politie.nl, Computable rss/atom, PowNed-site) en de stille X-bron Politie Haarlem zijn verwijderd.

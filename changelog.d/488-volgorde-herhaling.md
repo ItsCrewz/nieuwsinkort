@@ -1,0 +1,1 @@
+- Behoud punten en uitlegzinnen met een andere woordvolgorde, ook bij korte afkortingen zoals EU en VS (#488).

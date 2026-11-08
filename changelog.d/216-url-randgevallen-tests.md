@@ -1,0 +1,1 @@
+- Randgevallen voor veilige en externe URL's vastgelegd in netwerkvrije tests (#216).

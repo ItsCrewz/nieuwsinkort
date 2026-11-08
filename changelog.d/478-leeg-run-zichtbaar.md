@@ -1,0 +1,1 @@
+- Een run die slaagt maar niets deed is nu zichtbaar: buiten het venster logt de cron `skipped: …`, en een lege succesrun geeft de waarschuwing `LEGE RUN: success zonder effect` plus `leeg: true` in de bestaande tellers (#478).
