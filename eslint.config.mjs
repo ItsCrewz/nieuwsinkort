@@ -26,7 +26,7 @@ export default tseslint.config(
       "no-console": ["warn", { allow: ["error", "warn"] }],
     },
   },
-  { files: ["tests/usevoorladen.test.ts"], rules: { "react-hooks/rules-of-hooks": "off" } },
+  { files: ["tests/usevoorladen.test.ts", "tests/regressie/voorlaadintentie-686.test.ts"], rules: { "react-hooks/rules-of-hooks": "off" } },
   { files: ["**/*.d.ts"], rules: { "@typescript-eslint/no-unused-vars": "off" } },
   { files: ["scripts/**", "tests/**", "export_from_canvas.mjs", "*.config.*"], rules: { "no-console": "off" } },
 );
