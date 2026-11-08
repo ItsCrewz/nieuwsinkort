@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { CATS, CAT_LABEL, tabOpties, volgendeTab } from "../src/tabs";
+import { CATS, CAT_LABEL, tabOpties, tabToets, volgendeTab } from "../src/tabs";
 import type { Cat } from "../src/types";
 
 const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
@@ -47,3 +47,25 @@ t("pijltjestoetsen doorlopen de zichtbare tabs in beide richtingen", () => {
   assert.equal(volgendeTab(2, 3, "Home"), 0);
   assert.equal(volgendeTab(0, 3, "End"), 2);
 });
+
+// tabToets (#791): focus en klik naar de buurtab.
+{
+  const druk = (van: number, key: string) => {
+    const log: string[] = [];
+    const tabs = Array.from({ length: 3 }, (_, i) => ({ focus: () => log.push(`focus${i}`), click: () => log.push(`klik${i}`) }));
+    let geblokkeerd = false;
+    tabToets({ key, currentTarget: Object.assign(tabs[van], { parentElement: { querySelectorAll: () => tabs } }) as unknown as HTMLElement, preventDefault: () => (geblokkeerd = true) });
+    return { log, geblokkeerd };
+  };
+  t("tabToets: rechts loopt door aan het einde", () => assert.deepEqual(druk(2, "ArrowRight").log, ["focus0", "klik0"]));
+  t("tabToets: links loopt door aan het begin", () => assert.deepEqual(druk(0, "ArrowLeft").log, ["focus2", "klik2"]));
+  t("tabToets: Home en End", () => {
+    assert.deepEqual(druk(1, "Home").log, ["focus0", "klik0"]);
+    assert.deepEqual(druk(1, "End").log, ["focus2", "klik2"]);
+  });
+  t("tabToets: andere toets doet niets", () => {
+    const r = druk(1, "a");
+    assert.deepEqual(r.log, []);
+    assert.equal(r.geblokkeerd, false);
+  });
+}
