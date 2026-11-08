@@ -8,10 +8,11 @@ const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 export function Zoekbalk({ query, onChange, aantal, invoer }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement> }) {
   const [open, setOpen] = useState(!!query);
   const knop = useRef<HTMLButtonElement>(null);
-  useEffect(() => { if (open) invoer.current?.focus(); }, [open]);
+  const focusBijOpenen = useRef(false);
+  useEffect(() => { if (open && focusBijOpenen.current) { focusBijOpenen.current = false; invoer.current?.focus(); } }, [open]);
   const sluit = () => { onChange(""); setOpen(false); knop.current?.focus(); };
   // Buiten .shell renderen (container-type:inline-size), anders scrolt de vaste knop mee, net als de deelknop.
-  const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} aria-label="Zoeken" title="Zoeken" onClick={() => open ? sluit() : setOpen(true)}><Icon name="search" /></button>;
+  const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} aria-label="Zoeken" title="Zoeken" onClick={() => { if (open) sluit(); else { focusBijOpenen.current = true; setOpen(true); } }}><Icon name="search" /></button>;
   return (
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}

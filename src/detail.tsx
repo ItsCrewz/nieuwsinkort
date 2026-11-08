@@ -10,7 +10,7 @@ import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Beelden } from "./beelden";
 import { veiligeUrl } from "./url";
 import { bronnenTekst, detailInhoud, fotos } from "./leesverder";
-import { uitgebreidOntdubbeld } from "./uitgebreid";
+import { uitgebreidOntdubbeld, filterMeer } from "./uitgebreid";
 import { nieuwePunten, zelfdeRuweTekst } from "./dubbel";
 import { stripBronvermelding } from "./bronvermelding";
 import { CAT_LABEL } from "./tabs";
@@ -47,8 +47,9 @@ function zonderBronvermelding(item: Item): Item {
   return { ...item, ai: schoon(item.ai || ""), samenvatting: schoon(item.samenvatting || ""), punten: item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten((item.punten ?? []).map(schoon), item.kop, item.ai, item.samenvatting) : (item.punten ?? []).map(schoon) };
 }
 
-function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
-  const { meer, laden } = useMeer(item);
+function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean; meerBronnen?: Bron[] }) {
+  const { meer: opgehaald, laden } = useMeer(item);
+  const meer = filterMeer(opgehaald, meerBronnen);
   if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
   const sites = (item.bronnen ?? []).map((b) => b.site);
   const o = uitgebreidOntdubbeld(zonderBronvermelding(item), meer && { ...meer, uitleg: meer.uitleg?.map((p) => stripBronvermelding(p, sites)) });
@@ -104,7 +105,7 @@ function MeerTekst({ item, bionic }: { item: Item; bionic: boolean }) {
   );
 }
 
-export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string }) {
+export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string; meerBronnen?: Bron[] }) {
   const [deelStatus, setDeelStatus] = useState("");
   const url = artikelUrl(item, dag);
   useEffect(() => {
@@ -191,7 +192,7 @@ export function DetailView({ item, onBack, bionic, dag }: { item: Item; onBack: 
           </ol>
         </section>
       ) : null}
-      <Foutgrens code="CLIENT_UITGEBREID"><MeerTekst item={item} bionic={bionic} /></Foutgrens>
+      <Foutgrens code="CLIENT_UITGEBREID"><MeerTekst item={item} bionic={bionic} meerBronnen={meerBronnen} /></Foutgrens>
       <section className="d-sec" aria-label="Bronnen">
         <h2 className="d-h">Bronnen</h2>
         {bronnen.length ? (

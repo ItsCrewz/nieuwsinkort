@@ -1,4 +1,4 @@
-import type { Item, Meer } from "./types";
+import type { Bron, Item, Meer } from "./types";
 import { ontdubbel } from "./dubbel";
 
 // Kopje "Uitgebreid" in een artikel: nooit leeg. Keten gelijk aan de samenvattingen:
@@ -26,4 +26,11 @@ export function uitgebreidOntdubbeld(item: Item, meer: Meer | null | undefined):
   const o = ontdubbel(item, [schoon(meer?.uitleg), schoon(meer?.uittreksel?.flatMap((b) => b.alineas ?? []))]);
   if (o.uitgebreid.length || item.ai?.trim() || item.samenvatting?.trim()) return { punten: o.punten, uitgebreid: o.uitgebreid, uitleg: o.bron === 0 };
   return { punten: item.punten ?? [], uitgebreid: uitgebreidAlineas(item, meer), uitleg: !!schoon(meer?.uitleg).length };
+}
+
+// De URL identificeert het oorspronkelijke artikel, ook bij gelijke bronnamen.
+export function filterMeer(meer: Meer | null, bronnen: Bron[] | undefined): Meer | null {
+  if (!meer || !bronnen) return meer;
+  const urls = new Set(bronnen.map((b) => b.href).filter(Boolean));
+  return { ...meer, perBron: meer.perBron?.filter((b) => urls.has(b.href)), uittreksel: meer.uittreksel?.filter((b) => urls.has(b.href)) };
 }
