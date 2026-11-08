@@ -39,8 +39,9 @@ function nieuwFeit(tekst: string, bekend: string): boolean {
   const bekende = new Set(tokens(bekend).map((w) => w.toLocaleLowerCase("nl")));
   return tokens(tekst).some((w) => (/^\p{N}/u.test(w) || /^\p{Lu}/u.test(w)) && !bekende.has(w.toLocaleLowerCase("nl")));
 }
-// Vergelijk met één bronzin: ontkenningen en tijdsaanduidingen veranderen de betekenis.
-const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:niet|geen|nooit|nu|nog|al|pas|weer|morgen|vandaag|gisteren|overmorgen|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\d{1,2}:\d{2}/gu) || []));
+// Vergelijk met één bronzin: ontkenningen, onzekerheid (#789: kan, zou, mogelijk, waarschijnlijk) en tijdsaanduidingen veranderen de betekenis.
+const MODAAL: Record<string, string> = { kunnen: "kan", zouden: "zou", mogelijke: "mogelijk", mogelijkerwijs: "mogelijk", vermoedelijk: "waarschijnlijk", wellicht: "misschien" };
+const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:kan|kunnen|zou|zouden|mogelijk|mogelijke|mogelijkerwijs|waarschijnlijk|vermoedelijk|misschien|wellicht|niet|geen|nooit|nu|nog|al|pas|weer|morgen|vandaag|gisteren|overmorgen|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\d{1,2}:\d{2}/gu) || []).map((w) => MODAAL[w] ?? w));
 function herhaling(tekst: string, bekend: string): boolean {
   return bekend.split(/\n/).flatMap(zinnen).some((bron) => {
     const a = bijzonder(tekst), b = bijzonder(bron);

@@ -33,6 +33,11 @@ const mar = kop("Markt en Maria");
 for (const q of ["mar maria", "maria mar", "mar markt", "markt mar"]) assert.deepEqual(zoekItems([mar], q), [mar], q);
 assert.deepEqual(zoekItems([mar], "mar mar mar"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Café", ai: "café-eigenaar" } as Item], "cafe cafe"), [{ cat: "nl", kop: "Café", ai: "café-eigenaar" }]);
+// Lettervarianten (#735): zoekterm en tekst, ongeacht hoofdletters.
+const soren = { cat: "nl", kop: "Søren Kierkegaard herdacht", samenvatting: "Lech Wałęsa en Łukasz bij Æbleskiver-feest" } as Item;
+for (const term of ["Soren", "SØREN", "søren", "lukasz", "ŁUKASZ", "walesa", "Wałęsa", "aebleskiver", "Æbleskiver", "soren kierkegaard"]) assert.deepEqual(zoekItems([soren], term), [soren], term);
+for (const term of ["sren", "oren", "ukasz", "bleskiver", "soren jansen"]) assert.deepEqual(zoekItems([soren], term), [], term);
+assert.equal(normaliseer("Ørsted ŁÓDŹ Æon"), "orsted lodz aeon");
 // De klinkertekens onderscheiden woorden en blijven bij canonieke normalisatie behouden.
 for (const [eerste, tweede] of [["कल", "काल"], ["عَلَم", "عِلْم"]]) {
   const artikelen = [eerste, tweede].map((kop) => ({ cat: "nl", kop } as Item));

@@ -19,18 +19,20 @@ export function useVoorladen(vids: Lijsten, gegenereerd: string | undefined, opV
     if (!klaar || !gegenereerd) return;
     const run = (video: boolean) => {
       const { vids: l, opVideo: direct } = nu.current;
-      if (!l || direct) return;
+      if (!l || direct) return false;
       // zoals de UI het toont: Filmpjes opent in de startsoort, met de actieve filters
       const s = startSoort(l.filmpjes);
       const apple = /Apple/.test(navigator.vendor || "") || /iP(hone|ad|od)/.test(navigator.userAgent);
-      voerUit(planVoorladen(l.filmpjes.filter((v) => soortVan(v) === s), l.dumpert, apple, { playerFor, viaProxy }, video));
+      const plan = planVoorladen(l.filmpjes.filter((v) => soortVan(v) === s), l.dumpert, apple, { playerFor, viaProxy }, video);
+      voerUit(plan);
+      // een intentie telt pas als er videowerk is gestart; bij een leeg plan blijft een latere intentie mogelijk
+      return !video || plan.hlsChunk || plan.hls.length > 0 || !!plan.mp4 || plan.preconnect.length > 0;
     };
     // video (chunk, playlists, segmenten, mp4) pas bij intentie; op Home blijft het bij thumbs
     const intent = (e: Event) => {
-      if (gegenereerd === laatsteVideo || !opTab(e.target)) return;
+      if (gegenereerd === laatsteVideo || !opTab(e.target) || !run(true)) return;
       laatsteVideo = gegenereerd;
       ruim();
-      run(true);
     };
     const ruim = () => INTENTIE.forEach((n) => document.removeEventListener(n, intent, true));
     if (gegenereerd !== laatsteVideo) INTENTIE.forEach((n) => document.addEventListener(n, intent, true));
