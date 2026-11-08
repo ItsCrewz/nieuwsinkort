@@ -142,6 +142,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   const drop = useCallback((u: string) => {
     const weg = listRef.current.indexOf(u);
     if (weg < 0) return;
+    if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus(); // bediening verdwijnt: focus naar de strook
     const rest = listRef.current.filter((x) => x !== u);
     listRef.current = rest; // direct bijwerken: meerdere drops in één batch rekenen op de actuele lijst
     setList(rest);
@@ -172,9 +173,9 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       <div
         className="bl-track"
         ref={track}
-        tabIndex={0}
-        role="group"
-        aria-label="Foto's"
+        tabIndex={multi ? 0 : -1}
+        role={multi ? "group" : undefined}
+        aria-label={multi ? "Foto's" : undefined}
         onKeyDown={multi ? (e) => {
           if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
             e.preventDefault();

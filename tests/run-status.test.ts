@@ -53,9 +53,9 @@ try {
   } });
   const meer = await meerGet({ request: new Request("https://test/meer?k=test"), env: { NIEUWS: kapot } });
   const samenvatting = await samenvattingGet({ request: new Request("https://test/samenvatting?id=test"), env: { NIEUWS: kapot } as any });
-  t("Functions loggen KV-fouten en behouden hun fallback", () => {
+  t("Functions loggen KV-fouten en geven hun foutrespons of fallback", () => {
     assert.equal(data.status, 200);
-    assert.equal(meer.status, 404);
+    assert.equal(meer.status, 503);
     assert.equal(samenvatting.status, 200);
     assert.deepEqual(gelezenSleutels, ["data-vooraf", "uur", "sv-klaar", "meer", "vs:test"]);
     assert.equal(fouten.length - before, 5);

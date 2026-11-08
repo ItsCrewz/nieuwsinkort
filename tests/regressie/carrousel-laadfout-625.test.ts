@@ -38,13 +38,15 @@ class Knoop {
   removeAttribute(k: string) { delete this.attrs[k]; }
   addEventListener() {}
   removeEventListener() {}
+  contains(n: Knoop | null): boolean { return !!n && (n === this || this.children.some((c) => c.contains(n))); }
+  focus() {}
   scrollTo(o: { left: number }) { this.scrolls.push(o.left); }
   getBoundingClientRect() { return { left: 0, width: 100 }; }
   get nodeValue() { return this.textContent; } // React werkt tekstknopen zo bij
   set nodeValue(v: string) { this.textContent = v; }
   get classList() { return { add: () => {} }; }
 }
-const doc: any = { addEventListener() {}, removeEventListener() {}, createElement: (n: string) => new Knoop(n, doc), createTextNode: (t: string) => { const k = new Knoop("#text", doc, 3); k.textContent = t; return k; } };
+const doc: any = { activeElement: null, addEventListener() {}, removeEventListener() {}, createElement: (n: string) => new Knoop(n, doc), createTextNode: (t: string) => { const k = new Knoop("#text", doc, 3); k.textContent = t; return k; } };
 g.window = Object.assign(new EventTarget(), { HTMLIFrameElement: class {}, document: doc });
 g.document = doc;
 const { createRoot } = await import("react-dom/client");
