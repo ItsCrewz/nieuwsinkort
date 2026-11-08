@@ -1,0 +1,1 @@
+- De nieuwssitemap zet geen `lastmod` meer (publicatietijd is geen wijzigingstijd); `news:publication_date` blijft (#712).

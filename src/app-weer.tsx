@@ -1,6 +1,7 @@
 import { Icon, type IconName } from "./icons";
 import { cap } from "./nieuws-hulp";
-import type { Weer, WeerDag } from "./types";
+import { dayDates } from "./tijd";
+import type { Weer } from "./types";
 import { BionicText } from "./ui";
 import { veiligeUrl } from "./url";
 
@@ -17,29 +18,6 @@ export function weatherKind(s?: string): Kind {
 
 export const KIND_CLASS: Record<Kind, string> = { sun: "ic-sun", rain: "ic-rain", partly: "ic-partly", cloud: "" };
 
-export const WD = ["zo", "ma", "di", "wo", "do", "vr", "za"];
-
-export const MO = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-
-export function dayDates(dagen: WeerDag[]) {
-  // koppel "do", "vr"… aan de eerstvolgende datums (vanaf morgen)
-  const out: string[] = [];
-  const cur = new Date();
-  for (const d of dagen) {
-    const want = WD.indexOf((d.dag || "").slice(0, 2).toLowerCase());
-    if (want < 0) {
-      out.push("");
-      continue;
-    }
-    for (let k = 0; k < 8; k++) {
-      cur.setDate(cur.getDate() + 1);
-      if (cur.getDay() === want) break;
-    }
-    out.push(`${cur.getDate()} ${MO[cur.getMonth()]}`);
-  }
-  return out;
-}
-
 export function WarnBanner({ text }: { text: string }) {
   const t = text.toLowerCase();
   const lvl = t.includes("rood") ? "lvl-rood" : t.includes("oranje") ? "lvl-oranje" : "";
@@ -55,7 +33,7 @@ export function WarnBanner({ text }: { text: string }) {
 export function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   const nu = W?.nu ?? {};
   const vd = W?.vandaag ?? {};
-  const dagen = (W?.dagen ?? []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
+  const dagen = (Array.isArray(W?.dagen) ? W.dagen : []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
   const heeftNu = typeof nu.temp === "number";
   const stats: { k: string; v: string }[] = [];
   if (typeof nu.van === "number" && typeof nu.tot === "number" && nu.van !== nu.tot) stats.push({ k: "Nu in het land", v: `${nu.van}° tot ${nu.tot}°` });

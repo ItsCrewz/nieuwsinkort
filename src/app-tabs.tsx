@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { rustig } from "./beweging";
 import { Icon } from "./icons";
 import { bronnenTekst } from "./leesverder";
-import { tabOpties, volgendeTab, type TabOpt } from "./tabs";
+import { tabOpties, tabToets, type TabOpt } from "./tabs";
 import type { Data, View } from "./types";
 import { BionicText } from "./ui";
 
@@ -142,16 +142,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               aria-controls="rubriek-paneel"
               aria-selected={view === o.value}
               tabIndex={view === o.value ? 0 : -1}
-              onKeyDown={(e) => {
-                const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-                const i = tabs.indexOf(e.currentTarget);
-                const volgende = volgendeTab(i, tabs.length, e.key);
-                if (volgende === null) return;
-                e.preventDefault();
-                const next = tabs[volgende];
-                next.focus();
-                next.click();
-              }}
+              onKeyDown={tabToets}
               onClick={(e) => {
                 place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
                 onChange(o.value);

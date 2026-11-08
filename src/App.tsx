@@ -21,21 +21,22 @@ import { amsterdamTime, cap, itemKey } from "./nieuws-hulp";
 import { NewsList } from "./nieuws-lijst";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { videoSlug } from "./slug";
-import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { ams } from "./tijd";
 import type { View } from "./types";
 import { useVoorladen } from "./usevoorladen";
 import { soortVan, startSoort } from "./videosoort";
-import { normaliseer, zoekItems } from "./zoek";
+import { zoekItems } from "./zoek";
 import { ZoekLeeg, Zoekbalk } from "./zoekbalk";
+import { maakFeedNavigatie } from "./feedsluiten";
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
 const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 let openedInside = false;
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
-let feedPushed = false;
+const feedNav = maakFeedNavigatie({ get location() { return window.location; }, get history() { return window.history; } });
 // De oude Alles-route vervangen zonder een extra geschiedenisitem.
 function huidigeRoute(): Route {
   if (window.location.hash === "#/alles") {
@@ -130,7 +131,11 @@ export default function App() {
         const f = n instanceof HTMLAnchorElement ? n : n.querySelector<HTMLElement>("a[href]") ?? n;
         if (f === n && !n.hasAttribute("tabindex")) n.tabIndex = -1;
         f.focus({ preventScroll: true });
-      } else window.scrollTo(0, 0);
+      } else {
+        window.scrollTo(0, 0);
+        // Zoekknop alleen als er echt gezocht wordt, anders de hoofdinhoud
+        (document.querySelector<HTMLElement>('.zoek-knop[aria-expanded="true"]') ?? document.querySelector<HTMLElement>("main#top"))?.focus({ preventScroll: true });
+      }
     }
   }, [route.selected]);
   useEffect(() => {
@@ -147,7 +152,7 @@ export default function App() {
       const fl = vids ?? data;
       const list = v === "filmpjes" ? fl.filmpjes.filter((x) => soortVan(x) === startSoort(fl.filmpjes)) : fl.dumpert;
       if (list.length) {
-        feedPushed = false;
+        feedNav.geopend(false);
         window.location.hash = `#/${v}/${encodeURIComponent(videoSlug(list[0]))}`;
         return;
       }
@@ -156,16 +161,11 @@ export default function App() {
     window.location.hash = viewHash(v);
   };
   const openFeed = useCallback((cat: "filmpjes" | "dumpert", slug: string) => {
-    feedPushed = true;
+    feedNav.geopend(true);
     window.location.hash = `#/${cat}/${encodeURIComponent(slug)}`;
   }, []);
   const closeFeed = useCallback((cat: "filmpjes" | "dumpert") => {
-    if (feedPushed) {
-      feedPushed = false;
-      window.history.back();
-    } else {
-      window.location.replace(`${window.location.pathname}${window.location.search}#/${cat}`);
-    }
+    feedNav.sluit(cat);
   }, []);
   const open = useCallback((key: string) => {
     openedInside = true;
@@ -258,7 +258,8 @@ export default function App() {
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
-              dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
+              meerBronnen={off.size ? actieveBronnen(selectedItem, index, off) : undefined}
+              dag={ams(Date.parse(raw.gegenereerd!)).iso}
               bionic={bionic}
               onBack={(opties) => {
                 geveegd.current = !!opties?.geveegd;
@@ -319,7 +320,7 @@ export default function App() {
             key={view}
             items={zoekUitkomst}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

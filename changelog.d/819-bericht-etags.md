@@ -1,0 +1,1 @@
+- Artikelpagina `/bericht/…`: `If-None-Match` met meerdere tags, zwakke tags of `*` geeft nu 304, zowel bij cachetreffers als bij vers gegenereerde pagina's (#819).
