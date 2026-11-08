@@ -1,6 +1,7 @@
 import { artikelId, artikelPad, linkId, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
+import { etagMatch } from "../../src/etagmatch";
 import { ams } from "../../src/tijd";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
@@ -19,7 +20,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   if (bestaand) {
-    if (request.headers.get("If-None-Match") === bestaand.headers.get("ETag")) return new Response(null, { status: 304, headers: bestaand.headers });
+    if (etagMatch(request.headers.get("If-None-Match"), bestaand.headers.get("ETag"))) return new Response(null, { status: 304, headers: bestaand.headers });
     return bestaand;
   }
   const tijdelijk = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
@@ -44,6 +45,6 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   headers.delete("Content-Length"); headers.delete("Content-Encoding");
   const response = new Response(html, { headers });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
-  if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers });
+  if (etagMatch(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers });
   return response;
 }
