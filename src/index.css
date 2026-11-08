@@ -206,7 +206,6 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .bn b{font-weight:600;color:var(--ink)}
 .morewrap{display:flex;justify-content:center;margin-top:36px}
 .btn{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 20px;border-radius:21px;background:var(--ink);color:var(--p);font-size:0.875rem;font-weight:500}
-.btn:hover{opacity:.88}
 .btn:active,.iconbtn:active,.srcbtn:active,.chip:active,.f-btn:active,.textbtn:active,.back:active,.fpill:active,.nf-btn:active{transform:scale(.97)}
 .empty{padding:48px 16px;text-align:center;font-size:0.9375rem;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
 .empty .ic{width:22px;height:22px;stroke-width:1.4}
@@ -556,9 +555,9 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .bl-slide img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;-webkit-user-drag:none;user-select:none}
 .bl-slide img.in{opacity:1}
 .bl.multi .bl-track{cursor:pointer}
-.bl-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:8px;pointer-events:none;z-index:1}
-.bl-dots span{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.55);box-shadow:0 0 0 .5px rgba(0,0,0,.25)}
-.bl-dots span.on{transform:scaleX(2.667);background:#fff}
+.bl-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:0;pointer-events:none;z-index:1}
+.bl-dots span{width:16px;height:6px;border-radius:8px/3px;background:#fff;opacity:.55;transform:scaleX(.375);box-shadow:0 0 0 .5px rgba(0,0,0,.25)}
+.bl-dots span.on{transform:none;opacity:1}
 .bl-nav{position:absolute;top:50%;width:34px;height:34px;margin-top:-17px;border-radius:50%;border:0;background:rgba(0,0,0,.42);color:#fff;font-size:1.375rem;line-height:32px;display:none;z-index:1;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .bl-nav.prev{left:8px}.bl-nav.next{right:8px}
 @media (hover:hover) and (pointer:fine){.bl.multi:hover .bl-nav{display:block}}
