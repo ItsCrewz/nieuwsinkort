@@ -1,0 +1,1 @@
+- Cache van berichtpagina’s en nieuwslinks stopt bij de Amsterdamse dag- en verloopgrenzen (#608).
