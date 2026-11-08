@@ -95,3 +95,15 @@ t("onmogelijke kloktijden zijn onbekend: zichtbaar en onderaan; grenswaarden gel
     assert.deepEqual(v.map((x: any) => x.tijd), ["25:99", "11:30", "24:00"]);
   });
 });
+
+import { schoonFilters } from "../src/filters";
+t("schoonFilters: ongeldige opgeslagen waarden herstellen, geldige behouden", () => {
+  assert.deepEqual(schoonFilters(null), STANDAARD);
+  assert.deepEqual(schoonFilters([1]), STANDAARD);
+  assert.deepEqual(schoonFilters("x"), STANDAARD);
+  assert.deepEqual(schoonFilters({ cats: ["onbekend"], regio: ["onbekend"], tijd: "morgen", sort: 5, video: "ja", samen: 1 }), STANDAARD);
+  assert.deepEqual(schoonFilters({ cats: "nl", regio: {} }), STANDAARD);
+  const goed: Filters = { tijd: "3u", cats: ["f1", "tech"], video: true, samen: true, regio: ["wereld"], sort: "bronnen" };
+  assert.deepEqual(schoonFilters(goed), goed);
+  assert.deepEqual(schoonFilters({ ...goed, cats: ["f1", "onbekend"], extra: 1 }), { ...goed, cats: ["f1"] });
+});
