@@ -1,0 +1,1 @@
+- Laat de feed-sneltoetsen (pijltjes, Home/End, j/k) knoppen, links en andere bediening buiten de feed met rust; een neutraal doel met tabindex=0 blokkeert ze niet meer (#763).
