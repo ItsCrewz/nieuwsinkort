@@ -1,0 +1,2 @@
+- Behoud de video-voorlaadintentie na terugkeer van een geopende videotab (#686).
+- Een intentie zonder gestart videowerk (leeg plan) telt niet als gestart; een latere intentie kan dan nog starten (#686).

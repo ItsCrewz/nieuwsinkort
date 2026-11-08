@@ -29,7 +29,7 @@ export function slim(d: any) {
   if (!d || typeof d !== "object") return d;
   const { ontdubbeld, routine_gegenereerd, oud, ...rest } = d;
   // ft/fd = oorspronkelijke feedtitel en -beschrijving per bron (alleen voor de sportindeling in de Worker)
-  if (Array.isArray(rest.items)) rest.items = rest.items.map((i: any) => Array.isArray(i?.bronnen) && i.bronnen.some((b: any) => b && ("ft" in b || "fd" in b)) ? { ...i, bronnen: i.bronnen.map(({ ft, fd, ...b }: any) => b) } : i);
+  if (Array.isArray(rest.items)) rest.items = rest.items.map((i: any) => Array.isArray(i?.bronnen) && i.bronnen.some((b: any) => b && typeof b === "object" && ("ft" in b || "fd" in b)) ? { ...i, bronnen: i.bronnen.map((bron: any) => { if (!bron || typeof bron !== "object") return bron; const { ft, fd, ...b } = bron; return b; }) } : i);
   return rest;
 }
 

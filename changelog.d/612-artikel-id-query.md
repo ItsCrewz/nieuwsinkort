@@ -1,0 +1,1 @@
+- Voorkom botsende artikel-id's bij inhoudsbepalende queryparameters; dubbelzinnige oude deellinks openen geen willekeurig bericht (#612).

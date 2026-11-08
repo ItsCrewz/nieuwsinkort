@@ -1,0 +1,1 @@
+- Zoeken vindt namen met gangbare lettervarianten: ø, ł, æ (en œ, đ, ß) tellen als o, l, ae in zoekterm en artikeltekst, dus `Soren` vindt `Søren` (#735).

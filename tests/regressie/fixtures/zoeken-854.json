@@ -1,0 +1,8 @@
+[
+  { "cat": "nl", "kop": "Straße" },
+  { "cat": "nl", "kop": "Strasse" },
+  { "cat": "nl", "kop": "STRASSE" },
+  { "cat": "nl", "kop": "STRAẞE" },
+  { "cat": "nl", "kop": "Bahnhofstraße" },
+  { "cat": "nl", "kop": "Bahnhof" }
+]
