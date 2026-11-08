@@ -31,6 +31,11 @@ assert.deepEqual(zoekItems([jaar("Café 2024, groot"), jaar("Café 20240")], "20
 assert.deepEqual(zoekItems([jaar("Verkiezingen in 2024")], "2024 verkie").length, 1);
 assert.deepEqual(zoekItems([jaar("Groei 2024.")], "2024").length, 1);
 assert.deepEqual(zoekItems([jaar("Temperatuur 3,5 graden")], "3,5").length, 1);
+// Lettervarianten (#735): zoekterm en tekst, ongeacht hoofdletters.
+const soren = { cat: "nl", kop: "Søren Kierkegaard herdacht", samenvatting: "Lech Wałęsa en Łukasz bij Æbleskiver-feest" } as Item;
+for (const term of ["Soren", "SØREN", "søren", "lukasz", "ŁUKASZ", "walesa", "Wałęsa", "aebleskiver", "Æbleskiver", "soren kierkegaard"]) assert.deepEqual(zoekItems([soren], term), [soren], term);
+for (const term of ["sren", "oren", "ukasz", "bleskiver", "soren jansen"]) assert.deepEqual(zoekItems([soren], term), [], term);
+assert.equal(normaliseer("Ørsted ŁÓDŹ Æon"), "orsted lodz aeon");
 // De klinkertekens onderscheiden woorden en blijven bij canonieke normalisatie behouden.
 for (const [eerste, tweede] of [["कल", "काल"], ["عَلَم", "عِلْم"]]) {
   const artikelen = [eerste, tweede].map((kop) => ({ cat: "nl", kop } as Item));
