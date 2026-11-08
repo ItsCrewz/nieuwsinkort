@@ -1,0 +1,1 @@
+- Terugvegen: `ev.target instanceof Element` valt terug op `null` wanneer `Element` niet bestaat (node/SSR), waardoor `terugvegen-navigatie-658` weer groen is en main herstelt.

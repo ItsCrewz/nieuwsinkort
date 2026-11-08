@@ -55,7 +55,7 @@ headers(r, "no-store");
 inhoud.meer = { items: { bericht: { uitleg: ["Extra tekst"] } } };
 r = await meer({ request: req("/meer?k=bericht"), env });
 assert.equal(r.status, 200);
-headers(r, "public, max-age=600");
+headers(r, "public, max-age=0, must-revalidate");
 assert.deepEqual(await r.json(), { uitleg: ["Extra tekst"] });
 
 for (const pad of ["/samenvatting", "/samenvatting?id=!!", `/samenvatting?id=${"a".repeat(91)}`]) {
