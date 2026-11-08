@@ -124,8 +124,9 @@ async function ytCaptions(id: string, why: string[]): Promise<string> {
 // ---------------- geluid voor Whisper
 async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{ bytes: Uint8Array; sec: number } | null> {
   const get = async (u: string) => { const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" }, signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; };
-  let list = await (await get(url)).text();
-  let base = url;
+  let response = await get(url);
+  let list = await response.text();
+  let base = response.url || url;
   if (/#EXT-X-STREAM-INF/.test(list)) {
     // Reddit heeft een los audiospoor; anders de variant met de laagste bitrate
     const audio = /#EXT-X-MEDIA:TYPE=AUDIO[^\n]*URI="([^"]+)"/.exec(list)?.[1];
@@ -135,8 +136,10 @@ async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{
       pickU = vs[0]?.u;
     }
     if (!pickU) { why.push("HLS: geen spoor"); return null; }
-    base = new URL(pickU, url).toString();
-    list = await (await get(base)).text();
+    base = new URL(pickU, base).toString();
+    response = await get(base);
+    base = response.url || base;
+    list = await response.text();
   }
   if (/#EXT-X-MAP|\.m4s/.test(list)) { why.push("HLS: fMP4-stukjes (niet ondersteund)"); return null; }
   const segs: { u: string; d: number }[] = [];
