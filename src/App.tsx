@@ -9,7 +9,7 @@ import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayou
 import type { Bron, Data, Item, View, Weer } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
-import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
 import { sorteerOpGroep } from "./filmgroep";
@@ -26,7 +26,7 @@ import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, volgendeTab, wisselRichting, type TabOpt } from "./tabs";
+import { CAT_LABEL, tabOpties, tabToets, wisselRichting, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
@@ -35,6 +35,7 @@ import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
+import { maakFeedNavigatie } from "./feedsluiten";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -55,7 +56,7 @@ const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
-let feedPushed = false;
+const feedNav = maakFeedNavigatie({ get location() { return window.location; }, get history() { return window.history; } });
 // Intro-animatie alleen bij de eerste keer laden; daarna (tabwissel, herladen) niet opnieuw.
 let introDone = false;
 
@@ -341,16 +342,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               aria-controls="rubriek-paneel"
               aria-selected={view === o.value}
               tabIndex={view === o.value ? 0 : -1}
-              onKeyDown={(e) => {
-                const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-                const i = tabs.indexOf(e.currentTarget);
-                const volgende = volgendeTab(i, tabs.length, e.key);
-                if (volgende === null) return;
-                e.preventDefault();
-                const next = tabs[volgende];
-                next.focus();
-                next.click();
-              }}
+              onKeyDown={tabToets}
               onClick={(e) => {
                 place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
                 onChange(o.value);
@@ -1127,7 +1119,11 @@ export default function App() {
         const f = n instanceof HTMLAnchorElement ? n : n.querySelector<HTMLElement>("a[href]") ?? n;
         if (f === n && !n.hasAttribute("tabindex")) n.tabIndex = -1;
         f.focus({ preventScroll: true });
-      } else window.scrollTo(0, 0);
+      } else {
+        window.scrollTo(0, 0);
+        // Zoekknop alleen als er echt gezocht wordt, anders de hoofdinhoud
+        (document.querySelector<HTMLElement>('.zoek-knop[aria-expanded="true"]') ?? document.querySelector<HTMLElement>("main#top"))?.focus({ preventScroll: true });
+      }
     }
   }, [route.selected]);
 
@@ -1146,7 +1142,7 @@ export default function App() {
       const fl = vids ?? data;
       const list = v === "filmpjes" ? fl.filmpjes.filter((x) => soortVan(x) === startSoort(fl.filmpjes)) : fl.dumpert;
       if (list.length) {
-        feedPushed = false;
+        feedNav.geopend(false);
         window.location.hash = `#/${v}/${encodeURIComponent(videoSlug(list[0]))}`;
         return;
       }
@@ -1155,16 +1151,11 @@ export default function App() {
     window.location.hash = viewHash(v);
   };
   const openFeed = useCallback((cat: "filmpjes" | "dumpert", slug: string) => {
-    feedPushed = true;
+    feedNav.geopend(true);
     window.location.hash = `#/${cat}/${encodeURIComponent(slug)}`;
   }, []);
   const closeFeed = useCallback((cat: "filmpjes" | "dumpert") => {
-    if (feedPushed) {
-      feedPushed = false;
-      window.history.back();
-    } else {
-      window.location.replace(`${window.location.pathname}${window.location.search}#/${cat}`);
-    }
+    feedNav.sluit(cat);
   }, []);
   const open = useCallback((key: string) => {
     openedInside = true;
@@ -1257,6 +1248,7 @@ export default function App() {
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
+              meerBronnen={off.size ? actieveBronnen(selectedItem, index, off) : undefined}
               dag={ams(Date.parse(raw.gegenereerd!)).iso}
               bionic={bionic}
               onBack={(opties) => {

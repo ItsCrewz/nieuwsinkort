@@ -11,6 +11,12 @@ t("goedBeeld weigert lege waarden en data-URL's", () => {
   }
 });
 
+t("goedBeeld weigert te kleine hoogteparameters (h, height), grens 160", () => {
+  const b = "https://nieuws.nl/foto.jpg";
+  for (const q of ["?height=80", "?h=159", "?HEIGHT=80", "?w=800&h=100", "?width=800&Height=159", "?x=1&h=0"]) assert.equal(goedBeeld(b + q), false, q);
+  for (const q of ["?height=160", "?h=600", "?H=160", "?w=800&h=450", "?h=", "?h=abc", "?w=800", "?ah=80", "?height=80x"]) assert.equal(goedBeeld(b + q), true, q);
+});
+
 t("goedBeeld weigert svg ongeacht hoofdletters en query", () => {
   assert.equal(goedBeeld("https://nieuws.nl/beeld.svg"), false);
   assert.equal(goedBeeld("https://nieuws.nl/beeld.SVG?breedte=800"), false);
