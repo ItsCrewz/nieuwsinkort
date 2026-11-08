@@ -57,10 +57,13 @@ export function laagsteVariant(txt: string, base: string): string {
   let best = "";
   let bw = Infinity;
   lines.forEach((l, i) => {
-    const m = /^#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)/.exec(l);
+    if (!l.startsWith("#EXT-X-STREAM-INF:")) return;
+    const attrs = l.slice("#EXT-X-STREAM-INF:".length).matchAll(/(?:^|,)([A-Z0-9-]+)=("[^"]*"|[^,]*)/g);
+    const waarde = Array.from(attrs).find((m) => m[1] === "BANDWIDTH")?.[2] ?? "";
+    const getal = /^\d+$/.test(waarde) ? Number(waarde) : 0;
     const u = lines[i + 1];
-    if (m && u && !u.startsWith("#") && +m[1] < bw) {
-      bw = +m[1];
+    if (Number.isSafeInteger(getal) && getal > 0 && u && !u.startsWith("#") && getal < bw) {
+      bw = getal;
       best = u;
     }
   });
@@ -86,20 +89,21 @@ export function segmenten(txt: string, base: string, max = 2): string[] {
 
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
-const vast = new Set<unknown>(); // Image-objecten van lopende taken (tegen voortijdig opruimen); na load/error weer los
-export const vastAantal = () => vast.size;
+const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
+export const aantalActievePosters = () => vast.size;
+const POSTER_TIMEOUT = 15000;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 
 const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
 
 async function warmHls(master: string) {
-  const get = (u: string) => fetch(u, LOW).then((r) => (r.ok ? r.text() : ""));
-  const base = new URL(master, location.href).href;
-  let txt = await get(master);
-  let b = base;
+  // Basis voor relatieve verwijzingen is de uiteindelijke respons-URL: fetch volgt redirects naar andere mappen.
+  const get = (u: string) => fetch(u, LOW).then(async (r) => (r.ok ? { txt: await r.text(), base: r.url || u } : { txt: "", base: u }));
+  let { txt, base: b } = await get(master);
+  if (!b.includes("://")) b = new URL(b, location.href).href;
   if (/#EXT-X-STREAM-INF/.test(txt)) {
-    b = laagsteVariant(txt, base);
-    txt = b ? await get(b) : "";
+    const v = laagsteVariant(txt, b);
+    ({ txt, base: b } = v ? await get(v) : { txt: "", base: b });
   }
   for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => r.arrayBuffer());
 }
@@ -143,13 +147,16 @@ export function voerUit(p: Plan) {
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
-          im.onload = im.onerror = () => {
+          const klaar = () => {
+            clearTimeout(timer);
             im.onload = im.onerror = null;
             vast.delete(im);
             ok();
           };
+          const timer = setTimeout(klaar, POSTER_TIMEOUT);
+          im.onload = im.onerror = klaar;
           vast.add(im);
-          im.src = t;
+          try { im.src = t; } catch { klaar(); }
         })
     );
   }

@@ -12,6 +12,7 @@ export type Filters = { tijd: Tijd; cats: Cat[]; video: boolean; samen: boolean;
 const KEY = "nieuwsinkort-filters";
 const BEZOEK = "nieuwsinkort-laatste-bezoek";
 const BEZOEK_SESSIE = "nieuwsinkort-bezoek-ref";
+const BEZOEK_INTERVAL = 60_000; // hartslag voor een lang zichtbaar tabblad
 const GENOEG = 5; // zoveel nieuwe berichten sinds je laatste bezoek = automatisch "Sinds je laatste bezoek"
 export const STANDAARD: Filters = { tijd: "auto", cats: [], video: false, samen: false, regio: [], sort: "nieuw" };
 
@@ -30,14 +31,31 @@ export const CAT_OPT: { id: Cat; label: string }[] = [
   { id: "showbizz", label: "Showbizz" },
 ];
 
+const TIJD_OPT: Tijd[] = ["auto", "sinds", "vandaag", "1u", "3u", "alles"];
+const SORTEN: Filters["sort"][] = ["nieuw", "oud", "bronnen"];
+const REGIOS: Regio[] = ["haarlem", "nl", "wereld"];
+const lijst = <T extends string>(v: unknown, ok: readonly T[]): T[] => (Array.isArray(v) ? ok.filter((x) => v.includes(x)) : []);
+
+/** Opgeslagen JSON → geldige Filters: onbekende waarden vallen terug op de standaard, geldige keuzes blijven. */
+export function schoonFilters(j: unknown): Filters {
+  if (!j || typeof j !== "object" || Array.isArray(j)) return STANDAARD;
+  const o = j as Record<string, unknown>;
+  return {
+    tijd: TIJD_OPT.find((x) => x === o.tijd) ?? STANDAARD.tijd,
+    cats: lijst(o.cats, CAT_OPT.map((c) => c.id)),
+    video: o.video === true,
+    samen: o.samen === true,
+    regio: lijst(o.regio, REGIOS),
+    sort: SORTEN.find((x) => x === o.sort) ?? STANDAARD.sort,
+  };
+}
+
 function lees(): Filters {
   try {
-    const j = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (j && typeof j === "object") return { ...STANDAARD, ...j, cats: Array.isArray(j.cats) ? j.cats : [], regio: Array.isArray(j.regio) ? j.regio : [] };
+    return schoonFilters(JSON.parse(localStorage.getItem(KEY) || "null"));
   } catch {
-    /* privémodus */
+    return STANDAARD; // privémodus of kapotte JSON
   }
-  return STANDAARD;
 }
 
 /** Vorig bezoek: bij de start van een sessie gelezen (en vastgehouden zolang het tabblad open is), daarna "nu" opgeslagen. */
@@ -67,7 +85,12 @@ export function useFilters() {
     bewaarBezoek();
     const onHide = () => document.visibilityState === "hidden" && bewaarBezoek();
     document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
+    // Lang open tabblad: houd de bezoektijd vers (alleen opslag; `vorig` is een vaste sessiereferentie en verschuift niet).
+    const timer = setInterval(() => document.visibilityState === "visible" && bewaarBezoek(), BEZOEK_INTERVAL);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      clearInterval(timer);
+    };
   }, []);
   const set = useCallback((p: Partial<Filters>) => {
     setF((o) => {
@@ -85,7 +108,7 @@ export function useFilters() {
 }
 
 // ------------------------------------------------------------- tijd
-// Berichten hebben alleen "HH:MM" (Amsterdam); gegenereerd bepaalt de referentiedag.
+// Terugval voor data met alleen "HH:MM" (Amsterdam); gegenereerd bepaalt de referentiedag.
 // Tot 20 minuten vooruit blijft op die dag, zodat de toekomstmarge van de Worker past.
 const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const minVan = (d: Date) => {
@@ -144,7 +167,7 @@ export const TIJDEN: Exclude<Tijd, "auto">[] = ["sinds", "vandaag", "3u", "1u", 
 export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: string | undefined, alles: boolean): Uitkomst {
   const g = genVan(gen);
   const basis = zonderTijd(items, f, alles);
-  const ts = basis.map((it) => tijdstip(it.tijd, g));
+  const ts = basis.map((it) => typeof it.t === "number" && it.t > 0 && Number.isFinite(new Date(it.t).getTime()) ? it.t : tijdstip(it.tijd, g));
   const tel = (t: Exclude<Tijd, "auto">) => {
     if (t === "alles") return basis.length;
     if (t === "sinds" && !vorig) return basis.length;

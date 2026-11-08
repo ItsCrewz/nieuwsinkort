@@ -3,9 +3,9 @@
 import { DurableObject } from "cloudflare:workers";
 import { BudgetLogica, type Reservering } from "../../src/budget";
 // meting, foutclassificatie en UTC-dagteller: pure logica in src/budget.ts (ook voor de Pages Function), hier voor de Worker
-export { utcDag, neuronFactor, isDagQuota, isTijdelijk, aiFout, meetChat, meetFout, nieuwsNeuronen, zetDagTeller, quotaSleutel, type Meting } from "../../src/budget";
+export { utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quotaSleutel } from "../../src/budget";
 
-export interface BudgetEnv { NIEUWS: KVNamespace }
+interface BudgetEnv { NIEUWS: KVNamespace }
 
 export class Budget extends DurableObject<BudgetEnv> {
   private l = new BudgetLogica(this.ctx.storage as any, {

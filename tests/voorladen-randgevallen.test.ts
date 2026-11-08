@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, vastAantal, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, aantalActievePosters, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -125,6 +125,23 @@ try {
     assert.deepEqual(optiesLijst, verzoeken.map(() => ({ credentials: "omit", priority: "low" })));
   });
 
+  await test("HLS volgt redirects: relatieve paden t.o.v. de uiteindelijke URL (master en mediaplaylist)", async () => {
+    const verzoeken: string[] = [];
+    const doel: Record<string, string> = {
+      "https://site.example/m.m3u8": "https://cdn.example/a/master.m3u8",
+      "https://cdn.example/a/laag.m3u8": "https://cdn.example/b/c/media.m3u8",
+    };
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      const eind = doel[url] || url;
+      const txt = eind.endsWith("master.m3u8") ? "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\nlaag.m3u8" : eind.endsWith("media.m3u8") ? "#EXTM3U\n1.ts\n/abs.ts" : "";
+      return { ok: true, url: eind, text: async () => txt, arrayBuffer: async () => new ArrayBuffer(0) };
+    });
+    voerUit({ ...leeg(), hls: ["https://site.example/m.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken, ["https://site.example/m.m3u8", "https://cdn.example/a/laag.m3u8", "https://cdn.example/b/c/1.ts", "https://cdn.example/abs.ts"]);
+  });
+
   await test("mp4-stream stopt bij de bytegrens", async () => {
     let gelezen = 0;
     let gestopt = false;
@@ -157,32 +174,32 @@ try {
     voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK }, (_, i) => `https://samen-a.example/${i}.jpg`) });
     voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK }, (_, i) => `https://samen-b.example/${i}.jpg`) });
     assert.equal(afbeeldingen.length - begin, GELIJK);
-    assert.equal(vastAantal(), GELIJK);
+    assert.equal(aantalActievePosters(), GELIJK);
     afbeeldingen[begin].onload!();
     await wacht();
     assert.equal(afbeeldingen.length - begin, GELIJK + 1);
-    assert.equal(vastAantal(), GELIJK);
-    for (let i = begin + 1; i < afbeeldingen.length || vastAantal() > 0; i++) {
+    assert.equal(aantalActievePosters(), GELIJK);
+    for (let i = begin + 1; i < afbeeldingen.length || aantalActievePosters() > 0; i++) {
       afbeeldingen[i].onload!();
       await wacht();
     }
     assert.equal(afbeeldingen.length - begin, GELIJK * 2);
-    assert.equal(vastAantal(), 0);
+    assert.equal(aantalActievePosters(), 0);
   });
 
   await test("afgeronde afbeeldingen worden losgelaten, ook bij herhaalde plannen", async () => {
     const begin = afbeeldingen.length;
-    assert.equal(vastAantal(), 0);
+    assert.equal(aantalActievePosters(), 0);
     for (let ronde = 0; ronde < 3; ronde++) {
       voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK + 1 }, (_, i) => `https://ronde${ronde}.example/${i}.jpg`) });
-      assert.equal(vastAantal(), GELIJK);
+      assert.equal(aantalActievePosters(), GELIJK);
       afbeeldingen[begin + ronde * (GELIJK + 1)].onerror!(); // fout
       afbeeldingen[begin + ronde * (GELIJK + 1) + 1].onload!(); // succes
       await wacht();
-      assert.equal(vastAantal(), 2); // twee los, de vierde taak gestart: hooguit GELIJK vast
+      assert.equal(aantalActievePosters(), 2); // twee los, de vierde taak gestart: hooguit GELIJK vast
       afbeeldingen.slice(begin + ronde * (GELIJK + 1) + 2, begin + (ronde + 1) * (GELIJK + 1)).forEach((img) => img.onload!());
       await wacht();
-      assert.equal(vastAantal(), 0);
+      assert.equal(aantalActievePosters(), 0);
     }
   });
 
