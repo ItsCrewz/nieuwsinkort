@@ -7,9 +7,11 @@ Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: tr
 const urls = Array.from({ length: 4 }, (_, i) => `https://bron${i}.nl/rss`);
 const codes = ["SRC_TIMEOUT", "SRC_HTTP", "SRC_PARSE", "SRC_EMPTY"] as const;
 const echte = globalThis.fetch;
-globalThis.fetch = (async (u: any) => String(u).includes("/bronnen.json") ? Response.json({ groepen: [{ id: "nl", bronnen: urls.map((url, i) => ({ id: String(i), naam: `Bron ${i}`, feeds: [{ url }] })) }] }) : new Response("", { status: 404 })) as any;
+let statFout = false;
+globalThis.fetch = (async (u: any) => { if (statFout && String(u).includes("statisch=1")) throw new DOMException("timed out", "TimeoutError"); return String(u).includes("/bronnen.json") ? Response.json({ groepen: [{ id: "nl", bronnen: urls.map((url, i) => ({ id: String(i), naam: `Bron ${i}`, feeds: [{ url }] })) }] }) : new Response("", { status: 404 }); }) as any;
 try {
-  for (const aantal of [1, 2, 3, 4]) {
+  for (const [aantal, stat] of [[1, false], [2, false], [3, false], [4, false], [2, true]] as const) {
+    statFout = stat;
     const kv = new Map<string, string>([["uur", "vorige data"]]);
     const opslag = new Map<string, any>();
     const env: any = { SITE: "https://lokaal", MODEL: "m", NIEUWS: { get: async (k: string, type?: string) => { const v = kv.get(k); return v == null ? null : type === "json" ? JSON.parse(v) : v; }, put: async (k: string, v: string) => { kv.set(k, v); } }, FETCHER: { idFromName: (x: string) => x, get: () => ({ fetch: async (_u: string, init: any) => Response.json(JSON.parse(init.body).jobs.map((j: any) => { const i = urls.indexOf(j.url); return i >= 0 && i < aantal ? { url: j.url, ok: false, status: 0, code: codes[i], ms: i + 1 } : { url: j.url, ok: true, status: 200, ms: 1, entries: [], videos: [] }; })) }) } };
