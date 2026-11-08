@@ -27,8 +27,14 @@ async function openArtikel(page) {
 
 // Startpunt op de leadtekst: een vast y-punt raakt soms een afbeelding in een horizontaal scrollbaar blok (laadvolgorde), en dat negeert de hook bewust.
 async function startY(page) {
-  const b = await page.locator("article.detail .d-lead").first().boundingBox();
-  return Math.round(b.y + Math.min(b.height / 2, 12));
+  // Wacht tot de intree-animatie klaar is: pas dan raakt het punt echt het artikel (de hook negeert aanrakingen erbuiten).
+  let y = 0;
+  await expect.poll(async () => {
+    const b = await page.locator("article.detail .d-lead").first().boundingBox();
+    y = Math.round(b.y + Math.min(b.height / 2, 12));
+    return page.evaluate(([px, py]) => !!document.elementFromPoint(px, py)?.closest("article.detail"), [60, y]);
+  }).toBe(true);
+  return y;
 }
 
 test("veeg naar rechts sluit het artikel", async ({ page }) => {
@@ -65,4 +71,27 @@ test("verticaal scrollen sluit het artikel niet", async ({ page }) => {
   await g.eind();
   await expect(page.locator("article.detail")).toBeVisible();
   expect(await page.locator("article.detail").evaluate((e) => e.style.transform)).toBe("");
+});
+
+test("een veeg buiten het artikel, op het deelportaal of op een uitgesloten kind doet niets", async ({ page }) => {
+  await openArtikel(page);
+  await page.evaluate(() => {
+    const buiten = document.createElement("div");
+    buiten.id = "veeg-buiten";
+    buiten.style.cssText = "position:fixed;z-index:9999;left:40px;top:100px;width:300px;height:40px";
+    document.body.append(buiten);
+    const kind = document.createElement("input");
+    kind.id = "veeg-invoer";
+    kind.style.cssText = "position:fixed;z-index:9999;left:40px;top:200px;width:300px;height:40px";
+    document.querySelector("article.detail").append(kind);
+  });
+  for (const selector of ["#veeg-buiten", ".deel-knop", "#veeg-invoer"]) {
+    const vak = await page.locator(selector).boundingBox();
+    const y = Math.round(vak.y + vak.height / 2);
+    const x = Math.max(25, Math.round(vak.x + Math.min(vak.width / 2, 20)));
+    const g = await veeg(page, [x, y], [x + 200, y]);
+    expect(await page.locator("article.detail").evaluate((e) => e.style.transform)).toBe("");
+    await g.eind();
+    await expect(page.locator("article.detail")).toBeVisible();
+  }
 });

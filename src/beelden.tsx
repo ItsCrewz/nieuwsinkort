@@ -34,8 +34,16 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
     const im = new Image();
     im.referrerPolicy = "no-referrer";
     im.decoding = "async";
-    im.src = src;
-    return im.decode ? im.decode() : new Promise<void>((ok, nok) => { im.onload = () => ok(); im.onerror = nok; });
+    if (im.decode) { im.src = src; return im.decode(); }
+    // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
+    // voltooide afbeelding direct afhandelen; handlers daarna opruimen.
+    return new Promise<void>((ok, nok) => {
+      const af = (goed: boolean) => { im.onload = im.onerror = null; if (goed) ok(); else nok(new Error("laden mislukt")); };
+      im.onload = () => af(true);
+      im.onerror = () => af(false);
+      im.src = src;
+      if (im.complete) af(im.naturalWidth > 0);
+    });
   };
   const p = laad(bronUrl(u)) // zelfde URL als de <img src>, anders dubbele downloads
     .catch(() => (naarRechtstreeks(u) ? laad(u) : Promise.reject()))
@@ -125,7 +133,11 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   iRef.current = i;
   useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
   useEffect(() => { onChange?.(); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  const drop = useCallback((u: string) => setList((l) => l.filter((x) => x !== u)), []);
+  const drop = useCallback((u: string) => {
+    if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus();
+    setList((l) => l.filter((x) => x !== u));
+    setI((n) => Math.max(0, Math.min(n, listRef.current.length - 2))); // alleen terug als de huidige foto buiten de lijst valt
+  }, []);
   const onScroll = useCallback(() => {
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
@@ -146,9 +158,9 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       <div
         className="bl-track"
         ref={track}
-        tabIndex={0}
-        role="group"
-        aria-label="Foto's"
+        tabIndex={multi ? 0 : -1}
+        role={multi ? "group" : undefined}
+        aria-label={multi ? "Foto's" : undefined}
         onKeyDown={multi ? (e) => {
           if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
             e.preventDefault();
@@ -203,8 +215,17 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
 });
 
 /** Kleine vierkante foto voor de lijst (alleen de eerste); valt weg als hij niet laadt. */
+/** Index van de foto die Thumb probeert. Verandert de inhoud van de lijst (ververst bericht), dan terug naar de eerste;
+ *  een rerender met dezelfde lijst (nieuwe array, zelfde urls) laat de index staan. */
+export function useThumbIndex(urls: string[]): [number, (k: number) => void] {
+  const sleutel = urls.join("\n");
+  const [st, setSt] = useState({ sleutel, k: 0 });
+  if (st.sleutel !== sleutel) { setSt({ sleutel, k: 0 }); return [0, (k) => setSt({ sleutel, k })]; }
+  return [st.k, (k) => setSt({ sleutel, k })];
+}
+
 export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
-  const [k, setK] = useState(0);
+  const [k, setK] = useThumbIndex(urls);
   const [, herlaad] = useState(0);
   const u = urls[k];
   if (!u) return null;
