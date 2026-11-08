@@ -1,0 +1,1 @@
+- SEO: nieuwe homepagetitel en meta description ("Nieuwsinkort - Het nieuws van vandaag samengevat"); bericht-, /vandaag- en /over-pagina's houden hun eigen titel (#598)

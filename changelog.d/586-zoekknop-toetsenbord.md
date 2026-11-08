@@ -1,0 +1,1 @@
+- Toetsenbord: spatie en Enter activeren knoppen, links en invoer in de feed weer native (o.a. de zoekknop); feednavigatie met spatie blijft werken zonder focus op een bedienbaar element (#586).

@@ -1,0 +1,1 @@
+- Valideer opgeslagen nieuwsfilters (tijd, sortering, rubrieken, regio, booleans) voordat ze worden toegepast; ongeldige velden vallen terug op de standaard (#722).

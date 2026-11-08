@@ -45,3 +45,13 @@ assert.match(dumpert, /speelt alleen bij Bron A/);
 const journaal = render([filmpje({ titel: "Uitzending", soort: "journaal" })]);
 assert.match(journaal, /Uitzending/);
 assert.match(render([filmpje({ soort: "journaal" })], { video: "onbekend" }), /Soort filmpjes/);
+
+// Roving tabindex (#791): precies één tab met tabstop, en dat is de geselecteerde.
+const tabstops = (html: string) => [...html.matchAll(/<button[^>]*role="tab"[^>]*>/g)].map((m) => m[0]);
+for (const html of [kaarten, render([filmpje({ titel: "Uitzending", soort: "journaal" })])]) {
+  const tabs = tabstops(html);
+  const stops = tabs.filter((t) => t.includes('tabindex="0"'));
+  assert.equal(stops.length, 1, "één tabstop");
+  assert.match(stops[0], /aria-selected="true"/, "de tabstop is de geselecteerde tab");
+  assert.equal(tabs.filter((t) => t.includes('aria-selected="true"')).length, 1);
+}

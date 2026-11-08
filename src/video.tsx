@@ -7,6 +7,7 @@ import { videoSlug } from "./slug";
 import { groepeer, heeftGroepen } from "./filmgroep";
 import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort";
 import { veiligeUrl } from "./url";
+import { tabToets } from "./tabs";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
 import { ytOndertitelsBijBericht } from "./ytstart";
@@ -15,7 +16,7 @@ import { ytOndertitelsBijBericht } from "./ytstart";
 const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
 
 /** Touch (swipe-feed) of muis/trackpad (kopjes en kaarten); volgt wijzigingen van de mediaquery. */
-export function useTouch(): boolean {
+function useTouch(): boolean {
   const [touch, setTouch] = useState(touchNu);
   useEffect(() => {
     setTouch(touchNu());
@@ -28,8 +29,14 @@ function popIcon(p: string) {
   return /weergaven|views/i.test(p) ? "eye" : "up";
 }
 
-function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; cat: string; bionic: boolean; enter: boolean; onPlay: (v: Video) => void }) {
+function VideoThumb({ thumb, bron, i }: { thumb: string | undefined; bron: string; i: number }) {
   const [failed, setFailed] = useState(false);
+  return thumb && !failed ? (
+    <img src={viaProxy(thumb)} alt="" aria-hidden="true" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+  ) : <span className="vthumb-name">{bron}</span>;
+}
+
+function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; cat: string; bionic: boolean; enter: boolean; onPlay: (v: Video) => void }) {
   const playable = !!playerFor(v);
   const activate = () => onPlay(v);
   const anim = enter && i < 12;
@@ -40,11 +47,7 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
     >
       <button type="button" className="vcard-open" aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (speelt alleen bij ${v.bron})`} onClick={activate} />
       <div className={`vthumb ${cat === "filmpjes" && soortVan(v) === "short" ? "tall" : ""}`}>
-        {v.thumb && !failed ? (
-          <img src={viaProxy(v.thumb)} alt="" aria-hidden="true" width={640} height={360} loading={i < 4 ? "eager" : "lazy"} decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
-        ) : (
-          <span className="vthumb-name">{v.bron}</span>
-        )}
+        <VideoThumb key={v.thumb} thumb={v.thumb} bron={v.bron} i={i} />
         <span className="playbtn">
           <Icon name={playable ? "play" : "ext"} className={playable ? "fill" : ""} />
         </span>
@@ -189,6 +192,8 @@ export function VideoGrid({
               role="tab"
               aria-selected={soort === s.id}
               aria-controls="video-paneel"
+              tabIndex={soort === s.id ? 0 : -1}
+              onKeyDown={tabToets}
               onClick={() => {
                 if (soort === s.id) return;
                 setTouched(true);

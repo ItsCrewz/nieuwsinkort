@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import React from "react";
-import { FilterBlad } from "../src/filters-blad";
-import { STANDAARD, type Filters, type Uitkomst } from "../src/filters";
-import type { Item } from "../src/types";
+import { FilterBlad } from "../../src/filters-blad";
+import { STANDAARD, type Filters, type Uitkomst } from "../../src/filters";
+import type { Item } from "../../src/types";
 
 // De component wordt rechtstreeks gerenderd (hooks gestubd); geen DOM, netwerk of echte klok.
 const g = globalThis as any;
 const venster = new EventTarget() as EventTarget & { matchMedia: () => { matches: boolean }; setTimeout: (fn: () => void, ms: number) => number };
 let minderBeweging = false;
-let timer: { fn: () => void; ms: number } | undefined;
+let timer: { fn: () => void; ms: number; gewist: boolean } | undefined;
 venster.matchMedia = () => ({ matches: minderBeweging });
-venster.setTimeout = (fn, ms) => (timer = { fn, ms }, 1);
+venster.setTimeout = (fn, ms) => (timer = { fn, ms, gewist: false }, 1);
+(venster as any).clearTimeout = () => { if (timer) timer.gewist = true; };
 g.window = venster;
 const focus: string[] = [];
 const body = { nodeType: 1 };
@@ -21,9 +22,14 @@ const intern = (React as any).__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED
 let closing = false;
 let effect: (() => () => void) | undefined;
 const paneel = {};
+let refs: { current: any }[] = [];
+let refIndex = 0;
 intern.current = {
   useState: () => [closing, (v: boolean) => { closing = v; }],
-  useRef: (() => { let i = 0; return () => ({ current: i++ % 2 === 0 ? paneel : { focus: () => focus.push("sluiten") } }); })(),
+  useRef: (init: any) => {
+    const i = refIndex++;
+    return refs[i] ?? (refs[i] = { current: i === 0 ? paneel : i === 1 ? { focus: () => focus.push("sluiten") } : init });
+  },
   useEffect: (fn: () => () => void) => { effect = fn; },
   useCallback: (fn: unknown) => fn,
   useMemo: (fn: () => unknown) => fn(),
@@ -42,8 +48,10 @@ const uitkomst = (n: number, tijd: Uitkomst["tijd"] = "vandaag"): Uitkomst => ({
 const sets: unknown[] = [];
 let resets = 0;
 let gesloten = 0;
-const maak = (o: Partial<Parameters<typeof FilterBlad>[0]> = {}) =>
-  FilterBlad({ f: STANDAARD, set: (p) => sets.push(p), reset: () => { resets++; }, u: uitkomst(2), bron: bronItems, catBron, vorig: 0, alles: false, onClose: () => { gesloten++; }, ...o }) as any;
+const maak = (o: Partial<Parameters<typeof FilterBlad>[0]> = {}) => {
+  refIndex = 0;
+  return FilterBlad({ f: STANDAARD, set: (p) => sets.push(p), reset: () => { resets++; }, u: uitkomst(2), bron: bronItems, catBron, vorig: 0, alles: false, onClose: () => { gesloten++; }, ...o }) as any;
+};
 function vind(node: any, pred: (n: any) => boolean): any[] {
   if (node == null || typeof node !== "object") return [];
   return [...(pred(node) ? [node] : []), ...React.Children.toArray(node.children ?? node.props?.children).flatMap((k) => vind(k, pred))];
@@ -117,38 +125,86 @@ assert.equal(chip(root, "Met video"), undefined);
 assert.equal(chip(root, "Haarlem"), undefined);
 assert.equal(chip(root, "Vandaag")!.props.on, false);
 
-// Sluiten: Escape, timer, animatie-einde, minder beweging, scrim.
-const opruimen = effect!();
+// Een animatie rondt maar eenmaal af, ook bij herhaald sluiten en een oude timer.
+refs = [];
+closing = false;
+root = maak();
+let opruimen = effect!();
 assert.deepEqual(focus, ["sluiten"]);
 const esc = new Event("keydown");
 Object.defineProperty(esc, "key", { value: "Escape" });
 venster.dispatchEvent(esc);
+venster.dispatchEvent(esc);
 assert.equal(closing, true);
 assert.equal(timer?.ms, 360);
-timer!.fn();
-assert.equal(gesloten, 1);
-const sheet = nodes(maak(), "div").find((d) => d.props.className === "sheet fsheet");
+const oudeTimer = timer!;
+let sheet = nodes(maak(), "div").find((d) => d.props.className === "sheet fsheet");
 sheet.props.onAnimationEnd({ target: {} });
+assert.equal(gesloten, 0);
+sheet.props.onAnimationEnd({ target: paneel });
 assert.equal(gesloten, 1);
+assert.equal(oudeTimer.gewist, true);
+opruimen();
+assert.deepEqual(focus, ["sluiten", "vorig"]);
+
+// Na snel heropenen kan een oude callback het nieuwe blad niet sluiten.
+refs = [];
+closing = false;
+root = maak();
+opruimen = effect!();
+oudeTimer.fn();
+assert.equal(gesloten, 1);
+nodes(root, "button").find((b) => b.props.className === "scrim").props.onClick();
+const vangnet = timer!;
+vangnet.fn();
+assert.equal(gesloten, 2);
+sheet = nodes(maak(), "div").find((d) => d.props.className === "sheet fsheet");
 sheet.props.onAnimationEnd({ target: paneel });
 assert.equal(gesloten, 2);
 opruimen();
-assert.deepEqual(focus, ["sluiten", "vorig"]);
+assert.deepEqual(focus, ["sluiten", "vorig", "sluiten", "vorig"]);
+
+// Ontkoppelen vóór het animatie-einde wist het vangnet en maakt de callback onschadelijk.
+refs = [];
+closing = false;
+root = maak();
+opruimen = effect!();
+nodes(root, "button").find((b) => b.props.className === "scrim").props.onClick();
+const verlatenTimer = timer!;
+opruimen();
+assert.equal(verlatenTimer.gewist, true);
+refs = [];
+closing = false;
+maak();
+opruimen = effect!();
+verlatenTimer.fn();
+assert.equal(gesloten, 2);
+opruimen();
+
+// Minder beweging sluit direct en herstelt bij ontkoppelen de focus.
+refs = [];
+closing = false;
 minderBeweging = true;
-nodes(maak(), "button").find((b) => b.props.className === "scrim").props.onClick();
+root = maak();
+opruimen = effect!();
+nodes(root, "button").find((b) => b.props.className === "scrim").props.onClick();
 assert.equal(gesloten, 3);
+opruimen();
+assert.deepEqual(focus.slice(-2), ["sluiten", "vorig"]);
+
 // Regressie #623: bij her-renderen met gewijzigde filters mag het focus-effect niet opnieuw draaien, in nieuws- én videoweergave.
 // Mini-runtime met per-render hookslots en echte deps-vergelijking (Object.is), zoals React ze toepast.
 const vorigeDispatcher = intern.current;
 function speel(onClose: () => void, rondes: Partial<Parameters<typeof FilterBlad>[0]>[]) {
   const slots: any[] = [];
   let i = 0;
+  let r = 0;
   const gelijk = (a?: unknown[], b?: unknown[]) => !!a && !!b && a.length === b.length && a.every((x, k) => Object.is(x, b[k]));
   const wachtend: (() => void)[] = [];
   const log: string[] = [];
   intern.current = {
     useState: (v: boolean) => { const k = i++; slots[k] ??= { v }; return [slots[k].v, (n: boolean) => { slots[k].v = n; }]; },
-    useRef: () => { const k = i++; slots[k] ??= { current: k === 1 ? paneel : { focus: () => log.push("sluiten") } }; return slots[k]; },
+    useRef: (init: unknown) => { const k = i++, n = r++; slots[k] ??= { current: n === 0 ? paneel : n === 1 ? { focus: () => log.push("sluiten") } : init }; return slots[k]; },
     useCallback: (fn: any, deps: unknown[]) => { const k = i++; if (!slots[k] || !gelijk(slots[k].deps, deps)) slots[k] = { fn, deps }; return slots[k].fn; },
     useMemo: (fn: () => unknown, deps: unknown[]) => { const k = i++; if (!slots[k] || !gelijk(slots[k].deps, deps)) slots[k] = { w: fn(), deps }; return slots[k].w; },
     useEffect: (fn: () => () => void, deps: unknown[]) => {
@@ -160,6 +216,7 @@ function speel(onClose: () => void, rondes: Partial<Parameters<typeof FilterBlad
   g.document.activeElement = { focus: () => log.push("vorig") };
   for (const o of rondes) {
     i = 0;
+    r = 0;
     FilterBlad({ f: STANDAARD, set: () => {}, reset: () => {}, u: uitkomst(2), bron: bronItems, catBron, vorig: 0, alles: false, onClose, ...o });
     wachtend.splice(0).forEach((fn) => fn());
   }
@@ -171,9 +228,9 @@ for (const video of [false, true]) {
   const log = speel(stabiel, wijzigingen.map((w) => ({ ...w, video })));
   assert.deepEqual(log, ["sluiten"], `focus mag maar één keer bewegen (video=${video})`); // geen "vorig" terug, geen tweede "sluiten"
 }
-// Controle dat de test gevoelig is: een onClose die elke render verandert herstelt wel focus bij iedere wijziging.
+// Het blad leest onClose via een ref (#750): ook een onClose die elke render verandert verplaatst de focus maar één keer.
 const onstabiel = speel(() => {}, wijzigingen.map((w) => ({ ...w, onClose: () => {} })));
-assert.ok(onstabiel.filter((x) => x === "sluiten").length > 1);
+assert.deepEqual(onstabiel, ["sluiten"]);
 intern.current = vorigeDispatcher;
 // App moet dan ook een stabiele onClose doorgeven (useCallback zonder deps).
 const appBron = readFileSync("src/App.tsx", "utf8");
