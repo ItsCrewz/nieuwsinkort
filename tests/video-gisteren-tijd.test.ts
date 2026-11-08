@@ -1,6 +1,6 @@
 // #817: terugval naar gisteren voor filmpjes zonder numerieke t, met alleen HH:MM.
 import assert from "node:assert/strict";
-import { alleenVandaag } from "../src/vandaag";
+import { afgeleideTijd, alleenVandaag } from "../src/vandaag";
 
 let fouten = 0;
 const t = (naam: string, f: () => void) => { try { f(); } catch (e) { fouten++; console.error("FOUT", naam, e); } };
@@ -33,5 +33,24 @@ t("vandaag heeft voorrang", () => {
   const d = alleenVandaag({ gegenereerd: "2026-11-06T07:00:00Z", items: [], dumpert: [], filmpjes: [{ id: "a", tijd: "07:50" }, { id: "b", tijd: "23:00" }] }, nu);
   assert.deepEqual(ids(d), ["a"]);
   assert.ok(!d.filmpjes[0].gisteren);
+});
+t("wintertijdwissel: 09:15 op 25-10-2026 blijft 09:15 lokaal", () => {
+  const d = alleenVandaag({ gegenereerd: "2026-10-25T10:00:00Z", items: [], dumpert: [], filmpjes: [{ id: "a", tijd: "09:15" }] }, Date.parse("2026-10-26T07:00:00Z"));
+  assert.deepEqual(ids(d), ["a"]);
+  assert.ok(d.filmpjes[0].gisteren);
+  assert.equal(afgeleideTijd({ tijd: "09:15" }, Date.parse("2026-10-25T10:00:00Z")), Date.parse("2026-10-25T08:15:00Z"));
+});
+t("zomertijdwissel: 23:30 en 09:15 op 28-03-2027 blijven gisteren", () => {
+  const d = alleenVandaag({ gegenereerd: "2027-03-28T10:00:00Z", items: [], dumpert: [], filmpjes: [{ id: "a", tijd: "09:15" }, { id: "b", tijd: "23:30" }] }, Date.parse("2027-03-29T06:00:00Z"));
+  assert.deepEqual(ids(d), ["a", "b"]);
+  assert.ok(d.filmpjes.every((v: any) => v.gisteren));
+});
+t("niet-bestaande tijd (02:30 op 28-03-2027) valt af", () => {
+  assert.equal(afgeleideTijd({ tijd: "02:30" }, Date.parse("2027-03-28T10:00:00Z")), null);
+});
+t("nu vlak na middernacht: filmpje van 23:40 de vorige avond blijft", () => {
+  const d = alleenVandaag({ gegenereerd: gen, items: [], dumpert: [], filmpjes: [{ id: "a", tijd: "23:40" }] }, Date.parse("2026-11-05T23:05:00Z"));
+  assert.deepEqual(ids(d), ["a"]);
+  assert.ok(d.filmpjes[0].gisteren);
 });
 if (fouten) process.exit(1);

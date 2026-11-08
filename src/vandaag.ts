@@ -1,5 +1,5 @@
 // Publicatietijden en de Amsterdamse dag voor Worker en Pages.
-import { ams, midnight } from "./tijd";
+import { ams, amsTijdstip, midnight } from "./tijd";
 
 export const TOEKOMST_MARGE = 15 * 60e3;
 export const TZ_MARGE = 2 * 3600e3 + TOEKOMST_MARGE;
@@ -28,7 +28,7 @@ export function afgeleideTijd(x: any, gen: number): number | null {
   if (typeof x?.t === "number") return x.t;
   if (x?.t != null || !Number.isFinite(gen)) return null;
   const m = /^(\d{2}):(\d{2})$/.exec(x?.tijd || "");
-  return m && +m[1] < 24 && +m[2] < 60 ? midnight(gen) + (+m[1] * 60 + +m[2]) * 60e3 : null;
+  return m && +m[1] < 24 && +m[2] < 60 ? amsTijdstip(gen, +m[1], +m[2]) : null;
 }
 export const nieuwsteTijd = (leden: { d: number }[]) => Math.max(...leden.map((lid) => lid.d));
 
