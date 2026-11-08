@@ -37,6 +37,7 @@ const MAIN = "@cf/google/gemma-4-26b-a4b-it", SMALL = "@cf/meta/llama-3.2-1b-ins
 const WHISPER = "@cf/openai/whisper-large-v3-turbo";
 const WHISPER_PER_MIN = 46.64; // $0.000513 per audiominuut / $0.011 per 1000 neuronen
 const MAX_SEC = 180; // hooguit de eerste 3 minuten geluid
+const MAX_HLS = 12e6; // gezamenlijke grens voor daadwerkelijk gelezen segmentbytes
 const MAX_MP4 = 12e6; // mp4 zonder knippen: alleen korte filmpjes
 const PER_RUN = 260;
 const PRE_MAX = 0.85, PRE_MARGE = 600; // vooraf maken: niet boven 85% van het budget, en 600 neuronen marge // reserve per nog komend uur-nieuws (gemiddelde run ±210–480)
@@ -123,8 +124,9 @@ async function ytCaptions(id: string, why: string[]): Promise<string> {
 // ---------------- geluid voor Whisper
 async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{ bytes: Uint8Array; sec: number } | null> {
   const get = async (u: string) => { const r = await fetch(u, { headers: { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" }, signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; };
-  let list = await (await get(url)).text();
-  let base = url;
+  let response = await get(url);
+  let list = await response.text();
+  let base = response.url || url;
   if (/#EXT-X-STREAM-INF/.test(list)) {
     // Reddit heeft een los audiospoor; anders de variant met de laagste bitrate
     const audio = /#EXT-X-MEDIA:TYPE=AUDIO[^\n]*URI="([^"]+)"/.exec(list)?.[1];
@@ -134,8 +136,10 @@ async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{
       pickU = vs[0]?.u;
     }
     if (!pickU) { why.push("HLS: geen spoor"); return null; }
-    base = new URL(pickU, url).toString();
-    list = await (await get(base)).text();
+    base = new URL(pickU, base).toString();
+    response = await get(base);
+    base = response.url || base;
+    list = await response.text();
   }
   if (/#EXT-X-MAP|\.m4s/.test(list)) { why.push("HLS: fMP4-stukjes (niet ondersteund)"); return null; }
   const segs: { u: string; d: number }[] = [];
@@ -144,8 +148,31 @@ async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{
   const take: string[] = [];
   for (const s of segs) { if (d >= maxSec || take.length >= 40) break; take.push(s.u); d += s.d; }
   if (!take.length) { why.push("HLS: geen stukjes"); return null; }
-  const parts = await Promise.all(take.map(async (u) => new Uint8Array(await (await get(u)).arrayBuffer())));
-  const n = parts.reduce((a, p) => a + p.length, 0), bytes = new Uint8Array(n);
+  const parts: Uint8Array[] = [];
+  let n = 0;
+  for (const u of take) {
+    const r = await get(u);
+    const lengte = r.headers.get("content-length");
+    if (lengte && /^\d+$/.test(lengte) && Number(lengte) > MAX_HLS - n) {
+      await r.body?.cancel();
+      throw new Error("HLS: geluid te groot");
+    }
+    if (!r.body) throw new Error("HLS: leeg antwoord");
+    const lezer = r.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await lezer.read();
+        if (done) break;
+        n += value.byteLength;
+        if (n > MAX_HLS) throw new Error("HLS: geluid te groot");
+        parts.push(value);
+      }
+    } catch (e) {
+      await lezer.cancel().catch(() => {});
+      throw e;
+    } finally { lezer.releaseLock(); }
+  }
+  const bytes = new Uint8Array(n);
   let o = 0; for (const p of parts) { bytes.set(p, o); o += p.length; }
   return { bytes, sec: d };
 }
@@ -292,19 +319,20 @@ export function kvPoort(env: Env): Poort {
 // ---------------- welke filmpjes staan er nu op de site
 // Elke cache-miss parste uur (±330 KB) en data.json (±120 KB) opnieuw: CPU-zwaar (#409). De videolijst
 // blijft per isolate en per KV-binding 60 s staan; alleen gelukte lezingen worden bewaard.
-const lijstCache = new WeakMap<object, { at: number; lists: any[] }>();
-async function vindVideo(env: Env, req: Request, id: string): Promise<any | null> {
+const lijstCache = new WeakMap<object, { at: number; lists: any[]; ok: boolean }>();
+// `volledig` = beide lijsten betrouwbaar gelezen; alleen dan betekent "geen treffer" echt onbekend (404), anders tijdelijk 503.
+async function vindVideo(env: Env, req: Request, id: string): Promise<{ v: any | null; volledig: boolean }> {
   let c = lijstCache.get(env.NIEUWS);
   if (!c || Date.now() - c.at >= 60e3) {
     const lists: any[] = [];
     let ok = true;
     try { const H = await env.NIEUWS.get("uur", "json"); if (H) lists.push(...(H.filmpjes || []), ...(H.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
-    try { const S: any = await (await env.ASSETS.fetch(new URL("/data.json", req.url).toString())).json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
-    c = { at: Date.now(), lists };
+    try { const res = await env.ASSETS.fetch(new URL("/data.json", req.url).toString()); if (!res.ok) throw new Error("status"); const S: any = await res.json(); lists.push(...(S.filmpjes || []), ...(S.dumpert || [])); } catch { ok = false; console.error("samenvatting: fout bij fallback"); }
+    c = { at: Date.now(), lists, ok };
     if (ok) lijstCache.set(env.NIEUWS, c);
   }
   const { videoSlug } = await import("../src/slug");
-  return c.lists.find((v) => v?.href && videoSlug(v) === id) || null;
+  return { v: c.lists.find((v) => v?.href && videoSlug(v) === id) || null, volledig: c.ok };
 }
 
 export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> => {
@@ -321,8 +349,8 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   const key = `vs:${id}`;
   const hit = await env.NIEUWS.get(key, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   if (hit) return json({ ...hit, cached: true });
-  const v = await vindVideo(env, request, id);
-  if (!v) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 404);
+  const { v, volledig } = await vindVideo(env, request, id);
+  if (!v) return volledig ? json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 404) : json({ ok: false, code: "fout", fout: MSG.fout }, 503); // 503 niet cachen: lijst tijdelijk onleesbaar
   // slot vóór budget en media
   const poort = env.BUDGET_DO ? doPoort(env.BUDGET_DO) : kvPoort(env);
   const nietBeschikbaar = () => json({ ok: false, code: "fout", fout: MSG.fout }, 503); // niet cachen: tijdelijk
@@ -382,7 +410,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
         if (/\.m3u8(\?|$)/.test(media)) a = await hlsAudio(media, why, maxSec);
         else if (/\.mp4(\?|$)/.test(media) || /cdninstagram|fbcdn|twimg/.test(media)) a = await mp4Audio(media, why, maxMp4);
         else why.push("geen geluidsbron");
-      } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`geluid ophalen: ${String(e?.message || e).slice(0, 60)}`); }
+      } catch (e: any) { console.error("samenvatting: verwerking mislukt"); why.push(`geluid ophalen: ${String(e?.message || e).slice(0, 60)}`); return uit({ ok: false, code: "fout", fout: MSG.fout }, 503); }
       if (a && a.sec < 0) { await env.NIEUWS.put(key, JSON.stringify({ ok: false, code: "te-lang", fout: MSG.teLang }), { expirationTtl: 6 * 3600 }); return uit({ ok: false, code: "te-lang", fout: MSG.teLang }); }
       if (a && a.bytes.length) {
         const estMin = a.sec ? a.sec / 60 : Math.min(4, a.bytes.length / 1.2e6); // mp4: ruwe schatting
