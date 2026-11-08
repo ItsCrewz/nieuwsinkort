@@ -15,20 +15,31 @@ export function beschrijving(tekst: string): string {
   const knip = t.slice(0, 155), i = knip.lastIndexOf(" ");
   return `${(i > 80 ? knip.slice(0, i) : knip).replace(/[\s,;:.-]+$/, "")}…`;
 }
-// Eerste artikelfoto via onze eigen beeldproxy (absoluut, op eigen domein); anders de standaard og-afbeelding.
-export function berichtBeeld(item: Bericht): string | null {
-  const p = [item.beeld, ...(item.beelden || [])].map((u) => (u ? beeldProxyPad(u) : null)).find(Boolean);
-  return p ? `${BASIS}${p}` : null;
-}
 // Vervang de content van één meta-tag (op name of property); bestaat hij niet, dan wordt hij vlak voor </head> toegevoegd.
 function zetMeta(html: string, attr: "name" | "property", sleutel: string, waarde: string): string {
   const tag = `<meta ${attr}="${sleutel}" content="${esc(waarde)}" />`;
   const re = new RegExp(`<meta\\s+${attr}="${sleutel}"[^>]*>`, "i");
   return re.test(html) ? html.replace(re, () => tag) : html.replace("</head>", () => `${tag}</head>`);
 }
+// Alleen formaten waarvan de breedte uit de URL volgt; de proxy schaalt zelf niet.
+function deelbeeld(item: Bericht): string {
+  for (const bron of [...(item.beelden || []), item.beeld]) {
+    if (!bron || !beeldProxyPad(bron)) continue;
+    const u = new URL(bron);
+    if (u.hostname === "images.pubble.cloud") u.pathname = u.pathname.replace(/^(\/worker\/\w+\/\w+\/)\d+\//, "$11200/");
+    else if (u.hostname === "images.nu.nl" && /_wd1280\.jpg$/i.test(u.pathname)) { /* 1280 is ongeveer 1200 pixels */ }
+    else if (/^(redactie\.rtl\.nl|webp\.[a-z]{2}\.cdn\.pxr\.nl)$/.test(u.hostname) && /^\d+$/.test(u.searchParams.get("width") || "")) {
+      if (Number(u.searchParams.get("width")) > 1200) { u.searchParams.set("width", "1200"); u.searchParams.delete("height"); }
+    } else continue;
+    const pad = beeldProxyPad(u.toString());
+    if (pad) return `https://nieuwsinkort.nl${pad}`;
+  }
+  return "https://nieuwsinkort.nl/og-image.png";
+}
 export function berichtHtml(sjabloon: string, item: Bericht, dag: string, verwant: Verwant[] = []): string {
   const url = `https://nieuwsinkort.nl${artikelPad(item, dag)}`, title = item.kop, indexeer = !item.ruw && item.cat !== "politiek";
-  const tekst = indexeer ? item.ai || "" : "", desc = beschrijving(tekst || (indexeer ? item.samenvatting || "" : "")) || "Het nieuws van vandaag in het kort.", beeld = berichtBeeld(item) || `${BASIS}/og-image.png`;
+  const tekst = indexeer ? item.ai || "" : "", desc = beschrijving(tekst || (indexeer ? item.samenvatting || "" : "")) || "Het nieuws van vandaag in het kort.";
+  const beeld = deelbeeld(item);
   const bronnen = (item.bronnen || []).filter((b) => veiligeUrl(b.href));
   const tms = item.t ? new Date(item.t).getTime() : NaN, datum = Number.isFinite(tms) ? new Date(tms).toISOString() : `${dag}T00:00:00+01:00`; // ongeldige t mag de pagina niet breken
   const json = JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: title.slice(0, 110), datePublished: datum, dateModified: datum, inLanguage: "nl-NL", description: desc, mainEntityOfPage: url, author: { "@type": "Organization", name: "Nieuws in het kort", url: BASIS }, publisher: { "@type": "NewsMediaOrganization", name: "Nieuws in het kort", url: `${BASIS}/`, logo: { "@type": "ImageObject", url: `${BASIS}/icon-512.png`, width: 512, height: 512 } }, image: [beeld], isBasedOn: bronnen.map((b) => b.href), citation: bronnen.map((b) => b.href) }).replace(/</g, "\\u003c");
@@ -42,7 +53,9 @@ export function berichtHtml(sjabloon: string, item: Bericht, dag: string, verwan
   h = zetMeta(h, "property", "og:description", desc);
   h = zetMeta(h, "property", "og:url", url);
   h = zetMeta(h, "property", "og:image", beeld);
-  if (berichtBeeld(item)) h = h.replace(/<meta property="og:image:(width|height)"[^>]*>/g, ""); // 1200×630 geldt alleen voor de standaardafbeelding
+  h = zetMeta(h, "property", "og:site_name", "Nieuws in het kort");
+  h = h.replace(/<meta\s+property="og:image:(?:width|height)"[^>]*>\s*/gi, "");
+  h = zetMeta(h, "name", "twitter:card", "summary_large_image");
   h = zetMeta(h, "name", "twitter:image", beeld);
   h = zetMeta(h, "property", "article:published_time", datum);
   h = zetMeta(h, "name", "twitter:title", title);
