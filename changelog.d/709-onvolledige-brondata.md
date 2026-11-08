@@ -1,0 +1,1 @@
+- Onvolledige bronvermeldingen laten de nieuwsrespons niet meer afbreken bij het verwijderen van diagnosevelden (#709).

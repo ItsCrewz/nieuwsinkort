@@ -1,0 +1,1 @@
+- a11y: de videosoort-tabs (Shorts/Journaals) in de lijst en in de videofeed zijn met Links/Rechts, Home en End te bedienen; alleen de geselecteerde tab staat in de tabvolgorde (#791).
