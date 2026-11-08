@@ -26,7 +26,7 @@ import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, volgendeTab, wisselRichting, type TabOpt } from "./tabs";
+import { CAT_LABEL, tabOpties, tabToets, wisselRichting, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
@@ -342,16 +342,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               aria-controls="rubriek-paneel"
               aria-selected={view === o.value}
               tabIndex={view === o.value ? 0 : -1}
-              onKeyDown={(e) => {
-                const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-                const i = tabs.indexOf(e.currentTarget);
-                const volgende = volgendeTab(i, tabs.length, e.key);
-                if (volgende === null) return;
-                e.preventDefault();
-                const next = tabs[volgende];
-                next.focus();
-                next.click();
-              }}
+              onKeyDown={tabToets}
               onClick={(e) => {
                 place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
                 onChange(o.value);
@@ -1128,7 +1119,11 @@ export default function App() {
         const f = n instanceof HTMLAnchorElement ? n : n.querySelector<HTMLElement>("a[href]") ?? n;
         if (f === n && !n.hasAttribute("tabindex")) n.tabIndex = -1;
         f.focus({ preventScroll: true });
-      } else window.scrollTo(0, 0);
+      } else {
+        window.scrollTo(0, 0);
+        // Zoekknop alleen als er echt gezocht wordt, anders de hoofdinhoud
+        (document.querySelector<HTMLElement>('.zoek-knop[aria-expanded="true"]') ?? document.querySelector<HTMLElement>("main#top"))?.focus({ preventScroll: true });
+      }
     }
   }, [route.selected]);
 
