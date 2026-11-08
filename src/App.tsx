@@ -1149,7 +1149,8 @@ export default function App() {
         f.focus({ preventScroll: true });
       } else {
         window.scrollTo(0, 0);
-        (document.querySelector<HTMLElement>(".zoek-knop") ?? document.querySelector<HTMLElement>("main#top"))?.focus({ preventScroll: true });
+        // Zoekknop alleen als er echt gezocht wordt, anders de hoofdinhoud
+        (document.querySelector<HTMLElement>('.zoek-knop[aria-expanded="true"]') ?? document.querySelector<HTMLElement>("main#top"))?.focus({ preventScroll: true });
       }
     }
   }, [route.selected]);
