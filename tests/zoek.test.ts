@@ -4,11 +4,14 @@ import type { Item } from "../src/types";
 
 const item: Item = { cat: "buitenland", kop: "Ajax", ai: "Wedstrijd", samenvatting: "Café bij PSV", punten: ["Supporters"], bronnen: [{ site: "NOS", href: "" }], tijd: "" };
 assert.equal(normaliseer("  CAFÉ,  nieuws! "), "cafe nieuws");
+assert.equal(normaliseer("Straße STRAẞE"), "strasse strasse");
 for (const term of ["ajax", "wedstrijd", "cafe", "supporters", "nos", "buitenland", "ajax psv", "CAFÉ"]) assert.deepEqual(zoekItems([item], term), [item], term);
 assert.deepEqual(zoekItems([item], "ajax onbekend"), []);
 const items = [item];
 assert.equal(zoekItems(items, "  "), items);
 assert.equal(zoekItems(items, ""), items);
+for (const term of ["!!!", "😀", " ! 😀 "]) assert.deepEqual(zoekItems(items, term), []);
+assert.deepEqual(zoekItems(items, "!!!CAFÉ 😀"), [item]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "cafe" } as Item], "Café" ).length, 1);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "test" } as Item], "onbekend"), []);
 const politiek = { cat: "nl", kop: "Politiek debat" } as Item;
@@ -28,4 +31,17 @@ assert.deepEqual(zoekItems(talen, "curs cafe"), [talen[3]]);
 assert.deepEqual(zoekItems([{ cat: "tech", kop: "Nieuws over C++, en C#." } as Item], "C++ C#").length, 1);
 assert.equal(normaliseer("C++/C#; café-nieuws"), "c++ c# cafe nieuws");
 assert.equal(normaliseer("+++ ###"), "");
+// Lettervarianten (#735): zoekterm en tekst, ongeacht hoofdletters.
+const soren = { cat: "nl", kop: "Søren Kierkegaard herdacht", samenvatting: "Lech Wałęsa en Łukasz bij Æbleskiver-feest" } as Item;
+for (const term of ["Soren", "SØREN", "søren", "lukasz", "ŁUKASZ", "walesa", "Wałęsa", "aebleskiver", "Æbleskiver", "soren kierkegaard"]) assert.deepEqual(zoekItems([soren], term), [soren], term);
+for (const term of ["sren", "oren", "ukasz", "bleskiver", "soren jansen"]) assert.deepEqual(zoekItems([soren], term), [], term);
+assert.equal(normaliseer("Ørsted ŁÓDŹ Æon"), "orsted lodz aeon");
+// De klinkertekens onderscheiden woorden en blijven bij canonieke normalisatie behouden.
+for (const [eerste, tweede] of [["कल", "काल"], ["عَلَم", "عِلْم"]]) {
+  const artikelen = [eerste, tweede].map((kop) => ({ cat: "nl", kop } as Item));
+  assert.notEqual(normaliseer(eerste), normaliseer(tweede));
+  assert.deepEqual(zoekItems(artikelen, eerste), [artikelen[0]]);
+  assert.deepEqual(zoekItems(artikelen, tweede), [artikelen[1]]);
+}
+assert.equal(normaliseer("José"), normaliseer("Jose\u0301"));
 console.log("zoek: tests geslaagd");
