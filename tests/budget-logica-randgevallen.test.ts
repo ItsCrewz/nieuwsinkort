@@ -163,6 +163,22 @@ await t("spiegel: mislukte KV-schrijfactie blijft duurzaam vuil, herstel na hers
   assert.deepEqual(kv, [100], "geen herhaalde schrijfactie zonder markering");
 });
 
+await t("spiegel: markering staat al vóór de spiegelaanroep en overleeft een exceptie en herstart", async () => {
+  const s = opslag(), kv: number[] = [], gezien: unknown[] = [];
+  let gooi = true;
+  const buiten: Buiten = { async spiegel(_d, x) { gezien.push(s.data.get("videovuil:2026-10-30")); if (gooi) throw new Error("time-out"); kv.push(x); return true; }, async zaad() { return 0; } };
+  const l1 = new BudgetLogica(s, buiten, () => T0);
+  await assert.rejects(l1.reserveer(res({ schatting: 100 })));
+  assert.deepEqual(gezien, [true], "markering al aanwezig tijdens de spiegel");
+  assert.equal(s.data.get("video:2026-10-30"), 100);
+  assert.equal(s.data.get("videovuil:2026-10-30"), true);
+  gooi = false;
+  const l2 = new BudgetLogica(s, buiten, () => T0); // herstart
+  assert.equal(await l2.stand("2026-10-30"), 100);
+  assert.deepEqual(kv, [100]);
+  assert.equal(s.data.has("videovuil:2026-10-30"), false);
+});
+
 await t("spiegel: opgeslagen getal zonder markering blijft leesbaar en wordt niet gespiegeld", async () => {
   const { l, s, spiegel } = maak(0);
   s.data.set("video:2026-10-30", 42);

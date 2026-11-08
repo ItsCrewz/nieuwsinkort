@@ -73,8 +73,14 @@ export class BudgetLogica {
   constructor(private s: Opslag, private buiten: Buiten, private nu: () => number = Date.now, private groq?: GroqBuiten) {}
 
   // Duurzame markering `videovuil:<datum>` (niet in geheugen): de KV-spiegel loopt achter op `video:<datum>`, ook na een herstart.
+  // De markering staat er al vóór de externe aanroep (zie `bewaar`), dus een herstart of exceptie midden in de spiegel verliest de achterstand niet; hier wissen we hem alleen bij succes.
   private async spiegel(datum: string, n: number) {
-    if ((await this.buiten.spiegel(datum, n)) === false) await this.s.put(`videovuil:${datum}`, true); else await this.s.delete(`videovuil:${datum}`);
+    if ((await this.buiten.spiegel(datum, n)) !== false) await this.s.delete(`videovuil:${datum}`);
+  }
+  // Markering eerst, dan het totaal: bij een onderbreking kan er hooguit een markering bij het oude totaal staan (onschadelijk: `stand` spiegelt dat opnieuw).
+  private async bewaar(datum: string, n: number) {
+    await this.s.put(`videovuil:${datum}`, true);
+    await this.s.put(`video:${datum}`, n);
   }
 
   // Eén opslagwaarde bewaart ook of een mislukte KV-spiegel nog moet worden hersteld.
@@ -128,7 +134,7 @@ export class BudgetLogica {
     if (n >= MAX_WHISPER_UUR) return { ok: false, reden: "druk", video };
     const nieuw = rond(video + r.schatting);
     await this.s.put(`uur:${r.uur}`, n + 1);
-    await this.s.put(`video:${r.datum}`, nieuw);
+    await this.bewaar(r.datum, nieuw);
     // oude dagen en uren opruimen
     const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "uur:" })).keys(), ...(await this.s.list({ prefix: "videovuil:" })).keys()].filter((k) => k !== `video:${r.datum}` && k !== `videovuil:${r.datum}` && k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`));
     if (oud.length) await this.s.delete(oud);
@@ -141,7 +147,7 @@ export class BudgetLogica {
     const video = await this.stand(datum);
     if (!delta) return video;
     const nieuw = Math.max(0, rond(video + delta));
-    await this.s.put(`video:${datum}`, nieuw);
+    await this.bewaar(datum, nieuw);
     await this.spiegel(datum, nieuw);
     return nieuw;
   }
