@@ -2,7 +2,10 @@
 
 ## Onuitgebracht
 
-- Na het wissen van een zoekopdracht zonder resultaten keert de focus terug naar het zoekveld (#769).
+- Voorkom onterechte video-ontdubbeling bij media en thumbnails met verschillende betekenisvolle querywaarden (#847).
+- Artikelverdieping geeft bij een KV-storing 503 in plaats van 404 en is na herstel opnieuw op te halen (#839).
+- Herstel de videopositie via de geschiedenis als sessieopslag niet beschikbaar is of ongeldige gegevens bevat (#732).
+- Voorkom caching van lege SEO-pagina’s bij ongeldige dagdata (#599).
 - Meld bij geblokkeerde opslag dat de keuze om niet te meten op een andere pagina opnieuw nodig is (#664).
 - Kies bij HLS-voorladen de variant met de laagste geldige piekbandbreedte (#699).
 
