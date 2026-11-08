@@ -11,7 +11,7 @@ export function useState(begin) { if (state === undefined) state = begin; return
 export function useEffect(fn, deps) { if (!vorige || deps[0] !== vorige[0]) { effect = fn; vorige = deps; } }
 export function effecten() { if (effect) { opruimen?.(); opruimen = effect(); effect = undefined; } }
 `;
-const bundel = await build({ stdin: { contents: 'export { useMeer } from "./src/usemeer"; export { effecten } from "react";', resolveDir: process.cwd(), loader: "ts" }, bundle: true, platform: "node", format: "esm", write: false, plugins: [{ name: "react-test", setup(b) { b.onResolve({ filter: /^react$/ }, () => ({ path: "react", namespace: "test" })); b.onLoad({ filter: /.*/, namespace: "test" }, () => ({ contents: mock, loader: "js" })); } }] });
+const bundel = await build({ stdin: { contents: 'export { useMeer } from "./src/meer"; export { effecten } from "react";', resolveDir: process.cwd(), loader: "ts" }, bundle: true, platform: "node", format: "esm", write: false, plugins: [{ name: "react-test", setup(b) { b.onResolve({ filter: /^react$/ }, () => ({ path: "react", namespace: "test" })); b.onLoad({ filter: /.*/, namespace: "test" }, () => ({ contents: mock, loader: "js" })); } }] });
 // Exporteer de effectbesturing uit dezelfde gebundelde React-vervanger.
 const code = bundel.outputFiles[0].text;
 const { useMeer: renderMeer, effecten } = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
