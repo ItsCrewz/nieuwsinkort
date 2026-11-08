@@ -1,8 +1,7 @@
 import { Budget } from "../worker/src/budget";
 
 // Budget-DO met in-memory opslag en KV-spiegel, geen Cloudflare
-export function budget(kv: Map<string, string> = new Map(), opties: { putFout?: () => boolean } = {}) {
-  const data = new Map<string, unknown>();
+export function budget(kv: Map<string, string> = new Map(), opties: { putFout?: () => boolean } = {}, data: Map<string, unknown> = new Map()) {
   const storage = {
     get: async (k: string) => data.get(k),
     put: async (k: string, v: unknown) => { data.set(k, v); },

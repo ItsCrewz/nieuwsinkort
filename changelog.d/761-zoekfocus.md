@@ -1,0 +1,1 @@
+- Herstel na het sluiten van een artikel de focus op het zoekresultaat, of op de zoekknop als het resultaat verdwenen is (#761).
