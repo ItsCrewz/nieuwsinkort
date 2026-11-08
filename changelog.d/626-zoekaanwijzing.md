@@ -1,0 +1,1 @@
+- Zoekopdrachten met alleen leestekens of emoji tonen een aanwijzing om letters of cijfers in te voeren (#626).

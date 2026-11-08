@@ -1,0 +1,20 @@
+[
+  {
+    "dag": "do",
+    "min": 8,
+    "max": 16,
+    "omschrijving": "Half bewolkt"
+  },
+  {
+    "dag": "vr",
+    "min": 7,
+    "max": 14,
+    "omschrijving": "Bewolkt"
+  },
+  {
+    "dag": "za",
+    "min": 7,
+    "max": 13,
+    "omschrijving": "Half bewolkt"
+  }
+]

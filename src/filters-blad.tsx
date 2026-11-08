@@ -41,18 +41,34 @@ export function FilterBlad({
   const [closing, setClosing] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const timer = useRef<number | null>(null);
+  const sluitGestart = useRef(false);
+  const afgehandeld = useRef(false);
+  const rondAf = useCallback(() => {
+    if (afgehandeld.current) return;
+    afgehandeld.current = true;
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    onCloseRef.current();
+  }, []);
   const close = useCallback(() => {
-    if (rustig()) return onClose();
+    if (sluitGestart.current) return;
+    sluitGestart.current = true;
+    if (rustig()) return rondAf();
     setClosing(true);
-    window.setTimeout(onClose, 360);
-  }, [onClose]);
+    timer.current = window.setTimeout(rondAf, 360);
+  }, [rondAf]);
   useEffect(() => {
+    afgehandeld.current = false;
     const prev = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     closeBtn.current?.focus({ preventScroll: true });
     return () => {
       window.removeEventListener("keydown", onKey);
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      afgehandeld.current = true;
       prev?.focus?.({ preventScroll: true });
     };
   }, [close]);
@@ -72,7 +88,7 @@ export function FilterBlad({
     <div className="app modal-root">
       <div className={`sheet-root ${closing ? "out" : ""}`} role="dialog" aria-modal="true" aria-labelledby="filter-titel">
         <button className="scrim" aria-label="Sluit filters" tabIndex={-1} onClick={close} />
-        <div className="sheet fsheet" ref={panel} onAnimationEnd={(e) => closing && e.target === panel.current && onClose()}>
+        <div className="sheet fsheet" ref={panel} onAnimationEnd={(e) => closing && e.target === panel.current && rondAf()}>
           <div className="sh-head">
             <span className="grab" aria-hidden="true" />
             <div className="sh-row">
