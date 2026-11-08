@@ -49,7 +49,7 @@ await t("KV-fout geeft 503 en na herstel is de inhoud beschikbaar", async () => 
     assert.deepEqual(await r.json(), { fout: "tijdelijk niet beschikbaar" });
     const herstel = await meer({ request: req("/meer?k=bericht"), env: { NIEUWS: kv } });
     assert.equal(herstel.status, 200);
-    check(herstel, "public, max-age=600");
+    check(herstel, "public, max-age=0, must-revalidate");
     assert.deepEqual(await herstel.json(), inhoud);
     assert.equal(reads, 2);
   } finally { console.error = err; }
