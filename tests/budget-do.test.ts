@@ -57,6 +57,22 @@ await t("Budget: uurrem staat op 30 en geldt per uur", async () => {
   await call("reserveer", res({ datum: "2026-10-31", uur: "2026-10-31T06", schatting: 1 }));
   assert.deepEqual([...data.keys()].filter((k) => k.startsWith("uur:") || k.startsWith("video:")).sort(), ["uur:2026-10-31T06", "video:2026-10-31"], "oude dag opgeruimd");
 });
+await t("Budget: mislukte KV-spiegel blijft gemarkeerd, herstart herstelt vid-neurons", async () => {
+  const kv = new Map<string, string>(), opslag = new Map<string, unknown>();
+  let stuk = true, puts = 0;
+  const a = budget(kv, { putFout: () => { puts++; return stuk; } }, opslag);
+  assert.equal((await a.call("reserveer", res())).ok, true);
+  assert.equal(kv.has("vid-neurons:2026-10-30"), false);
+  assert.equal(opslag.get("videovuil:2026-10-30"), true);
+  stuk = false;
+  const b = budget(kv, { putFout: () => { puts++; return false; } }, opslag); // herstart: nieuwe DO, zelfde opslag
+  assert.deepEqual(await b.call("stand", { datum: "2026-10-30" }), { video: 100 });
+  assert.equal(kv.get("vid-neurons:2026-10-30"), "100");
+  assert.equal(opslag.has("videovuil:2026-10-30"), false);
+  const voor = puts;
+  await b.call("stand", { datum: "2026-10-30" });
+  assert.equal(puts, voor, "geen tweede KV-schrijfactie");
+});
 await t("Budget: onbekende actie en GET worden geweigerd", async () => {
   const { b } = budget();
   assert.equal((await b.fetch(new Request("https://do/claim"))).status, 405);

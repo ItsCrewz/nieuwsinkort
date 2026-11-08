@@ -1,0 +1,1 @@
+- Artikelbeelden: een URL met een expliciete hoogteparameter (`h`, `height`) onder de 160 pixels telt als te klein en wordt niet als artikelbeeld gekozen; beelden met voldoende of onbekende hoogte blijven behouden.

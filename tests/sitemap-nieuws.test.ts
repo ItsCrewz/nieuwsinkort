@@ -16,6 +16,7 @@ try {
   assert.ok(xml.includes(`<loc>https://nieuwsinkort.nl${artikelPad(a, dag)}</loc>`), "zelfde URL als de pagina");
   assert.ok(xml.includes("<news:title>Rook &amp; vuur &lt;b&gt;</news:title>"), "escaping");
   assert.ok(xml.includes("<news:publication_date>2026-11-04T09:30:00.000Z</news:publication_date>"));
+  assert.ok(!xml.includes("lastmod"), "geen verzonnen lastmod (#712)");
   assert.ok(xml.includes("<news:language>nl</news:language>"));
   assert.equal((xml.match(/<url>/g) || []).length, 1, "ruw, politiek en zonder tijd ontbreken");
   const veel = Array.from({ length: 1200 }, (_, i) => ({ kop: `Bericht ${i}`, t, bronnen: [{ site: "x", href: `https://x.nl/${i}` }] }));
