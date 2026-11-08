@@ -39,13 +39,22 @@ export function negeerDoel(el: Element | null, grens: Element | null = null): bo
   return false;
 }
 
+export function magStartenOp(artikel: Element | null, doel: Element | null): boolean {
+  return !!artikel && !!doel && artikel.contains(doel) && !negeerDoel(doel, artikel.parentElement);
+}
+
 const selectie = () => { const s = window.getSelection?.(); return !!s && !s.isCollapsed && s.toString().length > 0; };
 
 // Pagina volgt de vinger; los te vroeg = terugveren, anders onBack (history.back via de bestaande sluitroute).
 export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opties?: { geveegd?: boolean }) => void) {
   const terug = useRef(onBack);
   terug.current = onBack;
-  useLayoutEffect(() => {
+  useLayoutEffect(() => luisterTerugvegen(ref, terug), [ref]);
+}
+
+export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: { current: (opties?: { geveegd?: boolean }) => void }) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const annuleer = () => { if (timer !== undefined) { clearTimeout(timer); timer = undefined; } };
     let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" = "uit";
     const el = () => ref.current;
     const zet = (x: number, anim: boolean, veer = false) => {
@@ -56,10 +65,13 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
     };
     const klaar = () => { const e = el(); if (e) { e.style.transition = ""; e.style.transform = ""; e.classList.remove("veegt"); } document.body.style.overflowX = ""; };
     const start = (ev: TouchEvent) => {
+      annuleer();
+      klaar();
       stand = "uit";
       const t = ev.touches[0];
       if (ev.touches.length !== 1 || !t || !magStarten(t.clientX) || selectie()) return;
-      if (negeerDoel(ev.target as Element | null, el()?.parentElement ?? null)) return;
+      const artikel = el();
+      if (!magStartenOp(artikel, typeof Element !== "undefined" && ev.target instanceof Element ? ev.target : null)) return;
       x0 = t.clientX; y0 = t.clientY; t0 = ev.timeStamp; dx = 0; stand = "wacht";
     };
     const beweeg = (ev: TouchEvent) => {
@@ -79,6 +91,7 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
       zet(Math.max(0, dx), false);
     };
     const eind = (ev: TouchEvent) => {
+      if (stand !== "uit") annuleer();
       const was = stand;
       stand = "uit";
       if (was !== "veeg") return;
@@ -86,20 +99,20 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
       if (ev.type !== "touchcancel" && sluit(dx, breed, ev.timeStamp - t0)) {
         if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
         zet(breed, true);
-        setTimeout(() => { terug.current({ geveegd: true }); klaar(); }, 180);
+        timer = setTimeout(() => { timer = undefined; klaar(); terug.current({ geveegd: true }); }, 180);
       } else if (rustig()) klaar();
-      else { zet(0, true, true); setTimeout(klaar, 200); }
+      else { zet(0, true, true); timer = setTimeout(() => { timer = undefined; klaar(); }, 200); }
     };
     document.addEventListener("touchstart", start, { passive: true });
     document.addEventListener("touchmove", beweeg, { passive: false });
     document.addEventListener("touchend", eind, { passive: true });
     document.addEventListener("touchcancel", eind, { passive: true });
     return () => {
+      annuleer();
       document.removeEventListener("touchstart", start);
       document.removeEventListener("touchmove", beweeg);
       document.removeEventListener("touchend", eind);
       document.removeEventListener("touchcancel", eind);
       klaar();
     };
-  }, [ref]);
 }

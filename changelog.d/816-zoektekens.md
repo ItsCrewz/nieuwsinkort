@@ -1,0 +1,1 @@
+- Behoud betekenisvolle tekens in zoekwoorden buiten het Latijnse schrift (#816).

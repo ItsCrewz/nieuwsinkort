@@ -1,0 +1,1 @@
+- `canonUrl` codeert querysleutels en -waarden ondubbelzinnig, zodat `?a=x%26b%3Dy` en `?a=x&b=y` niet meer dezelfde dedupsleutel krijgen; herhaalde parameters blijven behouden, trackingparameters worden nog genegeerd (#708).

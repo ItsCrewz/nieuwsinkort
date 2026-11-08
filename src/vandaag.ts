@@ -58,9 +58,9 @@ export function alleenVandaag(data: any, now: number) {
   return out;
 }
 
-/** Houd de huidige data bij gelijke generatietijd alleen als de videolijsten ook gelijk zijn. */
-export function kiesNieuweData<T extends { gegenereerd?: string; filmpjes?: unknown[]; dumpert?: unknown[] }>(vorig: T | null, nieuw: T): T {
-  return vorig && vorig.gegenereerd && vorig.gegenereerd === nieuw.gegenereerd && JSON.stringify([vorig.filmpjes, vorig.dumpert]) === JSON.stringify([nieuw.filmpjes, nieuw.dumpert]) ? vorig : nieuw;
+/** Houd de huidige data alleen als de hele respons inhoudelijk gelijk is (geen onnodige state-update); dezelfde `gegenereerd` verbergt dus geen gewijzigde artikelen, briefing of weer. */
+export function kiesNieuweData<T extends { gegenereerd?: string }>(vorig: T | null, nieuw: T): T {
+  return vorig && vorig.gegenereerd && vorig.gegenereerd === nieuw.gegenereerd && JSON.stringify(vorig) === JSON.stringify(nieuw) ? vorig : nieuw;
 }
 
 export function verwijderGisteren<T extends { filmpjes?: { gisteren?: boolean }[]; dumpert?: { gisteren?: boolean }[] }>(data: T, now: number): T {
