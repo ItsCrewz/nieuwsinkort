@@ -1,0 +1,1 @@
+- Videosamenvattingen volgen playlistredirects bij het ophalen van HLS-audio (#856).
