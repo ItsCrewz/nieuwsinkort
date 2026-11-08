@@ -1,0 +1,1 @@
+- Zoeken ondersteunt aaneengesloten woordgroepen tussen dubbele aanhalingstekens (#634).
