@@ -99,4 +99,7 @@ minderBeweging = true;
 const scrim = nodes(render(), "button").find((n) => n.props.className === "scrim");
 scrim.props.onClick();
 assert.equal(gesloten, 3);
+const volledig = SourcesSheet({ ...props, groups: [{ ...groepen[0], onvolledig: false }] }) as any;
+assert.match(tekst(volledig), /6 bronnen · 7 berichten vandaag/);
+assert.doesNotMatch(tekst(volledig), /minstens|\(onvolledig\)/);
 console.log("sheet: tests geslaagd");
