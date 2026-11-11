@@ -31,6 +31,14 @@ try {
   assert.deepEqual(renderMeer(c), { meer: null, laden: true }); effecten();
   await klaar("derde-677", "Derde tekst");
   assert.deepEqual(renderMeer(c).meer, { uitleg: ["Derde tekst"] });
+  const d = item("vierde-677");
+  assert.deepEqual(renderMeer(d), { meer: null, laden: true }); effecten();
+  await klaar("vierde-677", "Vierde tekst");
+  assert.deepEqual(renderMeer(d), { meer: { uitleg: ["Vierde tekst"] }, laden: false });
+  const e = item("vijfde-677");
+  assert.deepEqual(renderMeer(e), { meer: null, laden: true }); effecten();
+  await klaar("vijfde-677", "Vijfde tekst");
+  assert.deepEqual(renderMeer(e).meer, { uitleg: ["Vijfde tekst"] });
   assert.deepEqual(renderMeer(item()), { meer: null, laden: false });
   console.log("ok - sleutelwisseling tijdens en na laden toont geen oude tekst");
 } finally { globalThis.fetch = echteFetch; }
