@@ -429,6 +429,8 @@ Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuw
 ## Beveiligingsheaders
 
 Zie [README](../README.md#beveiligingsheaders) voor de headers en onderhoudsregels.
+Bij een zoekopdracht zonder resultaten zet “Wis zoekopdracht” de focus terug in het lege zoekveld; de zoekbalk blijft open. De toetsenbordroute staat in `e2e/zoekfocus-769.spec.mjs`.
+
 De nieuwsfeed bewaart per rubriek in sessionStorage het zichtbare artikel en de offset. Bij nieuwe artikelen blijft dat anker staan en verschijnt een melding; ontbreekt het artikel, dan volgt het eerstvolgende oudere bekende artikel.
 ## Zoeken (#735)
 
