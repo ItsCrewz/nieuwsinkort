@@ -11,6 +11,7 @@ import { Icon } from "./icons";
 import { rustig, scrollGedrag } from "./beweging";
 import { maakSluiter } from "./feedsluiten";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
+import { tabToets } from "./tabs";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 
@@ -1641,10 +1642,11 @@ export function Feed({
               <Icon name={muted ? "mute" : "volume"} />
               {muted ? <span>{geluidHint}</span> : null}
             </button>
+            {/* gs ligt vast zolang de feed open is, dus gi blijft geldig: tabstop en aria-selected volgen dezelfde waarde. */}
             {gs ? (
               <div className="f-tabs" role="tablist" aria-label="Soort filmpjes">
                 {gs.map((g, k) => (
-                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} onClick={() => pickGroup(k)}>
+                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} tabIndex={k === gi ? 0 : -1} onKeyDown={tabToets} onClick={() => pickGroup(k)}>
                     {g.label}
                     <span className="tnum">{g.list.length}</span>
                   </button>
