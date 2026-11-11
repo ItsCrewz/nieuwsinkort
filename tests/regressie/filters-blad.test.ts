@@ -220,7 +220,9 @@ function speel(onClose: () => void, rondes: Partial<Parameters<typeof FilterBlad
     FilterBlad({ f: STANDAARD, set: () => {}, reset: () => {}, u: uitkomst(2), bron: bronItems, catBron, vorig: 0, alles: false, onClose, ...o });
     wachtend.splice(0).forEach((fn) => fn());
   }
-  return log;
+  const resultaat = [...log];
+  slots.forEach((slot) => slot?.cleanup?.());
+  return resultaat;
 }
 const wijzigingen = [{}, { f: { ...STANDAARD, tijd: "1u" as const } }, { f: { ...STANDAARD, video: true } }, { f: { ...STANDAARD, regio: ["haarlem" as const] } }, { u: uitkomst(5) }];
 const stabiel = () => {};
@@ -236,4 +238,61 @@ intern.current = vorigeDispatcher;
 const appBron = readFileSync("src/App.tsx", "utf8");
 assert.match(appBron, /const sluitFilters = useCallback\(\(\) => setFsheet\(false\), \[\]\)/);
 assert.match(appBron, /onClose=\{sluitFilters\}/);
+
+// Focusval (#627): Tab/Shift+Tab blijven in het blad, uitgeschakelde knoppen tellen niet, focus keert terug; nieuws, filmpjes, ook met minder beweging.
+const luisteraars: Record<string, (e: any) => void> = {};
+let actief: any = null;
+g.Node = class {};
+const el = (naam: string) => {
+  const e = Object.assign(new g.Node(), { naam, focus: () => { actief = e; } });
+  return e;
+};
+const vorigEl = el("vorig");
+const sluitEl = el("sluiten");
+g.document = { body, get activeElement() { return actief; }, addEventListener: (t: string, f: any) => { luisteraars[t] = f; }, removeEventListener: (t: string) => { delete luisteraars[t]; } };
+const tab = (shift: boolean) => {
+  const e = new Event("keydown", { cancelable: true });
+  Object.defineProperty(e, "key", { value: "Tab" });
+  Object.defineProperty(e, "shiftKey", { value: shift });
+  venster.dispatchEvent(e);
+  return e.defaultPrevented;
+};
+for (const mb of [false, true]) for (const video of [false, true]) {
+  minderBeweging = mb;
+  closing = false;
+  refs = [];
+  root = maak({ video, f: STANDAARD }); // Standaard staat uit: die knop hoort niet in de tabvolgorde
+  const bedienbaar = [...nodes(root, "button").filter((b) => !b.props.disabled).map((b) => el(tekst(b) || b.props.className)), ...chips(root).map((c) => el(label(c)))];
+  assert.ok(bedienbaar.length >= 3);
+  assert.ok(!bedienbaar.some((b) => b.naam === "Standaard"));
+  const panelEl = { contains: (x: any) => bedienbaar.includes(x), querySelectorAll: (sel: string) => (assert.match(sel, /button:not\(\[disabled\]\)/), bedienbaar) };
+  refs = [{ current: panelEl }, { current: sluitEl }]; // volgorde van useRef: paneel, sluitknop
+  maak({ video });
+  actief = vorigEl;
+  const stop = effect!();
+  assert.equal(actief, sluitEl);
+  const eerste = bedienbaar[0], laatste = bedienbaar[bedienbaar.length - 1];
+  // Vanaf de sluitknop (buiten de lijst) wint de eerste bedienbare knop.
+  assert.equal(tab(false), true);
+  assert.equal(actief, eerste);
+  // Shift+Tab op de eerste gaat naar de laatste, Tab op de laatste naar de eerste.
+  assert.equal(tab(true), true);
+  assert.equal(actief, laatste);
+  assert.equal(tab(false), true);
+  assert.equal(actief, eerste);
+  // Midden in de lijst laat de browser zelf bewegen.
+  actief = bedienbaar[1];
+  assert.equal(tab(false), false);
+  assert.equal(tab(true), false);
+  assert.equal(actief, bedienbaar[1]);
+  // Focus buiten het blad gaat terug naar de sluitknop.
+  luisteraars.focusin({ target: el("buiten") });
+  assert.equal(actief, sluitEl);
+  actief = bedienbaar[1];
+  luisteraars.focusin({ target: bedienbaar[1] });
+  assert.equal(actief, bedienbaar[1]);
+  stop();
+  assert.equal(actief, vorigEl);
+  assert.equal(luisteraars.focusin, undefined);
+}
 console.log("filters-blad: tests geslaagd");
