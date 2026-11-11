@@ -71,7 +71,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       const t = ev.touches[0];
       if (ev.touches.length !== 1 || !t || !magStarten(t.clientX) || selectie()) return;
       const artikel = el();
-      if (!magStartenOp(artikel, ev.target instanceof Element ? ev.target : null)) return;
+      if (!magStartenOp(artikel, typeof Element !== "undefined" && ev.target instanceof Element ? ev.target : null)) return;
       x0 = t.clientX; y0 = t.clientY; t0 = ev.timeStamp; dx = 0; stand = "wacht";
     };
     const beweeg = (ev: TouchEvent) => {
