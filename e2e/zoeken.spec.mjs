@@ -73,6 +73,34 @@ test("sneltoets opent zoeken en Escape brengt focus terug", async ({ page, isMob
   await expect(knop).toBeFocused();
 });
 
+test("modaal bronnenvenster krijgt voorrang op zoeksneltoetsen", async ({ page, isMobile }) => {
+  test.skip(isMobile, "De sneltoets is voor desktop.");
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const zoekknop = page.getByRole("button", { name: "Zoeken", exact: true });
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  const bronnen = page.getByRole("button", { name: "Bronnen", exact: true });
+  await bronnen.click();
+  const venster = page.getByRole("dialog", { name: "Bronnen" });
+  await expect(venster).toBeVisible();
+  await page.keyboard.press("/");
+  await expect(invoer).toHaveCount(0);
+  await expect(venster.getByRole("button", { name: "Sluit bronnen" }).last()).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(venster).toHaveCount(0);
+  await page.keyboard.press("/");
+  await expect(invoer).toBeFocused();
+  await bronnen.click();
+  await expect(venster).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(venster).toHaveCount(0);
+  await expect(invoer).toBeVisible();
+  await expect(bronnen).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(invoer).toHaveCount(0);
+  await expect(zoekknop).toBeFocused();
+});
+
 for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["mobiel klein", 360, 740], ["desktop", 1280, 800]]) test(`zoekknop dekt geen kaartactie of open-knop af, ook niet bij de laatste kaart (${naam})`, async ({ page }) => {
   await page.setViewportSize({ width: breedte, height: hoogte });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());

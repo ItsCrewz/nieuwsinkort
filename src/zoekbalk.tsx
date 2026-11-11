@@ -1,6 +1,6 @@
 import { Icon } from "./icons";
 import { createPortal } from "react-dom";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { staatFocusInInvoer } from "./zoekfocus";
 import { normaliseer } from "./zoek";
 
@@ -11,15 +11,15 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
   const knop = useRef<HTMLButtonElement>(null);
   const invoer = useRef<HTMLInputElement>(null);
   const focusBijOpenen = useRef(false);
+  const sluit = useCallback(() => { onChange(""); setOpen(false); knop.current?.focus(); }, [onChange]);
   useEffect(() => { if (open && focusBijOpenen.current) { focusBijOpenen.current = false; invoer.current?.focus(); } }, [open]);
   useEffect(() => {
     const toets = (e: KeyboardEvent) => {
+      if (document.querySelector('[aria-modal="true"]')) return;
       if (e.key === "Escape" && open) {
         e.preventDefault();
         e.stopPropagation();
-        onChange("");
-        setOpen(false);
-        knop.current?.focus();
+        sluit();
       } else if (e.key === "/" && !open && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing &&
         window.matchMedia("(hover: hover) and (pointer: fine)").matches && !staatFocusInInvoer(document.activeElement as HTMLElement | null)) {
         e.preventDefault();
@@ -29,8 +29,7 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
     };
     document.addEventListener("keydown", toets);
     return () => document.removeEventListener("keydown", toets);
-  }, [open, onChange]);
-  const sluit = () => { onChange(""); setOpen(false); knop.current?.focus(); };
+  }, [open, sluit]);
   // Buiten .shell renderen (container-type:inline-size), anders scrolt de vaste knop mee, net als de deelknop.
   const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} aria-label="Zoeken" title="Zoeken" onClick={() => { if (open) sluit(); else { focusBijOpenen.current = true; setOpen(true); } }}><Icon name="search" /></button>;
   return (
@@ -44,9 +43,7 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
 
 export function ZoekFormulier({ query, onChange, sluit, invoer }: { query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement> }) {
   return <form className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); invoer.current?.blur(); }}>
-        <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws" value={query} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => {
-          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sluit(); }
-        }} />
+        <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws" value={query} onChange={(e) => onChange(e.target.value)} />
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
       </form>;
 }
