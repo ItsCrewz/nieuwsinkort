@@ -7,7 +7,6 @@ const t = async (naam: string, fn: () => Promise<void>) => { await fn(); n++; co
 
 const req = (pad: string) => new Request(`https://nieuws.example${pad}`);
 const kvMet = (meerData: any) => ({ async get(_k: string, _o: any) { return meerData; } });
-const kvFout = { async get(_k: string, _o: any): Promise<any> { throw new Error("KV down"); } };
 const check = (r: Response, cache: string | null) => {
   assert.equal(r.headers.get("x-content-type-options"), "nosniff");
   assert.match(r.headers.get("content-type") || "", /^application\/json/);
@@ -37,13 +36,22 @@ await t("ontbrekende KV-binding geeft 400", async () => {
   check(r, null);
 });
 
-await t("KV die een fout gooit geeft 404 met no-store", async () => {
+await t("KV-fout geeft 503 en na herstel is de inhoud beschikbaar", async () => {
+  let reads = 0;
+  const inhoud = { uitleg: ["Extra tekst"] };
+  const kv = { async get(_k: string, _o: any) { if (++reads === 1) throw new Error("KV down"); return { items: { bericht: inhoud } }; } };
   const err = console.error; console.error = () => {};
   try {
-    const r = await meer({ request: req("/meer?k=bericht"), env: { NIEUWS: kvFout } });
-    assert.equal(r.status, 404);
+    const r = await meer({ request: req("/meer?k=bericht"), env: { NIEUWS: kv } });
+    assert.equal(r.status, 503);
     check(r, "no-store");
-    assert.deepEqual(await r.json(), { fout: "niet gevonden" });
+    assert.equal(r.headers.get("retry-after"), "60");
+    assert.deepEqual(await r.json(), { fout: "tijdelijk niet beschikbaar" });
+    const herstel = await meer({ request: req("/meer?k=bericht"), env: { NIEUWS: kv } });
+    assert.equal(herstel.status, 200);
+    check(herstel, "public, max-age=0, must-revalidate");
+    assert.deepEqual(await herstel.json(), inhoud);
+    assert.equal(reads, 2);
   } finally { console.error = err; }
 });
 
@@ -55,11 +63,11 @@ await t("onbekende sleutel, lege KV en zonder items geven 404 met no-store", asy
   }
 });
 
-await t("bekende sleutel geeft 200 met max-age=600 en beveiligingsheaders", async () => {
+await t("bekende sleutel geeft 200 met hervalidatie en beveiligingsheaders", async () => {
   const m = { uitleg: ["Extra tekst"], perBron: [{ site: "a.nl", href: "https://a.nl/x", punten: ["p"] }] };
   const r = await meer({ request: req("/meer?k=bericht"), env: { NIEUWS: kvMet({ items: { bericht: m } }) } });
   assert.equal(r.status, 200);
-  check(r, "public, max-age=600");
+  check(r, "public, max-age=0, must-revalidate");
   assert.deepEqual(await r.json(), m);
 });
 
