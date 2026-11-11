@@ -31,9 +31,7 @@ export function zoekItems(items: Item[], query: string): Item[] {
   if (!woorden.length) return query.trim() ? [] : items;
   return items.filter((item) => {
     const origineel = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).join(" ");
-    const zonderPunten = afkortingen(origineel);
-    // Alleen toevoegen als er een afkorting was: een dubbele tekst zou twee termen op hetzelfde woord laten vallen.
-    const tekst = normaliseer(zonderPunten === origineel ? origineel : origineel + " " + zonderPunten);
+    const tekst = normaliseer(afkortingen(origineel));
     // Woordbegin: elke term moet op een eigen woord vallen ("mark markt" vraagt twee woorden).
     return alleTermenPassen(woorden, tekst.split(" "));
   });

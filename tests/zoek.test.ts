@@ -28,6 +28,12 @@ const markt = kop("Drukte op de markt"), beide = kop("Mark bezoekt de markt"), b
 assert.deepEqual(zoekItems([markt, beide], "mark markt"), [beide]);
 assert.deepEqual(zoekItems([markt, beide], "markt mark"), [beide]);
 assert.deepEqual(zoekItems([markt, brand, kop("Een brand")], "brand brand"), [brand]);
+const brandAfkorting = kop("Brand o.a. in Gent"), marktAfkorting = kop("Markt in de V.S.");
+assert.deepEqual(zoekItems([brandAfkorting], "brand brand"), []);
+assert.deepEqual(zoekItems([marktAfkorting], "mark markt"), []);
+assert.deepEqual(zoekItems([brandAfkorting], "brand oa"), [brandAfkorting]);
+assert.deepEqual(zoekItems([marktAfkorting], "markt vs"), [marktAfkorting]);
+assert.deepEqual(zoekItems([marktAfkorting], "vs v.s."), []);
 // korte term die op meerdere woorden past: volgorde van termen maakt niet uit
 const mar = kop("Markt en Maria");
 for (const q of ["mar maria", "maria mar", "mar markt", "markt mar"]) assert.deepEqual(zoekItems([mar], q), [mar], q);
