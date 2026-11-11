@@ -29,8 +29,7 @@ try {
     afbeeldingen[begin].onload!();
     afbeeldingen[begin + 1].onerror!();
     timers.values().next().value!();
-    await Promise.resolve();
-    await Promise.resolve();
+    await new Promise<void>((resolve) => setImmediate(resolve));
     assert.equal(afbeeldingen.length - begin, GELIJK + 1);
     assert.equal(aantalActievePosters(), 1);
     afbeeldingen[begin + GELIJK].onload!();
@@ -40,6 +39,7 @@ try {
     assert.equal(afbeeldingen[begin].onload, null);
     assert.equal(afbeeldingen[begin + 1].onerror, null);
     assert.equal(afbeeldingen[begin + 2].onload, null);
+    await new Promise<void>((resolve) => setImmediate(resolve));
   }
   console.log("✓ afgeronde posters worden vrijgegeven, ook na fout en timeout");
 } finally {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 // Controleer de onderling uitsluitende renderpaden voor laden, detail, nieuws en video.
 const bron = readFileSync("src/App.tsx", "utf8");
-const laden = bron.slice(bron.indexOf("  if (!data || !raw)"), bron.indexOf("  // Detail: eerst"));
+const laden = bron.slice(bron.indexOf("  if (!data || !raw)"), bron.indexOf("  if (selectedItem)"));
 const detailBron = readFileSync("src/detail.tsx", "utf8");
 const detail = detailBron.slice(detailBron.indexOf("function DetailView"));
 const nieuws = bron.slice(bron.indexOf("  if (!isVideo) {", bron.indexOf("export default function App")), bron.indexOf('  return (\n    <Frame top={top}>', bron.indexOf("  if (!isVideo) {", bron.indexOf("export default function App"))));
