@@ -25,4 +25,9 @@ export function bewaarFeed(s: FeedStatus) {
 }
 export function wisFeed() {
   try { sessionStorage.removeItem(KEY); } catch { /* opslag kan uitstaan */ }
+  // Ook uit de geschiedenis, anders leest leesFeed de oude status daar weer terug; andere velden blijven.
+  try {
+    const st = history.state;
+    if (st && typeof st === "object" && "feed" in st) { const { feed: _weg, ...rest } = st; history.replaceState(rest, ""); }
+  } catch { /* geschiedenis kan niet beschikbaar zijn */ }
 }
