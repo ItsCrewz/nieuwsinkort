@@ -4,6 +4,8 @@ Installeer na `npm ci` de browsers met `npx playwright install chromium firefox 
 
 De console-allowlist staat in `e2e/rookproef.spec.mjs` (geblokkeerde externe verzoeken, de dev-waarschuwing over de `fetchPriority`-prop en de Firefox-CORS-melding voor `video.twimg.com`). Axe rapporteert aantallen per view en project en faalt boven de baseline. Op 30 oktober zijn op Chromium, Firefox en Pixel maximaal 4 overtredingen op home, 3 op tech, 4 op filmpjes, 4 op dumpert en 1 op artikel gemeten. WebKit en iPhone konden op die Linux-host niet starten door ontbrekende systeembibliotheken en zijn dus niet meegenomen in deze meting. Beoordeel veranderingen voordat de baseline wordt verhoogd. De proef maakt geen deel uit van `npm run check`.
 
+`e2e/fotocarrousel.spec.mjs` controleert de toegankelijke naam, gekoppelde toetsenbordinstructie en positie bij meerdere foto's, en het ontbreken van de instructie bij één foto. De test bedient de carrousel met beide pijltjestoetsen.
+
 Zoeken heeft op desktop de sneltoets `/`, behalve tijdens invoer in een invoerveld, tekstvak of bewerkbare inhoud. Escape sluit het zoekveld en zet de focus terug op de zoekknop. De browserproef controleert dit naast de mobiele zoekweergave.
 
 De beeldtest `e2e/beelden-639.spec.mjs` controleert de toetsenbordvolgorde en toegankelijke rollen bij één en meerdere foto's en na een laadfout, ook wanneer een verdwijnende knop focus heeft. Lokaal: `PW_CHROME=/usr/bin/google-chrome npx playwright test e2e/beelden-639.spec.mjs --project=chromium`. `tests/beelden-tabstop.test.ts` bewaakt dezelfde regels in `npm test` (en dus `npm run check`).

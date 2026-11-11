@@ -29,10 +29,9 @@ export const scopeZin = (s: ZoekScope, breed: boolean) => breed ? `Zoekt in ${s.
 
 export type ZoekProps = { scope?: ZoekScope; breed?: boolean; onBreed?: (breed: boolean) => void };
 
-export function Zoekbalk({ query, onChange, aantal, scope, breed = false, onBreed }: { query: string; onChange: (query: string) => void; aantal: number } & ZoekProps) {
+export function Zoekbalk({ query, onChange, aantal, invoer, scope, breed = false, onBreed }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement> } & ZoekProps) {
   const [open, setOpen] = useState(!!query);
   const knop = useRef<HTMLButtonElement>(null);
-  const invoer = useRef<HTMLInputElement>(null);
   const focusBijOpenen = useRef(false);
   const sluit = useCallback(() => { onChange(""); onBreed?.(false); setOpen(false); knop.current?.focus(); }, [onChange, onBreed]);
   useEffect(() => { if (open && focusBijOpenen.current) { focusBijOpenen.current = false; invoer.current?.focus(); } }, [open]);

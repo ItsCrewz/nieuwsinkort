@@ -1097,6 +1097,7 @@ export default function App() {
   const [fsheet, setFsheet] = useState(false);
   const [zoekterm, setZoekterm] = useState("");
   const [zoekBreed, setZoekBreed] = useState(false); // alleen voor het zoeken: filters genegeerd, opgeslagen keuzes blijven
+  const zoekInvoer = useRef<HTMLInputElement>(null);
   const flt = useFilters();
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
@@ -1231,7 +1232,7 @@ export default function App() {
   const zoekUitkomst = isFeedView ? zoekItems(zoekBasis, zoekterm) : [];
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} scope={zoekScopeInfo} breed={zoekBreed} onBreed={setZoekBreed} /> : undefined} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} scope={zoekScopeInfo} breed={zoekBreed} onBreed={setZoekBreed} invoer={zoekInvoer} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>
@@ -1353,7 +1354,7 @@ export default function App() {
             items={zoekUitkomst}
             nieuwsdata={raw}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} scope={zoekScopeInfo} breed={zoekBreed} onBreed={setZoekBreed} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => { setZoekterm(""); zoekInvoer.current?.focus(); }} scope={zoekScopeInfo} breed={zoekBreed} onBreed={setZoekBreed} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
