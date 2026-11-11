@@ -6,7 +6,7 @@ import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
 assert.match(leeg, /Niets gevonden voor “niets”/);
 assert.match(leeg, /Wis zoekopdracht/);
-assert.match(renderToStaticMarkup(createElement(ZoekLeeg, { query: "C++", onWis: () => {} })), /Geen berichten gevonden voor ‘C\+\+’/);
+assert.match(renderToStaticMarkup(createElement(ZoekLeeg, { query: "C++", onWis: () => {} })), /Niets gevonden voor “C\+\+”/);
 for (const query of ["!!!", "😀"]) {
   const melding = renderToStaticMarkup(createElement(ZoekLeeg, { query, onWis: () => {} }));
   const balk = renderToStaticMarkup(createElement(Zoekbalk, { query, onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
