@@ -1,0 +1,1 @@
+- Nieuws en filteraantallen verversen vanzelf als een tijdvenster verloopt of je terugkeert naar het tabblad (#767).

@@ -1,0 +1,1 @@
+- Wissen van de feedstatus (#802): `wisFeed` verwijdert de status nu ook uit `history.state` (andere velden blijven) en een nieuw geopende feed neemt geen gewiste positie over.

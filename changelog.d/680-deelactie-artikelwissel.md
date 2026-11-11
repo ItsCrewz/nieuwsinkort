@@ -1,0 +1,1 @@
+- Een vertraagde deelactie toont geen kopieermelding meer bij een ander artikel.
