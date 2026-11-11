@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Tel voor het filter en de sortering op bronnen elke uitgever eenmaal, ook bij meerdere links of rubrieknamen (#701).
+- Vastgelopen aanvragen voor extra artikeltekst stoppen na 10 seconden, zodat een latere poging kan herstellen (#742).
 - Fotocarrousels met meerdere foto's geven een gekoppelde instructie voor de pijltjestoetsen (#744).
 - Voorkom onterechte video-ontdubbeling bij media en thumbnails met verschillende betekenisvolle querywaarden (#847).
 - Artikelverdieping geeft bij een KV-storing 503 in plaats van 404 en is na herstel opnieuw op te halen (#839).
