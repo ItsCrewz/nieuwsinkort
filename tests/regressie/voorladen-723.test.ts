@@ -44,9 +44,28 @@ try {
   assert.ok(verzoeken.find((v) => v.url.endsWith("video.ts"))!.signal.aborted);
   assert.ok(verzoeken.find((v) => v.url === "/hang-723.m3u8")!.signal.aborted);
   assert.equal(timers.size, 0);
+  const afbeeldingen: { src: string; onload: (() => void) | null; onerror: (() => void) | null }[] = [];
+  zet("Image", class {
+    src = ""; onload: (() => void) | null = null; onerror: (() => void) | null = null;
+    constructor() { afbeeldingen.push(this); }
+  });
+  // De tweede aanroep mag geen netwerktaak starten zolang de posters de pool bezetten.
+  zet("setTimeout", (fn: () => void) => { timers.set(++teller, fn); return teller; });
+  voerUit({ ...leeg, thumbs: ["https://img.example/723-a", "https://img.example/723-b", "https://img.example/723-c"] });
+  voerUit({ ...leeg, hls: ["/overlap-723.m3u8"] });
+  await doorspoelen();
+  assert.equal(afbeeldingen.length, 3);
+  assert.equal(verzoeken.some((v) => v.url === "/overlap-723.m3u8"), false);
+  afbeeldingen[0].onload!();
+  await doorspoelen();
+  assert.ok(verzoeken.some((v) => v.url === "/overlap-723.m3u8"));
+  afbeeldingen.slice(1).forEach((img) => img.onload!());
+  await doorspoelen();
+  assert.equal(timers.size, 0);
+  console.log("✓ overlappende aanroepen delen maximaal drie plaatsen");
   console.log("✓ netwerkvoorladen geeft vastgelopen plaatsen vrij en annuleert fetches en lezers");
 } finally {
-  for (const naam of ["location", "setTimeout", "clearTimeout", "fetch"]) {
+  for (const naam of ["location", "setTimeout", "clearTimeout", "fetch", "Image"]) {
     if (origineel[naam]) Object.defineProperty(globalThis, naam, origineel[naam]);
     else Reflect.deleteProperty(globalThis, naam);
   }
