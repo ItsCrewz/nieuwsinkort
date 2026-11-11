@@ -7,7 +7,7 @@ import type { Video } from "../../src/types";
 // een tik moet de memo met beide videolijsten ongeldig maken.
 const bron = readFileSync("src/App.tsx", "utf8");
 assert.match(bron, /const videoKlok = useVideoKlok\(route\.video \? flt\.f\.tijd : "alles"\)/);
-assert.match(bron, /const vids = useMemo\([\s\S]*?\[data, flt\.f, flt\.vorig, videoKlok\]\s*\)/);
+assert.match(bron, /const vids = useMemo\([\s\S]*?\[data, flt\.f, flt\.vorig, klok, videoKlok\]\s*\)/);
 
 const data = [{ titel: "Grens", tijd: "11:00" }] as Video[];
 const gegenereerd = "2026-10-30T12:00:00+01:00";
