@@ -107,6 +107,44 @@ test("terug uit een artikel: doelkaart speelt de entree niet opnieuw", async ({ 
   expect(await kaartAnimaties(page)).toBe(0);
 });
 
+// Trek-om-te-verversen (#540): echte aanraakgebeurtenissen via CDP; één /data.json per trek, status zichtbaar, reduced motion zonder animatie.
+async function trek(page, dy, stappen = 10) {
+  const cdp = await page.context().newCDPSession(page);
+  const x = 195, y0 = 200;
+  const stuur = (type, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+  await stuur("touchStart", y0);
+  for (let i = 1; i <= stappen; i++) await stuur("touchMove", y0 + (dy * i) / stappen);
+  return { los: () => stuur("touchEnd", y0 + dy) };
+}
+const dataVerzoeken = (page) => { const l = []; page.on("request", (r) => { if (/\/data\.json/.test(r.url())) l.push(r.url()); }); return l; };
+
+test("trek-om-te-verversen: boven de drempel precies één /data.json en een status; erdoor geen tweede binnen 30 s", async ({ page }) => {
+  await blokkeer(page);
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const l = dataVerzoeken(page);
+  let g = await trek(page, 300);
+  await g.los();
+  await expect(page.locator(".ptr-t")).toHaveText(/Bijgewerkt om \d\d:\d\d|Je bent bij|Verversen/);
+  await expect.poll(() => l.length).toBe(1);
+  await expect(page.locator(".ptr-t")).toHaveCount(0, { timeout: 4000 });
+  g = await trek(page, 300);
+  await g.los();
+  await expect(page.locator(".ptr-t")).toHaveText("Je bent bij");
+  expect(l.length).toBe(1);
+});
+
+test("trek-om-te-verversen: onder de drempel geen verzoek", async ({ page }) => {
+  await blokkeer(page);
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const l = dataVerzoeken(page);
+  const g = await trek(page, 60);
+  await g.los();
+  await page.waitForTimeout(400);
+  expect(l.length).toBe(0);
+});
+
 test("rubriekwissel: paneel animeert ≤ 240 ms, nooit gestapeld; briefing zonder animatie", async ({ page }) => {
   await blokkeer(page);
   await page.goto("#/");
@@ -138,4 +176,15 @@ test("reduced motion: geen lopende animaties bij rubriekwissel", async ({ page }
     expect(await page.evaluate(() => document.getElementById("rubriek-paneel").getAnimations().length)).toBe(0);
     expect(await traag(page)).toEqual([]);
   }
+});
+
+test("trek-om-te-verversen: reduced motion toont statisch 'Loslaten om te verversen' zonder lopende animatie", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await blokkeer(page);
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const g = await trek(page, 300);
+  await expect(page.locator(".ptr-t")).toHaveText("Loslaten om te verversen");
+  expect(await traag(page)).toEqual([]);
+  await g.los();
 });

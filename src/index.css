@@ -508,10 +508,10 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nf-btn{width:28px;height:28px;border-radius:14px;display:grid;place-items:center;color:var(--muted)}
 .nf-btn:hover{color:var(--ink)}
 .nf-btn .ic{width:16px;height:16px}
-.nf-start{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);pointer-events:auto;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border-radius:19px;
+.nf-start,.ptr{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);pointer-events:auto;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border-radius:19px;
   background:var(--ink);color:var(--p);font-size:0.84375rem;font-weight:500;box-shadow:var(--ps)}
 .nf-start.off{opacity:0;transform:translate(-50%,10px);pointer-events:none}
-.nf-start .ic{width:16px;height:16px}
+.nf-start .ic,.ptr .ic{width:16px;height:16px}
 
 @container (max-width: 560px){
   .app-feed .tabs{margin:0 -16px}
@@ -672,4 +672,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-leeg{padding:24px;text-align:center;overflow-wrap:anywhere}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
 
+/* Trek-om-te-verversen (#540): alleen de indicator beweegt (transform/opacity); stand via inline style vanuit useTrekVerversen */
+.ptr{top:8px;bottom:auto;pointer-events:none;animation:none;background:var(--card);color:var(--i2);border:1px solid var(--cl)}
+.ptr.klaar{color:var(--a)}
 /* Artikel en overzicht bewegen onder de stilstaande topbalk. */
