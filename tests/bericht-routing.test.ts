@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 // Routering, verloop en Cache API van /bericht/…: vaste klok, KV- en cachemocks, geen netwerk.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -12,7 +11,7 @@ const echteNu = Date.now;
 const zet = (iso: string) => { Date.now = () => Date.parse(iso); };
 const item = { kop: "Verdachten aangehouden", ai: "Eigen samenvatting", samenvatting: "Meer uitleg", punten: ["Punt"], cat: "nl", tijd: "10:00", bronnen: [{ site: "NOS", href: "https://nos.nl/a?x=1" }, { site: "NU.nl", href: "https://www.nu.nl/b" }] };
 const maakEnv = (dag: string, items: unknown[], tel: { reads: number }) => ({
-  ASSETS: { fetch: async (r: Request | string) => String((r as Request).url ?? r).endsWith("/data.json") ? Response.json({}) : new Response(sjabloon, { headers: { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp } }) },
+  ASSETS: { fetch: async (r: Request | string) => String((r as Request).url ?? r).endsWith("/data.json") ? Response.json({ items: [] }) : new Response(sjabloon, { headers: { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp } }) },
   NIEUWS: { get: async () => { tel.reads++; return `${dag}\ntag\n${JSON.stringify({ gegenereerd: `${dag}T09:00:00Z`, items })}`; } },
 });
 const bezoek = (env: any, pad: string, extra: any = {}, headers: Record<string, string> = {}) => onRequestGet({ request: new Request(`https://nieuwsinkort.nl${pad}`, { headers }), env, waitUntil: extra.waitUntil || ((p: Promise<unknown>) => void p) } as any);
@@ -37,6 +36,18 @@ try {
   assert.equal(r.status, 200); assert.equal(tel.reads, 1, "tweede aanvraag uit cache: geen KV-read"); assert.equal(puts, 1);
   assert.ok((await r.text()).includes(`<link rel="canonical" href="https://nieuwsinkort.nl${pad}" />`), "canonical zonder query");
   r = await bezoek(env, pad, wu, { "If-None-Match": tag }); assert.equal(r.status, 304); assert.equal(tel.reads, 1);
+  // meerdere tags, zwakke vergelijking en wildcard (cachetreffer); niet-passend geeft 200 met inhoud en cacheheaders
+  const sterk = tag.replace(/^W\//, "");
+  for (const kop of [`"x", ${tag}`, sterk, `"x" , ${tag}, "y"`, "*"]) { r = await bezoek(env, pad, wu, { "If-None-Match": kop }); assert.equal(r.status, 304, kop); assert.equal(r.headers.get("etag"), tag); }
+  r = await bezoek(env, pad, wu, { "If-None-Match": "foo*" }); assert.equal(r.status, 200, "losse * is geen wildcard");
+  r = await bezoek(env, pad, wu, { "If-None-Match": '"a", W/"b"' }); assert.equal(r.status, 200); assert.ok((await r.text()).length > 100); assert.equal(r.headers.get("cache-control"), "public, max-age=300, stale-while-revalidate=600");
+  // vers gegenereerd pad (lege cache)
+  for (const [kop, status] of [[`"x", ${tag}`, 304], [sterk, 304], ["*", 304], ['"a", "b"', 200]] as const) {
+    opslag.clear(); r = await bezoek(env, pad, wu, { "If-None-Match": kop }); await Promise.all(pending);
+    assert.equal(r.status, status, `vers ${kop}`); assert.equal(r.headers.get("etag"), tag); assert.equal(r.headers.get("cache-control"), "public, max-age=300, stale-while-revalidate=600");
+    if (status === 200) assert.ok((await r.text()).length > 100);
+  }
+  opslag.clear(); await bezoek(env, pad, wu); await Promise.all(pending);
   // redirects en fouten komen nooit in de cache
   const putsVoor = puts;
   await bezoek(env, `/bericht/${dag}/aaaaaaaa-onbekend`, wu); await bezoek(env, "/bericht/2026-11-02/aaaaaaaa-oud", wu); await bezoek(env, `${pad}-fout`, wu);
@@ -57,9 +68,9 @@ try {
   // vandaag maar onbekend
   r = await bezoek(env2, `/bericht/${dag}/zzzzzzzz-niet`, wu);
   assert.equal(r.status, 302); assert.equal(r.headers.get("location"), "/"); assert.equal(r.headers.get("cache-control"), "no-store"); assert.equal(r.headers.get("x-robots-tag"), "noindex");
-  // dataset van een andere dag: ook onbekend, geen permanente redirect
+  // dataset van een andere dag is tijdelijk onvolledig
   const envOud = maakEnv("2026-11-03", [item], { reads: 0 }); zet("2026-11-04T12:00:00Z");
-  r = await bezoek(envOud, pad, wu); assert.equal(r.status, 302);
+  r = await bezoek(envOud, pad, wu); assert.equal(r.status, 503); assert.equal(r.headers.get("cache-control"), "no-store");
   // ongeldig: 404
   for (const p of ["/bericht/2026-02-30/aaaaaaaa-x", "/bericht/2026-11-05/aaaaaaaa-x", "/bericht/2026-11-04/kort-x", "/bericht/2026-11-04"]) assert.equal((await bezoek(env2, p, wu)).status, 404, p);
 

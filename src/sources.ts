@@ -1,6 +1,7 @@
 // Bronnenfilter: welke bronnen je wilt zien. Opgeslagen in localStorage, puur client-side.
 // Een bericht verdwijnt pas als AL zijn bronnen uit staan; anders tonen we alleen de bronnen die aan staan.
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { artikelId } from "./artikelid";
 import type { Bron, Data, Item, Video } from "./types";
 
 export type GroupId = "nl" | "tech" | "haarlem" | "showbizz" | "politiek" | "voetbal" | "f1" | "auto" | "filmpjes" | "dumpert";
@@ -45,19 +46,59 @@ export const norm = (s: string) =>
 
 function hostOf(href: string) {
   try {
-    return new URL(href).hostname.replace(/^www\./, "").split(".").slice(-2).join(".");
+    return new URL(href).hostname.replace(/^www\./, "");
   } catch {
     return "";
   }
 }
 
+// Na een fout hooguit drie nieuwe pogingen (met uitstel), of eerder zodra de verbinding terug is; daarna niet meer.
+export const CATALOG_RETRY_MS = [3000, 10000, 30000];
+
 export function useCatalog() {
   const [cat, setCat] = useState<Catalog | null>(null);
   useEffect(() => {
-    fetch("/bronnen.json", { cache: "no-cache" })
-      .then((r) => (r.ok ? r.json() : { groepen: [] }))
-      .then((c: Catalog) => setCat(c && Array.isArray(c.groepen) ? c : { groepen: [] }))
-      .catch(() => setCat({ groepen: [] }));
+    let weg = false;
+    let poging = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let bezig = false;
+    let gestart = 0;
+    const ctrl = new AbortController();
+    const leeg: Catalog = { groepen: [] };
+    const laad = () => {
+      if (weg || bezig) return;
+      // eerste poging + de retries; ook online-events tellen mee
+      if (gestart > CATALOG_RETRY_MS.length) return void window.removeEventListener("online", laad);
+      gestart++;
+      bezig = true;
+      clearTimeout(timer);
+      fetch("/bronnen.json", { cache: "no-cache", signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("http"))))
+        .then((c: Catalog) => {
+          if (!(c && Array.isArray(c.groepen))) throw new Error("vorm");
+          if (!weg) setCat(c);
+          bezig = false;
+          // geladen: niet opnieuw proberen
+          weg = true;
+          window.removeEventListener("online", laad);
+        })
+        .catch(() => {
+          bezig = false;
+          if (weg) return;
+          // eerder geladen gegevens blijven staan; anders leeg tot het lukt
+          setCat((vorig) => vorig ?? leeg);
+          if (poging < CATALOG_RETRY_MS.length) timer = setTimeout(laad, CATALOG_RETRY_MS[poging++]);
+          else window.removeEventListener("online", laad);
+        });
+    };
+    window.addEventListener("online", laad);
+    laad();
+    return () => {
+      weg = true;
+      ctrl.abort();
+      clearTimeout(timer);
+      window.removeEventListener("online", laad);
+    };
   }, []);
   return cat;
 }
@@ -130,16 +171,29 @@ function resolveIn(ix: { byName: Map<string, string>; byHost: Map<string, string
   const byHandle = xh ? ix.byName.get(norm(xh[1])) : undefined;
   if (byHandle) return byHandle;
   const h = hostOf(href);
-  const byHost = h ? ix.byHost.get(h) : undefined;
+  // Een catalogushost mag een subdomein omvatten, maar geen gedeeld landsuffix.
+  const kandidaten = [...ix.byHost.keys()].filter((host) =>
+    !/^(?:co|com|org|net|gov|ac|edu)\.[a-z]{2}$/.test(host) && (h === host || h.endsWith(`.${host}`))
+  ).sort((a, b) => b.length - a.length);
+  const catalogusHost = kandidaten[0];
+  const byHost = catalogusHost ? ix.byHost.get(catalogusHost) : undefined;
   if (byHost && !n) return byHost;
   // Onbekende naam: alleen naar host terugvallen als de naam op die host lijkt (bijv. "NOS" ~ nos.nl)
-  if (byHost && h.replace(/\.[a-z]+$/, "").replace(/[^a-z0-9]/g, "") === n) return byHost;
+  if (byHost && catalogusHost.replace(/\.[a-z]+$/, "").replace(/[^a-z0-9]/g, "") === n) return byHost;
   return n || h || "onbekend";
 }
 
 export function sourceKey(index: Index, gid: GroupId, site: string, href: string) {
   const ix = index.get(gid);
   return `${gid}|${ix ? resolveIn(ix, site, href) : norm(site)}`;
+}
+
+export function filterArtikelBronnen(it: Item, index: Index, off: Set<string>): Item | null {
+  const bronnen = it.bronnen ?? [];
+  if (!bronnen.length || !index.has(groepVan(it))) return it;
+  const active = actieveBronnen(it, index, off);
+  if (!active.length) return null;
+  return active.length === bronnen.length ? it : { ...it, id: artikelId(it), bronnen: active };
 }
 
 function readOff(): Set<string> {
@@ -178,11 +232,16 @@ export function useSourceFilter() {
   }, []);
   // andere tabbladen bijhouden
   useEffect(() => {
-    const on = (e: StorageEvent) => e.key === FILTER_KEY && setOff(readOff());
+    // key === null: localStorage.clear() in een ander tabblad
+    const on = (e: StorageEvent) => (e.key === FILTER_KEY || e.key === null) && setOff(readOff());
     window.addEventListener("storage", on);
     return () => window.removeEventListener("storage", on);
   }, []);
   return { off, setMany, reset };
+}
+
+export function actieveBronnen(item: Item, index: Index, off: Set<string>): Bron[] {
+  return (item.bronnen ?? []).filter((b) => !off.has(sourceKey(index, groepVan(item), b.site, b.href)));
 }
 
 /** Data met de filter toegepast. Berichten zonder bronnen blijven altijd zichtbaar. */
@@ -193,14 +252,9 @@ export function useFiltered(data: Data | null, index: Index, off: Set<string>) {
     let hidden = 0;
     const items: Item[] = [];
     for (const it of data.items) {
-      const bronnen = it.bronnen ?? [];
-      if (!bronnen.length || !index.has(groepVan(it))) {
-        items.push(it);
-        continue;
-      }
-      const active: Bron[] = bronnen.filter((b) => !off.has(sourceKey(index, groepVan(it), b.site, b.href)));
-      if (active.length === 0) hidden++;
-      else items.push(active.length === bronnen.length ? it : { ...it, bronnen: active });
+      const actief = filterArtikelBronnen(it, index, off);
+      if (actief) items.push(actief);
+      else hidden++;
     }
     const vid = (list: Video[], gid: GroupId) =>
       list.filter((v) => {

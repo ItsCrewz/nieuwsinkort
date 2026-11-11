@@ -1,15 +1,16 @@
 import { Foutgrens } from "./foutgrens";
+import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
-import { ams } from "./tijd";
+import { ams, dayDates } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Bron, Data, Item, View, Weer, WeerDag } from "./types";
+import type { Bron, Data, Item, View, Weer } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
-import { buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite, type IconName } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
 import { sorteerOpGroep } from "./filmgroep";
@@ -20,21 +21,23 @@ import { schoon } from "./schoon";
 import { valideer } from "./valideer";
 import { debug } from "./debug";
 import { Beelden, Thumb } from "./beelden";
-import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
+import { FilterBalk, filterNieuws, filterVideos, useFilters, useVideoKlok } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, volgendeTab, wisselRichting, type TabOpt } from "./tabs";
+import { CAT_LABEL, tabOpties, tabToets, wisselRichting, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, normaliseer } from "./zoek";
+import { zoekItems, markeerDelen } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
+import { useKlok } from "./useklok";
+import { maakFeedNavigatie } from "./feedsluiten";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -55,7 +58,7 @@ const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
 const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
-let feedPushed = false;
+const feedNav = maakFeedNavigatie({ get location() { return window.location; }, get history() { return window.history; } });
 // Intro-animatie alleen bij de eerste keer laden; daarna (tabwissel, herladen) niet opnieuw.
 let introDone = false;
 
@@ -97,26 +100,6 @@ function weatherKind(s?: string): Kind {
   return "cloud";
 }
 const KIND_CLASS: Record<Kind, string> = { sun: "ic-sun", rain: "ic-rain", partly: "ic-partly", cloud: "" };
-const WD = ["zo", "ma", "di", "wo", "do", "vr", "za"];
-const MO = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-function dayDates(dagen: WeerDag[]) {
-  // koppel "do", "vr"… aan de eerstvolgende datums (vanaf morgen)
-  const out: string[] = [];
-  const cur = new Date();
-  for (const d of dagen) {
-    const want = WD.indexOf((d.dag || "").slice(0, 2).toLowerCase());
-    if (want < 0) {
-      out.push("");
-      continue;
-    }
-    for (let k = 0; k < 8; k++) {
-      cur.setDate(cur.getDate() + 1);
-      if (cur.getDay() === want) break;
-    }
-    out.push(`${cur.getDate()} ${MO[cur.getMonth()]}`);
-  }
-  return out;
-}
 
 function WarnBanner({ text }: { text: string }) {
   const t = text.toLowerCase();
@@ -133,7 +116,7 @@ function WarnBanner({ text }: { text: string }) {
 function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
   const nu = W?.nu ?? {};
   const vd = W?.vandaag ?? {};
-  const dagen = (W?.dagen ?? []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
+  const dagen = (Array.isArray(W?.dagen) ? W.dagen : []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
   const heeftNu = typeof nu.temp === "number";
   const stats: { k: string; v: string }[] = [];
   if (typeof nu.van === "number" && typeof nu.tot === "number" && nu.van !== nu.tot) stats.push({ k: "Nu in het land", v: `${nu.van}° tot ${nu.tot}°` });
@@ -361,16 +344,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               aria-controls="rubriek-paneel"
               aria-selected={view === o.value}
               tabIndex={view === o.value ? 0 : -1}
-              onKeyDown={(e) => {
-                const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-                const i = tabs.indexOf(e.currentTarget);
-                const volgende = volgendeTab(i, tabs.length, e.key);
-                if (volgende === null) return;
-                e.preventDefault();
-                const next = tabs[volgende];
-                next.focus();
-                next.click();
-              }}
+              onKeyDown={tabToets}
               onClick={(e) => {
                 place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
                 onChange(o.value);
@@ -603,16 +577,16 @@ function fitCard(el: HTMLElement) {
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
 // De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
-const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean }) {
+const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
   const key = itemKey(item);
   return (
     <div className={`nc cat-${item.cat}`} data-id={key} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
-      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} />}
+      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} />}
     </div>
   );
 });
 
-function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn }) {
+function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
   const key = itemKey(item);
   const cardRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -640,7 +614,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
       el.removeEventListener("nc-dirty", run);
       cancelAnimationFrame(raf);
     };
-  }, [bionic, item]);
+  }, [bionic, item, zoekterm]);
   const click = useOpen(key, onOpen);
   const beelden = useMemo(() => fotos(item), [item]);
   const refit = useCallback(() => {
@@ -670,12 +644,12 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
       </div>
       <h2 className="nc-title">
         <a href={`#/bericht/${key}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
-          {item.kop}
+          <ZoekTekst tekst={item.kop} query={zoekterm} />
         </a>
       </h2>
       {sum ? (
         <p className="nc-sum bn">
-          <BionicText text={sum} on={bionic} />
+          <ZoekTekst tekst={sum} query={zoekterm} bionic={bionic} />
         </p>
       ) : null}
       {punten.length ? (
@@ -708,7 +682,11 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   );
 }
 
-function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function ZoekTekst({ tekst, query, bionic = false }: { tekst: string; query: string; bionic?: boolean }) {
+  return <>{markeerDelen(tekst, query).map((deel, i) => deel.markeer ? <mark key={i}><BionicText text={deel.tekst} on={bionic} /></mark> : <BionicText key={i} text={deel.tekst} on={bionic} />)}</>;
+}
+
+function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm }: { tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -722,6 +700,27 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const total = sorted.length;
+  const positie = useRef<Nieuwspositie | null>(leesNieuwspositie(tab));
+  const [nieuw, setNieuw] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ids = sorted.map(itemKey);
+    const oud = positie.current;
+    if (oud) {
+      const herstel = herstelNieuwspositie(oud, ids);
+      const kaart = Array.from(el.querySelectorAll<HTMLElement>(".nc")).find((c) => c.dataset.id === herstel.id);
+      if (kaart) {
+        el.scrollTop = kaart.offsetTop + oud.offset;
+        const i = ids.indexOf(herstel.id!);
+        setIdx(i);
+        [kaart.previousElementSibling, kaart, kaart.nextElementSibling].forEach((x) => { if (x instanceof HTMLElement && x.classList.contains("nc")) x.dataset.b = "1"; });
+      } else el.scrollTop = 0;
+      positie.current = { id: herstel.id, offset: herstel.id ? oud.offset : 0, volgorde: ids, nieuw: herstel.nieuw };
+      setNieuw(herstel.nieuw.length);
+    } else positie.current = { id: null, offset: 0, volgorde: ids, nieuw: [] };
+    bewaarNieuwspositie(tab, positie.current);
+  }, [nieuwsdata, tab]);
   // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
   const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
   const mountRef = useRef(0);
@@ -733,6 +732,7 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
     const el = ref.current;
     if (!el) return;
     let raf = 0;
+    let opgeslagen = positie.current;
     const read = () => {
       raf = 0;
       const cards = el.querySelectorAll<HTMLElement>(".nc");
@@ -740,6 +740,18 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
       let cur = -1;
       for (let k = 0; k < cards.length; k++) if (cards[k].offsetTop <= y) cur = k;
       if (cur !== idxRef.current) setIdx(cur);
+      const boven = Array.from(cards).reverse().find((c) => c.offsetTop <= el.scrollTop + 1);
+      const opTop = el.scrollTop < 60;
+      const p = positie.current;
+      if (p) {
+        const id = boven?.dataset.id ?? null;
+        positie.current = { ...p, id, offset: boven ? el.scrollTop - boven.offsetTop : 0, nieuw: opTop ? [] : p.nieuw };
+        if (opTop && p.nieuw.length) setNieuw(0);
+        if (id !== p.id || (opTop && p.nieuw.length)) {
+          bewaarNieuwspositie(tab, positie.current);
+          opgeslagen = positie.current;
+        }
+      }
       const max = el.scrollHeight - el.clientHeight;
       startRef.current?.classList.toggle("off", el.scrollTop > 60);
       if (railRef.current) railRef.current.style.transform = `scaleY(${max > 0 ? Math.min(1, el.scrollTop / max) : 0})`;
@@ -771,15 +783,16 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
     cards.forEach((c) => c.classList.contains("wacht") && io.observe(c));
     return () => {
       el.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
+      if (raf) { cancelAnimationFrame(raf); read(); }
+      if (positie.current && positie.current !== opgeslagen) bewaarNieuwspositie(tab, positie.current);
       io.disconnect();
     };
-  }, [sorted]);
+  }, [sorted, tab]);
 
   // Terug uit een bericht: meteen weer op die kaart.
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || !focusKey) return;
+    if (!el || !focusKey || positie.current?.id) return;
     const n = el.querySelector<HTMLElement>(`[data-id="${CSS.escape(focusKey)}"]`);
     if (!n) return;
     el.scrollTop = n.offsetTop;
@@ -834,12 +847,13 @@ function NewsFeed({ items, head, bionic, focusKey, onOpen, keepOrder, empty, kom
             Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
           </div>
         ) : (
-          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} />)
+          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} zoekterm={zoekterm} />)
         )}
         <div className="nc-end">
           <Footer />
         </div>
       </div>
+      {nieuw > 0 && <div className="nf-nieuw" role="status"><button type="button" onClick={() => { if (positie.current) { positie.current.nieuw = []; bewaarNieuwspositie(tab, positie.current); } setNieuw(0); go(-1); }}>{nieuw} nieuwe {nieuw === 1 ? "artikel" : "artikelen"}</button><button type="button" aria-label="Melding sluiten" onClick={() => { if (positie.current) { positie.current.nieuw = []; bewaarNieuwspositie(tab, positie.current); } setNieuw(0); }}>×</button></div>}
       {total > 0 ? (
         <>
         <FeedNavigatie verborgen={idx < 0}>
@@ -930,14 +944,15 @@ function applyTheme(t: Theme) {
   document.documentElement.dataset.theme = t;
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", t === "dark" ? "#0f0f0f" : "#ffffff"));
 }
-function useTheme() {
+export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme as Theme) || savedTheme() || systemTheme());
+  const handmatig = useRef(false);
   useLayoutEffect(() => applyTheme(theme), [theme]);
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
     if (!mq) return;
     const on = () => {
-      if (!savedTheme()) setTheme(mq.matches ? "dark" : "light");
+      if (!handmatig.current && !savedTheme()) setTheme(mq.matches ? "dark" : "light");
     };
     mq.addEventListener?.("change", on);
     return () => mq.removeEventListener?.("change", on);
@@ -945,6 +960,7 @@ function useTheme() {
   // Direct wisselen: geen kleurovergang op elk element (dat hapert), één repaint en klaar.
   const toggle = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
+    handmatig.current = true;
     try {
       localStorage.setItem(THEME_KEY, next);
     } catch {
@@ -1073,7 +1089,11 @@ export default function App() {
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
-  useLayoutEffect(() => { document.title = viewTitel(route.view); }, [route.view, route.selected]);
+  // Ook een direct gedeeld bericht kan buiten de gefilterde lijst staan.
+  const selectedItem = route.selected
+    ? data?.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw?.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
+    : null;
+  useLayoutEffect(() => { document.title = selectedItem ? `${selectedItem.kop} – Nieuws in het kort` : viewTitel(route.view); }, [route.view, selectedItem]);
   // Rubriekwissel (#538): alleen het paneel schuift 12px in, richting volgt de tabvolgorde; geen uitgaande animatie, een nieuwe wissel annuleert de lopende (animeer).
   const vorigeView = useRef(route.view);
   useLayoutEffect(() => {
@@ -1087,10 +1107,13 @@ export default function App() {
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const [zoekterm, setZoekterm] = useState("");
+  const zoekInvoer = useRef<HTMLInputElement>(null);
   const flt = useFilters();
+  const klok = useKlok(data, flt.f.tijd, flt.vorig);
+  const videoKlok = useVideoKlok(route.video ? flt.f.tijd : "alles");
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
-    [data, flt.f, flt.vorig]
+    [data, flt.f, flt.vorig, klok, videoKlok]
   );
   useVoorladen(vids, data?.gegenereerd, !!route.video); // thumbs vooraf in idle-tijd; video pas bij intentie (tab aanraken/focus)
   const [focusKey, setFocusKey] = useState<string | null>(null);
@@ -1142,12 +1165,16 @@ export default function App() {
     else if (was) {
       const n = document.querySelector<HTMLElement>(`[data-id="${CSS.escape(was)}"]`);
       if (n) {
-        n.scrollIntoView({ block: "center" });
+        if (!n.closest(".nf")) n.scrollIntoView({ block: "center" });
         // Focus terug op de link/kaart waarmee het artikel opende (toetsenbord en schermlezer)
         const f = n instanceof HTMLAnchorElement ? n : n.querySelector<HTMLElement>("a[href]") ?? n;
         if (f === n && !n.hasAttribute("tabindex")) n.tabIndex = -1;
         f.focus({ preventScroll: true });
-      } else window.scrollTo(0, 0);
+      } else {
+        window.scrollTo(0, 0);
+        // Zoekknop alleen als er echt gezocht wordt, anders de hoofdinhoud
+        (document.querySelector<HTMLElement>('.zoek-knop[aria-expanded="true"]') ?? document.querySelector<HTMLElement>("main#top"))?.focus({ preventScroll: true });
+      }
     }
   }, [route.selected]);
 
@@ -1166,7 +1193,7 @@ export default function App() {
       const fl = vids ?? data;
       const list = v === "filmpjes" ? fl.filmpjes.filter((x) => soortVan(x) === startSoort(fl.filmpjes)) : fl.dumpert;
       if (list.length) {
-        feedPushed = false;
+        feedNav.geopend(false);
         window.location.hash = `#/${v}/${encodeURIComponent(videoSlug(list[0]))}`;
         return;
       }
@@ -1175,16 +1202,11 @@ export default function App() {
     window.location.hash = viewHash(v);
   };
   const openFeed = useCallback((cat: "filmpjes" | "dumpert", slug: string) => {
-    feedPushed = true;
+    feedNav.geopend(true);
     window.location.hash = `#/${cat}/${encodeURIComponent(slug)}`;
   }, []);
   const closeFeed = useCallback((cat: "filmpjes" | "dumpert") => {
-    if (feedPushed) {
-      feedPushed = false;
-      window.history.back();
-    } else {
-      window.location.replace(`${window.location.pathname}${window.location.search}#/${cat}`);
-    }
+    feedNav.sluit(cat);
   }, []);
   const open = useCallback((key: string) => {
     openedInside = true;
@@ -1219,7 +1241,7 @@ export default function App() {
   const zoekUitkomst = isFeedView && data && raw ? zoekItems(filterNieuws(route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view), flt.f, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm) : [];
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} /> : undefined} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={setZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>
@@ -1265,11 +1287,6 @@ export default function App() {
     );
   }
 
-  // Detail: eerst in de gefilterde lijst (met alleen de actieve bronnen), anders het origineel (directe link).
-  const selectedItem = route.selected
-    ? data.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
-    : null;
-
   if (selectedItem) {
     return (
       <Frame top={top}>
@@ -1277,7 +1294,8 @@ export default function App() {
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
-              dag={ams(raw.gegenereerd ? Date.parse(raw.gegenereerd) : Date.now()).iso}
+              meerBronnen={off.size ? actieveBronnen(selectedItem, index, off) : undefined}
+              dag={ams(Date.parse(raw.gegenereerd!)).iso}
               bionic={bionic}
               onBack={(opties) => {
                 geveegd.current = !!opties?.geveegd;
@@ -1336,9 +1354,12 @@ export default function App() {
           <div id="rubriek-paneel" className="nf-panel" role="tabpanel">
           <Foutgrens key={view} code="CLIENT_FEED"><NewsFeed
             key={view}
+            tab={view}
             items={zoekUitkomst}
+            zoekterm={zoekterm}
+            nieuwsdata={raw}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={normaliseer(zoekterm) ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => { setZoekterm(""); zoekInvoer.current?.focus(); }} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

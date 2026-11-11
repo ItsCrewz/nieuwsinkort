@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Cat, Item, Video } from "./types";
 import { midnight } from "./tijd";
+import { publicatieTijd } from "./vandaag";
 import { BUITEN_WOORD } from "./regio";
 import { Icon } from "./icons";
+import { bronSleutel } from "./uitgever";
 
 export type Tijd = "auto" | "sinds" | "vandaag" | "1u" | "3u" | "alles";
 export type Regio = "haarlem" | "nl" | "wereld";
@@ -12,6 +14,7 @@ export type Filters = { tijd: Tijd; cats: Cat[]; video: boolean; samen: boolean;
 const KEY = "nieuwsinkort-filters";
 const BEZOEK = "nieuwsinkort-laatste-bezoek";
 const BEZOEK_SESSIE = "nieuwsinkort-bezoek-ref";
+const BEZOEK_INTERVAL = 60_000; // hartslag voor een lang zichtbaar tabblad
 const GENOEG = 5; // zoveel nieuwe berichten sinds je laatste bezoek = automatisch "Sinds je laatste bezoek"
 export const STANDAARD: Filters = { tijd: "auto", cats: [], video: false, samen: false, regio: [], sort: "nieuw" };
 
@@ -30,14 +33,31 @@ export const CAT_OPT: { id: Cat; label: string }[] = [
   { id: "showbizz", label: "Showbizz" },
 ];
 
+const TIJD_OPT: Tijd[] = ["auto", "sinds", "vandaag", "1u", "3u", "alles"];
+const SORTEN: Filters["sort"][] = ["nieuw", "oud", "bronnen"];
+const REGIOS: Regio[] = ["haarlem", "nl", "wereld"];
+const lijst = <T extends string>(v: unknown, ok: readonly T[]): T[] => (Array.isArray(v) ? ok.filter((x) => v.includes(x)) : []);
+
+/** Opgeslagen JSON → geldige Filters: onbekende waarden vallen terug op de standaard, geldige keuzes blijven. */
+export function schoonFilters(j: unknown): Filters {
+  if (!j || typeof j !== "object" || Array.isArray(j)) return STANDAARD;
+  const o = j as Record<string, unknown>;
+  return {
+    tijd: TIJD_OPT.find((x) => x === o.tijd) ?? STANDAARD.tijd,
+    cats: lijst(o.cats, CAT_OPT.map((c) => c.id)),
+    video: o.video === true,
+    samen: o.samen === true,
+    regio: lijst(o.regio, REGIOS),
+    sort: SORTEN.find((x) => x === o.sort) ?? STANDAARD.sort,
+  };
+}
+
 function lees(): Filters {
   try {
-    const j = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (j && typeof j === "object") return { ...STANDAARD, ...j, cats: Array.isArray(j.cats) ? j.cats : [], regio: Array.isArray(j.regio) ? j.regio : [] };
+    return schoonFilters(JSON.parse(localStorage.getItem(KEY) || "null"));
   } catch {
-    /* privémodus */
+    return STANDAARD; // privémodus of kapotte JSON
   }
-  return STANDAARD;
 }
 
 /** Vorig bezoek: bij de start van een sessie gelezen (en vastgehouden zolang het tabblad open is), daarna "nu" opgeslagen. */
@@ -67,7 +87,12 @@ export function useFilters() {
     bewaarBezoek();
     const onHide = () => document.visibilityState === "hidden" && bewaarBezoek();
     document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
+    // Lang open tabblad: houd de bezoektijd vers (alleen opslag; `vorig` is een vaste sessiereferentie en verschuift niet).
+    const timer = setInterval(() => document.visibilityState === "visible" && bewaarBezoek(), BEZOEK_INTERVAL);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      clearInterval(timer);
+    };
   }, []);
   const set = useCallback((p: Partial<Filters>) => {
     setF((o) => {
@@ -94,7 +119,7 @@ const minVan = (d: Date) => {
 };
 export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   const m = /^(\d{1,2})[:.](\d{2})$/.exec(hhmm || "");
-  if (!m) return null;
+  if (!m || +m[1] > 23 || +m[2] > 59) return null; // onmogelijke kloktijd = onbekend
   const t = +m[1] * 60 + +m[2];
   const g = new Date(gen);
   const gm = minVan(g);
@@ -126,8 +151,8 @@ export function regioVan(it: Item): Regio {
 }
 const VIDEO_URL = /\/video\/|\/video-|\/videos?\/|youtube\.com|youtu\.be|\.mp4\b|\/kijk\/|\/tv\//i;
 export const heeftVideo = (it: Item) => (it.bronnen || []).some((b) => VIDEO_URL.test(b.href));
-export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => b.site)).size;
-export const samengevoegd = (it: Item) => (it.bronnen || []).length > 1;
+export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => bronSleutel(b.site))).size;
+export const samengevoegd = (it: Item) => sites(it) > 1;
 
 /** Alles behalve tijd (tijd wordt apart bepaald, want "Automatisch" hangt af van wat er overblijft). */
 function zonderTijd(items: Item[], f: Filters, alles: boolean) {
@@ -180,11 +205,26 @@ export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: stri
     .map(({ item }) => item);
   return { items: out, tijd, auto, per, nieuwSinds: vorig ? per.sinds : 0 };
 }
+// Vernieuw relatieve videovensters ook als de server dezelfde data terugstuurt.
+export function useVideoKlok(tijd: Tijd): number {
+  const [tik, setTik] = useState(0);
+  useEffect(() => {
+    if (tijd !== "1u" && tijd !== "3u") return;
+    const ververs = () => setTik((n) => n + 1);
+    ververs(); // Ook bij terugkeer naar een video-overzicht opnieuw filteren.
+    const timer = window.setInterval(ververs, 60_000);
+    const zichtbaar = () => { if (document.visibilityState === "visible") ververs(); };
+    document.addEventListener("visibilitychange", zichtbaar);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zichtbaar); };
+  }, [tijd]);
+  return tik;
+}
 /** Filmpjes: alleen het tijdfilter (de rest gaat over berichten). Automatisch = Vandaag, of Alles als er vandaag nog bijna niets is. */
 export function filterVideos(list: Video[], f: Filters, vorig: number, gen: string | undefined): Video[] {
   if (f.tijd === "alles") return list;
   const g = genVan(gen);
-  const ts = list.map((v) => tijdstip(v.tijd, g));
+  const now = Date.now();
+  const ts = list.map((v) => publicatieTijd(v.t, now) ?? (v.gisteren ? -Infinity : tijdstip(v.tijd, g)));
   let t: Exclude<Tijd, "auto">;
   if (f.tijd === "auto") {
     const vandaag = vanafVoor("vandaag", vorig);

@@ -41,18 +41,58 @@ export function FilterBlad({
   const [closing, setClosing] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const timer = useRef<number | null>(null);
+  const sluitGestart = useRef(false);
+  const afgehandeld = useRef(false);
+  const rondAf = useCallback(() => {
+    if (afgehandeld.current) return;
+    afgehandeld.current = true;
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    onCloseRef.current();
+  }, []);
   const close = useCallback(() => {
-    if (rustig()) return onClose();
+    if (sluitGestart.current) return;
+    sluitGestart.current = true;
+    if (rustig()) return rondAf();
     setClosing(true);
-    window.setTimeout(onClose, 360);
-  }, [onClose]);
+    timer.current = window.setTimeout(rondAf, 360);
+  }, [rondAf]);
   useEffect(() => {
+    afgehandeld.current = false;
     const prev = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    // Tab blijft in het blad; uitgeschakelde knoppen (bijv. Standaard) tellen niet mee.
+    const bedien = () => Array.from(panel.current?.querySelectorAll<HTMLElement>("button:not([disabled]), [tabindex]:not([tabindex='-1'])") ?? []);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return close();
+      if (e.key !== "Tab") return;
+      const lijst = bedien();
+      const eerste = lijst[0], laatste = lijst[lijst.length - 1];
+      const nu = document.activeElement as HTMLElement | null;
+      if (!eerste || !nu || !panel.current?.contains(nu)) {
+        e.preventDefault();
+        (eerste ?? closeBtn.current)?.focus({ preventScroll: true });
+      } else if (e.shiftKey && nu === eerste) {
+        e.preventDefault();
+        laatste.focus({ preventScroll: true });
+      } else if (!e.shiftKey && nu === laatste) {
+        e.preventDefault();
+        eerste.focus({ preventScroll: true });
+      }
+    };
+    // Focus die toch buiten het blad belandt (muis, schermlezer) gaat terug naar de sluitknop.
+    const onIn = (e: FocusEvent) => {
+      if (panel.current && e.target instanceof Node && !panel.current.contains(e.target)) closeBtn.current?.focus({ preventScroll: true });
+    };
     window.addEventListener("keydown", onKey);
+    document.addEventListener?.("focusin", onIn);
     closeBtn.current?.focus({ preventScroll: true });
     return () => {
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener?.("focusin", onIn);
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      afgehandeld.current = true;
       prev?.focus?.({ preventScroll: true });
     };
   }, [close]);
@@ -72,7 +112,7 @@ export function FilterBlad({
     <div className="app modal-root">
       <div className={`sheet-root ${closing ? "out" : ""}`} role="dialog" aria-modal="true" aria-labelledby="filter-titel">
         <button className="scrim" aria-label="Sluit filters" tabIndex={-1} onClick={close} />
-        <div className="sheet fsheet" ref={panel} onAnimationEnd={(e) => closing && e.target === panel.current && onClose()}>
+        <div className="sheet fsheet" ref={panel} onAnimationEnd={(e) => closing && e.target === panel.current && rondAf()}>
           <div className="sh-head">
             <span className="grab" aria-hidden="true" />
             <div className="sh-row">

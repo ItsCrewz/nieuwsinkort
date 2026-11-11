@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import "./tabs.test";
-import { aantalExtra, filterNieuws, tijdstip, STANDAARD, type Filters } from "../src/filters";
+import { aantalExtra, filterNieuws, filterVideos, tijdstip, STANDAARD, type Filters } from "../src/filters";
 import { midnight } from "../src/tijd";
 import type { Item } from "../src/types";
 
@@ -69,4 +69,41 @@ t("gegenereerd bepaalt gisteren; relatieve filters blijven tegen nu rekenen", ()
       assert.equal(filterNieuws([bericht("vandaag", "07:00")], { ...STANDAARD, tijd: "1u" }, 0, gen, true).items.length, 1);
     }
   });
+});
+
+t("onmogelijke kloktijden zijn onbekend: zichtbaar en onderaan; grenswaarden gelden", () => {
+  metNu("2026-10-30T12:00:00+01:00", () => {
+    const gen = new Date(Date.now()).toISOString();
+    const g = Date.parse(gen);
+    for (const x of ["24:00", "25:99", "12:60", "7:75"]) assert.equal(tijdstip(x, g), null, x);
+    assert.equal(tijdstip("00:00", g), Date.parse("2026-10-30T00:00:00+01:00"));
+    assert.equal(tijdstip("11:59", g), Date.parse("2026-10-30T11:59:00+01:00"));
+    assert.notEqual(tijdstip("23:59", g), null);
+    const items = [bericht("kapot", "25:99"), bericht("oud", "08:00"), bericht("nieuw", "11:00"), bericht("min", "10:60")];
+    for (const tijd of ["vandaag", "1u", "alles"] as const) {
+      const uit = filterNieuws(items, { ...STANDAARD, tijd }, 0, gen, true).items.map((it) => it.kop);
+      assert.equal(uit.slice(-2).sort().join(), "kapot,min", tijd);
+      assert.ok(uit.includes("nieuw"));
+    }
+    for (const sort of ["nieuw", "oud"] as const) {
+      const uit = filterNieuws(items, { ...STANDAARD, tijd: "alles", sort }, 0, gen, true).items.map((it) => it.kop);
+      assert.deepEqual(uit.slice(0, 2), sort === "oud" ? ["oud", "nieuw"] : ["nieuw", "oud"]);
+      assert.deepEqual(uit.slice(2), ["kapot", "min"]);
+    }
+    const vid = (tijd: string) => ({ tijd } as any);
+    const v = filterVideos([vid("25:99"), vid("08:00"), vid("11:30"), vid("24:00")], { ...STANDAARD, tijd: "1u" }, 0, gen);
+    assert.deepEqual(v.map((x: any) => x.tijd), ["25:99", "11:30", "24:00"]);
+  });
+});
+
+import { schoonFilters } from "../src/filters";
+t("schoonFilters: ongeldige opgeslagen waarden herstellen, geldige behouden", () => {
+  assert.deepEqual(schoonFilters(null), STANDAARD);
+  assert.deepEqual(schoonFilters([1]), STANDAARD);
+  assert.deepEqual(schoonFilters("x"), STANDAARD);
+  assert.deepEqual(schoonFilters({ cats: ["onbekend"], regio: ["onbekend"], tijd: "morgen", sort: 5, video: "ja", samen: 1 }), STANDAARD);
+  assert.deepEqual(schoonFilters({ cats: "nl", regio: {} }), STANDAARD);
+  const goed: Filters = { tijd: "3u", cats: ["f1", "tech"], video: true, samen: true, regio: ["wereld"], sort: "bronnen" };
+  assert.deepEqual(schoonFilters(goed), goed);
+  assert.deepEqual(schoonFilters({ ...goed, cats: ["f1", "onbekend"], extra: 1 }), { ...goed, cats: ["f1"] });
 });
