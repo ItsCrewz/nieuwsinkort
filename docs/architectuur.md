@@ -394,8 +394,6 @@ Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
-De browsertab toont bij een geopend bericht de kop met sitenaam, ook bij een gedeelde link. Tijdens laden of bij een onbekend bericht geldt de overzichtstitel; bij teruggaan of een rubriekwissel wordt die titel hersteld (#622).
-
 Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de detailweergave vergelijkt artikel-URL's met de actieve bronnen, ook wanneer het filter tijdens het lezen verandert. Algemene uitleg blijft beschikbaar. Zonder filter blijft de bestaande weergave behouden (#691).
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
