@@ -154,7 +154,10 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   let H: any = null;
   try { const j = await kv.get("uur", kvOpt("json")); if (bruikbaarUur(j)) H = j; } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
   let out: any = S;
-  try { out = merge(S, H); } catch { console.error("data.json: merge mislukt"); out = S; }
+  try { out = merge(S, H); } catch {
+    console.error("data.json: merge mislukt");
+    try { out = merge(null, H) || S; } catch { out = S; }
+  }
   // Zonder bruikbare statische data moet de uurdata van vandaag het dragen; anders een gecontroleerde 503.
   if (!out || !Array.isArray(out.items)) return onbeschikbaar();
   try { out = alleenVandaag(out, Date.now()); } catch { console.error("data.json: dagfilter mislukt"); }
