@@ -27,9 +27,15 @@ try {
     assert.deepEqual(kies("1u", [{ ...legacy, t: NaN }]), []);
     assert.deepEqual(kies("alles", [legacy]), [legacy]);
   }
-  Date.now = () => Date.parse("2026-11-03T00:15:00+01:00");
-  const recentGisteren = video(Date.parse("2026-11-02T23:50:00+01:00"), "23:50");
-  assert.deepEqual(filterVideos([recentGisteren], { ...STANDAARD, tijd: "vandaag" }, 0, "2026-11-03T00:15:00+01:00"), []);
-  assert.deepEqual(filterVideos([recentGisteren], { ...STANDAARD, tijd: "1u" }, 0, "2026-11-03T00:15:00+01:00"), [recentGisteren]);
+  for (const [nu, publicatie] of [
+    ["2026-11-03T00:15:00+01:00", "2026-11-02T23:50:00+01:00"],
+    ["2026-03-29T00:30:00+01:00", "2026-03-28T23:50:00+01:00"],
+    ["2026-10-25T00:30:00+02:00", "2026-10-24T23:50:00+02:00"],
+  ]) {
+    Date.now = () => Date.parse(nu);
+    const recentGisteren = video(Date.parse(publicatie), "23:50");
+    assert.deepEqual(filterVideos([recentGisteren], { ...STANDAARD, tijd: "vandaag" }, 0, nu), []);
+    assert.deepEqual(filterVideos([recentGisteren], { ...STANDAARD, tijd: "1u" }, 0, nu), [recentGisteren]);
+  }
 } finally { Date.now = oudeKlok; }
 console.log("✓ videofilters gebruiken de publicatiedatum");
