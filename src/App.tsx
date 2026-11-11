@@ -1073,7 +1073,6 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
 }
 
 export default function App() {
-  useKlok();
   const { data: raw, error, reload } = useData();
   // Rustige melding i.p.v. stil falen: bijwerken mislukt, of de AI-dagruimte is (bijna) op.
   const briefNote = [
@@ -1104,9 +1103,10 @@ export default function App() {
   const [zoekterm, setZoekterm] = useState("");
   const zoekInvoer = useRef<HTMLInputElement>(null);
   const flt = useFilters();
+  const klok = useKlok(data, flt.f.tijd, flt.vorig);
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
-    [data, flt.f, flt.vorig]
+    [data, flt.f, flt.vorig, klok]
   );
   useVoorladen(vids, data?.gegenereerd, !!route.video); // thumbs vooraf in idle-tijd; video pas bij intentie (tab aanraken/focus)
   const [focusKey, setFocusKey] = useState<string | null>(null);

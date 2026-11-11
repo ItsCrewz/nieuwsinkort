@@ -1,54 +1,22 @@
 import assert from "node:assert/strict";
-import React from "react";
-import { filterNieuws, STANDAARD, type Filters } from "../../src/filters";
-import { useKlok } from "../../src/useklok";
-import type { Item } from "../../src/types";
+import { volgendeGrens } from "../../src/useklok";
+import { filterNieuws, filterVideos, STANDAARD } from "../../src/filters";
+import type { Item, Video } from "../../src/types";
 
-const documentStub = Object.assign(new EventTarget(), { hidden: false });
-let tik!: () => void;
-let gewist = false;
-(globalThis as any).document = documentStub;
-(globalThis as any).window = { setInterval: (fn: () => void) => { tik = fn; return 1; }, clearInterval: () => { gewist = true; } };
-const dispatcher = (React as any).__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher;
-let renders = 0;
-let effect!: () => () => void;
-dispatcher.current = {
-  useState: () => [0, (fn: (n: number) => number) => { renders = fn(renders); }],
-  useEffect: (fn: () => () => void) => { effect = fn; },
-};
-function Component() { useKlok(); }
-Component();
-const opruimen = effect();
+const nu = Date.parse("2026-11-05T12:00:00Z");
+const item = { kop: "Bericht", cat: "nl", t: nu - 3600e3 + 500, bronnen: [] } as Item;
+const video = { titel: "Video", t: nu - 3600e3 + 250 } as Video;
+const data = { items: [item], filmpjes: [video], dumpert: [video], gegenereerd: new Date(nu).toISOString() };
+assert.equal(volgendeGrens(data, "1u", 0, nu), nu + 251);
+assert.equal(volgendeGrens(data, "alles", 0, nu), nu + 501);
 const origineel = Date.now;
-let nu = Date.parse("2026-11-05T12:00:00Z");
-Date.now = () => nu;
 try {
-  const items = [{ kop: "Bericht", cat: "nl", t: nu - 3600e3 + 500, bronnen: [] }] as Item[];
-  let filters: Filters = { ...STANDAARD, tijd: "1u" };
-  const bereken = () => filterNieuws(items, filters, 0, new Date(nu).toISOString(), true);
-  assert.equal(bereken().items.length, 1);
-  assert.equal(bereken().per["1u"], 1);
-  nu += 1000;
-  tik();
-  assert.equal(renders, 1);
-  assert.equal(bereken().items.length, 0);
-  assert.equal(bereken().per["1u"], 0);
-  filters = { ...filters, tijd: "3u" };
-  assert.equal(bereken().items.length, 1);
-  documentStub.hidden = true;
-  tik();
-  assert.equal(renders, 1);
-  nu += 3 * 3600e3;
-  documentStub.hidden = false;
-  documentStub.dispatchEvent(new Event("visibilitychange"));
-  assert.equal(renders, 2);
-  assert.equal(bereken().items.length, 0);
-  assert.equal(bereken().per["3u"], 0);
-} finally {
-  Date.now = origineel;
-  opruimen();
-}
-assert.equal(gewist, true);
-documentStub.dispatchEvent(new Event("visibilitychange"));
-assert.equal(renders, 2);
-console.log("✓ tijdvensters verversen lokaal en bij terugkeer");
+  Date.now = () => nu;
+  const f = { ...STANDAARD, tijd: "1u" as const };
+  assert.equal(filterNieuws(data.items, f, 0, data.gegenereerd, true).per["1u"], 1);
+  assert.equal(filterVideos(data.filmpjes, f, 0, data.gegenereerd).length, 1);
+  Date.now = () => nu + 501;
+  assert.equal(filterNieuws(data.items, f, 0, data.gegenereerd, true).per["1u"], 0);
+  assert.equal(filterVideos(data.dumpert, f, 0, data.gegenereerd).length, 0);
+} finally { Date.now = origineel; }
+console.log("✓ tijdgrenzen voor nieuws en video's");

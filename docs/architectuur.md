@@ -420,11 +420,13 @@ Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
+Bij gedeelde artikelpagina’s bevat `article:published_time` alleen een geldige publicatietijd uit het bericht, omgezet naar ISO-formaat. Ontbreekt die tijd, dan ontbreekt ook deze meta-tag.
+
+Bij nieuwe berichtdata behoudt de fotocarrousel de actieve foto op URL; ontbreekt die, dan kiest hij de eerste foto en past hij de scrollpositie aan.
 Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de detailweergave vergelijkt artikel-URL's met de actieve bronnen, ook wanneer het filter tijdens het lezen verandert. Algemene uitleg blijft beschikbaar. Zonder filter blijft de bestaande weergave behouden (#691).
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
 
-De tijdvensters en filteraantallen worden lokaal elke seconde herberekend en direct bij terugkeer naar een zichtbaar tabblad. Dit vraagt geen extra data op en behoudt de huidige filters en leespositie.
 De gedeelde beeldselectie in `src/beeld.ts` wordt door frontend en uur-Worker gebruikt. Een los URL-onderdeel `logo`, placeholders, uitgesloten formaten en volgens de URL kleine beelden vallen af; `logo` binnen een langer woord blijft toegestaan.
 
 Bij een zoekopdracht zonder resultaten zet “Wis zoekopdracht” de focus terug in het lege zoekveld; de zoekbalk blijft open. De toetsenbordroute staat in `e2e/zoekfocus-769.spec.mjs`.
