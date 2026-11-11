@@ -38,6 +38,16 @@ assert.deepEqual(zoekItems([{ cat: "nl", kop: "E-mail hack" } as Item], "email")
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Café-terras" } as Item], "cafeterras"), [{ cat: "nl", kop: "Café-terras" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Zuid-Holland" } as Item], "holland"), [{ cat: "nl", kop: "Zuid-Holland" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Zuid Holland" } as Item], "zuidholland"), []);
+for (const schrijfwijze of ["Café-terras", "Cafe\u0301-terras"]) {
+  const terras = { cat: "nl", kop: schrijfwijze } as Item;
+  assert.deepEqual(zoekItems([terras], "cafeterras"), [terras]);
+  assert.deepEqual(zoekItems([{ cat: "nl", kop: "cafeterras" } as Item], schrijfwijze).length, 1);
+}
+for (const leesteken of [",", ";", "/", "(", ")", "."]) {
+  assert.deepEqual(zoekItems([corona], `corona-maatregelen${leesteken}kabinet`), [corona]);
+  assert.deepEqual(zoekItems([corona], `kabinet${leesteken}corona-maatregelen`), [corona]);
+  assert.deepEqual(zoekItems([verspreid], `corona-maatregelen${leesteken}ziekenhuis`), []);
+}
 // Lettervarianten (#735): zoekterm en tekst, ongeacht hoofdletters.
 const soren = { cat: "nl", kop: "Søren Kierkegaard herdacht", samenvatting: "Lech Wałęsa en Łukasz bij Æbleskiver-feest" } as Item;
 for (const term of ["Soren", "SØREN", "søren", "lukasz", "ŁUKASZ", "walesa", "Wałęsa", "aebleskiver", "Æbleskiver", "soren kierkegaard"]) assert.deepEqual(zoekItems([soren], term), [soren], term);
