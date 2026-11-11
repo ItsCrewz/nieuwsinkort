@@ -46,7 +46,7 @@ export const norm = (s: string) =>
 
 function hostOf(href: string) {
   try {
-    return new URL(href).hostname.replace(/^www\./, "").split(".").slice(-2).join(".");
+    return new URL(href).hostname.replace(/^www\./, "");
   } catch {
     return "";
   }
@@ -171,10 +171,15 @@ function resolveIn(ix: { byName: Map<string, string>; byHost: Map<string, string
   const byHandle = xh ? ix.byName.get(norm(xh[1])) : undefined;
   if (byHandle) return byHandle;
   const h = hostOf(href);
-  const byHost = h ? ix.byHost.get(h) : undefined;
+  // Een catalogushost mag een subdomein omvatten, maar geen gedeeld landsuffix.
+  const kandidaten = [...ix.byHost.keys()].filter((host) =>
+    !/^(?:co|com|org|net|gov|ac|edu)\.[a-z]{2}$/.test(host) && (h === host || h.endsWith(`.${host}`))
+  ).sort((a, b) => b.length - a.length);
+  const catalogusHost = kandidaten[0];
+  const byHost = catalogusHost ? ix.byHost.get(catalogusHost) : undefined;
   if (byHost && !n) return byHost;
   // Onbekende naam: alleen naar host terugvallen als de naam op die host lijkt (bijv. "NOS" ~ nos.nl)
-  if (byHost && h.replace(/\.[a-z]+$/, "").replace(/[^a-z0-9]/g, "") === n) return byHost;
+  if (byHost && catalogusHost.replace(/\.[a-z]+$/, "").replace(/[^a-z0-9]/g, "") === n) return byHost;
   return n || h || "onbekend";
 }
 

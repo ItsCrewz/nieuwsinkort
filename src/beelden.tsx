@@ -2,7 +2,7 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
 
@@ -121,6 +121,7 @@ function register(r: Reg) {
 export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = eager, className = "", onChange }: { urls: string[]; eager?: boolean; voorrang?: boolean; className?: string; onChange?: () => void }) {
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
+  const instructieId = useId();
   const track = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
   // Pas foto's plaatsen als het bericht (bijna) in beeld is, of als de vooruitlader hem al heeft binnengehaald
@@ -142,7 +143,17 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, []);
   const [, herlaad] = useState(0);
   const raf = useRef(0);
-  useEffect(() => { setList(urls); setI(0); }, [urls]);
+  useLayoutEffect(() => {
+    const huidig = listRef.current[iRef.current];
+    const nieuw = Math.max(0, urls.indexOf(huidig));
+    cancelAnimationFrame(raf.current);
+    setList(urls);
+    setI(nieuw);
+  }, [urls]);
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (el) el.scrollLeft = i * el.clientWidth;
+  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
   listRef.current = list;
   iRef.current = i;
   useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
@@ -175,6 +186,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
         tabIndex={multi ? 0 : -1}
         role={multi ? "group" : undefined}
         aria-label={multi ? "Foto's" : undefined}
+        aria-describedby={multi ? instructieId : undefined}
         onKeyDown={multi ? (e) => {
           if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
             e.preventDefault();
@@ -216,6 +228,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       </div>
       {multi ? (
         <>
+          <span id={instructieId} className="sr-only">Gebruik de pijltjestoetsen links en rechts om van foto te wisselen.</span>
           <div className="bl-dots" aria-hidden="true">
             {list.map((u, k) => <span key={u} className={k === i ? "on" : ""} />)}
           </div>
