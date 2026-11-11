@@ -53,9 +53,9 @@ try {
   } });
   const meer = await meerGet({ request: new Request("https://test/meer?k=test"), env: { NIEUWS: kapot } });
   const samenvatting = await samenvattingGet({ request: new Request("https://test/samenvatting?id=test"), env: { NIEUWS: kapot } as any });
-  t("Functions loggen KV-fouten en behouden hun fallback", () => {
+  t("Functions loggen KV-fouten en geven hun foutrespons of fallback", () => {
     assert.equal(data.status, 200);
-    assert.equal(meer.status, 404);
+    assert.equal(meer.status, 503);
     assert.equal(samenvatting.status, 200);
     assert.deepEqual(gelezenSleutels, ["data-vooraf", "uur", "sv-klaar", "meer", "vs:test"]);
     assert.equal(fouten.length - before, 5);
@@ -69,6 +69,19 @@ try {
     // Een veranderd tijdstip zorgt voor een nieuwe statuswrite.
     assert.equal(fouten.length, opslagFouten + 1);
   });
+  // Alleen `ms` in bronfouten verschilt tussen geslaagde runs: wel een DO-write (laatsteOk wijzigt toch al), geen extra KV-write (#452).
+  {
+    let st: RunStatus | undefined, doWrites = 0, kvWrites = 0;
+    const so = { async get<T>() { return st as T | undefined; }, async put(_k: string, v: RunStatus) { st = v; doWrites++; } };
+    const kvp = { async put() { kvWrites++; } };
+    const beleid = { mag: async (s: RunStatus, oud: RunStatus) => s.faalReeks !== oud.faalReeks || s.laatsteFout !== oud.laatsteFout, gedaan: async () => {} };
+    for (const ms of [100, 250, 400]) await bewaakteRun(async () => ({ ok: true }), so, kvp, beleid, () => [{ url: "https://bron.nl/rss", code: "SRC_HTTP", ms } as any]);
+    t("variërende ms in bronfouten geeft geen extra KV-writes", () => {
+      assert.equal(doWrites, 3);
+      assert.equal(kvWrites, 0);
+      assert.equal(st?.bronfouten?.[0].ms, 400);
+    });
+  }
 } finally {
   console.error = origineelError;
 }

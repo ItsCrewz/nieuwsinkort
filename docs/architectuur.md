@@ -352,6 +352,10 @@ De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daar
 
 De uurdata bevat optioneel `tab_samenvatting`, met per rubriekcode `tekst`, `ai`, `bron` en `gegenereerd`. Home gebruikt de bestaande `dag_samenvatting`. De Worker gebruikt uur- en routineartikelen en bewaart succesvolle AI-teksten met een volgordeonafhankelijke inhoudshash maximaal zeven dagen in de bestaande KV onder `tabsam:<tab>:laatste`. Bij wijzigingen blijft de vorige tekst minstens zes uur staan; voor AI worden maximaal tien korte berichten gebruikt. Bij cachemissers zonder AI ontstaat extractieve tekst; die wordt niet gecachet zodat een volgende run AI kan proberen. Filmpjes en Dumpert krijgen geen overzicht. Oude data zonder dit veld toont geen taboverzicht.
 
+### Uitval van bronnen
+
+De uur-Worker isoleert bronverzoeken en fetcherbatches; een fetcherbatch krijgt maximaal 180 seconden. Een geslaagde nieuwsfeed volstaat om de run voort te zetten; als alle geconfigureerde nieuwsfeeds falen, blijft de vorige `uur`-waarde in KV staan en wordt de run als mislukt gemeld. `run-status` bevat voor de laatste run `bronfouten` met per mislukte feed de URL, duur in milliseconden en code: `SRC_TIMEOUT` (timeout), `SRC_HTTP` (HTTP-fout), `SRC_PARSE` (onleesbare respons of batchfout) of `SRC_EMPTY` (lege respons). Een geldige feed zonder berichten is geen lege respons. Social-cache kan eerdere resultaten tonen terwijl de bron als mislukt geregistreerd blijft.
+
 Bij YouTube bewaakt een activatieklok het starten: een actieve iframe krijgt maximaal drie startpogingen en na 1,5 seconde zonder afspelen of bufferen een tikvlak dat de melding afdekt en de tik doorlaat naar de iframe. Buurspelers blijven gepauzeerd. Geluid wordt pas na een gebruikersgebaar in dezelfde sessie geprobeerd; bij blokkering speelt de video weer gedempt. De debug-overlay toont de activatietijd, laatste opdracht en eventuele autoplayblokkade.
 
 ### YouTube-embeds
@@ -404,6 +408,8 @@ Gedeelde berichtpagina (#541): `functions/bericht/[[pad]].ts` levert geen eigen 
 Zoeken (#816): `src/zoek.ts` verwijdert accenttekens bij Latijnse letters, maar behoudt markeringen in andere schriften; zoeken blijft op woordbegin en is ongevoelig voor hoofdletters. Tests: `tests/zoek.test.ts`.
 
 Terugvegen begint alleen bij een aanraking op het artikel of een kind daarvan; het aparte deelportaal valt daarbuiten. Invoer, media, horizontaal scrollbare inhoud en de Safari-rand blijven uitgesloten. Browserproef: `e2e/terugvegen.spec.mjs` (#740).
+
+Artikel-id's (#612) gebruiken ook de gesorteerde queryparameters van de bronlink, behalve bekende trackingparameters (`utm_*`, `fbclid`, `gclid`, `dclid`, `msclkid`, `mc_cid` en `mc_eid`). De Worker en frontend delen deze regel. Opgeslagen id's blijven geldig; de berichtpagina herkent ook bron-id's met en zonder query als alias. Een id die bij meer dan één bericht past, wordt niet opgelost en leidt tijdelijk naar het overzicht.
 
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
 
