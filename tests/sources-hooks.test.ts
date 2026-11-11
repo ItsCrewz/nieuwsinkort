@@ -277,6 +277,27 @@ await t("gedeeld suffix houdt tellingen en bronfilter gescheiden", async () => {
   assert.equal(h.result.current?.data.items.length, 6);
   await h.unmount();
 });
+await t("onbekende hosts behouden aparte filtersleutels", async () => {
+  const berichten = ["feeds.voorbeeld.nl", "www.voorbeeld.nl"]
+    .map((host) => item("nl", [{ site: "", href: `https://${host}/bericht` }]));
+  const invoer = { ...data, items: berichten, filmpjes: [], dumpert: [] };
+  const resultaat = buildSources(null, invoer);
+  assert.deepEqual(Object.fromEntries(resultaat.groups[0].sources.map((bron) => [bron.key, bron.count])),
+    { "nl|feeds.voorbeeld.nl": 1, "nl|voorbeeld.nl": 1 });
+  const h = await renderHook(() => useFiltered(invoer, resultaat.index, new Set(["nl|feeds.voorbeeld.nl"])), null);
+  assert.deepEqual(h.result.current?.data.items, [berichten[1]]);
+  await h.unmount();
+});
+await t("onbekende naam valt alleen bij passende catalogushost terug", () => {
+  const catalogus: Catalog = { groepen: [{ id: "nl", label: "Nederland", bronnen: [
+    { id: "bron", naam: "Andere naam", hosts: ["voorbeeld.nl"] },
+  ] }] };
+  const berichten = ["Voorbeeld", "Afwijkend"].map((site) =>
+    item("nl", [{ site, href: "https://feeds.voorbeeld.nl/bericht" }]));
+  const resultaat = buildSources(catalogus, { ...data, items: berichten, filmpjes: [], dumpert: [] });
+  assert.deepEqual(Object.fromEntries(resultaat.groups[0].sources.map((bron) => [bron.key, bron.count])),
+    { "nl|bron": 1, "nl|afwijkend": 1 });
+});
 await t("useFiltered zonder data of zonder uitgezette bronnen", async () => {
   const leeg = await renderHook(() => useFiltered(null, index, new Set(["nl|nos"])), null);
   assert.equal(leeg.result.current, null);
