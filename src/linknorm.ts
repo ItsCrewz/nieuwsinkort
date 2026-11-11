@@ -6,7 +6,7 @@ export function normLink(link = ""): string {
     .replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "").toLowerCase();
   if (vraag < 0) return pad;
   const params = new URLSearchParams(zonderFragment.slice(vraag + 1));
-  const tracking = /^(?:utm(?:_.*)?|fbclid|gclid|dclid|msclkid|mc_cid|mc_eid|ref)$/i;
+  const tracking = /^(?:utm(?:_.*)?|fbclid|gclid|dclid|msclkid|mc_cid|mc_eid)$/i;
   const paren: [string, string][] = [];
   params.forEach((waarde, naam) => { if (!tracking.test(naam)) paren.push([naam, waarde]); });
   paren.sort(([a, av], [b, bv]) => a < b ? -1 : a > b ? 1 : av < bv ? -1 : av > bv ? 1 : 0);
