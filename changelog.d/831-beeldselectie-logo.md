@@ -1,0 +1,1 @@
+- Behoud nieuwsbeelden wanneer `logo` alleen deel is van een langer URL-woord (#831).

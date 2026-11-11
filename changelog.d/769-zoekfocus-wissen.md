@@ -1,0 +1,1 @@
+- Na het wissen van een zoekopdracht zonder resultaten keert de focus terug naar het zoekveld (#769).
