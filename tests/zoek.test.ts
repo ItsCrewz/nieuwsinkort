@@ -24,6 +24,31 @@ assert.deepEqual(zoekItems([katten], "kat debat"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 20 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 20 van 2026" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "00"), []);
+// Koppeltekenvarianten (#811)
+const corona = { cat: "nl", kop: "Nieuwe corona-maatregelen", samenvatting: "Het kabinet overlegt" } as Item;
+const coronaSamen = { cat: "nl", kop: "Coronamaatregelen verlengd" } as Item;
+const verspreid = { cat: "nl", kop: "Corona in het ziekenhuis", samenvatting: "Nieuwe maatregelen volgen" } as Item;
+assert.deepEqual(zoekItems([corona, coronaSamen, verspreid], "coronamaatregelen"), [corona, coronaSamen]);
+assert.deepEqual(zoekItems([corona, coronaSamen, verspreid], "corona-maatregelen"), [corona, coronaSamen]);
+assert.deepEqual(zoekItems([corona, coronaSamen, verspreid], "corona maatregelen"), [corona, verspreid]);
+assert.deepEqual(zoekItems([corona, coronaSamen], "coronamaatr"), [corona, coronaSamen]);
+assert.deepEqual(zoekItems([corona], "corona-maatregelen kabinet"), [corona]);
+assert.deepEqual(zoekItems([corona], "corona-maatregelen ajax"), []);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "Corona", ai: "maatregelen" } as Item], "corona-maatregelen"), []);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "E-mail hack" } as Item], "email"), [{ cat: "nl", kop: "E-mail hack" }]);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "Café-terras" } as Item], "cafeterras"), [{ cat: "nl", kop: "Café-terras" }]);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "Zuid-Holland" } as Item], "holland"), [{ cat: "nl", kop: "Zuid-Holland" }]);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "Zuid Holland" } as Item], "zuidholland"), []);
+for (const schrijfwijze of ["Café-terras", "Cafe\u0301-terras"]) {
+  const terras = { cat: "nl", kop: schrijfwijze } as Item;
+  assert.deepEqual(zoekItems([terras], "cafeterras"), [terras]);
+  assert.deepEqual(zoekItems([{ cat: "nl", kop: "cafeterras" } as Item], schrijfwijze).length, 1);
+}
+for (const leesteken of [",", ";", "/", "(", ")", "."]) {
+  assert.deepEqual(zoekItems([corona], `corona-maatregelen${leesteken}kabinet`), [corona]);
+  assert.deepEqual(zoekItems([corona], `kabinet${leesteken}corona-maatregelen`), [corona]);
+  assert.deepEqual(zoekItems([verspreid], `corona-maatregelen${leesteken}ziekenhuis`), []);
+}
 const jaar = (kop: string) => ({ cat: "nl", kop } as Item);
 const [j24, j240, j12024] = [jaar("Verkiezingen 2024"), jaar("Prijs 20240 euro"), jaar("Code 12024")];
 assert.deepEqual(zoekItems([j24, j240, j12024], "2024"), [j24]);
@@ -60,6 +85,10 @@ assert.equal(normaliseer("C++/C#; café-nieuws"), "c++ c# cafe nieuws");
 assert.equal(normaliseer("+++ ###"), "");
 assert.deepEqual(zoekItems([talen[0]], "C++ C++"), []);
 assert.deepEqual(zoekItems([{ cat: "tech", kop: "C++ en C++" } as Item], "C++ C++").length, 1);
+// Samenspel #811 met #809
+assert.deepEqual(zoekItems([kop("Brand-preventie")], "brand brand"), []);
+assert.deepEqual(zoekItems([kop("corona-maatregelen")], "corona coronamaatregelen"), []);
+assert.deepEqual(zoekItems([kop("Zuid-Holland en corona-maatregelen")], "holland coronamaatr").length, 1);
 // Lettervarianten (#735): zoekterm en tekst, ongeacht hoofdletters.
 const soren = { cat: "nl", kop: "Søren Kierkegaard herdacht", samenvatting: "Lech Wałęsa en Łukasz bij Æbleskiver-feest" } as Item;
 for (const term of ["Soren", "SØREN", "søren", "lukasz", "ŁUKASZ", "walesa", "Wałęsa", "aebleskiver", "Æbleskiver", "soren kierkegaard"]) assert.deepEqual(zoekItems([soren], term), [soren], term);
