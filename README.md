@@ -144,4 +144,6 @@ Focus lezen (#383): `src/focuslezen.ts` — standaard uit; alleen een expliciete
 
 Bij het afdrukken van een bericht verdwijnen navigatie, bediening en media. De tekst is zwart op wit en bij bronlinks staat de URL.
 
+Zoeken filtert lokaal op alle zoekwoorden, ongeacht hoofdletters en accenten. Overeenkomsten in titel en samenvatting worden gemarkeerd; bij geen resultaten wist de knop de zoekopdracht en brengt de focus terug naar het zoekveld.
+
 Na een deploy kan de orchestrator `npm run rooktest:live` uitvoeren (of `npm run rooktest:live -- https://voorbeeld.nl` voor een andere basis-URL). De rooktest controleert de kernpagina's, minstens 20 feeditems, minstens 10 koppen en een berichtpagina; elk verzoek heeft een timeout van 10 seconden. De test wordt niet automatisch bij deploy uitgevoerd en start geen AI.
