@@ -1,0 +1,35 @@
+import { test, expect } from "@playwright/test";
+
+test("bronnenvenster houdt toetsenbordfocus vast en herstelt die bij sluiten", async ({ page }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/#/");
+  const opener = page.getByRole("button", { name: "Bronnen", exact: true });
+  await opener.focus();
+  await page.keyboard.press("Enter");
+  const venster = page.getByRole("dialog", { name: "Bronnen" });
+  const sluiten = venster.getByRole("button", { name: "Sluit bronnen" }).last();
+  const reset = venster.getByRole("button", { name: "Alles weer aan" });
+  await expect(sluiten).toBeFocused();
+  await expect(reset).toBeDisabled();
+  const bediening = venster.locator(".sheet button:enabled, .sheet a[href]");
+  expect(await bediening.count()).toBeGreaterThan(20);
+  const laatste = bediening.last();
+  await page.keyboard.press("Shift+Tab");
+  await expect(laatste).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(sluiten).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(reset).not.toBeFocused();
+  await expect(bediening.nth(1)).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(sluiten).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(venster).toHaveCount(0);
+  await expect(opener).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(sluiten).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(venster).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});

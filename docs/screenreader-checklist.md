@@ -10,3 +10,5 @@ Controleer op iOS met VoiceOver en op Windows met NVDA, met een recente browser.
 ## Resultaat
 
 Nog niet uitgevoerd: voor VoiceOver is een iOS-apparaat nodig en voor NVDA een Windows-apparaat. Leg de werkelijke resultaten hier vast zodra beide beschikbaar zijn.
+
+Controle #615, 11 november 2026: nog niet uitgevoerd. In de testomgeving is geen screenreader beschikbaar en weigert de lokale browserproef het starten van de server (EPERM). Controleer daarom de bovenstaande toetsenbord- en screenreadergevallen op een geschikt apparaat en leg de resultaten hier vast.
