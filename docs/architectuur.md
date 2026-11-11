@@ -284,7 +284,7 @@ Bij dezelfde deploy moet de coördinator onder Pages → nieuwsinkort → Metric
 ## Open punten
 
 - Of `RUN_KEY` als Worker-secret is ingesteld, is niet vastgelegd; zonder werken `/run` en `/uur` niet (403).
-- "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd. Antwoorden worden vóór de sessiecache op de gebruikte tekstlijsten en brongegevens gecontroleerd; ongeldige antwoorden vallen terug op de berichttekst en kunnen opnieuw worden opgehaald (#647).
+- "Lees verder" verschijnt in elke rubriek bij berichten met tekst, ook bij ruwe berichten: de detailpagina toont de volledige samenvatting, alle kernpunten en bronnen. Alleen bij een `meer`-sleutel haalt de site extra tekst op via `/meer`; als die ontbreekt of ophalen mislukt blijft de detailpagina bruikbaar. Artikeltekst ophalen (`worker/src/artikel.ts`) wordt door sommige sites geweigerd. Antwoorden worden vóór de sessiecache op de gebruikte tekstlijsten en brongegevens gecontroleerd; ongeldige antwoorden vallen terug op de berichttekst en kunnen opnieuw worden opgehaald (#647). Verversing (#840): `/meer` geeft `Cache-Control: public, max-age=0, must-revalidate` met zwakke ETag en 304 bij `If-None-Match`, zodat gewijzigde inhoud onder dezelfde sleutel direct zichtbaar kan worden. De sessiecache in `src/meer.ts` hergebruikt een succesvol antwoord 5 minuten en vraagt daarna opnieuw (`cache: "no-cache"`, dus meestal 304); één aanvraag tegelijk per sleutel, en bij een fout blijft het laatste geldige antwoord staan. Test: `tests/regressie/meer-verversing-840.test.ts`.
 - `src/leesverder.ts` bepaalt of een bericht Lees verder heeft en haalt alinea’s, kernpunten en bronnen voor de detailpagina uit het bericht.
 - Het kopje **Uitgebreid** staat altijd in de detailpagina, ook zonder `meer`-sleutel of bij een mislukte `/meer`-aanroep (#184, `src/uitgebreid.ts`). Keten: AI-uitleg (Workers AI, Groq, Mistral; gecachet in `st.diep` in KV-state, per artikel één keer, `zonderUitleg` slaat gecachete artikelen over) → alineas uit de bron → samenvatting/kernpunten van het bericht → de kop. Geen extra AI-aanroepen of neuronen; geldt voor Nederland en Buitenland.
 - Redlib-instances blokkeren Cloudflare; Reddit valt daardoor soms terug op een oude kopie.
@@ -352,6 +352,10 @@ De uur-Worker gebruikt een uitbreidbare keten van tekstmodellen met Groq en daar
 
 De uurdata bevat optioneel `tab_samenvatting`, met per rubriekcode `tekst`, `ai`, `bron` en `gegenereerd`. Home gebruikt de bestaande `dag_samenvatting`. De Worker gebruikt uur- en routineartikelen en bewaart succesvolle AI-teksten met een volgordeonafhankelijke inhoudshash maximaal zeven dagen in de bestaande KV onder `tabsam:<tab>:laatste`. Bij wijzigingen blijft de vorige tekst minstens zes uur staan; voor AI worden maximaal tien korte berichten gebruikt. Bij cachemissers zonder AI ontstaat extractieve tekst; die wordt niet gecachet zodat een volgende run AI kan proberen. Filmpjes en Dumpert krijgen geen overzicht. Oude data zonder dit veld toont geen taboverzicht.
 
+### Uitval van bronnen
+
+De uur-Worker isoleert bronverzoeken en fetcherbatches; een fetcherbatch krijgt maximaal 180 seconden. Een geslaagde nieuwsfeed volstaat om de run voort te zetten; als alle geconfigureerde nieuwsfeeds falen, blijft de vorige `uur`-waarde in KV staan en wordt de run als mislukt gemeld. `run-status` bevat voor de laatste run `bronfouten` met per mislukte feed de URL, duur in milliseconden en code: `SRC_TIMEOUT` (timeout), `SRC_HTTP` (HTTP-fout), `SRC_PARSE` (onleesbare respons of batchfout) of `SRC_EMPTY` (lege respons). Een geldige feed zonder berichten is geen lege respons. Social-cache kan eerdere resultaten tonen terwijl de bron als mislukt geregistreerd blijft.
+
 Bij YouTube bewaakt een activatieklok het starten: een actieve iframe krijgt maximaal drie startpogingen en na 1,5 seconde zonder afspelen of bufferen een tikvlak dat de melding afdekt en de tik doorlaat naar de iframe. Buurspelers blijven gepauzeerd. Geluid wordt pas na een gebruikersgebaar in dezelfde sessie geprobeerd; bij blokkering speelt de video weer gedempt. De debug-overlay toont de activatietijd, laatste opdracht en eventuele autoplayblokkade.
 
 ### YouTube-embeds
@@ -405,6 +409,8 @@ Zoeken (#816): `src/zoek.ts` verwijdert accenttekens bij Latijnse letters, maar 
 
 Terugvegen begint alleen bij een aanraking op het artikel of een kind daarvan; het aparte deelportaal valt daarbuiten. Invoer, media, horizontaal scrollbare inhoud en de Safari-rand blijven uitgesloten. Browserproef: `e2e/terugvegen.spec.mjs` (#740).
 
+Artikel-id's (#612) gebruiken ook de gesorteerde queryparameters van de bronlink, behalve bekende trackingparameters (`utm_*`, `fbclid`, `gclid`, `dclid`, `msclkid`, `mc_cid` en `mc_eid`). De Worker en frontend delen deze regel. Opgeslagen id's blijven geldig; de berichtpagina herkent ook bron-id's met en zonder query als alias. Een id die bij meer dan één bericht past, wordt niet opgelost en leidt tijdelijk naar het overzicht.
+
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
 
 Zoeken (`src/zoek.ts`) normaliseert zoektermen en berichttekst gelijk: hoofdletters en accenten verdwijnen en ß/ẞ wordt ss. Elk zoekwoord moet aan het begin van een woord staan. Tests: `tests/zoek.test.ts` en `tests/regressie/zoeken-854.test.ts`.
@@ -419,6 +425,7 @@ Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuw
 
 - **Zoeken en koppeltekens (#811)**: `src/zoek.ts` zoekt op woordbegin; een koppelteken tussen letters/cijfers wordt ook weggelaten in een tweede tekstvariant, zodat "coronamaatregelen" "corona-maatregelen" vindt. Een zoekterm met koppelteken matcht de aaneengesloten reeks (binnen één veld) of de aaneengeschreven vorm, niet twee verspreide woorden. Meerwoordzoekopdrachten (spaties), accentnormalisatie en woordbegin blijven gelijk. Tests: `tests/zoek.test.ts`.
 
+De nieuwsfeed bewaart per rubriek in sessionStorage het zichtbare artikel en de offset. Bij nieuwe artikelen blijft dat anker staan en verschijnt een melding; ontbreekt het artikel, dan volgt het eerstvolgende oudere bekende artikel.
 ## Zoeken (#735)
 
 `normaliseer()` in `src/zoek.ts` maakt zoekterm en artikeltekst gelijk: NFD zonder accenten, kleine letters, en een beperkte transliteratie voor letters die NFD niet ontleedt (ø→o, ł→l, æ→ae, œ→oe, đ→d, ß→ss), zodat `Soren` ook `Søren` vindt. Woordbegin-matching en meerwoordzoeken zijn ongewijzigd. Tests: `tests/zoek.test.ts`.
