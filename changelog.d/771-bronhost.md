@@ -1,0 +1,1 @@
+- Voorkom dat bronnen onder een gedeeld domeinsuffix dezelfde telling en hetzelfde bronnenfilter krijgen (#771).

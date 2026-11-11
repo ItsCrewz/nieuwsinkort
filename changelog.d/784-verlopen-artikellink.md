@@ -1,0 +1,1 @@
+- Verlopen artikellinks behouden queryparameters, waaronder de meetvoorkeur, bij de redirect naar de homepage (#784).
