@@ -3,6 +3,7 @@
 ## Onuitgebracht
 
 - Behoud een handmatig gekozen thema bij geblokkeerde opslag zolang de pagina openstaat (#753).
+- Beperk ook de actieve HLS-buffer bij databesparing en zuinig netwerk (#818).
 - Vastgelopen aanvragen voor extra artikeltekst stoppen na 10 seconden, zodat een latere poging kan herstellen (#742).
 - Fotocarrousels met meerdere foto's geven een gekoppelde instructie voor de pijltjestoetsen (#744).
 - Voorkom onterechte video-ontdubbeling bij media en thumbnails met verschillende betekenisvolle querywaarden (#847).
