@@ -8,11 +8,14 @@ test("Enter tijdens compositie behoudt focus en daarna werkt zoeken en sluiten",
   const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
   await invoer.fill("東京");
   await invoer.dispatchEvent("compositionstart", { data: "東京" });
-  await invoer.dispatchEvent("keydown", { key: "Enter", code: "Enter", isComposing: true });
-  await page.locator("form.zoek-formulier").evaluate((el) => el.requestSubmit());
+  await invoer.press("Enter");
   await expect(invoer).toBeFocused();
   await expect(invoer).toHaveValue("東京");
   await invoer.dispatchEvent("compositionend", { data: "東京" });
+  // Safari kan compositionend vóór de bevestigende Enter afvuren.
+  const verhinderd = await invoer.evaluate((el) => !el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 229, bubbles: true, cancelable: true })));
+  expect(verhinderd).toBe(true);
+  await expect(invoer).toBeFocused();
   await invoer.press("Enter");
   await expect(invoer).not.toBeFocused();
   await expect(invoer).toHaveValue("東京");
