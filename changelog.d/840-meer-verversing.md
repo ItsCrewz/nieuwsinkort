@@ -1,0 +1,1 @@
+- `/meer` hervalideert met ETag (304) in plaats van 10 minuten browsercache; de sessiecache in `src/meer.ts` ververst na 5 minuten met één aanvraag tegelijk en houdt bij een fout het laatste geldige antwoord (#840).
