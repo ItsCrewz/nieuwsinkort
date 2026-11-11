@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -52,14 +52,14 @@ const wacht = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 try {
   const links: { rel: string; href: string; crossOrigin: string }[] = [];
-  const afbeeldingen: { src: string; decoding: string; referrerPolicy: string; fetchPriority: string; onload: (() => void) | null; onerror: (() => void) | null }[] = [];
+  const afbeeldingen: { src: string; decoding: string; referrerPolicy: string; fetchPriority: string; onload: (() => void) | null; onerror: (() => void) | null; onabort: (() => void) | null }[] = [];
   installeer("document", {
     head: { appendChild: (link: typeof links[number]) => links.push(link) },
     createElement: () => ({ rel: "", href: "", crossOrigin: "niet-ingesteld" }),
   });
   installeer("Image", class {
     src = ""; decoding = ""; referrerPolicy = ""; fetchPriority = "";
-    onload: (() => void) | null = null; onerror: (() => void) | null = null;
+    onload: (() => void) | null = null; onerror: (() => void) | null = null; onabort: (() => void) | null = null;
     constructor() { afbeeldingen.push(this); }
   });
   installeer("location", { href: "https://site.example/" });
@@ -76,7 +76,7 @@ try {
     const verzoeken: { url: string; opties: RequestInit }[] = [];
     installeer("fetch", async (url: string, opties: RequestInit) => {
       verzoeken.push({ url, opties });
-      return { body: null };
+      return { ok: true, body: null };
     });
     const v = video("https://mobiel.example/a.mp4", "https://img.example/mobiel.jpg");
     const p = planVoorladen([v], [], false, hulp);
@@ -89,7 +89,7 @@ try {
     assert.equal(afbeeldingen[0].fetchPriority, "low");
     assert.equal(verzoeken.length, 1);
     assert.equal(verzoeken[0].url, v.embed);
-    assert.deepEqual(verzoeken[0].opties, { credentials: "omit", priority: "low", headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+    assert.deepEqual({ ...verzoeken[0].opties, signal: undefined }, { credentials: "omit", priority: "low", signal: undefined, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
     afbeeldingen[0].onload!();
     voerUit(p);
     await wacht();
@@ -98,16 +98,58 @@ try {
     assert.equal(verzoeken.length, 1);
   });
 
-  await test("offline-fouten worden opgevangen en niet opnieuw geprobeerd", async () => {
+  await test("offline-fouten worden opgevangen en bij elk volgend voorlaadmoment opnieuw geprobeerd", async () => {
     installeer("navigator", { onLine: false });
     const verzoeken: string[] = [];
     installeer("fetch", async (url: string) => { verzoeken.push(url); throw new Error("offline"); });
     const p = { ...leeg(), hls: ["/offline.m3u8"], mp4: "https://offline.example/a.mp4" };
+    for (let i = 0; i < 3; i++) {
+      voerUit(p);
+      await wacht();
+    }
+    assert.deepEqual(verzoeken, ["/offline.m3u8", "https://offline.example/a.mp4", "/offline.m3u8", "https://offline.example/a.mp4", "/offline.m3u8", "https://offline.example/a.mp4"]);
+  });
+
+  await test("fout gevolgd door succes: opnieuw geprobeerd, daarna ontdubbeld; gelijktijdig gedeeld", async () => {
+    const verzoeken: string[] = [];
+    let stuk = true;
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (stuk) throw new Error("tijdelijk");
+      return { ok: true, body: null };
+    });
+    const p = { ...leeg(), mp4: "https://herstel.example/a.mp4", thumbs: ["https://herstel.example/a.jpg"] };
+    const begin = afbeeldingen.length;
+    voerUit(p);
+    voerUit(p); // gelijktijdig: gedeeld, geen tweede verzoek
+    assert.equal(afbeeldingen.length - begin, 1);
+    afbeeldingen[begin].onerror!();
+    await wacht();
+    assert.equal(verzoeken.length, 1);
+    stuk = false;
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 2);
+    afbeeldingen[begin + 1].onload!();
+    await wacht();
+    assert.equal(verzoeken.length, 2);
     voerUit(p);
     await wacht();
+    assert.equal(afbeeldingen.length - begin, 2);
+    assert.equal(verzoeken.length, 2);
+  });
+
+  await test("afgebroken afbeelding komt vrij en wordt opnieuw geprobeerd", async () => {
+    const p = { ...leeg(), thumbs: ["https://abort.example/a.jpg"] };
+    const begin = afbeeldingen.length;
     voerUit(p);
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 1);
+    afbeeldingen[begin].onabort!();
     await wacht();
-    assert.deepEqual(verzoeken, ["/offline.m3u8", "https://offline.example/a.mp4"]);
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 2);
+    afbeeldingen[begin + 1].onload!();
+    await wacht();
   });
 
   await test("HLS haalt laagste variant en hooguit twee segmenten op", async () => {
@@ -122,7 +164,57 @@ try {
     voerUit({ ...leeg(), hls: ["/master-test.m3u8"] });
     await wacht();
     assert.deepEqual(verzoeken, ["/master-test.m3u8", "https://site.example/laag.m3u8", "https://site.example/1.ts", "https://site.example/2.ts"]);
-    assert.deepEqual(optiesLijst, verzoeken.map(() => ({ credentials: "omit", priority: "low" })));
+    assert.ok(optiesLijst.every((opties) => opties.credentials === "omit" && opties.priority === "low" && opties.signal instanceof AbortSignal));
+  });
+
+  await test("HLS met bytebereiken haalt alleen die bereiken op, nooit het hele bestand", async () => {
+    const verzoeken: { url: string; range?: string }[] = [];
+    installeer("fetch", async (url: string, opties: RequestInit) => {
+      const range = (opties?.headers as Record<string, string> | undefined)?.Range;
+      verzoeken.push({ url, range });
+      if (url.endsWith(".m3u8")) return { ok: true, status: 200, text: async () => "#EXTM3U\n#EXT-X-BYTERANGE:1000@0\ngroot.mp4\n#EXT-X-BYTERANGE:500\ngroot.mp4\n#EXT-X-BYTERANGE:9\ngroot.mp4" };
+      const len = +range!.split("-")[1] - +range!.split("=")[1].split("-")[0] + 1;
+      let gelezen = false;
+      return { ok: true, status: 206, headers: new Headers({ "Content-Range": `bytes ${range!.slice(6)}/*` }), body: { getReader: () => ({ read: async () => (gelezen ? { done: true } : ((gelezen = true), { done: false, value: new Uint8Array(len) })), cancel: async () => {} }) } };
+    });
+    voerUit({ ...leeg(), hls: ["/bereik.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken.slice(1), [
+      { url: "https://site.example/groot.mp4", range: "bytes=0-999" },
+      { url: "https://site.example/groot.mp4", range: "bytes=1000-1499" },
+    ]);
+  });
+
+  await test("bytebereik zonder bekende positie of met 200-antwoord haalt niets binnen", async () => {
+    assert.deepEqual(segmentenBereik("#EXT-X-BYTERANGE:50\na.mp4\n#EXT-X-BYTERANGE:x@y\nb.mp4", "https://s.example/"), []);
+    let gelezen = 0;
+    let geannuleerd = false;
+    installeer("fetch", async (url: string) => url.endsWith(".m3u8")
+      ? { ok: true, status: 200, text: async () => "#EXT-X-BYTERANGE:10@5\nx.mp4" }
+      : { ok: true, status: 200, headers: new Headers(), body: { cancel: async () => { geannuleerd = true; }, getReader: () => ({ read: async () => { gelezen++; return { done: true }; } }) } });
+    voerUit({ ...leeg(), hls: ["/negeer.m3u8"] });
+    await wacht();
+    assert.equal(gelezen, 0);
+    assert.equal(geannuleerd, true);
+  });
+
+  await test("beschadigde bereiktag en afwijkend 206-antwoord worden overgeslagen", async () => {
+    const verzoeken: string[] = [];
+    let gelezen = 0;
+    let geannuleerd = false;
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (url.endsWith(".m3u8")) return { ok: true, text: async () => "#EXT-X-BYTERANGE :100@0\nkapot.mp4\n#EXT-X-BYTERANGE:10@5\nafwijkend.mp4" };
+      return { status: 206, headers: new Headers({ "Content-Range": "bytes 0-999/1000" }), body: {
+        cancel: async () => { geannuleerd = true; },
+        getReader: () => ({ read: async () => { gelezen++; return { done: false, value: new Uint8Array(1000) }; } }),
+      } };
+    });
+    voerUit({ ...leeg(), hls: ["/beschadigd.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken, ["/beschadigd.m3u8", "https://site.example/afwijkend.mp4"]);
+    assert.equal(gelezen, 0);
+    assert.equal(geannuleerd, true);
   });
 
   await test("HLS volgt redirects: relatieve paden t.o.v. de uiteindelijke URL (master en mediaplaylist)", async () => {
@@ -145,7 +237,7 @@ try {
   await test("mp4-stream stopt bij de bytegrens", async () => {
     let gelezen = 0;
     let gestopt = false;
-    installeer("fetch", async () => ({ body: { getReader: () => ({
+    installeer("fetch", async () => ({ ok: true, body: { getReader: () => ({
       read: async () => { gelezen++; return { done: false, value: new Uint8Array(MP4_BYTES / 2) }; },
       cancel: async () => { gestopt = true; },
     }) } }));

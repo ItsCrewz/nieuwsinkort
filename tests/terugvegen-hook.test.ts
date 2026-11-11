@@ -38,9 +38,11 @@ const noop = () => {};
 const container = () =>
   ({ nodeType: 1, nodeName: "DIV", tagName: "DIV", namespaceURI: "http://www.w3.org/1999/xhtml", addEventListener: noop, removeEventListener: noop, ownerDocument: { addEventListener: noop, removeEventListener: noop } }) as unknown as Element;
 
-const doel = { parentElement: null, matches: () => false, scrollWidth: 0, clientWidth: 0 };
+class TestElement { parentElement = null; matches() { return false; } scrollWidth = 0; clientWidth = 0; }
+g.Element = TestElement;
+const doel = new TestElement();
 const maak = async (terug: () => void) => {
-  const art = { style: { transform: "", transition: "" }, classList: { add() {}, remove() {} } };
+  const art = { style: { transform: "", transition: "" }, classList: { add() {}, remove() {} }, parentElement: null, contains: (el: unknown) => el === doel };
   const ref = { current: art as unknown as HTMLElement };
   function C() { useTerugvegen(ref, terug); return null; }
   const root = createRoot(container());
