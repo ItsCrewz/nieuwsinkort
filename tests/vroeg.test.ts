@@ -43,9 +43,22 @@ await t("laadData gebruikt statische data na twee mislukte actuele aanvragen", a
   const ophalen = (async (pad: string | URL | Request, opties?: RequestInit) => {
     paden.push(String(pad));
     assert.equal(opties?.cache, "no-cache");
+    return paden.length <= 2 ? new Response("fout", { status: 503 }) : Response.json({ statisch: true });
+  }) as typeof fetch;
+  const vroeg = ophalen("/data.json", { cache: "no-cache" });
+  assert.deepEqual(await laadData(vroeg, ophalen), { statisch: true });
+  assert.deepEqual(paden, ["/data.json", "/data.json", "/data.json?statisch=1"]);
+});
+
+await t("laadData gebruikt zonder vroege promise statische data na een mislukte actuele aanvraag", async () => {
+  const { laadData } = await import("../src/vroeg");
+  const paden: string[] = [];
+  const ophalen = (async (pad: string | URL | Request, opties?: RequestInit) => {
+    paden.push(String(pad));
+    assert.equal(opties?.cache, "no-cache");
     return paden.length === 1 ? new Response("fout", { status: 503 }) : Response.json({ statisch: true });
   }) as typeof fetch;
-  assert.deepEqual(await laadData(Promise.reject(new Error("netwerk")), ophalen), { statisch: true });
+  assert.deepEqual(await laadData(null, ophalen), { statisch: true });
   assert.deepEqual(paden, ["/data.json", "/data.json?statisch=1"]);
 });
 
