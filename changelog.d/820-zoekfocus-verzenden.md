@@ -1,0 +1,1 @@
+- Zoeken behoudt de focus in het zoekveld na Enter (#820).

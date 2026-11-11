@@ -1,6 +1,7 @@
 // Clusteren van nieuwskandidaten uit feeds: pure module (geen Worker-API's), getest in tests/cluster.test.ts.
 // Conservatief: liever twee losse berichten dan twee verschillende verhalen samen.
 import { sportCat } from "./sportcat";
+import { normArtikelLink } from "../../src/artikelid";
 import { kostenBotst, wedstrijdTeams, zelfdeVerhaal } from "../../src/verhaaldubbel";
 
 export const STOP = new Set(("de het een en van in op te voor met is zijn er dat die bij uit aan om ook als naar over na door nog niet wel maar dan was wordt worden heeft hebben meer dit deze tot kan nu zo al wat hoe waar wie ze hij zij we je jij u the a an of to in on for with and is are was be at by from as it its this that after over new says will has have can how why what who "
@@ -42,7 +43,7 @@ export const toks = (s: string) => {
   return out;
 };
 export function sim(a: Set<string>, b: Set<string>) { let n = 0; for (const x of a) if (b.has(x)) n++; return { n, j: n / (a.size + b.size - n || 1) }; }
-export const normLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
+export const normLink = normArtikelLink;
 
 const AFSTAND = /(\d{1,2}(?:\.\d{3})+|\d+)\s?(km|kilometer|m|meter)\b/gi;
 
