@@ -1,5 +1,35 @@
 import { test, expect } from "@playwright/test";
 
+test("Enter tijdens compositie behoudt focus en daarna werkt zoeken en sluiten", async ({ page }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  await knop.click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill("東京");
+  await invoer.dispatchEvent("compositionstart", { data: "東京" });
+  await invoer.press("Enter");
+  await expect(invoer).toBeFocused();
+  await expect(invoer).toHaveValue("東京");
+  await invoer.dispatchEvent("compositionend", { data: "東京" });
+  // Safari kan compositionend vóór de bevestigende Enter afvuren.
+  const verhinderd = await invoer.evaluate((el) => !el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 229, bubbles: true, cancelable: true })));
+  expect(verhinderd).toBe(true);
+  await expect(invoer).toBeFocused();
+  await invoer.press("Enter");
+  await expect(invoer).not.toBeFocused();
+  await expect(invoer).toHaveValue("東京");
+  await invoer.focus();
+  await invoer.press("Escape");
+  await expect(invoer).toBeHidden();
+  await expect(knop).toBeFocused();
+  await knop.click();
+  await invoer.fill("nieuws");
+  await page.getByRole("button", { name: "Sluiten", exact: true }).click();
+  await expect(invoer).toBeHidden();
+  await expect(knop).toBeFocused();
+});
+
 for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 800]]) test(`zoekknop is vast, groot genoeg en botst niet met de deelknop (${naam})`, async ({ page }) => {
   await page.setViewportSize({ width: breedte, height: hoogte });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());

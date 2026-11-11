@@ -1,0 +1,1 @@
+- Herken ook logomappen en gangbare logobestandsnamen bij het filteren van artikelbeelden (#831).
