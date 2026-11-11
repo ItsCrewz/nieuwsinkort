@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -165,6 +165,56 @@ try {
     await wacht();
     assert.deepEqual(verzoeken, ["/master-test.m3u8", "https://site.example/laag.m3u8", "https://site.example/1.ts", "https://site.example/2.ts"]);
     assert.deepEqual(optiesLijst, verzoeken.map(() => ({ credentials: "omit", priority: "low" })));
+  });
+
+  await test("HLS met bytebereiken haalt alleen die bereiken op, nooit het hele bestand", async () => {
+    const verzoeken: { url: string; range?: string }[] = [];
+    installeer("fetch", async (url: string, opties: RequestInit) => {
+      const range = (opties?.headers as Record<string, string> | undefined)?.Range;
+      verzoeken.push({ url, range });
+      if (url.endsWith(".m3u8")) return { ok: true, status: 200, text: async () => "#EXTM3U\n#EXT-X-BYTERANGE:1000@0\ngroot.mp4\n#EXT-X-BYTERANGE:500\ngroot.mp4\n#EXT-X-BYTERANGE:9\ngroot.mp4" };
+      const len = +range!.split("-")[1] - +range!.split("=")[1].split("-")[0] + 1;
+      let gelezen = false;
+      return { ok: true, status: 206, headers: new Headers({ "Content-Range": `bytes ${range!.slice(6)}/*` }), body: { getReader: () => ({ read: async () => (gelezen ? { done: true } : ((gelezen = true), { done: false, value: new Uint8Array(len) })), cancel: async () => {} }) } };
+    });
+    voerUit({ ...leeg(), hls: ["/bereik.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken.slice(1), [
+      { url: "https://site.example/groot.mp4", range: "bytes=0-999" },
+      { url: "https://site.example/groot.mp4", range: "bytes=1000-1499" },
+    ]);
+  });
+
+  await test("bytebereik zonder bekende positie of met 200-antwoord haalt niets binnen", async () => {
+    assert.deepEqual(segmentenBereik("#EXT-X-BYTERANGE:50\na.mp4\n#EXT-X-BYTERANGE:x@y\nb.mp4", "https://s.example/"), []);
+    let gelezen = 0;
+    let geannuleerd = false;
+    installeer("fetch", async (url: string) => url.endsWith(".m3u8")
+      ? { ok: true, status: 200, text: async () => "#EXT-X-BYTERANGE:10@5\nx.mp4" }
+      : { ok: true, status: 200, headers: new Headers(), body: { cancel: async () => { geannuleerd = true; }, getReader: () => ({ read: async () => { gelezen++; return { done: true }; } }) } });
+    voerUit({ ...leeg(), hls: ["/negeer.m3u8"] });
+    await wacht();
+    assert.equal(gelezen, 0);
+    assert.equal(geannuleerd, true);
+  });
+
+  await test("beschadigde bereiktag en afwijkend 206-antwoord worden overgeslagen", async () => {
+    const verzoeken: string[] = [];
+    let gelezen = 0;
+    let geannuleerd = false;
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (url.endsWith(".m3u8")) return { ok: true, text: async () => "#EXT-X-BYTERANGE :100@0\nkapot.mp4\n#EXT-X-BYTERANGE:10@5\nafwijkend.mp4" };
+      return { status: 206, headers: new Headers({ "Content-Range": "bytes 0-999/1000" }), body: {
+        cancel: async () => { geannuleerd = true; },
+        getReader: () => ({ read: async () => { gelezen++; return { done: false, value: new Uint8Array(1000) }; } }),
+      } };
+    });
+    voerUit({ ...leeg(), hls: ["/beschadigd.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken, ["/beschadigd.m3u8", "https://site.example/afwijkend.mp4"]);
+    assert.equal(gelezen, 0);
+    assert.equal(geannuleerd, true);
   });
 
   await test("HLS volgt redirects: relatieve paden t.o.v. de uiteindelijke URL (master en mediaplaylist)", async () => {
