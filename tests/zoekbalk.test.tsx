@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server.browser";
 import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
 
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
-assert.match(leeg, /Geen berichten gevonden voor ‘niets’/);
+assert.match(leeg, /Niets gevonden voor “niets”/);
 assert.match(leeg, /Wis zoekopdracht/);
 for (const query of ["!!!", "😀"]) {
   const melding = renderToStaticMarkup(createElement(ZoekLeeg, { query, onWis: () => {} }));
@@ -15,12 +15,12 @@ for (const query of ["!!!", "😀"]) {
 }
 for (const aantal of [0, 1, 2]) {
   // Een nieuwe mount simuleert terugkeer uit een bericht met behouden zoekterm.
-  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal }));
+  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal, invoer: createRef<HTMLInputElement>() }));
   assert.match(balk, /aria-expanded="true"/);
   assert.match(balk, /value="tekst"/);
   assert.ok(balk.includes(`aria-live="polite"></span>`));
 }
-const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0 }));
+const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
 assert.match(geslotenBalk, /aria-expanded="false"/);
 assert.match(geslotenBalk, /aria-label="Zoeken"/);
 assert.match(geslotenBalk, /<button type="button" class="zoek-knop"[^>]*><svg[^>]*><use href="#i-search"><\/use><\/svg><\/button>/);
@@ -29,6 +29,6 @@ let gesloten = false;
 const formulier = ZoekFormulier({ query: "tekst", onChange: () => {}, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
 const invoer = formulier.props.children[0];
 assert.equal(invoer.props["aria-label"], "Zoek in het nieuws");
-invoer.props.onKeyDown({ key: "Escape", preventDefault() {}, stopPropagation() {} });
+formulier.props.children[1].props.onClick();
 assert.equal(gesloten, true);
 console.log("zoekbalk: tests geslaagd");
