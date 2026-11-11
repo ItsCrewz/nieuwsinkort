@@ -675,3 +675,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
 
 /* Artikel en overzicht bewegen onder de stilstaande topbalk. */
+
+.nf-nieuw{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:5;display:flex;white-space:nowrap;border-radius:999px;background:var(--ink);color:var(--p);box-shadow:0 2px 8px #0003}
+.nf-nieuw button{border:0;background:none;color:inherit;padding:10px 12px;cursor:pointer;font:inherit}
