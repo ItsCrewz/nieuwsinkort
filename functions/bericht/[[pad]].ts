@@ -1,5 +1,5 @@
 import { begrensCache, dagCache } from "../cache-dag";
-import { artikelId, artikelPad, linkId, parsePad } from "../../src/artikelid";
+import { artikelId, artikelPad, linkId, oudeLinkId, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
 import { etagMatch } from "../../src/etagmatch";
@@ -18,7 +18,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const gisteren = new Date(Date.UTC(nu.y, nu.m - 1, nu.d - 1)).toISOString().slice(0, 10);
   if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, "/", "public, max-age=86400");
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
-  const sleutel = new Request(`${u.origin}${u.pathname}?cache-dag=${dagCache().periode}`);
+  const sleutel = new Request(`${u.origin}${u.pathname}?versie=2&cache-dag=${dagCache().periode}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   if (bestaand) {
     const begrensd = begrensCache(bestaand);
@@ -34,7 +34,9 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   } catch { return tijdelijk(); }
   if (!dag || typeof dag.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items) || ams(Date.parse(dag.gegenereerd)).iso !== pad.dag) return tijdelijk();
   const items = dag.items;
-  const item = items.find((i) => artikelId(i) === pad.id) || items.find((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id));
+  const exact = items.filter((i) => artikelId(i) === pad.id);
+  const matches = exact.length ? exact : items.filter((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id || oudeLinkId(b.href) === pad.id));
+  const item = matches.length === 1 ? matches[0] : undefined;
   if (!item) return redirect(302, "/", "no-store");
   const canoniek = artikelPad(item, pad.dag);
   if (u.pathname !== canoniek) return redirect(301, `${canoniek}${u.search}`, "no-store");
