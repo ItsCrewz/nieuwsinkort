@@ -67,7 +67,7 @@ Kopkaart (#150): `.nc-head` is alleen op Home schermvullend. Tabs krijgen de kla
 
 De feednavigatie is met `inert` niet focusbaar zolang zij verborgen is; de startknop blijft daarbuiten bereikbaar. Bij zichtbare navigatie werkt Tab weer normaal (#275).
 
-`src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug. Geldige sessiedata heeft voorrang; bij onbeschikbare of ongeldige sessiedata dient `history.state.feed` als terugval voor de video en afspeelpositie.
+`src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug. Geldige sessiedata heeft voorrang; bij onbeschikbare of ongeldige sessiedata dient `history.state.feed` als terugval voor de video en afspeelpositie. `wisFeed` wist zowel sessionStorage als `history.state.feed` (andere geschiedenisvelden blijven; een niet-beschikbare opslag blokkeert het wissen van de andere niet).
 
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren.
 
