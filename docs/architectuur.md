@@ -447,6 +447,11 @@ De gedeelde beeldselectie in `src/beeld.ts` wordt door frontend en uur-Worker ge
 Bij een zoekopdracht zonder resultaten zet “Wis zoekopdracht” de focus terug in het lege zoekveld; de zoekbalk blijft open. De toetsenbordroute staat in `e2e/zoekfocus-769.spec.mjs`.
 
 De nieuwsfeed bewaart per rubriek in sessionStorage het zichtbare artikel en de offset. Bij nieuwe artikelen blijft dat anker staan en verschijnt een melding; ontbreekt het artikel, dan volgt het eerstvolgende oudere bekende artikel.
+
+## Zoeken (#804)
+
+`src/zoek.ts` matcht alle termen op woordbegin (na accent- en leestekennormalisatie). Een numerieke term van ≥4 cijfers (jaartal) moet het hele getal zijn: `2024` vindt `20240` en `12024` niet. Kortere cijfers (`20`) blijven woordbegin. Decimalen als `3,5` worden door `normaliseer` al `3 5`; de aparte decimalentaak kan dat aanpassen, de tests in `tests/zoek.test.ts` bewaken het huidige gedrag.
+
 ## Zoeken (#735)
 
 `normaliseer()` in `src/zoek.ts` maakt zoekterm en artikeltekst gelijk: NFD zonder accenten, kleine letters, en een beperkte transliteratie voor letters die NFD niet ontleedt (ø→o, ł→l, æ→ae, œ→oe, đ→d, ß→ss), zodat `Soren` ook `Søren` vindt. Woordbegin-matching en meerwoordzoeken zijn ongewijzigd. Tests: `tests/zoek.test.ts`.

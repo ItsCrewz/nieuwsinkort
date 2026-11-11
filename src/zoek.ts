@@ -14,7 +14,8 @@ function alleTermenPassen(termen: string[], tekstWoorden: string[]): boolean {
   const eigenaar: number[] = new Array(tekstWoorden.length).fill(-1);
   const plaats = (t: number, gezien: boolean[]): boolean => {
     for (let w = 0; w < tekstWoorden.length; w++) {
-      const speciaal = termen[t] === "c++" || termen[t] === "c#" || tekstWoorden[w] === "c++" || tekstWoorden[w] === "c#";
+      // Exact i.p.v. woordbegin: c++/c# en volledig numerieke termen (2024 vindt geen 20240, 20 geen 2026).
+      const speciaal = termen[t] === "c++" || termen[t] === "c#" || tekstWoorden[w] === "c++" || tekstWoorden[w] === "c#" || /^\p{N}+$/u.test(termen[t]);
       if (gezien[w] || (speciaal ? tekstWoorden[w] !== termen[t] : !tekstWoorden[w].startsWith(termen[t]))) continue;
       gezien[w] = true;
       if (eigenaar[w] < 0 || plaats(eigenaar[w], gezien)) { eigenaar[w] = t; return true; }
