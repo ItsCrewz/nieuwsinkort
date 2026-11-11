@@ -139,6 +139,8 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 | `feed` | `Feed`, spelers, `debug-overlay` | op touch + videoroute |
 | `hls` | hls.js | door `feed` en het voorladen |
 
+Filterblad (#627): `aria-modal` met focusval: Tab/Shift+Tab wisselen binnen het blad rond (uitgeschakelde knoppen tellen niet mee), focus buiten het blad gaat terug naar de sluitknop, Escape en de sluitknop geven focus terug aan de opener. Echte Tab/Shift+Tab/Escape in Chrome (nieuws en filmpjes, met en zonder reduced motion): `e2e/filterblad-focus.spec.mjs`.
+
 Het filterblad rondt sluiten eenmaal af via het animatie-einde of een timer als vangnet. Bij ontkoppelen wordt de timer gewist en de focus hersteld; bij verminderde beweging sluit het blad direct. Een oude sluitactie kan het opnieuw geopende blad niet meer sluiten (#750).
 
 Het bronnenvenster rondt sluiten eenmaal af via het animatie-einde of een vangnet na 360 ms. Bij ontkoppelen wordt de timer gewist; bij verminderde beweging sluit het venster direct en wordt de focus hersteld. Bij nul berichten en een deels mislukte ophaling (`fout` of `storing`) toont de regel "Stand onvolledig" in plaats van "Vandaag niets" (#618).
