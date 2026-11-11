@@ -9,7 +9,7 @@ const lijst = [video("een"), video("twee"), video("drie")];
 const status: FeedStatus = { cat: "dumpert", slug: videoSlug(lijst[1]), soort: "short", positie: 12, speelt: true, lijst };
 bewaarFeed(status);
 assert.deepEqual(leesFeed(), status);
-assert.deepEqual((history.state as any).feed, status);
+assert.deepEqual((history.state as { feed?: unknown }).feed, status);
 assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, [lijst[0], lijst[2]]).slug, videoSlug(lijst[2]));
 assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, []).lijst.length, 3);
 assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, []).slug, status.slug);
@@ -49,3 +49,26 @@ try {
   Object.assign(globalThis, { sessionStorage: oorspronkelijkeOpslag, history: oorspronkelijkeGeschiedenis });
 }
 console.log("feedstatus-randgevallen: geslaagd");
+
+// Wissen haalt de status uit beide opslagplaatsen en laat andere geschiedenisvelden staan (#802).
+{
+  const g = new Map<string, string>();
+  const staat = { sessionStorage: { getItem: (k: string) => g.get(k) ?? null, setItem: (k: string, v: string) => g.set(k, v), removeItem: (k: string) => g.delete(k) }, history: { state: { ander: 1 } as unknown, replaceState(s: unknown) { this.state = s; } } };
+  Object.assign(globalThis, staat);
+  bewaarFeed(status);
+  wisFeed();
+  assert.equal(leesFeed(), null);
+  assert.deepEqual(history.state, { ander: 1 });
+  // geblokkeerde sessionStorage: geschiedenis wordt toch gewist
+  bewaarFeed(status);
+  Object.assign(globalThis, { sessionStorage: { getItem() { throw new Error("uit"); }, setItem() { throw new Error("uit"); }, removeItem() { throw new Error("uit"); } } });
+  wisFeed();
+  assert.equal((history.state as { feed?: unknown }).feed, undefined);
+  assert.equal((history.state as { ander?: number }).ander, 1);
+  // geschiedenis geblokkeerd: sessionStorage wordt toch gewist
+  Object.assign(globalThis, { sessionStorage: staat.sessionStorage, history: { state: { feed: status }, replaceState() { throw new Error("uit"); } } });
+  g.set("nieuwsinkort-feedstatus", JSON.stringify(status));
+  wisFeed();
+  assert.equal(g.has("nieuwsinkort-feedstatus"), false);
+}
+console.log("feedstatus-wissen: geslaagd");

@@ -65,3 +65,21 @@ const grensTest = (gen: string, verwacht: "uur" | "statisch", statischBlijft = t
 t("merge 23:59 Amsterdam: uur-data van dezelfde dag wordt gemerged", grensTest("2026-10-29T23:50:00+01:00", "uur"), Date.parse("2026-10-29T23:59:00+01:00"));
 t("merge 00:30 Amsterdam: uur-data van gisteren wordt niet gebruikt (statisch blijft)", grensTest("2026-10-29T23:50:00+01:00", "statisch"), Date.parse("2026-10-30T00:30:00+01:00"));
 t("merge 00:30 Amsterdam: uur-data van de nieuwe dag wordt wel gebruikt, statische data van gisteren valt weg", grensTest("2026-10-30T00:20:00+01:00", "uur", false), Date.parse("2026-10-30T00:30:00+01:00"));
+
+t("merge: rubrieksamenvatting van de recentste bron, per rubriek met terugval", () => {
+  const tab = (tekst: string, g: string) => ({ tekst, ai: true, bron: "x", gegenereerd: g });
+  const S = { gegenereerd: "2026-11-04T09:00:00Z", items: [], filmpjes: [], dumpert: [], tab_samenvatting: { nl: tab("routine nl", "r"), tech: tab("routine tech", "r") } };
+  const Houd = { gegenereerd: "2026-11-04T08:00:00Z", items: [], filmpjes: [], dumpert: [], tab_samenvatting: { nl: tab("uur nl", "u"), sport: tab("uur sport", "u") } };
+  const oud: any = merge(S, Houd).tab_samenvatting;
+  assert.equal(oud.nl.tekst, "routine nl");
+  assert.equal(oud.tech.tekst, "routine tech");
+  assert.equal(oud.sport.tekst, "uur sport");
+  const Hnieuw = { ...Houd, gegenereerd: "2026-11-04T09:30:00Z" };
+  const nw: any = merge(S, Hnieuw).tab_samenvatting;
+  assert.equal(nw.nl.tekst, "uur nl");
+  assert.equal(nw.tech.tekst, "routine tech");
+  // Nieuwere uurdata zonder samenvatting: de routinetekst blijft.
+  assert.equal((merge(S, { ...Hnieuw, tab_samenvatting: undefined }) as any).tab_samenvatting.nl.tekst, "routine nl");
+  assert.equal(merge({ ...S, tab_samenvatting: undefined }, { ...Houd, tab_samenvatting: undefined }).tab_samenvatting, undefined);
+  assert.equal((merge({ ...S, tab_samenvatting: undefined }, Houd) as any).tab_samenvatting.nl.tekst, "uur nl");
+}, Date.parse("2026-11-04T10:00:00Z"));
