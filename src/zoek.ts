@@ -5,7 +5,8 @@ import type { Item } from "./types";
 const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "ß": "ss" };
 
 export function normaliseer(tekst: string): string {
-  return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c]).replace(/[^\p{L}\p{M}\p{N}]+/gu, " ").trim();
+  return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
+    .replace(/(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
 function afkortingen(tekst: string): string {
@@ -17,10 +18,11 @@ export function zoekItems(items: Item[], query: string): Item[] {
   if (!woorden.length) return query.trim() ? [] : items;
   return items.filter((item) => {
     const origineel = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).join(" ");
-    const tekst = normaliseer(origineel + " " + afkortingen(origineel));
-    // Woordbegin: " " ervoor zodat "kat" niet in "politiek" valt, maar wel "katten" vindt.
-    const haystack = " " + tekst;
-    return woorden.every((woord) => haystack.includes(" " + woord));
+    const tekstwoorden = normaliseer(origineel + " " + afkortingen(origineel)).split(" ");
+    return woorden.every((woord) => tekstwoorden.some((gevonden) => {
+      if (woord === "c++" || woord === "c#" || gevonden === "c++" || gevonden === "c#") return woord === gevonden;
+      return gevonden.startsWith(woord);
+    }));
   });
 }
 

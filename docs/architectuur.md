@@ -418,7 +418,7 @@ Artikel-id's (#612) gebruiken ook de gesorteerde queryparameters van de bronlink
 
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
 
-Zoeken (`src/zoek.ts`) normaliseert zoektermen en berichttekst gelijk: hoofdletters en accenten verdwijnen en ß/ẞ wordt ss. Elk zoekwoord moet aan het begin van een woord staan. Tests: `tests/zoek.test.ts` en `tests/regressie/zoeken-854.test.ts`.
+Zoeken (`src/zoek.ts`) normaliseert zoektermen en berichttekst gelijk: hoofdletters en accenten verdwijnen en ß/ẞ wordt ss. `C++` en `C#` blijven eigen woorden, ook los van `C`; andere leestekens scheiden woorden. Elk zoekwoord moet aan het begin van een woord staan. Tests: `tests/zoek.test.ts` en `tests/regressie/zoeken-854.test.ts`.
 
 Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters ook in compacte vorm, zoals `V.S.` en `VS`, in beide richtingen. Andere leestekens en de bestaande woordbegin- en accentregels blijven gelijk. Tests: `tests/regressie/zoeken-afkortingen-786.test.ts`.
 

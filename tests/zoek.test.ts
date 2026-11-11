@@ -23,6 +23,14 @@ assert.deepEqual(zoekItems([katten], "kat asiel"), [katten]);
 assert.deepEqual(zoekItems([katten], "kat debat"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 100 van 2026" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "00"), []);
+const talen = ["C++", "C#", "C", "Cursus café"].map((kop) => ({ cat: "tech", kop }) as Item);
+for (const [term, verwacht] of [["C++", 0], ["c#", 1], ["C", 2]] as const) {
+  assert.deepEqual(zoekItems(talen.slice(0, 3), term), [talen[verwacht]], term);
+}
+assert.deepEqual(zoekItems(talen, "curs cafe"), [talen[3]]);
+assert.deepEqual(zoekItems([{ cat: "tech", kop: "Nieuws over C++, en C#." } as Item], "C++ C#").length, 1);
+assert.equal(normaliseer("C++/C#; café-nieuws"), "c++ c# cafe nieuws");
+assert.equal(normaliseer("+++ ###"), "");
 // Lettervarianten (#735): zoekterm en tekst, ongeacht hoofdletters.
 const soren = { cat: "nl", kop: "Søren Kierkegaard herdacht", samenvatting: "Lech Wałęsa en Łukasz bij Æbleskiver-feest" } as Item;
 for (const term of ["Soren", "SØREN", "søren", "lukasz", "ŁUKASZ", "walesa", "Wałęsa", "aebleskiver", "Æbleskiver", "soren kierkegaard"]) assert.deepEqual(zoekItems([soren], term), [soren], term);
