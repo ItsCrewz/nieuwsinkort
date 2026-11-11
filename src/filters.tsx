@@ -119,7 +119,7 @@ const minVan = (d: Date) => {
 };
 export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   const m = /^(\d{1,2})[:.](\d{2})$/.exec(hhmm || "");
-  if (!m) return null;
+  if (!m || +m[1] > 23 || +m[2] > 59) return null; // onmogelijke kloktijd = onbekend
   const t = +m[1] * 60 + +m[2];
   const g = new Date(gen);
   const gm = minVan(g);
@@ -204,6 +204,20 @@ export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: stri
     })
     .map(({ item }) => item);
   return { items: out, tijd, auto, per, nieuwSinds: vorig ? per.sinds : 0 };
+}
+// Vernieuw relatieve videovensters ook als de server dezelfde data terugstuurt.
+export function useVideoKlok(tijd: Tijd): number {
+  const [tik, setTik] = useState(0);
+  useEffect(() => {
+    if (tijd !== "1u" && tijd !== "3u") return;
+    const ververs = () => setTik((n) => n + 1);
+    ververs(); // Ook bij terugkeer naar een video-overzicht opnieuw filteren.
+    const timer = window.setInterval(ververs, 60_000);
+    const zichtbaar = () => { if (document.visibilityState === "visible") ververs(); };
+    document.addEventListener("visibilitychange", zichtbaar);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zichtbaar); };
+  }, [tijd]);
+  return tik;
 }
 /** Filmpjes: alleen het tijdfilter (de rest gaat over berichten). Automatisch = Vandaag, of Alles als er vandaag nog bijna niets is. */
 export function filterVideos(list: Video[], f: Filters, vorig: number, gen: string | undefined): Video[] {
