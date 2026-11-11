@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server.browser";
 import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
 
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
-assert.match(leeg, /Geen berichten gevonden voor ‘niets’/);
+assert.match(leeg, /Niets gevonden voor “niets”/);
 assert.match(leeg, /Wis zoekopdracht/);
 for (const query of ["!!!", "😀"]) {
   const melding = renderToStaticMarkup(createElement(ZoekLeeg, { query, onWis: () => {} }));

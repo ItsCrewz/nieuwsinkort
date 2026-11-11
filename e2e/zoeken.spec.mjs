@@ -39,13 +39,16 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   expect(await invoer.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
   await invoer.fill("onvindbarezoekterm506");
   await expect(page.locator("[aria-live=polite]").filter({ hasText: "0 resultaten" })).toBeAttached();
-  await expect(page.getByText("Geen berichten gevonden voor", { exact: false })).toBeAttached();
+  await expect(page.getByText("Niets gevonden voor “onvindbarezoekterm506”")).toBeVisible();
   for (const term of ["!!!", "😀"]) {
     await invoer.fill(term);
     await expect(page.locator(".zoek-leeg")).toContainText("Voer letters of cijfers in om te zoeken.");
     await expect(page.locator(".zoek-status")).toHaveText("Voer letters of cijfers in om te zoeken.");
   }
-  await invoer.fill("");
+  await invoer.fill("onvindbarezoekterm506");
+  await page.getByRole("button", { name: "Wis zoekopdracht" }).click();
+  await expect(invoer).toHaveValue("");
+  await expect(invoer).toBeFocused();
   await expect(page.locator(".nc-title a").first()).toBeVisible();
   await expect(page.locator(".zoek-status")).toBeEmpty();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

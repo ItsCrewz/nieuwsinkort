@@ -48,5 +48,5 @@ export function ZoekFormulier({ query, onChange, sluit, invoer }: { query: strin
 }
 
 export function ZoekLeeg({ query, onWis }: { query: string; onWis: () => void }) {
-  return <div className="zoek-leeg">{normaliseer(query) ? <>Geen berichten gevonden voor ‘{query}’</> : zoekAanwijzing} <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button></div>;
+  return <div className="zoek-leeg">{normaliseer(query) ? <>Niets gevonden voor “{query}”</> : zoekAanwijzing} <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button></div>;
 }
