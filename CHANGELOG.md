@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Voorkom onterechte video-ontdubbeling bij media en thumbnails met verschillende betekenisvolle querywaarden (#847).
 - Artikelverdieping geeft bij een KV-storing 503 in plaats van 404 en is na herstel opnieuw op te halen (#839).
 - Herstel de videopositie via de geschiedenis als sessieopslag niet beschikbaar is of ongeldige gegevens bevat (#732).
 - Voorkom caching van lege SEO-pagina’s bij ongeldige dagdata (#599).

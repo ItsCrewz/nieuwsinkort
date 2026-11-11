@@ -423,6 +423,7 @@ Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de de
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
 
+De nieuwsfeed bewaart per rubriek in sessionStorage het zichtbare artikel en de offset. Bij nieuwe artikelen blijft dat anker staan en verschijnt een melding; ontbreekt het artikel, dan volgt het eerstvolgende oudere bekende artikel.
 ## Zoeken (#735)
 
 `normaliseer()` in `src/zoek.ts` maakt zoekterm en artikeltekst gelijk: NFD zonder accenten, kleine letters, en een beperkte transliteratie voor letters die NFD niet ontleedt (ø→o, ł→l, æ→ae, œ→oe, đ→d, ß→ss), zodat `Soren` ook `Søren` vindt. Woordbegin-matching en meerwoordzoeken zijn ongewijzigd. Tests: `tests/zoek.test.ts`.

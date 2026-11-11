@@ -1,0 +1,1 @@
+- Ontdubbelen behoudt zinnen met andere zekerheid (kan, zou, mogelijk, waarschijnlijk) naast de stelligere variant (#789).

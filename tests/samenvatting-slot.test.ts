@@ -67,4 +67,63 @@ const svOmgeving = () => {
   n++; console.log("✓ samenvatting: slot, foutcache, 415/403, uurrem, geen why");
 }
 
+// ---- #855: onbekend filmpje (404) alleen als beide lijsten gelezen zijn, anders 503 zonder cache
+{
+  // Eén vaste KV-binding per omgeving; fouten en `data.json` zijn aan/uit te zetten en de ophalingen worden geteld.
+  const mk = (data: any = {}) => {
+    const e = svOmgeving();
+    const f = { uur: false, assets: false, assetsGehaald: 0 };
+    const kv = e.env.NIEUWS, kvGet = kv.get;
+    kv.get = async (k: string, ty?: string) => { if (k === "uur" && f.uur) throw new Error("kv"); return kvGet(k, ty); };
+    e.env.ASSETS = { fetch: async () => { f.assetsGehaald++; if (f.assets) throw new Error("assets"); return new Response(JSON.stringify(data)); } };
+    const post = (id: string) => svPost({ request: new Request("https://nieuwsinkort.test/samenvatting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }), env: e.env });
+    return { ...e, f, post };
+  };
+  for (const [uf, af] of [[true, false], [false, true], [true, true]] as const) {
+    const o = mk();
+    o.f.uur = uf; o.f.assets = af;
+    const r = await o.post("bestaat-niet-123");
+    assert.equal(r.status, 503, `leesfout uur=${uf} assets=${af}: 503`);
+    assert.equal((await r.json() as any).code, "fout");
+    assert.equal(o.schrijf.length, 0, "mislukte lijstlezing niet gecachet");
+  }
+  // echte ontbrekende id: beide lijsten gelezen
+  assert.equal((await mk().post("bestaat-niet-123")).status, 404);
+  // herstel op dezelfde binding: fout, fout uit, dezelfde id opnieuw; de lijst moet echt opnieuw gelezen zijn
+  for (const bron of ["uur", "assets"] as const) {
+    const h = mk();
+    h.f[bron] = true;
+    assert.equal((await h.post("bestaat-niet-456")).status, 503, `${bron}: 503 tijdens fout`);
+    h.f[bron] = false;
+    const voor = h.f.assetsGehaald;
+    assert.equal((await h.post("bestaat-niet-456")).status, 404, `${bron}: herstel geeft 404`);
+    assert.equal(h.f.assetsGehaald, voor + 1, `${bron}: lijst opnieuw opgehaald, mislukte lezing stond niet in de cache`);
+  }
+  // treffer uit een leesbare lijst blijft bruikbaar: uur faalt, data.json heeft het filmpje, volle uurteller geeft druk (geen 503, geen AI)
+  {
+    const video = { titel: "Testfilmpje", href: "https://x.com/a/status/1", embed: "https://video.twimg.com/a.mp4", bron: "X" };
+    const t = mk({ filmpjes: [video], dumpert: [] });
+    t.f.uur = true;
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+    t.m.set(`vs-uur:${p.year}-${p.month}-${p.day}T${+p.hour}`, "30");
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(new Uint8Array(2e6), { status: 200 })) as any;
+    let r: Response;
+    try { r = await t.post(videoSlug(video as any)); } finally { globalThis.fetch = realFetch; }
+    assert.notEqual(r.status, 503);
+    assert.equal((await r.json() as any).code, "druk");
+    assert.equal(t.calls.length, 0, "geen AI-aanroep");
+  }
+  // ontbrekende uur-blob telt als gelukte, lege lezing: 404 en de lijst komt in de cache
+  {
+    const b = mk();
+    b.m.delete("uur");
+    assert.equal((await b.post("bestaat-niet-789")).status, 404);
+    const voor = b.f.assetsGehaald;
+    assert.equal((await b.post("bestaat-niet-789")).status, 404);
+    assert.equal(b.f.assetsGehaald, voor, "tweede verzoek uit de cache");
+  }
+  n++; console.log("✓ samenvatting: lijststoring 503 versus onbekend 404");
+}
+
 console.log(`\n${n} tests geslaagd`);

@@ -11,6 +11,7 @@ import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
+import { batchesOphalen, foutcode, type Broncode, type Bronfout } from "./bronfouten";
 import { maakTel, voegTellerToe, legeRun, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoudVandaag, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
@@ -79,7 +80,7 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 
 // ---------------------------------------------------------------- fetcher-DO
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; pad?: string; alleenVideo?: boolean };
-type Res = { url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; ytPad?: "primair" | "fallback"; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
+type Res = { code?: Broncode; url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; ytPad?: "primair" | "fallback"; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
@@ -202,7 +203,7 @@ async function viaRedlib(url: string): Promise<Response | null> {
   return null;
 }
 
-async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
+export async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
   const t0 = Date.now();
   let status = 0;
   try {
@@ -257,13 +258,14 @@ async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
     }
     if (uploads && r.ok && !ytPad) ytPad = "primair";
     status = r.status;
-    if (!r.ok) return { url: j.url, ok: false, status, err: `HTTP ${status}`, ms: Date.now() - t0 };
+    if (!r.ok) return { url: j.url, ok: false, status, code: "SRC_HTTP", err: `HTTP ${status}`, ms: Date.now() - t0 };
     const body = await r.text();
     const base: Res = { url: j.url, ok: true, status, ms: 0, ...(ytPad ? { ytPad } : {}) };
     if (j.kind === "json") base.json = JSON.parse(body);
     else if (j.kind === "text") base.text = body.length > 400000 ? body.slice(0, 400000) : body;
     else if (j.kind === "dumpert") base.videos = parseDumpert(body, hhmm);
     else {
+      if (!body.trim()) return { url: j.url, ok: false, status, code: "SRC_EMPTY", err: "lege respons", ms: Date.now() - t0 };
       if (/^\s*<!doctype html|^\s*<html/i.test(body.slice(0, 300))) throw new Error("HTML i.p.v. feed");
       const all = parseFeed(body, j.url, j.pad);
       const now = Date.now();
@@ -276,7 +278,7 @@ async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
     base.ms = Date.now() - t0;
     return base;
   } catch (e: any) {
-    return { url: j.url, ok: false, status, err: String(e?.message || e).slice(0, 120), ms: Date.now() - t0, ...(j.kind === "x" && e instanceof XFout ? { xFout: { fx: e.fx, syn: e.syn } } : {}) };
+    return { url: j.url, ok: false, status, code: foutcode(e, status), err: String(e?.message || e).slice(0, 120), ms: Date.now() - t0, ...(j.kind === "x" && e instanceof XFout ? { xFout: { fx: e.fx, syn: e.syn } } : {}) };
   }
 }
 
@@ -357,7 +359,8 @@ export class Runner extends DurableObject<Env> {
       mag: async (s: { faalReeks: number; laatsteFout: string | null }, oud: { faalReeks: number; laatsteFout: string | null }) => s.faalReeks !== oud.faalReeks || s.laatsteFout !== oud.laatsteFout || moetSchrijven(((await opslag.get<KvStand>("kvstand")) || {})["run-status"], undefined, Date.now()),
       gedaan: () => bewaarKvStand(opslag, { "run-status": { at: Date.now() } }),
     };
-    try { res = await bewaakteRun(() => this.run(force, slot, tel, geplandTijd), opslag, tel.kv, kvBeleid); }
+    let bronfouten: Bronfout[] = [];
+    try { res = await bewaakteRun(() => this.run(force, slot, tel, geplandTijd, (f) => { bronfouten = f; }), opslag, tel.kv, kvBeleid, () => bronfouten); }
     finally { await geefSlot(opslag, nu).catch(() => console.error("run-slot vrijgeven mislukt")); }
     await telKvDag(this.ctx.storage, utcDag(Date.now()), tel.kvN()).catch(() => console.error("kv-dagteller opslaan mislukt"));
     // lege succesrun zichtbaar maken (#478): alleen in het bestaande tellerregel-object, geen extra opslag-write
@@ -418,9 +421,9 @@ export class Runner extends DurableObject<Env> {
 
   // Groq-verbruik van deze run (#431): wordt bij een mislukte run apart in `state.llm` bijgeschreven, anders gaat het verloren met `st`.
   private llmBewaar: (() => Promise<void>) | null = null;
-  async run(force: boolean, interval = 60, tel: Tel = maakTel(this.env.NIEUWS, this.ctx.storage), geplandTijd?: number) {
+  async run(force: boolean, interval = 60, tel: Tel = maakTel(this.env.NIEUWS, this.ctx.storage), geplandTijd?: number, meldBronfouten: (fouten: Bronfout[]) => void = () => {}) {
     this.llmBewaar = null;
-    try { return await this.runBinnen(force, interval, tel, geplandTijd); }
+    try { return await this.runBinnen(force, interval, tel, geplandTijd, meldBronfouten); }
     catch (e) { await this.bewaarLlm(); throw e; }
     finally { this.llmBewaar = null; }
   }
@@ -444,15 +447,15 @@ export class Runner extends DurableObject<Env> {
       return true;
     } catch (x) { console.error("opslagfout state (llm)", x); return false; }
   }
-  private async runBinnen(force: boolean, interval: number, tel: Tel, geplandTijd?: number) {
+  private async runBinnen(force: boolean, interval: number, tel: Tel, geplandTijd: number | undefined, meldBronfouten: (fouten: Bronfout[]) => void) {
     // KV en DO-opslag lopen via de tellende proxy's van deze run (meta.kvWritesRun, tellerregel)
     const env = { ...this.env, NIEUWS: tel.kv } as Env, opslag = tel.opslag as DurableObjectStorage, T0 = Date.now(), now = Date.now(), A = ams(now), U = utcDag(now), since = midnight(now);
     // BUDGET / NEURON_FACTOR: de echte Cloudflare-teller kan hoger staan dan onze schatting (docs/ai-budget.md)
     const model = env.MODEL, CAP = +(env.CAP || 40), FACTOR = neuronFactor(env.NEURON_FACTOR), BUDGET = +(env.BUDGET || 9000) / FACTOR;
     const site = env.SITE.replace(/\/$/, "");
     const [bronnenR, staticR, geladen] = await Promise.all([
-      fetch(`${site}/bronnen.json?t=${now}`, { headers: { "User-Agent": UA } }),
-      fetch(`${site}/data.json?statisch=1&t=${now}`, { headers: { "User-Agent": UA } }),
+      fetch(`${site}/bronnen.json?t=${now}`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15000) }),
+      fetch(`${site}/data.json?statisch=1&t=${now}`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15000) }).catch(() => new Response(null, { status: 503 })),
       leesState(opslag),
     ]);
     // state staat primair in DO-opslag; de KV-kopie wordt alleen gelezen en wint bij nieuwere inhoud (terugrollen naar de vorige Worker, of een mislukte DO-write), zie kvStateWint
@@ -517,12 +520,13 @@ export class Runner extends DurableObject<Env> {
     }));
     const vd = verdeelJobs(all, bronTier, tcCache, since), uitvoeren = new Set(vd.uitvoeren.map((j) => j.url));
     let fetcherHoofd = 0;
-    const haalBatch = async (b: Job[], naam: string) => {
+    const haalBatch = async (b: Job[], naam: string): Promise<Res[]> => batchesOphalen([b], async () => {
       fetcherHoofd++;
       const stub = env.FETCHER.get(env.FETCHER.idFromName(naam));
       const r = await stub.fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return (await r.json()) as Res[];
-    };
+    }, (url, code, ms) => ({ url, ok: false, status: 0, code, ms }));
     // #480: eerst één YouTube-feed (kanarie); bij 404/5xx slaan we de rest van de YouTube-feeds deze run over.
     // Alleen de overige YouTube-feeds wachten op de kanarie: alle andere batches vertrekken er direct naast.
     const isYt = (j: Job) => j.kind === "feed" && isYtFeed(j.url);
@@ -549,6 +553,9 @@ export class Runner extends DurableObject<Env> {
     };
     const [gehaaldAnder, gehaaldYt] = await Promise.all([haalNietYt(), haalYt()]);
     const gehaald = [...gehaaldYt, ...gehaaldAnder];
+    meldBronfouten(gehaald.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0 })));
+    const nieuwsUrls = new Set(srcFeeds.flatMap((f) => f.urls));
+    if (nieuwsUrls.size && !gehaald.some((r) => nieuwsUrls.has(r.url) && r.ok)) throw new Error("Geen nieuwsbron bereikbaar; vorige data behouden");
     const xUrls = new Set(xj.map((j) => j.url));
     const xDiagnose = xFouten(gehaald.filter((r) => xUrls.has(r.url)));
     if (xDiagnose.length) console.warn(`X-accounts mislukt: ${xDiagnose.map((f) => f.account).join(", ")}`);
