@@ -6,6 +6,7 @@ import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
 assert.match(leeg, /Niets gevonden voor “niets”/);
 assert.match(leeg, /Wis zoekopdracht/);
+assert.match(renderToStaticMarkup(createElement(ZoekLeeg, { query: "C++", onWis: () => {} })), /Niets gevonden voor “C\+\+”/);
 for (const query of ["!!!", "😀"]) {
   const melding = renderToStaticMarkup(createElement(ZoekLeeg, { query, onWis: () => {} }));
   const balk = renderToStaticMarkup(createElement(Zoekbalk, { query, onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
@@ -52,7 +53,20 @@ try {
   assert.equal(toets("Enter", true), true);
   assert.equal(toets("Enter"), false);
   formulier.props.onSubmit({ preventDefault() {} });
-  assert.equal(geblurd, 1);
+  assert.equal(geblurd, 0);
+  const venster = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { matchMedia: () => ({ matches: true }) } });
+  try {
+    veld.props.onCompositionStart();
+    formulier.props.onSubmit({ preventDefault() {} });
+    assert.equal(geblurd, 0);
+    veld.props.onCompositionEnd();
+    formulier.props.onSubmit({ preventDefault() {} });
+    assert.equal(geblurd, 1);
+  } finally {
+    if (venster) Object.defineProperty(globalThis, "window", venster);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
   veld.props.onCompositionStart();
   veld.props.onBlur();
   assert.equal(toets("Enter"), false);

@@ -2,6 +2,7 @@
 
 ## Onuitgebracht
 
+- Tel voor het filter en de sortering op bronnen elke uitgever eenmaal, ook bij meerdere links of rubrieknamen (#701).
 - Beperk ook de actieve HLS-buffer bij databesparing en zuinig netwerk (#818).
 - Vastgelopen aanvragen voor extra artikeltekst stoppen na 10 seconden, zodat een latere poging kan herstellen (#742).
 - Fotocarrousels met meerdere foto's geven een gekoppelde instructie voor de pijltjestoetsen (#744).

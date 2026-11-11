@@ -2,7 +2,7 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
-import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
 
@@ -30,25 +30,39 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
   if (!u || klaar.has(u)) return Promise.resolve();
   const p0 = bezig.get(u);
   if (p0) return p0;
-  const laad = (src: string): Promise<void> => {
-    const im = new Image();
-    im.referrerPolicy = "no-referrer";
-    im.decoding = "async";
-    if (im.decode) { im.src = src; return im.decode(); }
-    // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
-    // voltooide afbeelding direct afhandelen; handlers daarna opruimen.
-    return new Promise<void>((ok, nok) => {
-      const af = (goed: boolean) => { im.onload = im.onerror = null; if (goed) ok(); else nok(new Error("laden mislukt")); };
-      im.onload = () => af(true);
-      im.onerror = () => af(false);
+  let afgerond = false;
+  let im: HTMLImageElement | undefined;
+  let timer: ReturnType<typeof setTimeout>;
+  const p = new Promise<void>((resolve) => {
+    const stop = (gelukt: boolean) => {
+      if (afgerond) return;
+      afgerond = true;
+      clearTimeout(timer);
+      if (im) { im.onload = null; im.onerror = null; }
+      if (gelukt) klaar.add(u);
+      resolve();
+    };
+    const laad = (src: string) => {
+      im = new Image();
+      im.referrerPolicy = "no-referrer";
+      im.decoding = "async";
+      const fout = () => {
+        if (afgerond) return;
+        if (im) { im.onload = null; im.onerror = null; }
+        if (naarRechtstreeks(u)) laad(u);
+        else stop(false);
+      };
+      if (im.decode) { im.src = src; im.decode().then(() => stop(true), fout); return; }
+      // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
+      // voltooide afbeelding direct afhandelen.
+      im.onload = () => stop(true);
+      im.onerror = fout;
       im.src = src;
-      if (im.complete) af(im.naturalWidth > 0);
-    });
-  };
-  const p = laad(bronUrl(u)) // zelfde URL als de <img src>, anders dubbele downloads
-    .catch(() => (naarRechtstreeks(u) ? laad(u) : Promise.reject()))
-    .then(() => { klaar.add(u); }, () => {})
-    .finally(() => bezig.delete(u));
+      if (im.complete) { if (im.naturalWidth > 0) stop(true); else fout(); }
+    };
+    timer = setTimeout(() => stop(false), 10000);
+    laad(bronUrl(u)); // zelfde URL als de <img src>, anders dubbele downloads
+  }).finally(() => { if (bezig.get(u) === p) bezig.delete(u); });
   bezig.set(u, p);
   return p;
 }
@@ -129,7 +143,17 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, []);
   const [, herlaad] = useState(0);
   const raf = useRef(0);
-  useEffect(() => { setList(urls); setI(0); }, [urls]);
+  useLayoutEffect(() => {
+    const huidig = listRef.current[iRef.current];
+    const nieuw = Math.max(0, urls.indexOf(huidig));
+    cancelAnimationFrame(raf.current);
+    setList(urls);
+    setI(nieuw);
+  }, [urls]);
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (el) el.scrollLeft = i * el.clientWidth;
+  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
   listRef.current = list;
   iRef.current = i;
   useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
