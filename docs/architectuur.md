@@ -89,8 +89,6 @@ De zoekopdracht blijft actief tijdens het lezen van een artikel. Bij terugkeer g
 
 De tekstkleur `--muted` houdt in beide thema’s minstens 4,5:1 contrast op de achtergronden van rubriektabs en filterpillen.
 
-Het thema volgt de systeemvoorkeur zolang geen thema is gekozen of opgeslagen. Een handmatige keuze blijft ook bij geblokkeerde opslag gedurende de huidige pagina behouden (#753).
-
 ## Laadprestaties (#35)
 
 - **Validatie**: `src/valideer.ts` controleert de hoofdstructuur en berichten vóór de opschoning. Ongeldige berichten worden overgeslagen; `?debug=1` toont hun aantal. Een ongeldige hoofdstructuur geeft een laadfout. De Worker-run-test bewaakt het contract met de client.
@@ -422,6 +420,9 @@ Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
+Bij gedeelde artikelpagina’s bevat `article:published_time` alleen een geldige publicatietijd uit het bericht, omgezet naar ISO-formaat. Ontbreekt die tijd, dan ontbreekt ook deze meta-tag.
+
+Bij nieuwe berichtdata behoudt de fotocarrousel de actieve foto op URL; ontbreekt die, dan kiest hij de eerste foto en past hij de scrollpositie aan.
 Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de detailweergave vergelijkt artikel-URL's met de actieve bronnen, ook wanneer het filter tijdens het lezen verandert. Algemene uitleg blijft beschikbaar. Zonder filter blijft de bestaande weergave behouden (#691).
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
