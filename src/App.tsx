@@ -1086,7 +1086,11 @@ export default function App() {
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
-  useLayoutEffect(() => { document.title = viewTitel(route.view); }, [route.view, route.selected]);
+  // Ook een direct gedeeld bericht kan buiten de gefilterde lijst staan.
+  const selectedItem = route.selected
+    ? data?.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw?.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
+    : null;
+  useLayoutEffect(() => { document.title = selectedItem ? `${selectedItem.kop} – Nieuws in het kort` : viewTitel(route.view); }, [route.view, selectedItem]);
   // Rubriekwissel (#538): alleen het paneel schuift 12px in, richting volgt de tabvolgorde; geen uitgaande animatie, een nieuwe wissel annuleert de lopende (animeer).
   const vorigeView = useRef(route.view);
   useLayoutEffect(() => {
@@ -1278,11 +1282,6 @@ export default function App() {
       </Frame>
     );
   }
-
-  // Detail: eerst in de gefilterde lijst (met alleen de actieve bronnen), anders het origineel (directe link).
-  const selectedItem = route.selected
-    ? data.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
-    : null;
 
   if (selectedItem) {
     return (
