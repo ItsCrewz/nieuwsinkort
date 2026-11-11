@@ -8,19 +8,19 @@ assert.match(leeg, /Geen berichten gevonden voor ‘niets’/);
 assert.match(leeg, /Wis zoekopdracht/);
 for (const query of ["!!!", "😀"]) {
   const melding = renderToStaticMarkup(createElement(ZoekLeeg, { query, onWis: () => {} }));
-  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query, onChange: () => {}, aantal: 0 }));
+  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query, onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
   assert.match(melding, /Voer letters of cijfers in om te zoeken/);
   assert.match(balk, /aria-live="polite">Voer letters of cijfers in om te zoeken/);
   assert.doesNotMatch(balk, /resultaten?/);
 }
 for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 resultaten"]] as const) {
   // Een nieuwe mount simuleert terugkeer uit een bericht met behouden zoekterm.
-  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal }));
+  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal, invoer: createRef<HTMLInputElement>() }));
   assert.match(balk, /aria-expanded="true"/);
   assert.match(balk, /value="tekst"/);
   assert.ok(balk.includes(`aria-live="polite">${tekst}</span>`));
 }
-const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0 }));
+const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
 assert.match(geslotenBalk, /aria-expanded="false"/);
 assert.match(geslotenBalk, /aria-label="Zoeken"/);
 assert.match(geslotenBalk, /<button type="button" class="zoek-knop"[^>]*><svg[^>]*><use href="#i-search"><\/use><\/svg><\/button>/);
@@ -37,6 +37,7 @@ try {
   const formulier = ZoekFormulier({ query: "東京", onChange: () => {}, sluit: () => { gesloten++; }, invoer: ref });
   const veld = formulier.props.children[0];
   const knop = formulier.props.children[1];
+  assert.equal(veld.props["aria-label"], "Zoek in het nieuws");
   const toets = (key: string, isComposing = false, keyCode = 0) => {
     let verhinderd = false;
     veld.props.onKeyDown({ key, nativeEvent: { isComposing, keyCode }, preventDefault() { verhinderd = true; }, stopPropagation() {} });
