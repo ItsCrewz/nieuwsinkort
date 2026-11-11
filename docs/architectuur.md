@@ -409,6 +409,8 @@ Zoeken (#816): `src/zoek.ts` verwijdert accenttekens bij Latijnse letters, maar 
 
 Terugvegen begint alleen bij een aanraking op het artikel of een kind daarvan; het aparte deelportaal valt daarbuiten. Invoer, media, horizontaal scrollbare inhoud en de Safari-rand blijven uitgesloten. Browserproef: `e2e/terugvegen.spec.mjs` (#740).
 
+Artikel-id's (#612) gebruiken ook de gesorteerde queryparameters van de bronlink, behalve bekende trackingparameters (`utm_*`, `fbclid`, `gclid`, `dclid`, `msclkid`, `mc_cid` en `mc_eid`). De Worker en frontend delen deze regel. Opgeslagen id's blijven geldig; de berichtpagina herkent ook bron-id's met en zonder query als alias. Een id die bij meer dan één bericht past, wordt niet opgelost en leidt tijdelijk naar het overzicht.
+
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
 
 Zoeken (`src/zoek.ts`) normaliseert zoektermen en berichttekst gelijk: hoofdletters en accenten verdwijnen en ß/ẞ wordt ss. Elk zoekwoord moet aan het begin van een woord staan. Tests: `tests/zoek.test.ts` en `tests/regressie/zoeken-854.test.ts`.
