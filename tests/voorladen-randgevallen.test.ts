@@ -89,7 +89,7 @@ try {
     assert.equal(afbeeldingen[0].fetchPriority, "low");
     assert.equal(verzoeken.length, 1);
     assert.equal(verzoeken[0].url, v.embed);
-    assert.deepEqual(verzoeken[0].opties, { credentials: "omit", priority: "low", headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+    assert.deepEqual({ ...verzoeken[0].opties, signal: undefined }, { credentials: "omit", priority: "low", signal: undefined, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
     afbeeldingen[0].onload!();
     voerUit(p);
     await wacht();
@@ -164,7 +164,7 @@ try {
     voerUit({ ...leeg(), hls: ["/master-test.m3u8"] });
     await wacht();
     assert.deepEqual(verzoeken, ["/master-test.m3u8", "https://site.example/laag.m3u8", "https://site.example/1.ts", "https://site.example/2.ts"]);
-    assert.deepEqual(optiesLijst, verzoeken.map(() => ({ credentials: "omit", priority: "low" })));
+    assert.ok(optiesLijst.every((opties) => opties.credentials === "omit" && opties.priority === "low" && opties.signal instanceof AbortSignal));
   });
 
   await test("HLS met bytebereiken haalt alleen die bereiken op, nooit het hele bestand", async () => {
