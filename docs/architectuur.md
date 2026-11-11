@@ -424,6 +424,8 @@ Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de de
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
 
+De gedeelde beeldselectie in `src/beeld.ts` wordt door frontend en uur-Worker gebruikt. Een los URL-onderdeel `logo`, placeholders, uitgesloten formaten en volgens de URL kleine beelden vallen af; `logo` binnen een langer woord blijft toegestaan.
+
 Bij een zoekopdracht zonder resultaten zet “Wis zoekopdracht” de focus terug in het lege zoekveld; de zoekbalk blijft open. De toetsenbordroute staat in `e2e/zoekfocus-769.spec.mjs`.
 
 De nieuwsfeed bewaart per rubriek in sessionStorage het zichtbare artikel en de offset. Bij nieuwe artikelen blijft dat anker staan en verschijnt een melding; ontbreekt het artikel, dan volgt het eerstvolgende oudere bekende artikel.
