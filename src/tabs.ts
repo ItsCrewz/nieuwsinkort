@@ -31,8 +31,21 @@ export function tabOpties(items: { cat: Cat }[], view: View): TabOpt[] {
 }
 
 export function volgendeTab(index: number, aantal: number, toets: string): number | null {
-  if (!aantal || index < 0 || (toets !== "ArrowLeft" && toets !== "ArrowRight")) return null;
+  if (!aantal || index < 0) return null;
+  if (toets === "Home") return 0;
+  if (toets === "End") return aantal - 1;
+  if (toets !== "ArrowLeft" && toets !== "ArrowRight") return null;
   return (index + (toets === "ArrowRight" ? 1 : -1) + aantal) % aantal;
+}
+
+/** Toetsenbord voor een tablijst: pijltjes/Home/End verplaatsen focus en selectie (klik) naar de buurtab. */
+export function tabToets(e: { key: string; currentTarget: HTMLElement; preventDefault(): void }): void {
+  const tabs = [...e.currentTarget.parentElement!.querySelectorAll<HTMLElement>('[role="tab"]')];
+  const volgende = volgendeTab(tabs.indexOf(e.currentTarget), tabs.length, e.key);
+  if (volgende === null) return;
+  e.preventDefault();
+  tabs[volgende].focus();
+  tabs[volgende].click();
 }
 
 /** Richting van de paneelwissel volgens de tabvolgorde: 1 = naar rechts (volgende tab), -1 = terug, 0 = geen wissel. */
