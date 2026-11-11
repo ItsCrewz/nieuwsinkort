@@ -86,6 +86,7 @@ export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
     if (l.startsWith("#")) {
       const m = /^#EXT-X-BYTERANGE:(.*)$/.exec(l);
       if (m) br = m[1].trim();
+      else if (/^#EXT-X-BYTERANGE(?:\s|:|$)/.test(l)) br = "";
       continue;
     }
     const bereik = br;
@@ -139,7 +140,9 @@ async function warmHls(master: string) {
 // Bytebereik-segment: alleen dat bereik. Antwoordt de server met 200 (Range genegeerd = heel bestand), dan stoppen we meteen.
 async function warmBereik(url: string, van: number, tot: number) {
   const r = await fetch(url, { ...LOW, headers: { Range: `bytes=${van}-${tot}` } });
-  const rd = r.status === 206 ? r.body?.getReader() : undefined;
+  const m = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(r.headers.get("Content-Range") ?? "");
+  const geldig = m && Number(m[1]) === van && Number(m[2]) === tot && (m[3] === "*" || Number(m[3]) > tot);
+  const rd = r.status === 206 && geldig ? r.body?.getReader() : undefined;
   if (!rd) return void r.body?.cancel?.().catch(() => {});
   for (let got = 0, max = tot - van + 1; got < max; ) {
     const { done, value } = await rd.read();

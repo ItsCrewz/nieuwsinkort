@@ -133,7 +133,7 @@ try {
       if (url.endsWith(".m3u8")) return { ok: true, status: 200, text: async () => "#EXTM3U\n#EXT-X-BYTERANGE:1000@0\ngroot.mp4\n#EXT-X-BYTERANGE:500\ngroot.mp4\n#EXT-X-BYTERANGE:9\ngroot.mp4" };
       const len = +range!.split("-")[1] - +range!.split("=")[1].split("-")[0] + 1;
       let gelezen = false;
-      return { ok: true, status: 206, body: { getReader: () => ({ read: async () => (gelezen ? { done: true } : ((gelezen = true), { done: false, value: new Uint8Array(len) })), cancel: async () => {} }) } };
+      return { ok: true, status: 206, headers: new Headers({ "Content-Range": `bytes ${range!.slice(6)}/*` }), body: { getReader: () => ({ read: async () => (gelezen ? { done: true } : ((gelezen = true), { done: false, value: new Uint8Array(len) })), cancel: async () => {} }) } };
     });
     voerUit({ ...leeg(), hls: ["/bereik.m3u8"] });
     await wacht();
@@ -149,9 +149,28 @@ try {
     let geannuleerd = false;
     installeer("fetch", async (url: string) => url.endsWith(".m3u8")
       ? { ok: true, status: 200, text: async () => "#EXT-X-BYTERANGE:10@5\nx.mp4" }
-      : { ok: true, status: 200, body: { cancel: async () => { geannuleerd = true; }, getReader: () => ({ read: async () => { gelezen++; return { done: true }; } }) } });
+      : { ok: true, status: 200, headers: new Headers(), body: { cancel: async () => { geannuleerd = true; }, getReader: () => ({ read: async () => { gelezen++; return { done: true }; } }) } });
     voerUit({ ...leeg(), hls: ["/negeer.m3u8"] });
     await wacht();
+    assert.equal(gelezen, 0);
+    assert.equal(geannuleerd, true);
+  });
+
+  await test("beschadigde bereiktag en afwijkend 206-antwoord worden overgeslagen", async () => {
+    const verzoeken: string[] = [];
+    let gelezen = 0;
+    let geannuleerd = false;
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (url.endsWith(".m3u8")) return { ok: true, text: async () => "#EXT-X-BYTERANGE :100@0\nkapot.mp4\n#EXT-X-BYTERANGE:10@5\nafwijkend.mp4" };
+      return { status: 206, headers: new Headers({ "Content-Range": "bytes 0-999/1000" }), body: {
+        cancel: async () => { geannuleerd = true; },
+        getReader: () => ({ read: async () => { gelezen++; return { done: false, value: new Uint8Array(1000) }; } }),
+      } };
+    });
+    voerUit({ ...leeg(), hls: ["/beschadigd.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken, ["/beschadigd.m3u8", "https://site.example/afwijkend.mp4"]);
     assert.equal(gelezen, 0);
     assert.equal(geannuleerd, true);
   });
