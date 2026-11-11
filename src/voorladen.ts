@@ -117,9 +117,9 @@ export const segmenten = (txt: string, base: string, max = 2): string[] => segme
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
 const bezig = new Set<string>(); // lopend of in de wachtrij: gelijktijdige verzoeken voor dezelfde URL delen die ene taak
+export const POSTER_MAX_MS = 8000; // langste wachttijd per poster-taak
 const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
 export const aantalActievePosters = () => vast.size;
-const POSTER_TIMEOUT = 15000;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
 const wachtrij: (() => Promise<unknown>)[] = [];
 let actief = 0;
@@ -253,6 +253,7 @@ export function voerUit(p: Plan) {
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
+          // Een vastgelopen verbinding mag de wachtrij niet blokkeren.
           const klaar = (fout_?: Error) => {
             clearTimeout(timer);
             im.onload = im.onerror = im.onabort = null;
@@ -260,7 +261,10 @@ export function voerUit(p: Plan) {
             if (fout_) fout(fout_); // mislukt of te traag: de sleutel komt vrij voor een volgend voorlaadmoment (#636)
             else ok();
           };
-          const timer = setTimeout(() => klaar(new Error("img")), POSTER_TIMEOUT);
+          const timer = setTimeout(() => {
+            klaar(new Error("img"));
+            im.src = ""; // breekt de aanvraag af
+          }, POSTER_MAX_MS);
           im.onload = () => klaar();
           im.onerror = im.onabort = () => klaar(new Error("img")); // afgebroken laden mag de sleutel niet vasthouden
           vast.add(im);
