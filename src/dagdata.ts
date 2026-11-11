@@ -4,6 +4,7 @@
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { alleenVandaag } from "./vandaag";
+import { normArtikelLink } from "./artikelid";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams } from "./tijd";
@@ -16,7 +17,7 @@ const dag = (iso?: string) => {
   const t = iso ? Date.parse(iso) : Date.now();
   return Number.isFinite(t) ? new Date(t).toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }) : "";
 };
-const norm = (l = "") => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
+const norm = (l = "") => normArtikelLink(l);
 // KV-edgecache (60 s is het minimum van KV): de leesvertraging blijft kleiner dan het kwartier tussen twee Worker-runs.
 const kvOpt = (type: "json" | "text") => ({ type, cacheTtl: 60 });
 // Per isolate: het verwerkte vooraf-antwoord 30 s hergebruiken zolang KV dezelfde tekst geeft (scheelt parse, dagfilter, stringify en SHA-1).
