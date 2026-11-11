@@ -35,7 +35,7 @@ Oude flow (verlaten): routine → Grok-canvas → `export_from_canvas.mjs` → `
 
 Vite 8, React 18, TypeScript, Tailwind 3, hls.js. Mobiele feed in TikTok-stijl met fotocarrousels, filters (tijd, rubriek, regio, video, samengevoegd, volgorde), Bronnen-paneel, en een videofeed die alleen op touch verschijnt (`src/invoer.ts`: `(pointer: coarse)` of `(hover: none)`, reageert op wijzigingen; desktop toont de kaarten met kopjes en opent een filmpje bij de bron) (max 2 spelers tegelijk, frame-waakhond die op hetzelfde element herstelt bij 2,5 s zonder nieuw beeld, geluid standaard aan via localStorage). Video: YouTube via nocookie-iframe, HLS native of via hls.js, MP4 via `<video>` (met `referrer=no-referrer` voor video.twimg.com). Ontdubbelen van video's en foto's: `dedup.ts`, `beeld.ts`. Het bouwen draait eerst `scripts/build-bronnen.mjs` (`public/bronnen.json`). `useCatalog` (`src/sources.ts`) probeert een mislukte catalogus hooguit drie keer opnieuw (3, 10, 30 s) of zodra `online` komt, houdt tot dan een lege catalogus aan en ruimt timers en listener bij verlaten op (#700).
 
-Nieuwsfilters en sortering gebruiken de geldige absolute publicatietijd `t` in milliseconden. Bij oudere data zonder geldige `t` wordt `tijd` als Amsterdamse kloktijd afgeleid van `gegenereerd`; rond een klokwisseling is die terugval niet eenduidig. Relatieve filters rekenen tegen de huidige tijd. De video-overzichten verversen de vensters van één en drie uur elke minuut en direct wanneer een verborgen tabblad weer zichtbaar wordt, zonder extra dataverzoek.
+Nieuwsfilters en sortering gebruiken de geldige absolute publicatietijd `t` in milliseconden. Bij oudere data zonder geldige `t` wordt `tijd` als Amsterdamse kloktijd afgeleid van `gegenereerd`; rond een klokwisseling is die terugval niet eenduidig. Relatieve filters rekenen tegen de huidige tijd.
 
 Het bronnenfilter bewaart bij een gedeeltelijk zichtbaar bericht de oorspronkelijke artikel-id, ook als oude data die uit de eerste bron afleidt. Uitgeschakelde bronnen blijven uit de zichtbare bronnenlijst; de deellink blijft gelijk aan die van de ongefilterde dagdata (#829).
 
@@ -420,6 +420,7 @@ Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
+Bij nieuwe berichtdata behoudt de fotocarrousel de actieve foto op URL; ontbreekt die, dan kiest hij de eerste foto en past hij de scrollpositie aan.
 Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de detailweergave vergelijkt artikel-URL's met de actieve bronnen, ook wanneer het filter tijdens het lezen verandert. Algemene uitleg blijft beschikbaar. Zonder filter blijft de bestaande weergave behouden (#691).
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).

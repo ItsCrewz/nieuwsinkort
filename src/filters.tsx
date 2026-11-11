@@ -211,6 +211,7 @@ export function useVideoKlok(tijd: Tijd): number {
   useEffect(() => {
     if (tijd !== "1u" && tijd !== "3u") return;
     const ververs = () => setTik((n) => n + 1);
+    ververs(); // Ook bij terugkeer naar een video-overzicht opnieuw filteren.
     const timer = window.setInterval(ververs, 60_000);
     const zichtbaar = () => { if (document.visibilityState === "visible") ververs(); };
     document.addEventListener("visibilitychange", zichtbaar);

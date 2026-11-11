@@ -52,7 +52,20 @@ try {
   assert.equal(toets("Enter", true), true);
   assert.equal(toets("Enter"), false);
   formulier.props.onSubmit({ preventDefault() {} });
-  assert.equal(geblurd, 1);
+  assert.equal(geblurd, 0);
+  const venster = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { matchMedia: () => ({ matches: true }) } });
+  try {
+    veld.props.onCompositionStart();
+    formulier.props.onSubmit({ preventDefault() {} });
+    assert.equal(geblurd, 0);
+    veld.props.onCompositionEnd();
+    formulier.props.onSubmit({ preventDefault() {} });
+    assert.equal(geblurd, 1);
+  } finally {
+    if (venster) Object.defineProperty(globalThis, "window", venster);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
   veld.props.onCompositionStart();
   veld.props.onBlur();
   assert.equal(toets("Enter"), false);

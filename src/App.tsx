@@ -1102,7 +1102,7 @@ export default function App() {
   const [zoekterm, setZoekterm] = useState("");
   const zoekInvoer = useRef<HTMLInputElement>(null);
   const flt = useFilters();
-  const videoKlok = useVideoKlok(flt.f.tijd);
+  const videoKlok = useVideoKlok(route.video ? flt.f.tijd : "alles");
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
     [data, flt.f, flt.vorig, videoKlok]

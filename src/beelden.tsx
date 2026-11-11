@@ -2,7 +2,7 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
-import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
 
@@ -129,7 +129,17 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, []);
   const [, herlaad] = useState(0);
   const raf = useRef(0);
-  useEffect(() => { setList(urls); setI(0); }, [urls]);
+  useLayoutEffect(() => {
+    const huidig = listRef.current[iRef.current];
+    const nieuw = Math.max(0, urls.indexOf(huidig));
+    cancelAnimationFrame(raf.current);
+    setList(urls);
+    setI(nieuw);
+  }, [urls]);
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (el) el.scrollLeft = i * el.clientWidth;
+  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
   listRef.current = list;
   iRef.current = i;
   useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
