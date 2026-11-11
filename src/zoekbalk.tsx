@@ -1,9 +1,10 @@
 import { Icon } from "./icons";
 import { createPortal } from "react-dom";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { aantalExtra, CAT_OPT, TIJD_LABEL, type Filters, type Tijd } from "./filters";
 import { CATS } from "./tabs";
 import type { View } from "./types";
+import { staatFocusInInvoer } from "./zoekfocus";
 import { normaliseer } from "./zoek";
 
 const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
@@ -33,8 +34,25 @@ export function Zoekbalk({ query, onChange, aantal, scope, breed = false, onBree
   const knop = useRef<HTMLButtonElement>(null);
   const invoer = useRef<HTMLInputElement>(null);
   const focusBijOpenen = useRef(false);
+  const sluit = useCallback(() => { onChange(""); onBreed?.(false); setOpen(false); knop.current?.focus(); }, [onChange, onBreed]);
   useEffect(() => { if (open && focusBijOpenen.current) { focusBijOpenen.current = false; invoer.current?.focus(); } }, [open]);
-  const sluit = () => { onChange(""); onBreed?.(false); setOpen(false); knop.current?.focus(); };
+  useEffect(() => {
+    const toets = (e: KeyboardEvent) => {
+      if (document.querySelector('[aria-modal="true"]')) return;
+      if (e.key === "Escape" && open) {
+        e.preventDefault();
+        e.stopPropagation();
+        sluit();
+      } else if (e.key === "/" && !open && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing &&
+        window.matchMedia("(hover: hover) and (pointer: fine)").matches && !staatFocusInInvoer(document.activeElement as HTMLElement | null)) {
+        e.preventDefault();
+        focusBijOpenen.current = true;
+        setOpen(true);
+      }
+    };
+    document.addEventListener("keydown", toets);
+    return () => document.removeEventListener("keydown", toets);
+  }, [open, sluit]);
   // Buiten .shell renderen (container-type:inline-size), anders scrolt de vaste knop mee, net als de deelknop.
   const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} aria-label="Zoeken" title="Zoeken" onClick={() => { if (open) sluit(); else { focusBijOpenen.current = true; setOpen(true); } }}><Icon name="search" /></button>;
   return (
@@ -48,9 +66,7 @@ export function Zoekbalk({ query, onChange, aantal, scope, breed = false, onBree
 
 export function ZoekFormulier({ query, onChange, sluit, invoer, scope, breed = false, onBreed }: { query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement> } & ZoekProps) {
   return <form className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); invoer.current?.blur(); }}>
-        <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws" aria-describedby={scope ? "zoek-scope" : undefined} value={query} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => {
-          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sluit(); }
-        }} />
+        <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws" aria-describedby={scope ? "zoek-scope" : undefined} value={query} onChange={(e) => onChange(e.target.value)} />
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
         {scope && <p id="zoek-scope" className="zoek-scope">{scopeZin(scope, breed)}.{onBreed && (breed || scope.beperkt.length > 0) && <> <button type="button" className="zoek-wis" aria-pressed={breed} onClick={() => onBreed(!breed)}>{breed ? "Filters weer gebruiken" : "Zoek zonder filters"}</button></>}</p>}
       </form>;

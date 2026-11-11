@@ -29,7 +29,7 @@ let gesloten = false;
 const formulier = ZoekFormulier({ query: "tekst", onChange: () => {}, sluit: () => { gesloten = true; }, invoer: createRef<HTMLInputElement>() });
 const invoer = formulier.props.children[0];
 assert.equal(invoer.props["aria-label"], "Zoek in het nieuws");
-invoer.props.onKeyDown({ key: "Escape", preventDefault() {}, stopPropagation() {} });
+formulier.props.children[1].props.onClick();
 assert.equal(gesloten, true);
 console.log("zoekbalk: tests geslaagd");
 
