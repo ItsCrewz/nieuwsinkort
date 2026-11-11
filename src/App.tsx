@@ -21,7 +21,7 @@ import { schoon } from "./schoon";
 import { valideer } from "./valideer";
 import { debug } from "./debug";
 import { Beelden, Thumb } from "./beelden";
-import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
+import { FilterBalk, filterNieuws, filterVideos, useFilters, useVideoKlok } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
@@ -1087,7 +1087,11 @@ export default function App() {
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<Route>(() => huidigeRoute());
-  useLayoutEffect(() => { document.title = viewTitel(route.view); }, [route.view, route.selected]);
+  // Ook een direct gedeeld bericht kan buiten de gefilterde lijst staan.
+  const selectedItem = route.selected
+    ? data?.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw?.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
+    : null;
+  useLayoutEffect(() => { document.title = selectedItem ? `${selectedItem.kop} – Nieuws in het kort` : viewTitel(route.view); }, [route.view, selectedItem]);
   // Rubriekwissel (#538): alleen het paneel schuift 12px in, richting volgt de tabvolgorde; geen uitgaande animatie, een nieuwe wissel annuleert de lopende (animeer).
   const vorigeView = useRef(route.view);
   useLayoutEffect(() => {
@@ -1104,9 +1108,10 @@ export default function App() {
   const zoekInvoer = useRef<HTMLInputElement>(null);
   const flt = useFilters();
   const klok = useKlok(data, flt.f.tijd, flt.vorig);
+  const videoKlok = useVideoKlok(route.video ? flt.f.tijd : "alles");
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
-    [data, flt.f, flt.vorig, klok]
+    [data, flt.f, flt.vorig, klok, videoKlok]
   );
   useVoorladen(vids, data?.gegenereerd, !!route.video); // thumbs vooraf in idle-tijd; video pas bij intentie (tab aanraken/focus)
   const [focusKey, setFocusKey] = useState<string | null>(null);
@@ -1279,11 +1284,6 @@ export default function App() {
       </Frame>
     );
   }
-
-  // Detail: eerst in de gefilterde lijst (met alleen de actieve bronnen), anders het origineel (directe link).
-  const selectedItem = route.selected
-    ? data.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
-    : null;
 
   if (selectedItem) {
     return (
