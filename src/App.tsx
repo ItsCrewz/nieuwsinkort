@@ -690,7 +690,7 @@ function KaartInhoud({ item, i, bionic, onOpen }: { item: Item; i: number; bioni
   );
 }
 
-function NewsFeed({ tab, items, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { tab: string; items: Item[]; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting }: { tab: string; items: Item[]; nieuwsdata: unknown; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -724,7 +724,7 @@ function NewsFeed({ tab, items, head, bionic, focusKey, onOpen, keepOrder, empty
       setNieuw(herstel.nieuw.length);
     } else positie.current = { id: null, offset: 0, volgorde: ids, nieuw: [] };
     bewaarNieuwspositie(tab, positie.current);
-  }, [sorted, tab]);
+  }, [nieuwsdata, tab]);
   // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
   const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
   const mountRef = useRef(0);
@@ -736,6 +736,7 @@ function NewsFeed({ tab, items, head, bionic, focusKey, onOpen, keepOrder, empty
     const el = ref.current;
     if (!el) return;
     let raf = 0;
+    let opgeslagen = positie.current;
     const read = () => {
       raf = 0;
       const cards = el.querySelectorAll<HTMLElement>(".nc");
@@ -747,16 +748,20 @@ function NewsFeed({ tab, items, head, bionic, focusKey, onOpen, keepOrder, empty
       const opTop = el.scrollTop < 60;
       const p = positie.current;
       if (p) {
-        positie.current = { ...p, id: boven?.dataset.id ?? null, offset: boven ? el.scrollTop - boven.offsetTop : 0, nieuw: opTop ? [] : p.nieuw };
-        if (opTop) setNieuw(0);
-        bewaarNieuwspositie(tab, positie.current);
+        const id = boven?.dataset.id ?? null;
+        positie.current = { ...p, id, offset: boven ? el.scrollTop - boven.offsetTop : 0, nieuw: opTop ? [] : p.nieuw };
+        if (opTop && p.nieuw.length) setNieuw(0);
+        if (id !== p.id || (opTop && p.nieuw.length)) {
+          bewaarNieuwspositie(tab, positie.current);
+          opgeslagen = positie.current;
+        }
       }
       const max = el.scrollHeight - el.clientHeight;
       startRef.current?.classList.toggle("off", el.scrollTop > 60);
       if (railRef.current) railRef.current.style.transform = `scaleY(${max > 0 ? Math.min(1, el.scrollTop / max) : 0})`;
     };
     const onScroll = () => {
-      read();
+      if (!raf) raf = requestAnimationFrame(read);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     read();
@@ -782,7 +787,8 @@ function NewsFeed({ tab, items, head, bionic, focusKey, onOpen, keepOrder, empty
     cards.forEach((c) => c.classList.contains("wacht") && io.observe(c));
     return () => {
       el.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
+      if (raf) { cancelAnimationFrame(raf); read(); }
+      if (positie.current && positie.current !== opgeslagen) bewaarNieuwspositie(tab, positie.current);
       io.disconnect();
     };
   }, [sorted, tab]);
@@ -1346,6 +1352,7 @@ export default function App() {
             key={view}
             tab={view}
             items={zoekUitkomst}
+            nieuwsdata={raw}
             keepOrder={flt.f.sort !== "nieuw"}
             empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => setZoekterm("")} /> : filterLeeg}
             bionic={bionic}
