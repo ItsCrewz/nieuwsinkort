@@ -43,7 +43,9 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   for (const woord of woorden) {
     let vanaf = 0, index: number;
     while ((index = vlak.indexOf(woord, vanaf)) !== -1) {
-      bereiken.push({ begin: posities[index].begin, eind: posities[index + woord.length - 1].eind });
+      if (index === 0 || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) {
+        bereiken.push({ begin: posities[index].begin, eind: posities[index + woord.length - 1].eind });
+      }
       vanaf = index + 1;
     }
   }
