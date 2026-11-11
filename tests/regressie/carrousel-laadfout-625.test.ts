@@ -64,7 +64,7 @@ async function toon(lijst: string[]) {
   const beelden = () => vind(houder, (k) => k.tagName === "IMG");
   return {
     houder, track, beelden, root,
-    teller: () => vind(houder, (k) => klasse(k) === "sr-only").map(tekst)[0],
+    teller: () => vind(houder, (k) => k.attrs["aria-live"] === "polite").map(tekst)[0],
     stippen: () => vind(houder, (k) => klasse(k) === "bl-dots")[0]?.children.map(klasse) ?? [],
     knoppen: () => vind(houder, (k) => k.tagName === "BUTTON").map((k) => k.attrs["aria-label"]),
     knop: (naam: string) => vind(houder, (k) => k.attrs["aria-label"] === naam)[0],

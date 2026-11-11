@@ -1,0 +1,1 @@
+- Bug: een mislukte uitlezing van het artikelsjabloon op `/bericht/…` valt nu terug op een tijdelijke, niet-cachebare redirect naar het artikel in de app (query blijft behouden) in plaats van een Function-fout (#832).

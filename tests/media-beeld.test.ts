@@ -1,6 +1,6 @@
 // Draai: npm test  (artikelbeeldproxy functions/media/beeld/[[path]].ts en src/beeldhost.ts, zonder netwerk)
 import assert from "node:assert/strict";
-import { onRequest, acceptEmmer, cacheSleutel } from "../functions/media/beeld/[[path]]";
+import { onRequest, acceptEmmer, uitgesloten, cacheSleutel, upstreamAccept } from "../functions/media/beeld/[[path]]";
 import { upstreamUrl } from "../functions/media/beeld/[[path]]";
 import { beeldViaProxy, beeldHostToegestaan, beeldProxyPad } from "../src/beeldhost";
 
@@ -201,7 +201,12 @@ await t("Accept-emmers: avif > webp > basis, en de upstream-Accept volgt de emme
   assert.equal(acceptEmmer("*/*"), "basis");
   assert.equal(acceptEmmer(null), "basis");
   assert.equal(acceptEmmer("IMAGE/AVIF"), "avif");
-  const verwacht: Record<string, string> = { [AVIF]: "image/avif,image/webp,image/*;q=0.8", [WEBP]: "image/webp,image/*;q=0.8", [BASIS]: "image/png,image/jpeg,image/gif,image/*;q=0.8" };
+  assert.equal(acceptEmmer("image/avif;q=0,image/webp"), "webp");
+  assert.equal(acceptEmmer("image/avif; q=0.0, image/webp;q=0"), "basis");
+  assert.equal(acceptEmmer("Image/AVIF;Q=0.8,image/webp;q=0.5"), "avif");
+  assert.equal(acceptEmmer("image/avif;q=0.001,*/*;q=0.8"), "avif");
+  assert.equal(acceptEmmer("text/html,image/webp,image/apng,*/*;q=0.8"), "webp");
+  const verwacht: Record<string, string> = { [AVIF]: "image/avif,image/webp,image/jpeg,image/png,image/gif", [WEBP]: "image/webp,image/jpeg,image/png,image/gif", [BASIS]: "image/png,image/jpeg,image/gif" };
   for (const [acc, up] of Object.entries(verwacht)) {
     mock(jpg());
     await vraag("images.nu.nl/a.jpg", "GET", { Accept: acc });
@@ -209,7 +214,39 @@ await t("Accept-emmers: avif > webp > basis, en de upstream-Accept volgt de emme
   }
   mock(jpg());
   await vraag("images.nu.nl/a.jpg"); // zonder Accept
-  assert.equal(new Headers(calls[0].init.headers).get("accept"), "image/png,image/jpeg,image/gif,image/*;q=0.8");
+  assert.equal(new Headers(calls[0].init.headers).get("accept"), "image/png,image/jpeg,image/gif");
+});
+
+await t("uitgesloten formaat wordt nooit geleverd: upstream-avif bij avif;q=0 geeft 415, cache-hit met avif wordt genegeerd", async () => {
+  assert.equal(uitgesloten("image/avif;q=0,image/webp", "image/avif"), true);
+  assert.equal(uitgesloten("image/avif;q=0.0", "image/avif; charset=x"), true);
+  assert.equal(uitgesloten("image/avif;q=0.1,*/*", "image/avif"), false);
+  assert.equal(uitgesloten("*/*", "image/avif"), false);
+  mock(() => new Response("a", { headers: { "content-type": "image/avif" } }));
+  const r = await vraag("images.nu.nl/a.jpg", "GET", { Accept: "image/avif;q=0,image/webp" });
+  assert.equal(r.status, 415);
+  const ok = await vraag("images.nu.nl/a.jpg", "GET", { Accept: "image/avif,image/webp" });
+  assert.equal(ok.headers.get("content-type"), "image/avif");
+  nepCache();
+  try {
+    const wacht: Promise<unknown>[] = [];
+    const ctx = (accept: string) => ({ request: new Request("https://nieuwsinkort.nl/media/beeld/images.nu.nl/a.jpg?w=9", { headers: { Accept: accept } }), waitUntil: (p: Promise<unknown>) => { wacht.push(p); } });
+    mock(() => new Response("a", { headers: { "content-type": "image/avif" } }), () => new Response("j", { headers: { "content-type": "image/jpeg" } }));
+    await onRequest(ctx("image/webp,*/*")); await Promise.all(wacht); // avif in webp-emmer (uitgever negeert Accept)
+    const r2 = await onRequest(ctx("image/avif;q=0,image/webp"));
+    assert.equal(r2.headers.get("content-type"), "image/jpeg");
+  } finally { zonderCache(); }
+});
+
+await t("upstream-Accept laat uitgesloten formaten weg: avif,webp;q=0 vraagt geen webp, webp-antwoord geeft dan 415", async () => {
+  const A = "image/avif,image/webp;q=0";
+  assert.equal(upstreamAccept(acceptEmmer(A), A), "image/avif,image/jpeg,image/png,image/gif");
+  assert.equal(upstreamAccept("webp", "image/webp,image/jpeg;q=0"), "image/webp,image/png,image/gif");
+  assert.equal(upstreamAccept("basis", null), "image/png,image/jpeg,image/gif");
+  mock(() => new Response("w", { headers: { "content-type": "image/webp" } }));
+  const r = await vraag("images.nu.nl/a.jpg", "GET", { Accept: A });
+  assert.equal(r.status, 415);
+  assert.ok(!String(calls[0].init.headers.Accept).includes("webp"));
 });
 
 await t("cachesleutel verschilt per emmer en bevat host, pad en query", () => {
