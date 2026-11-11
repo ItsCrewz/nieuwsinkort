@@ -6,10 +6,9 @@ import { normaliseer } from "./zoek";
 
 const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 
-export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange: (query: string) => void; aantal: number }) {
+export function Zoekbalk({ query, onChange, aantal, invoer }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement> }) {
   const [open, setOpen] = useState(!!query);
   const knop = useRef<HTMLButtonElement>(null);
-  const invoer = useRef<HTMLInputElement>(null);
   const focusBijOpenen = useRef(false);
   const sluit = useCallback(() => { onChange(""); setOpen(false); knop.current?.focus(); }, [onChange]);
   useEffect(() => { if (open && focusBijOpenen.current) { focusBijOpenen.current = false; invoer.current?.focus(); } }, [open]);
