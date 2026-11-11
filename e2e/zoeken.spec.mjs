@@ -1,4 +1,3 @@
-import "../tests/regressie/zoekfocus-769.spec.mjs";
 import { test, expect } from "@playwright/test";
 
 for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 800]]) test(`zoekknop is vast, groot genoeg en botst niet met de deelknop (${naam})`, async ({ page }) => {
