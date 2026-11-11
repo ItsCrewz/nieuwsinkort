@@ -420,6 +420,8 @@ Zoeken (#786): `src/zoek.ts` herkent afkortingen met punten tussen losse letters
 
 Artikelovergangen (#537) gebruiken View Transitions voor openen en sluiten; de detailmodule wordt bij aanwijzen vooraf geladen. Terugvegen gebruikt alleen een parallax van het overzicht. Bij verminderde beweging, video, open menu of zonder browserondersteuning geldt de gewone navigatie.
 
+Bij gedeelde artikelpagina’s bevat `article:published_time` alleen een geldige publicatietijd uit het bericht, omgezet naar ISO-formaat. Ontbreekt die tijd, dan ontbreekt ook deze meta-tag.
+
 Bij nieuwe berichtdata behoudt de fotocarrousel de actieve foto op URL; ontbreekt die, dan kiest hij de eerste foto en past hij de scrollpositie aan.
 Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de detailweergave vergelijkt artikel-URL's met de actieve bronnen, ook wanneer het filter tijdens het lezen verandert. Algemene uitleg blijft beschikbaar. Zonder filter blijft de bestaande weergave behouden (#691).
 
