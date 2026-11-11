@@ -17,7 +17,11 @@ export function testDeelactie(serveer, artikelid, item) {
     await knop.click();
     await page.evaluate(() => window.deelActies[1].reject(new Error("geweigerd")));
     await expect(page.getByRole("textbox", { name: "Link om handmatig te kopiëren" })).toBeVisible();
-    await page.evaluate(() => window.deelActies[0].resolve());
+    await page.evaluate(async () => {
+      window.deelActies[0].resolve();
+      // Laat de belofte en de daaropvolgende React-render verwerken.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
     await expect(page.getByText("Kopieer handmatig")).toBeVisible();
     await expect(page.getByText("Link gekopieerd")).toHaveCount(0);
     await page.evaluate((id) => { window.location.hash = `#/bericht/${id}`; }, artikelid().artikelId(item));
