@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { staatFocusInInvoer } from "./zoekfocus";
 import { normaliseer, resultaatTekst } from "./zoek";
+import { touchNu } from "./invoer";
 
 const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 
@@ -47,8 +48,12 @@ export function Zoekbalk({ query, onChange, aantal, invoer }: { query: string; o
 }
 
 export function ZoekFormulier({ query, onChange, sluit, invoer }: { query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement> }) {
-  return <form className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); invoer.current?.blur(); }}>
-        <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws" value={query} onChange={(e) => onChange(e.target.value)} />
+  const compositie = useRef(false);
+  return <form className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); if (!compositie.current && touchNu()) invoer.current?.blur(); }}>
+        <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws" value={query} onChange={(e) => onChange(e.target.value)} onCompositionStart={() => { compositie.current = true; }} onCompositionEnd={() => { compositie.current = false; }} onBlur={() => { compositie.current = false; }} onKeyDown={(e) => {
+          if (e.key === "Enter" && (compositie.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)) { e.preventDefault(); return; }
+          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sluit(); }
+        }} />
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
       </form>;
 }
