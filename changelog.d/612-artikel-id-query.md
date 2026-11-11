@@ -1,1 +1,2 @@
 - Voorkom botsende artikel-id's bij inhoudsbepalende queryparameters; dubbelzinnige oude deellinks openen geen willekeurig bericht (#612).
+- URL's met verschillende `ref`-parameters tellen bij ontdubbeling als verschillende bronnen en kunnen daardoor allebei op de dagpagina verschijnen. Na invoering kunnen bestaande Worker-cachegegevens voor URL's met niet-trackingparameters worden gemist; eenmalig opnieuw samenvatten kan extra AI-neuronen kosten binnen het dagbudget.

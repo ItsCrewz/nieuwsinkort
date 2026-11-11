@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { artikelPad, linkId, oudeLinkId } from "../../src/artikelid";
 import { onRequestGet } from "../../functions/bericht/[[pad]]";
 import { normLink } from "../../worker/src/cluster";
+import { merge } from "../../src/dagdata";
 
 const een = "https://voorbeeld.nl/artikel?id=1", twee = "https://voorbeeld.nl/artikel?id=2";
 assert.notEqual(linkId(een), linkId(twee));
@@ -13,6 +14,7 @@ assert.notEqual(linkId(`${een}&tekst=A`), linkId(`${een}&tekst=a`));
 assert.equal(linkId(`${een}&utm_source=x&FBCLID=y#kop`), linkId(een));
 assert.equal(linkId(`${een}&rubriek=nieuws`), linkId("https://voorbeeld.nl/artikel?rubriek=nieuws&id=1"));
 assert.equal(linkId("https://voorbeeld.nl/artikel?utm_medium=x"), oudeLinkId(een));
+assert.notEqual(normLink("https://voorbeeld.nl/artikel?ref=1"), normLink("https://voorbeeld.nl/artikel?ref=2"));
 
 const nu = Date.now;
 try {
@@ -33,11 +35,21 @@ try {
   let r = await bezoek(oud);
   assert.equal(r.status, 302);
   assert.equal(r.headers.get("location"), "/");
+  const bestaand = { ...items[0], id: oudeLinkId(een) };
+  items[0] = bestaand;
+  r = await bezoek(artikelPad(bestaand, dag));
+  assert.equal(r.status, 200);
+  assert.ok((await r.text()).includes(bestaand.kop));
+  r = await bezoek(artikelPad(items[1], dag));
+  assert.equal(r.status, 200);
+  assert.ok((await r.text()).includes(items[1].kop));
+  items[0] = { kop: bestaand.kop, bronnen: bestaand.bronnen };
   items.pop();
   r = await bezoek(oud);
   assert.equal(r.status, 301);
   assert.equal(r.headers.get("location"), artikelPad(items[0], dag));
-  const bestaand = { ...items[0], id: oudeLinkId(een) };
-  items[0] = bestaand;
-  assert.equal((await bezoek(artikelPad(bestaand, dag))).status, 200);
+  const routine = { kop: "Eerste onderwerp", bronnen: [{ href: "https://voorbeeld.nl/artikel?ref=1" }] };
+  const uur = { kop: "Volledig ander nieuws", bronnen: [{ href: "https://voorbeeld.nl/artikel?ref=2" }] };
+  const tijd = `${dag}T09:00:00Z`;
+  assert.equal(merge({ gegenereerd: tijd, items: [routine] }, { gegenereerd: tijd, items: [uur] }).items.length, 2);
 } finally { Date.now = nu; }

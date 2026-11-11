@@ -32,7 +32,8 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   } catch { return tijdelijk(); }
   if (!dag || typeof dag.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items) || ams(Date.parse(dag.gegenereerd)).iso !== pad.dag) return tijdelijk();
   const items = dag.items;
-  const matches = items.filter((i) => artikelId(i) === pad.id || i.bronnen?.some((b) => linkId(b.href) === pad.id || oudeLinkId(b.href) === pad.id));
+  const exact = items.filter((i) => artikelId(i) === pad.id);
+  const matches = exact.length ? exact : items.filter((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id || oudeLinkId(b.href) === pad.id));
   const item = matches.length === 1 ? matches[0] : undefined;
   if (!item) return redirect(302, "/", "no-store");
   const canoniek = artikelPad(item, pad.dag);
