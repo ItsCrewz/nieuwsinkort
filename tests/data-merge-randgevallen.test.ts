@@ -58,11 +58,11 @@ t("rubrieksamenvattingen volgen de recentste dataset met terugval per rubriek", 
 });
 
 t("dubbele berichten via genormaliseerde bronlinks (www, https, query, slash, hoofdletters)", () => {
-  const S = { gegenereerd: ROUTINE, items: [item("A", "https://www.nos.nl/artikel/1/"), item("B", "http://Krant.nl/b?utm=1#x")], filmpjes: [], dumpert: [] };
+  const S = { gegenereerd: ROUTINE, items: [item("A", "https://www.nos.nl/artikel/1/"), item("B", "http://Krant.nl/b?utm_source=1#x")], filmpjes: [], dumpert: [] };
   const H = { gegenereerd: UUR, dumpert: [], filmpjes: [], items: [
     item("A2", "http://nos.nl/artikel/1"), item("B2", "https://www.krant.nl/b/"), item("C", "https://nos.nl/artikel/3"),
     { cat: "nl", kop: "Zonder bronnen" },
-    { cat: "nl", kop: "Tweede bron dubbel", bronnen: [{ href: "https://x.nl/uniek" }, { href: "https://nos.nl/artikel/1?ref=2" }] }] };
+    { cat: "nl", kop: "Tweede bron dubbel", bronnen: [{ href: "https://x.nl/uniek" }, { href: "https://nos.nl/artikel/1?utm_source=2" }] }] };
   const out = merge(S, H);
   assert.deepEqual(out.items.map((i: any) => i.kop), ["C", "Zonder bronnen", "A", "B"]);
   assert.equal(out.uur.nieuw, 2);
@@ -98,11 +98,11 @@ t("filmpjes: tijdgrens van de routine, bestaande hrefs en Instagram van vóór d
 
 t("meerKeys: routine-berichten krijgen meer-sleutel; bestaande meer blijft; meta/meerKeys lekken niet", () => {
   const S = { gegenereerd: ROUTINE, items: [item("A", "https://www.nos.nl/a/"), item("B", "https://nos.nl/b", { meer: "eigen" }), item("C", "https://nos.nl/c")], filmpjes: [], dumpert: [] };
-  const H = { gegenereerd: UUR, dumpert: [], filmpjes: [], meta: { model: "m", aiStand: "ok" }, meerKeys: ["nos.nl/a", "nos.nl/b", "x.nl/d"],
+  const H = { gegenereerd: UUR, dumpert: [], filmpjes: [], meta: { model: "m", aiStand: "ok" }, meerKeys: ["nos.nl/a", "nos.nl/b", "x.nl/d?z=1"],
     items: [item("D", "https://x.nl/d?z=1")] };
   const out = merge(S, H);
   const per = Object.fromEntries(out.items.map((i: any) => [i.kop, i.meer]));
-  assert.deepEqual(per, { D: "x.nl/d", A: "nos.nl/a", B: "eigen", C: undefined });
+  assert.deepEqual(per, { D: "x.nl/d?z=1", A: "nos.nl/a", B: "eigen", C: undefined });
   assert.equal(out.meerKeys, undefined);
   assert.equal(out.uur.model, "m");
   // geen of ongeldige meerKeys: items ongemoeid
