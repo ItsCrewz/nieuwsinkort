@@ -1,3 +1,4 @@
+import { testDeelactie } from "../tests/regressie/joey-deelactie-680.mjs";
 // Gedeelde pagina /bericht/…: de echte Pages Function (met esbuild gebundeld) levert de app-HTML met eigen kop-tags;
 // de app toont dan dezelfde artikelweergave als bij openen in de app, met de home erachter (#541). Geen netwerk buiten de dev-server, geen AI.
 import { test, expect, devices } from "@playwright/test";
@@ -23,7 +24,7 @@ test.beforeAll(async () => {
 // Dagdata met ons testbericht vooraan; /bericht/… via de echte Function, met de dev-server als ASSETS (getransformeerde index.html).
 async function serveer(page) {
   const statisch = await (await fetch(`${BASIS}/data.json`)).json();
-  const data = { ...statisch, gegenereerd: nu.toISOString(), items: [item, ...statisch.items] };
+  const data = { ...statisch, gegenereerd: nu.toISOString(), items: [item, { ...statisch.items[0], t: nu.getTime() }, ...statisch.items.slice(1)] };
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:)/, (route) => route.abort("blockedbyclient"));
   await page.route("**/data.json", (route) => route.fulfill({ json: data }));
   env = { ASSETS: { fetch: (req) => fetch(typeof req === "string" ? req : req.url) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify(data)}` } };
@@ -67,11 +68,13 @@ test.describe("iPhone-emulatie", () => {
     await expect(page.locator(".topbar")).toBeVisible();
     await page.evaluate((id) => { window.location.hash = `#/bericht/${id}`; }, artikelid.artikelId(item));
     await expect(page.locator("article.detail")).toBeVisible();
+    await expect(page).toHaveTitle(`${item.kop} – Nieuws in het kort`);
     await expect(page.locator("article.detail .d-lead")).toBeVisible();
     const inApp = await page.locator("article.detail").evaluate((el) => ({ klasse: el.className, tekst: el.innerText, stijl: getComputedStyle(el.querySelector(".d-title")).fontSize + getComputedStyle(el).maxWidth, koppen: [...el.querySelectorAll("h1,h2")].map((h) => h.textContent) }));
     // 2. gedeelde pagina
     await page.goto(pad);
     await expect(page.locator("article.detail")).toBeVisible();
+    await expect(page).toHaveTitle(`${item.kop} – Nieuws in het kort`);
     await expect(page.locator("article.detail .d-lead")).toBeVisible();
     const gedeeld = await page.locator("article.detail").evaluate((el) => ({ klasse: el.className, tekst: el.innerText, stijl: getComputedStyle(el.querySelector(".d-title")).fontSize + getComputedStyle(el).maxWidth, koppen: [...el.querySelectorAll("h1,h2")].map((h) => h.textContent) }));
     expect(gedeeld).toEqual(inApp);
@@ -83,6 +86,11 @@ test.describe("iPhone-emulatie", () => {
     await page.getByRole("button", { name: "Terug naar het nieuws" }).click();
     await expect(page.locator("article.detail")).toHaveCount(0);
     await expect(page).toHaveURL(/\/#\/$/);
+    await expect(page).toHaveTitle("Nieuwsinkort - Het nieuws van vandaag samengevat");
+    await page.evaluate(() => { window.location.hash = "#/tech"; });
+    await expect(page).toHaveTitle("Tech & AI · Nieuws in het kort");
+    await page.evaluate(() => { window.location.hash = "#/bericht/onbekend"; });
+    await expect(page).toHaveTitle("Nieuwsinkort - Het nieuws van vandaag samengevat");
     await expect(page.locator(".nc-title a, .lead").first()).toBeVisible();
   });
 
@@ -131,3 +139,5 @@ test.describe("iPhone-emulatie", () => {
     await expect(page.getByRole("textbox", { name: "Link om handmatig te kopiëren" })).toBeVisible();
   });
 });
+
+testDeelactie(serveer, () => artikelid, item);

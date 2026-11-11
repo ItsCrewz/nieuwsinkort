@@ -1,0 +1,1 @@
+- Snel: het voorladen van HLS-segmenten respecteert `#EXT-X-BYTERANGE` (alleen dat bereik via Range, nooit het hele bestand) (#681).

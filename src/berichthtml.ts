@@ -57,7 +57,8 @@ export function berichtHtml(sjabloon: string, item: Bericht, dag: string, verwan
   h = h.replace(/<meta\s+property="og:image:(?:width|height)"[^>]*>\s*/gi, "");
   h = zetMeta(h, "name", "twitter:card", "summary_large_image");
   h = zetMeta(h, "name", "twitter:image", beeld);
-  h = zetMeta(h, "property", "article:published_time", datum);
+  h = h.replace(/<meta\b(?=[^>]*\bproperty\s*=\s*["']article:published_time["'])[^>]*>/gi, "");
+  if (Number.isFinite(tms)) h = zetMeta(h, "property", "article:published_time", new Date(tms).toISOString());
   h = zetMeta(h, "name", "twitter:title", title);
   h = zetMeta(h, "name", "twitter:description", desc);
   const body = `<article><h1>${esc(title)}</h1>${tekst ? `<p>${esc(tekst)}</p>` : ""}${indexeer && item.samenvatting ? `<p>${esc(item.samenvatting)}</p>` : ""}${indexeer && item.punten?.length ? `<ul>${item.punten.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}<h2>Bronnen</h2><ul>${bronnen.map((b) => `<li><a href="${esc(b.href)}" rel="noopener nofollow">${esc(b.site)}</a></li>`).join("")}</ul>${verwant.length ? `<h2>Meer nieuws</h2><ul>${verwant.map((v) => `<li><a href="${esc(artikelPad(v, dag))}">${esc(v.kop)}</a></li>`).join("")}</ul>` : ""}<p><a href="/vandaag">Al het nieuws van vandaag</a> · <a href="/">Naar Nieuws in het kort</a></p></article>`;

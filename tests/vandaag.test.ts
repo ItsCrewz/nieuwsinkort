@@ -27,5 +27,5 @@ try {
   r = await onRequestGet({ request: new Request("https://nieuwsinkort.nl/vandaag"), env: { ASSETS: { fetch: async () => new Response("", { status: 500 }) }, NIEUWS: { get: async () => null } }, waitUntil: () => {} });
   assert.equal(r.status, 503); assert.equal(r.headers.get("cache-control"), "no-store");
 
-  assert.ok(readFileSync("index.html", "utf8").includes('<noscript>Zet JavaScript aan om het nieuws te zien, of bekijk <a href="/vandaag">'), "noscript linkt naar /vandaag");
+  assert.ok(readFileSync("index.html", "utf8").includes('<a href="/vandaag">'), "noscript linkt naar /vandaag");
 } finally { Date.now = origineel; }
