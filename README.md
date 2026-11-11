@@ -20,7 +20,7 @@ Onbekende paden geven op Cloudflare Pages een 404 met `public/404.html`; de app 
 
 Home toont het landelijke weerbericht en alle artikelen; op andere tabs staat geen weerbericht. De routes `#/`, een lege hash en de oude route `#/alles` openen Home; ook `#/bericht/<slug>` opent een bericht vanuit Home. Een hash met ongeldige percent-codering valt terug op Home.
 
-Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen.
+Filter artikelen op tijd, rubriek (bij Home), regio, video en meerdere bronnen. Bij meerdere bronnen en sorteren op bronnen telt elke uitgever eenmaal, ook bij meerdere links of rubrieknamen van dezelfde bron; uitgeschakelde bronnen tellen niet mee.
 Kies bij Volgorde voor Nieuwste eerst (standaard), Oudste eerst of Meeste bronnen.
 Bij Nieuwste eerst staat het openingsartikel met de meeste bronnen bovenaan, gevolgd door de overige artikelen op tijd.
 Bij Oudste eerst en Meeste bronnen geldt de gekozen volgorde ook voor het openingsartikel.
@@ -145,5 +145,7 @@ Browserrookproeven staan beschreven in [docs/browser-tests.md](docs/browser-test
 Focus lezen (#383): `src/focuslezen.ts` — standaard uit; alleen een expliciete klik wordt bewaard in localStorage-sleutel `nieuwsinkort-focus-lezen-keuze` (waarden `aan`/`uit`). De oude sleutel `dagelijks-nieuws-focus-lezen-v2` werd volgens de git-historie alleen bij een klik geschreven, maar wordt genegeerd en opgeruimd (een oude waarde kan niet van een standaard worden onderscheiden). De beginstand wordt lazy gelezen, dus geen flits. Zonder of met falende storage: uit. Tests: `tests/focuslezen.test.ts`.
 
 Bij het afdrukken van een bericht verdwijnen navigatie, bediening en media. De tekst is zwart op wit en bij bronlinks staat de URL.
+
+Zoeken filtert lokaal op alle zoekwoorden, ongeacht hoofdletters en accenten. Overeenkomsten in titel en samenvatting worden gemarkeerd; bij geen resultaten wist de knop de zoekopdracht en brengt de focus terug naar het zoekveld.
 
 Na een deploy kan de orchestrator `npm run rooktest:live` uitvoeren (of `npm run rooktest:live -- https://voorbeeld.nl` voor een andere basis-URL). De rooktest controleert de kernpagina's, minstens 20 feeditems, minstens 10 koppen en een berichtpagina; elk verzoek heeft een timeout van 10 seconden. De test wordt niet automatisch bij deploy uitgevoerd en start geen AI.

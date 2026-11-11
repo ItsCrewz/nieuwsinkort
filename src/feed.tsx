@@ -21,13 +21,14 @@ import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
 import { bronIndexen, gebruiktNativeHls, maakBronvrij, PoolEigenaars, POOL_GROOTTE, slotVan } from "./videopool";
 import { decodeTeller, FrameGezondheid, frameTeller, HerstelBudget } from "./framegezondheid";
-import { niveauVan, planVoor } from "./buffer";
+import { maxBufferSeconden, niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
 import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
 import { posterVerborgen } from "./poster";
-import { svCache, type Sv } from "./samenvattingcache";
+import { svCache } from "./samenvattingcache";
+import { useSamenvatting } from "./usesamenvatting";
 import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
@@ -248,9 +249,10 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
   useEffect(() => {
     const h = hlsRef.current;
     if (!h) return;
-    const plan = planVoor(active ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
+    const niveau = niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
+    const plan = planVoor(active ? 0 : 1, niveau);
     h.config.maxBufferLength = plan.secs;
-    h.config.maxMaxBufferLength = active ? 60 : plan.secs;
+    h.config.maxMaxBufferLength = maxBufferSeconden(active ? 0 : 1, niveau);
     h.config.maxBufferSize = plan.bytes;
     if (active && !started.current) {
       started.current = true;
@@ -624,7 +626,8 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       }
       // De volgende speler buffert kort op het laagste startniveau; het actieve filmpje mag verder bufferen.
       const on = activeNow.current;
-      const plan = planVoor(on ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
+      const niveau = niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
+      const plan = planVoor(on ? 0 : 1, niveau);
       const h = new Hls({
         enableWorker: true,
         startLevel: 0,
@@ -632,7 +635,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         startFragPrefetch: true,
         autoStartLoad: on || rankRef.current === 1,
         maxBufferLength: plan.secs,
-        maxMaxBufferLength: on ? 60 : plan.secs,
+        maxMaxBufferLength: maxBufferSeconden(on ? 0 : 1, niveau),
         maxBufferSize: plan.bytes,
         backBufferLength: 10,
         startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
@@ -1121,25 +1124,6 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
 // ------------------------------------------------------------- samenvatting op verzoek
 // Knop + onderblad. De server (functions/samenvatting.ts) haalt ondertiteling of luistert de eerste minuten,
 // vat samen in simpele punten en bewaart dat per filmpje, dus de tweede keer is het meteen klaar.
-async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
-  const hit = svCache.get(id);
-  if (hit) return hit;
-  for (let poging = 0; poging < 8; poging++) {
-    let r: Response;
-    try {
-      r = await fetch("/samenvatting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }), signal });
-    } catch (e) {
-      if (signal.aborted) throw e;
-      return { ok: false, code: "net", fout: "Geen verbinding. Check je internet en probeer het nog eens." };
-    }
-    const j = (await r.json().catch(() => null)) as Sv | null;
-    if (j && !j.ok && j.code === "bezig") { await new Promise((ok) => setTimeout(ok, 4000)); continue; }
-    if (!j) return { ok: false, code: "fout", fout: "Samenvatten lukt even niet. Probeer het later nog eens." };
-    if (j.ok || ["geen-tekst", "te-lang", "onbekend"].includes(j.code)) svCache.set(id, j);
-    return j;
-  }
-  return { ok: false, code: "fout", fout: "Het duurt te lang. Probeer het zo nog eens." };
-}
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 function SamenvattingKnop({ v }: { v: Video }) {
   const [open, setOpen] = useState(false);
@@ -1155,16 +1139,8 @@ function SamenvattingKnop({ v }: { v: Video }) {
 }
 function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
   const id = videoSlug(v);
-  const [res, setRes] = useState<Sv | null>(() => svCache.get(id) || null);
-  const [n, setN] = useState(0);
+  const { res, opnieuw } = useSamenvatting(id);
   const closeBtn = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (svCache.has(id) && n === 0) return;
-    const ac = new AbortController();
-    setRes(null);
-    haalSamenvatting(id, ac.signal).then(setRes, () => {});
-    return () => ac.abort();
-  }, [id, n]);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
     closeBtn.current?.focus({ preventScroll: true });
@@ -1197,7 +1173,7 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
             <>
               <p className="sv-fout">{res.fout}</p>
               {["fout", "net", "bezig", "geblokkeerd"].includes(res.code) ? (
-                <button type="button" className="f-btn" onClick={() => { svCache.delete(id); setN((x) => x + 1); }}>Probeer opnieuw</button>
+                <button type="button" className="f-btn" onClick={opnieuw}>Probeer opnieuw</button>
               ) : null}
             </>
           )}
