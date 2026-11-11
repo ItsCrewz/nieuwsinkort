@@ -19,7 +19,9 @@ export function zoekItems(items: Item[], query: string): Item[] {
     const origineel = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean).join(" ");
     const tekst = normaliseer(origineel + " " + afkortingen(origineel));
     // Woordbegin: " " ervoor zodat "kat" niet in "politiek" valt, maar wel "katten" vindt.
-    const haystack = " " + tekst;
+    // Datums en tijden met punten behouden hun afzonderlijke zoekwoorden.
+    const los = origineel.replace(/(?<!\p{N})(?:\p{N}{1,2}\.\p{N}{1,2}\.\p{N}{4}|\p{N}{2}\.\p{N}{2})(?!\p{N})/gu, (getal) => getal.replace(/\./g, " "));
+    const haystack = " " + tekst + " " + normaliseer(los);
     return woorden.every((woord) => woord.includes(",")
       ? tekst.split(" ").some((deel) => deel.startsWith(woord) && !/^[\p{N},]/u.test(deel.slice(woord.length)))
       : haystack.includes(" " + woord));

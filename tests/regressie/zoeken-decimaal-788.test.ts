@@ -14,3 +14,8 @@ for (const query of ["2,5", "2.5", "CAFÉ 2,5", "cafe 2.5"]) {
 }
 assert.deepEqual(zoekItems(items, "2 5"), [losseCijfers]);
 assert.deepEqual(zoekItems(items, "caf milj"), [komma, punt, anderGetal]);
+
+const datum = { cat: "nl", kop: "Nieuws van 7.11.2026" } as Item;
+const tijd = { cat: "nl", kop: "Uitzending om 20.30 uur" } as Item;
+for (const query of ["2026", "11", "7 11 2026"]) assert.deepEqual(zoekItems([datum], query), [datum], query);
+for (const query of ["20 30", "20:30"]) assert.deepEqual(zoekItems([tijd], query), [tijd], query);
