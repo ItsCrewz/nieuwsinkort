@@ -21,7 +21,7 @@ import { schoon } from "./schoon";
 import { valideer } from "./valideer";
 import { debug } from "./debug";
 import { Beelden, Thumb } from "./beelden";
-import { FilterBalk, filterNieuws, filterVideos, useFilters } from "./filters";
+import { FilterBalk, filterNieuws, filterVideos, useFilters, useVideoKlok } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
@@ -1102,9 +1102,10 @@ export default function App() {
   const [zoekterm, setZoekterm] = useState("");
   const zoekInvoer = useRef<HTMLInputElement>(null);
   const flt = useFilters();
+  const videoKlok = useVideoKlok(route.video ? flt.f.tijd : "alles");
   const vids = useMemo(
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
-    [data, flt.f, flt.vorig]
+    [data, flt.f, flt.vorig, videoKlok]
   );
   useVoorladen(vids, data?.gegenereerd, !!route.video); // thumbs vooraf in idle-tijd; video pas bij intentie (tab aanraken/focus)
   const [focusKey, setFocusKey] = useState<string | null>(null);
