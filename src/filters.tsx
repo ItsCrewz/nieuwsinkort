@@ -6,6 +6,7 @@ import { midnight } from "./tijd";
 import { publicatieTijd } from "./vandaag";
 import { BUITEN_WOORD } from "./regio";
 import { Icon } from "./icons";
+import { bronSleutel } from "./uitgever";
 
 export type Tijd = "auto" | "sinds" | "vandaag" | "1u" | "3u" | "alles";
 export type Regio = "haarlem" | "nl" | "wereld";
@@ -150,8 +151,8 @@ export function regioVan(it: Item): Regio {
 }
 const VIDEO_URL = /\/video\/|\/video-|\/videos?\/|youtube\.com|youtu\.be|\.mp4\b|\/kijk\/|\/tv\//i;
 export const heeftVideo = (it: Item) => (it.bronnen || []).some((b) => VIDEO_URL.test(b.href));
-export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => b.site)).size;
-export const samengevoegd = (it: Item) => (it.bronnen || []).length > 1;
+export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => bronSleutel(b.site))).size;
+export const samengevoegd = (it: Item) => sites(it) > 1;
 
 /** Alles behalve tijd (tijd wordt apart bepaald, want "Automatisch" hangt af van wat er overblijft). */
 function zonderTijd(items: Item[], f: Filters, alles: boolean) {
