@@ -31,7 +31,16 @@ const el = (tag: string, o: { attrs?: Record<string, string>; klassen?: string[]
 };
 
 const body = el("body");
-const feed = el("div", { klassen: ["nf"], ouder: body });
+const box = el("div", { klassen: ["nf-box"], ouder: body });
+const feed = el("div", { klassen: ["nf"], ouder: box });
+const ui = el("div", { klassen: ["nf-ui"], ouder: box });
+
+t("feedtoets: eigen feedknoppen (.nf-ui, .nf-start) laten de sneltoetsen werken", () => {
+  const knop = el("button", { klassen: ["nf-btn"], ouder: ui });
+  assert.equal(buitenFeedBediening(knop), false);
+  assert.equal(buitenFeedBediening(el("span", { ouder: knop })), false);
+  assert.equal(buitenFeedBediening(el("button", { klassen: ["nf-start"], ouder: box })), false);
+});
 
 t("feedtoets: knop, link en tab buiten de feed zijn bediening", () => {
   assert.equal(buitenFeedBediening(el("button", { ouder: body })), true);
