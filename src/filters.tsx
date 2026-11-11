@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Cat, Item, Video } from "./types";
 import { midnight } from "./tijd";
+import { publicatieTijd } from "./vandaag";
 import { BUITEN_WOORD } from "./regio";
 import { Icon } from "./icons";
+import { bronSleutel } from "./uitgever";
 
 export type Tijd = "auto" | "sinds" | "vandaag" | "1u" | "3u" | "alles";
 export type Regio = "haarlem" | "nl" | "wereld";
@@ -117,7 +119,7 @@ const minVan = (d: Date) => {
 };
 export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   const m = /^(\d{1,2})[:.](\d{2})$/.exec(hhmm || "");
-  if (!m) return null;
+  if (!m || +m[1] > 23 || +m[2] > 59) return null; // onmogelijke kloktijd = onbekend
   const t = +m[1] * 60 + +m[2];
   const g = new Date(gen);
   const gm = minVan(g);
@@ -149,8 +151,8 @@ export function regioVan(it: Item): Regio {
 }
 const VIDEO_URL = /\/video\/|\/video-|\/videos?\/|youtube\.com|youtu\.be|\.mp4\b|\/kijk\/|\/tv\//i;
 export const heeftVideo = (it: Item) => (it.bronnen || []).some((b) => VIDEO_URL.test(b.href));
-export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => b.site)).size;
-export const samengevoegd = (it: Item) => (it.bronnen || []).length > 1;
+export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => bronSleutel(b.site))).size;
+export const samengevoegd = (it: Item) => sites(it) > 1;
 
 /** Alles behalve tijd (tijd wordt apart bepaald, want "Automatisch" hangt af van wat er overblijft). */
 function zonderTijd(items: Item[], f: Filters, alles: boolean) {
@@ -203,11 +205,26 @@ export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: stri
     .map(({ item }) => item);
   return { items: out, tijd, auto, per, nieuwSinds: vorig ? per.sinds : 0 };
 }
+// Vernieuw relatieve videovensters ook als de server dezelfde data terugstuurt.
+export function useVideoKlok(tijd: Tijd): number {
+  const [tik, setTik] = useState(0);
+  useEffect(() => {
+    if (tijd !== "1u" && tijd !== "3u") return;
+    const ververs = () => setTik((n) => n + 1);
+    ververs(); // Ook bij terugkeer naar een video-overzicht opnieuw filteren.
+    const timer = window.setInterval(ververs, 60_000);
+    const zichtbaar = () => { if (document.visibilityState === "visible") ververs(); };
+    document.addEventListener("visibilitychange", zichtbaar);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zichtbaar); };
+  }, [tijd]);
+  return tik;
+}
 /** Filmpjes: alleen het tijdfilter (de rest gaat over berichten). Automatisch = Vandaag, of Alles als er vandaag nog bijna niets is. */
 export function filterVideos(list: Video[], f: Filters, vorig: number, gen: string | undefined): Video[] {
   if (f.tijd === "alles") return list;
   const g = genVan(gen);
-  const ts = list.map((v) => tijdstip(v.tijd, g));
+  const now = Date.now();
+  const ts = list.map((v) => publicatieTijd(v.t, now) ?? (v.gisteren ? -Infinity : tijdstip(v.tijd, g)));
   let t: Exclude<Tijd, "auto">;
   if (f.tijd === "auto") {
     const vandaag = vanafVoor("vandaag", vorig);

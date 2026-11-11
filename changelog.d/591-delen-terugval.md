@@ -1,0 +1,1 @@
+- De deelknop biedt ook kopiëren of handmatig delen aan als de browsercontrole voor delen faalt (#591).
