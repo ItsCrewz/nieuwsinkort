@@ -1,13 +1,15 @@
 export type Cat = "nl" | "buitenland" | "tech" | "haarlem" | "showbizz" | "politiek" | "voetbal" | "f1" | "auto" | "sport";
 export type Bron = { site: string; href: string };
 export type Item = {
+  id?: string;
   cat: Cat;
   kop: string;
   ai: string;
   samenvatting: string;
   punten: string[];
   tijd: string;
-  t?: number; // Publicatietijd in milliseconden sinds de Unix-epoch.
+  /** Absolute publicatietijd in milliseconden sinds de Unix-epoch. */
+  t?: number;
   bronnen: Bron[];
   beeld?: string; // oud veld: één afbeelding
   /** Foto's uit alle bronnen van dit bericht (ontdubbeld, eerste = beste). */
@@ -35,6 +37,7 @@ export type Weer = {
   bronnen: Bron[];
 };
 export type Video = {
+  t?: number;
   gisteren?: boolean;
   titel: string;
   ai: string;

@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { act, createElement } from "react";
 import { buildSources, CATALOG_RETRY_MS, useCatalog, useFiltered, useSourceFilter } from "../src/sources";
+import { filterNieuws, STANDAARD } from "../src/filters";
 import type { Catalog } from "../src/sources";
 import type { Data, Item, Video } from "../src/types";
 
@@ -253,6 +254,51 @@ const data: Data = {
 };
 const { index } = buildSources(catalog, data);
 
+await t("gedeeld suffix houdt tellingen en bronfilter gescheiden", async () => {
+  const catalogus: Catalog = { groepen: [{ id: "nl", label: "Nederland", bronnen: [
+    { id: "eerste", naam: "Eerste", hosts: ["eerste.co.uk"] },
+    { id: "tweede", naam: "Tweede", hosts: ["tweede.co.uk"] },
+    { id: "oud", naam: "Oud", hosts: ["co.uk"] },
+    { id: "nos", naam: "NOS", hosts: ["nos.nl"] },
+    { id: "nu", naam: "NU", hosts: ["nu.nl"] },
+  ] }] };
+  const berichten = ["eerste.co.uk", "nieuws.eerste.co.uk", "tweede.co.uk", "derde.co.uk", "feeds.nos.nl", "www.nu.nl"]
+    .map((host) => item("nl", [{ site: "", href: `https://${host}/bericht` }]));
+  const invoer = { ...data, items: berichten, filmpjes: [], dumpert: [] };
+  const resultaat = buildSources(catalogus, invoer);
+  assert.deepEqual(Object.fromEntries(resultaat.groups[0].sources.map((bron) => [bron.id, bron.count])),
+    { eerste: 2, tweede: 1, "derde.co.uk": 1, nos: 1, nu: 1, oud: 0 });
+  const h = await renderHook((off: Set<string>) => useFiltered(invoer, resultaat.index, off), new Set(["nl|eerste"]));
+  assert.equal(h.result.current?.hidden, 2);
+  assert.deepEqual(h.result.current?.data.items, berichten.slice(2));
+  await h.rerender(new Set(["nl|tweede"]));
+  assert.equal(h.result.current?.hidden, 1);
+  assert.deepEqual(h.result.current?.data.items, berichten.filter((_, i) => i !== 2));
+  await h.rerender(new Set());
+  assert.equal(h.result.current?.data.items.length, 6);
+  await h.unmount();
+});
+await t("onbekende hosts behouden aparte filtersleutels", async () => {
+  const berichten = ["feeds.voorbeeld.nl", "www.voorbeeld.nl"]
+    .map((host) => item("nl", [{ site: "", href: `https://${host}/bericht` }]));
+  const invoer = { ...data, items: berichten, filmpjes: [], dumpert: [] };
+  const resultaat = buildSources(null, invoer);
+  assert.deepEqual(Object.fromEntries(resultaat.groups[0].sources.map((bron) => [bron.key, bron.count])),
+    { "nl|feeds.voorbeeld.nl": 1, "nl|voorbeeld.nl": 1 });
+  const h = await renderHook(() => useFiltered(invoer, resultaat.index, new Set(["nl|feeds.voorbeeld.nl"])), null);
+  assert.deepEqual(h.result.current?.data.items, [berichten[1]]);
+  await h.unmount();
+});
+await t("onbekende naam valt alleen bij passende catalogushost terug", () => {
+  const catalogus: Catalog = { groepen: [{ id: "nl", label: "Nederland", bronnen: [
+    { id: "bron", naam: "Andere naam", hosts: ["voorbeeld.nl"] },
+  ] }] };
+  const berichten = ["Voorbeeld", "Afwijkend"].map((site) =>
+    item("nl", [{ site, href: "https://feeds.voorbeeld.nl/bericht" }]));
+  const resultaat = buildSources(catalogus, { ...data, items: berichten, filmpjes: [], dumpert: [] });
+  assert.deepEqual(Object.fromEntries(resultaat.groups[0].sources.map((bron) => [bron.key, bron.count])),
+    { "nl|bron": 1, "nl|afwijkend": 1 });
+});
 await t("useFiltered zonder data of zonder uitgezette bronnen", async () => {
   const leeg = await renderHook(() => useFiltered(null, index, new Set(["nl|nos"])), null);
   assert.equal(leeg.result.current, null);
@@ -274,6 +320,14 @@ await t("useFiltered verbergt berichten pas als alle bronnen uit staan", async (
   assert.equal(r.data.items[2], zonderBron);
   assert.equal(r.data.filmpjes.length, 2);
   assert.equal(r.data.datum, data.datum);
+  await h.unmount();
+});
+await t("bronfilter werkt door in aantal en sortering van samengevoegde berichten", async () => {
+  const h = await renderHook(() => useFiltered(data, index, new Set(["nl|nos"])), null);
+  const resultaat = filterNieuws(h.result.current!.data.items, { ...STANDAARD, tijd: "alles", samen: true, sort: "bronnen" }, 0, undefined, true);
+  assert.equal(resultaat.items.length, 0);
+  assert.equal(resultaat.per.alles, 0);
+  assert.ok(h.result.current!.data.items.includes(zonderBron));
   await h.unmount();
 });
 await t("useFiltered filtert filmpjes en Dumpert (lege bron = Dumpert)", async () => {

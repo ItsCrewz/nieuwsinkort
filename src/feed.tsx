@@ -11,6 +11,7 @@ import { Icon } from "./icons";
 import { rustig, scrollGedrag } from "./beweging";
 import { maakSluiter } from "./feedsluiten";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
+import { tabToets } from "./tabs";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 
@@ -20,7 +21,7 @@ import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
 import { bronIndexen, gebruiktNativeHls, maakBronvrij, PoolEigenaars, POOL_GROOTTE, slotVan } from "./videopool";
 import { decodeTeller, FrameGezondheid, frameTeller, HerstelBudget } from "./framegezondheid";
-import { niveauVan, planVoor } from "./buffer";
+import { maxBufferSeconden, niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
@@ -247,9 +248,10 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
   useEffect(() => {
     const h = hlsRef.current;
     if (!h) return;
-    const plan = planVoor(active ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
+    const niveau = niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
+    const plan = planVoor(active ? 0 : 1, niveau);
     h.config.maxBufferLength = plan.secs;
-    h.config.maxMaxBufferLength = active ? 60 : plan.secs;
+    h.config.maxMaxBufferLength = maxBufferSeconden(active ? 0 : 1, niveau);
     h.config.maxBufferSize = plan.bytes;
     if (active && !started.current) {
       started.current = true;
@@ -623,7 +625,8 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       }
       // De volgende speler buffert kort op het laagste startniveau; het actieve filmpje mag verder bufferen.
       const on = activeNow.current;
-      const plan = planVoor(on ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
+      const niveau = niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
+      const plan = planVoor(on ? 0 : 1, niveau);
       const h = new Hls({
         enableWorker: true,
         startLevel: 0,
@@ -631,7 +634,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         startFragPrefetch: true,
         autoStartLoad: on || rankRef.current === 1,
         maxBufferLength: plan.secs,
-        maxMaxBufferLength: on ? 60 : plan.secs,
+        maxMaxBufferLength: maxBufferSeconden(on ? 0 : 1, niveau),
         maxBufferSize: plan.bytes,
         backBufferLength: 10,
         startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
@@ -1639,10 +1642,11 @@ export function Feed({
               <Icon name={muted ? "mute" : "volume"} />
               {muted ? <span>{geluidHint}</span> : null}
             </button>
+            {/* gs ligt vast zolang de feed open is, dus gi blijft geldig: tabstop en aria-selected volgen dezelfde waarde. */}
             {gs ? (
               <div className="f-tabs" role="tablist" aria-label="Soort filmpjes">
                 {gs.map((g, k) => (
-                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} onClick={() => pickGroup(k)}>
+                  <button key={g.id} type="button" role="tab" className="f-tab" aria-controls="feed-paneel" aria-selected={k === gi} tabIndex={k === gi ? 0 : -1} onKeyDown={tabToets} onClick={() => pickGroup(k)}>
                     {g.label}
                     <span className="tnum">{g.list.length}</span>
                   </button>
