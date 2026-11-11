@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("Enter tijdens compositie behoudt focus en daarna werkt zoeken en sluiten", async ({ page }) => {
+test("Enter tijdens compositie behoudt focus en daarna werkt zoeken en sluiten", async ({ page, isMobile }) => {
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
   await page.goto("#/");
   const knop = page.getByRole("button", { name: "Zoeken", exact: true });
@@ -17,7 +17,8 @@ test("Enter tijdens compositie behoudt focus en daarna werkt zoeken en sluiten",
   expect(verhinderd).toBe(true);
   await expect(invoer).toBeFocused();
   await invoer.press("Enter");
-  await expect(invoer).toBeFocused();
+  if (isMobile) await expect(invoer).not.toBeFocused();
+  else await expect(invoer).toBeFocused();
   await expect(invoer).toHaveValue("東京");
   await invoer.focus();
   await invoer.press("Escape");
@@ -203,7 +204,7 @@ test("spatie bladert nog door de feed als de focus niet op een bedienbaar elemen
 });
 
 for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 800]]) {
-  test(`zoeken behoudt toetsenbordfocus na Enter (${naam})`, async ({ page }) => {
+  test(`zoeken behoudt toetsenbordfocus na Enter (${naam})`, async ({ page, isMobile }) => {
     await page.setViewportSize({ width: breedte, height: hoogte });
     await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
     await page.goto("#/");
@@ -214,7 +215,10 @@ for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 8
     await expect(page.getByText("Niets gevonden voor “onvindbarezoekterm506”")).toBeVisible();
     const url = page.url();
     await invoer.press("Enter");
-    await expect(invoer).toBeFocused();
+    if (isMobile) {
+      await expect(invoer).not.toBeFocused();
+      await invoer.focus();
+    } else await expect(invoer).toBeFocused();
     expect(page.url()).toBe(url);
     await page.keyboard.type("x");
     await expect(invoer).toHaveValue("onvindbarezoekterm506x");
