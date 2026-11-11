@@ -1,0 +1,1 @@
+- Tijdgefilterde video-overzichten verversen ook bij ongewijzigde data en na terugkeer naar het tabblad (#749).

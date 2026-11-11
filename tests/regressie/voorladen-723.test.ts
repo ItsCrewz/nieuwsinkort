@@ -22,9 +22,9 @@ try {
     if (url === "/hang-723.m3u8") return nooit;
     if (url === "/master-723.m3u8") return { ok: true, text: async () => master };
     if (url.endsWith("laag.m3u8")) return { ok: true, text: () => nooit };
-    if (url.endsWith("video.mp4")) return { body: { getReader: () => ({ read: () => nooit, cancel: async () => { annuleerLezer++; } }) } };
+    if (url.endsWith("video.mp4")) return { ok: true, body: { getReader: () => ({ read: () => nooit, cancel: async () => { annuleerLezer++; } }) } };
     if (url === "/segment-723.m3u8") return { ok: true, text: async () => "#EXTM3U\nvideo.ts" };
-    if (url.endsWith("video.ts")) return { arrayBuffer: () => nooit };
+    if (url.endsWith("video.ts")) return { ok: true, arrayBuffer: () => nooit };
     return { ok: true, text: async () => "#EXTM3U" };
   });
   voerUit({ ...leeg, hls: ["/master-723.m3u8", "/segment-723.m3u8", "/hang-723.m3u8", "/volgende-723.m3u8"], mp4: "https://site.example/video.mp4" });

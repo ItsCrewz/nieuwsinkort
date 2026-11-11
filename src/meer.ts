@@ -21,21 +21,35 @@ function geldigMeer(v: unknown): v is Meer {
     && (v.uittreksel === undefined || bronnen(v.uittreksel, "alineas"));
 }
 
-// Eén keer per sessie opgehaald; al vooraf bij aanraken van "Lees verder".
-const meerCache = new Map<string, Promise<Meer | null>>();
+// Per sessie bewaard, maar na VERS ms hervalideerd (#840): de server kan de verdieping onder dezelfde sleutel wijzigen.
+// Eén aanvraag tegelijk per sleutel; een mislukte verversing houdt het laatste geldige antwoord en probeert later opnieuw.
+const VERS = 5 * 60e3;
+type Ingang = { p: Promise<Meer | null>; at: number; data: Meer | null; bezig: boolean };
+const meerCache = new Map<string, Ingang>();
 export function prefetchMeer(item: Item): Promise<Meer | null> {
   const k = item.meer;
   if (!k || item.bronnen?.some((b) => verzamelUrl(b.href))) return Promise.resolve(null);
-  let p = meerCache.get(k);
-  if (!p) {
-    p = fetch(`/meer?k=${encodeURIComponent(k)}`)
-      .then((r) => (r.ok ? r.json() as Promise<unknown> : null))
-      .then((data) => geldigMeer(data) ? data : null)
-      .catch(() => null);
-    p.then((m) => { if (!m) meerCache.delete(k); });
-    meerCache.set(k, p);
-  }
-  return p;
+  const e = meerCache.get(k);
+  if (e && (e.bezig || Date.now() - e.at < VERS)) return e.p;
+  const nieuw: Ingang = { p: Promise.resolve(null), at: e?.at ?? 0, data: e?.data ?? null, bezig: true };
+  // Een vastgelopen aanvraag stopt na 10 s (#742), zodat een volgende poging kan herstellen.
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => { controller.abort(); resolve(null); }, 10000);
+  });
+  const aanvraag = fetch(`/meer?k=${encodeURIComponent(k)}`, { cache: "no-cache", signal: controller.signal })
+    .then((r) => (r.ok ? r.json() as Promise<unknown> : null))
+    .then((data) => geldigMeer(data) ? data : null)
+    .catch(() => null);
+  nieuw.p = Promise.race([aanvraag, timeout]).then((m) => {
+    clearTimeout(timer);
+    nieuw.bezig = false;
+    if (m) { nieuw.data = m; nieuw.at = Date.now(); } else if (!nieuw.data && meerCache.get(k) === nieuw) meerCache.delete(k);
+    return m ?? nieuw.data;
+  });
+  meerCache.set(k, nieuw);
+  return nieuw.p;
 }
 
 export function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
