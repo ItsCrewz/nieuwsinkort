@@ -367,6 +367,10 @@ De uurdata bevat optioneel `tab_samenvatting`, met per rubriekcode `tekst`, `ai`
 
 De uur-Worker isoleert bronverzoeken en fetcherbatches; een fetcherbatch krijgt maximaal 180 seconden. Een geslaagde nieuwsfeed volstaat om de run voort te zetten; als alle geconfigureerde nieuwsfeeds falen, blijft de vorige `uur`-waarde in KV staan en wordt de run als mislukt gemeld. `run-status` bevat voor de laatste run `bronfouten` met per mislukte feed de URL, duur in milliseconden en code: `SRC_TIMEOUT` (timeout), `SRC_HTTP` (HTTP-fout), `SRC_PARSE` (onleesbare respons of batchfout) of `SRC_EMPTY` (lege respons). Een geldige feed zonder berichten is geen lege respons. Social-cache kan eerdere resultaten tonen terwijl de bron als mislukt geregistreerd blijft.
 
+### Uitval van bronnen
+
+De uur-Worker isoleert bronverzoeken en fetcherbatches; een fetcherbatch krijgt maximaal 180 seconden. Een geslaagde nieuwsfeed volstaat om de run voort te zetten; als alle geconfigureerde nieuwsfeeds falen, blijft de vorige `uur`-waarde in KV staan en wordt de run als mislukt gemeld. `run-status` bevat voor de laatste run `bronfouten` met per mislukte feed de URL, duur in milliseconden en code: `SRC_TIMEOUT` (timeout), `SRC_HTTP` (HTTP-fout), `SRC_PARSE` (onleesbare respons of batchfout) of `SRC_EMPTY` (lege respons). Een geldige feed zonder berichten is geen lege respons. Social-cache kan eerdere resultaten tonen terwijl de bron als mislukt geregistreerd blijft.
+
 Bij YouTube bewaakt een activatieklok het starten: een actieve iframe krijgt maximaal drie startpogingen en na 1,5 seconde zonder afspelen of bufferen een tikvlak dat de melding afdekt en de tik doorlaat naar de iframe. Buurspelers blijven gepauzeerd. Geluid wordt pas na een gebruikersgebaar in dezelfde sessie geprobeerd; bij blokkering speelt de video weer gedempt. De debug-overlay toont de activatietijd, laatste opdracht en eventuele autoplayblokkade.
 
 ### YouTube-embeds
