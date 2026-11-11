@@ -10,7 +10,7 @@ import { veiligeUrl } from "./url";
 import { tabToets } from "./tabs";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
-import { ytOndertitelsBijBericht } from "./ytstart";
+import { ytGereedLijst, ytOndertitelsBijBericht } from "./ytstart";
 
 // De volledige videofeed (spelers, hls.js-glue, debug-overlay) is een eigen chunk: pas laden op touch + videoroute.
 const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
@@ -76,6 +76,44 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
   );
 }
 
+export function volgFeedHerstel(video: string, cat: "filmpjes" | "dumpert", feedVideos: Video[], start: string | null, saved: ReturnType<typeof leesFeed>) {
+  let vorigeSlug = "";
+  let positie = 0;
+  let speelt = true;
+  let hervat = false;
+  let hersteld = false;
+  const gereed = ytGereedLijst(); // onReady per frame, ook van vooraf geladen buren
+  const actief = () => document.querySelector<HTMLElement>('.feed .fslide[aria-current="true"]');
+  const frame = () => actief()?.querySelector<HTMLIFrameElement>('iframe.f-yt');
+  const stuur = (func: string, args: unknown[] = []) => frame()?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "https://www.youtube-nocookie.com");
+  const update = () => {
+    const slug = decodeURIComponent(location.hash.split("/").slice(2).join("/")) || start || video;
+    if (slug !== vorigeSlug) { vorigeSlug = slug; positie = 0; hersteld = false; }
+    const el = actief()?.querySelector<HTMLVideoElement>("video");
+    if (!hersteld && slug === saved?.slug && saved.cat === cat) {
+      if (el && el.readyState > 0) { try { el.currentTime = saved.positie || 0; } catch { /* nog niet zoekbaar */ } hersteld = true; }
+      else if (gereed.is(frame()?.contentWindow)) { stuur("seekTo", [saved.positie || 0, true]); hersteld = true; }
+    }
+    if (el) { positie = el.currentTime || 0; if (document.visibilityState === "visible") speelt = !el.paused; }
+    const item = feedVideos.find((v) => videoSlug(v) === slug);
+    bewaarFeed({ cat, slug, soort: item ? soortVan(item) : "short", positie, speelt, lijst: feedVideos });
+  };
+  const bericht = (e: MessageEvent) => {
+    if (e.origin !== "https://www.youtube-nocookie.com") return;
+    if (gereed.meld(e, document.querySelectorAll<HTMLIFrameElement>(".feed iframe.f-yt"))) { update(); return; }
+    if (e.source !== frame()?.contentWindow) return;
+    try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; if (typeof d?.info?.currentTime === "number") positie = d.info.currentTime; if (document.visibilityState === "visible" && typeof d?.info?.playerState === "number") speelt = d.info.playerState === 1; } catch { /* onbekend bericht */ }
+  };
+  let verborgen = false;
+  const verberg = () => { if (verborgen) return; verborgen = true; update(); hervat = speelt; actief()?.querySelector<HTMLVideoElement>("video")?.pause(); stuur("pauseVideo"); };
+  const toon = () => { if (!verborgen) return; verborgen = false; if (hervat) { actief()?.querySelector<HTMLVideoElement>("video")?.play().catch(() => {}); stuur("playVideo"); } hervat = false; };
+  const zicht = () => document.visibilityState === "hidden" ? verberg() : toon();
+  document.addEventListener("visibilitychange", zicht);
+  window.addEventListener("pagehide", verberg); window.addEventListener("pageshow", toon); window.addEventListener("message", bericht);
+  const timer = window.setInterval(update, 500); update();
+  return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zicht); window.removeEventListener("pagehide", verberg); window.removeEventListener("pageshow", toon); window.removeEventListener("message", bericht); };
+}
+
 export function VideoGrid({
   list,
   cat,
@@ -113,39 +151,7 @@ export function VideoGrid({
   useEffect(() => {
     if (!touch) return;
     if (!video) { wisFeed(); return; }
-    let vorigeSlug = "";
-    let positie = 0;
-    let speelt = true;
-    let hervat = false;
-    let hersteld = false;
-    const saved = opgeslagen.current;
-    const actief = () => document.querySelector<HTMLElement>('.feed .fslide[aria-current="true"]');
-    const frame = () => actief()?.querySelector<HTMLIFrameElement>('iframe.f-yt');
-    const stuur = (func: string, args: unknown[] = []) => frame()?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "https://www.youtube-nocookie.com");
-    const update = () => {
-      const slug = decodeURIComponent(location.hash.split("/").slice(2).join("/")) || start || video;
-      if (slug !== vorigeSlug) { vorigeSlug = slug; positie = 0; hersteld = false; }
-      const el = actief()?.querySelector<HTMLVideoElement>("video");
-      if (!hersteld && slug === saved?.slug && saved.cat === cat) {
-        if (el && el.readyState > 0) { try { el.currentTime = saved.positie || 0; } catch { /* nog niet zoekbaar */ } hersteld = true; }
-        else if (frame()) { stuur("seekTo", [saved.positie || 0, true]); hersteld = true; }
-      }
-      if (el) { positie = el.currentTime || 0; if (document.visibilityState === "visible") speelt = !el.paused; }
-      const item = feedVideos.find((v) => videoSlug(v) === slug);
-      bewaarFeed({ cat, slug, soort: item ? soortVan(item) : "short", positie, speelt, lijst: feedVideos });
-    };
-    const bericht = (e: MessageEvent) => {
-      if (e.origin !== "https://www.youtube-nocookie.com" || e.source !== frame()?.contentWindow) return;
-      try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; if (typeof d?.info?.currentTime === "number") positie = d.info.currentTime; if (document.visibilityState === "visible" && typeof d?.info?.playerState === "number") speelt = d.info.playerState === 1; } catch { /* onbekend bericht */ }
-    };
-    let verborgen = false;
-    const verberg = () => { if (verborgen) return; verborgen = true; update(); hervat = speelt; actief()?.querySelector<HTMLVideoElement>("video")?.pause(); stuur("pauseVideo"); };
-    const toon = () => { if (!verborgen) return; verborgen = false; if (hervat) { actief()?.querySelector<HTMLVideoElement>("video")?.play().catch(() => {}); stuur("playVideo"); } hervat = false; };
-    const zicht = () => document.visibilityState === "hidden" ? verberg() : toon();
-    document.addEventListener("visibilitychange", zicht);
-    window.addEventListener("pagehide", verberg); window.addEventListener("pageshow", toon); window.addEventListener("message", bericht);
-    const timer = window.setInterval(update, 500); update();
-    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zicht); window.removeEventListener("pagehide", verberg); window.removeEventListener("pageshow", toon); window.removeEventListener("message", bericht); };
+    return volgFeedHerstel(video, cat, feedVideos, start, opgeslagen.current);
   }, [video, cat, feedVideos, start, touch]);
   const [first] = useState(enterProp); // alleen bij het eerste tonen
   const [touched, setTouched] = useState(false);
