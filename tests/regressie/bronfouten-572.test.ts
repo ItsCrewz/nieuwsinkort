@@ -19,7 +19,7 @@ const env = { SITE: "https://lokaal", NIEUWS: kv, FETCHER: { idFromName: (x: str
   const status = j.url === bleep ? 403 : j.url === cisa[0].url ? 404 : 200;
   return { url: j.url, ok: status === 200, status, ...(status !== 200 ? { err: `HTTP ${status}` } : {}), entries: j.url === cisa[1].url ? [{ t: "CISA publiceert een nieuw beveiligingsadvies", l: "https://www.cisa.gov/news-events/nieuw-advies", s: "CISA waarschuwt organisaties voor een kwetsbaarheid in software en adviseert om updates te installeren.", d: nu }] : [], videos: [] };
 })) }) } };
-const echteFetch = globalThis.fetch, echteNow = Date.now;
+const echteFetch = globalThis.fetch, echteNow = Date.now, echteCrypto = Object.getOwnPropertyDescriptor(globalThis, "crypto");
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 Date.now = () => nu;
 globalThis.fetch = (async (url: string | URL | Request) => String(url).includes("bronnen.json") ? Response.json({ groepen: [{ id: "tech", bronnen }] }) : Response.json({ gegenereerd: new Date(nu).toISOString(), items: [], filmpjes: [], dumpert: [] })) as typeof fetch;
@@ -27,10 +27,14 @@ try {
   const runner = new Runner({ storage, blockConcurrencyWhile: async (fn: () => Promise<unknown>) => fn() } as any, env as any);
   const response = await runner.fetch(new Request("https://do/run"));
   assert.equal(response.status, 200);
+  // run() zet de meta-velden op het hoogste niveau van de respons
   const resultaat = await response.json() as any;
   assert.deepEqual(resultaat.bronfeedsOvergeslagen.map((f: any) => [f.bron, f.url, f.status]), [["tech|bleepingcomputer", bleep, 403], ["tech|cisa", cisa[0].url, 404]]);
   const uur = JSON.parse(data.get("uur")!);
   assert.equal(uur.bronstats["tech|cisa"].vandaag, 1);
   assert.ok(uur.items.some((item: any) => item.bronnen?.some((bron: any) => bron.href.includes("cisa.gov"))));
   console.log("ok - mislukte bronfeeds melden hun status en andere feed levert een item");
-} finally { globalThis.fetch = echteFetch; Date.now = echteNow; }
+} finally {
+  globalThis.fetch = echteFetch; Date.now = echteNow;
+  if (echteCrypto) Object.defineProperty(globalThis, "crypto", echteCrypto); else delete (globalThis as any).crypto;
+}
