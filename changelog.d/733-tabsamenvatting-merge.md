@@ -1,0 +1,1 @@
+- Behoud bij oudere uurdata de nieuwste rubrieksamenvatting van de routine; ontbrekende rubrieken vallen terug op de andere bron (#733).

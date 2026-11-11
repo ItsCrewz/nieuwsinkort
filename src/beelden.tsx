@@ -33,26 +33,39 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
   if (!u || klaar.get(u) === bronUrl(u)) return Promise.resolve();
   const p0 = bezig.get(u);
   if (p0) return p0;
-  const laad = (src: string): Promise<void> => {
-    const im = new Image();
-    im.referrerPolicy = "no-referrer";
-    im.decoding = "async";
-    if (im.decode) { im.src = src; return im.decode(); }
-    // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
-    // voltooide afbeelding direct afhandelen; handlers daarna opruimen.
-    return new Promise<void>((ok, nok) => {
-      const af = (goed: boolean) => { im.onload = im.onerror = null; if (goed) ok(); else nok(new Error("laden mislukt")); };
-      im.onload = () => af(true);
-      im.onerror = () => af(false);
+  let afgerond = false;
+  let im: HTMLImageElement | undefined;
+  let timer: ReturnType<typeof setTimeout>;
+  const p = new Promise<void>((resolve) => {
+    const stop = (geladen?: string) => {
+      if (afgerond) return;
+      afgerond = true;
+      clearTimeout(timer);
+      if (im) { im.onload = null; im.onerror = null; }
+      if (geladen) klaar.set(u, geladen);
+      resolve();
+    };
+    const laad = (src: string) => {
+      im = new Image();
+      im.referrerPolicy = "no-referrer";
+      im.decoding = "async";
+      const fout = () => {
+        if (afgerond) return;
+        if (im) { im.onload = null; im.onerror = null; }
+        if (naarRechtstreeks(u, src)) laad(u);
+        else stop();
+      };
+      if (im.decode) { im.src = src; im.decode().then(() => stop(src), fout); return; }
+      // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
+      // voltooide afbeelding direct afhandelen.
+      im.onload = () => stop(src);
+      im.onerror = fout;
       im.src = src;
-      if (im.complete) af(im.naturalWidth > 0);
-    });
-  };
-  const src = bronUrl(u); // zelfde URL als de <img src>, anders dubbele downloads
-  const p = laad(src)
-    .then(() => src, () => (naarRechtstreeks(u, src) ? laad(u).then(() => u) : Promise.reject()))
-    .then((geladen) => { klaar.set(u, geladen); }, () => {})
-    .finally(() => bezig.delete(u));
+      if (im.complete) { if (im.naturalWidth > 0) stop(src); else fout(); }
+    };
+    timer = setTimeout(() => stop(), 10000);
+    laad(bronUrl(u)); // zelfde URL als de <img src>, anders dubbele downloads
+  }).finally(() => { if (bezig.get(u) === p) bezig.delete(u); });
   bezig.set(u, p);
   return p;
 }

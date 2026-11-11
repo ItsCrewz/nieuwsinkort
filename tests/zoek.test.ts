@@ -21,8 +21,45 @@ assert.deepEqual(zoekItems([politiek], "kat"), []);
 assert.deepEqual(zoekItems([politiek, katten], "Pol"), [politiek]);
 assert.deepEqual(zoekItems([katten], "kat asiel"), [katten]);
 assert.deepEqual(zoekItems([katten], "kat debat"), []);
-assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 100 van 2026" }]);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), []);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 20 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 20 van 2026" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "00"), []);
+const jaar = (kop: string) => ({ cat: "nl", kop } as Item);
+const [j24, j240, j12024] = [jaar("Verkiezingen 2024"), jaar("Prijs 20240 euro"), jaar("Code 12024")];
+assert.deepEqual(zoekItems([j24, j240, j12024], "2024"), [j24]);
+assert.deepEqual(zoekItems([j24, j240], "20240"), [j240]);
+const cafe2024 = jaar("Café 2024, groot");
+assert.deepEqual(zoekItems([cafe2024, jaar("Café 20240")], "2024 CAFÉ"), [cafe2024]);
+assert.deepEqual(zoekItems([jaar("Verkiezingen in 2024")], "2024 verkie").length, 1);
+assert.deepEqual(zoekItems([jaar("Groei 2024.")], "2024").length, 1);
+const [decimaal, langerDecimaal, nulDecimaal] = [jaar("Temperatuur 3,5 graden"), jaar("Temperatuur 3,55 graden"), jaar("Temperatuur 3,50 graden")];
+assert.deepEqual(zoekItems([decimaal, langerDecimaal, nulDecimaal], "3,5"), [decimaal]);
+const kop = (k: string) => ({ cat: "nl", kop: k }) as Item;
+const markt = kop("Drukte op de markt"), beide = kop("Mark bezoekt de markt"), brand = kop("Brand bij brand");
+assert.deepEqual(zoekItems([markt, beide], "mark markt"), [beide]);
+assert.deepEqual(zoekItems([markt, beide], "markt mark"), [beide]);
+assert.deepEqual(zoekItems([markt, brand, kop("Een brand")], "brand brand"), [brand]);
+const brandAfkorting = kop("Brand o.a. in Gent"), marktAfkorting = kop("Markt in de V.S.");
+assert.deepEqual(zoekItems([brandAfkorting], "brand brand"), []);
+assert.deepEqual(zoekItems([marktAfkorting], "mark markt"), []);
+assert.deepEqual(zoekItems([brandAfkorting], "brand oa"), [brandAfkorting]);
+assert.deepEqual(zoekItems([marktAfkorting], "markt vs"), [marktAfkorting]);
+assert.deepEqual(zoekItems([marktAfkorting], "vs v.s."), []);
+// korte term die op meerdere woorden past: volgorde van termen maakt niet uit
+const mar = kop("Markt en Maria");
+for (const q of ["mar maria", "maria mar", "mar markt", "markt mar"]) assert.deepEqual(zoekItems([mar], q), [mar], q);
+assert.deepEqual(zoekItems([mar], "mar mar mar"), []);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "Café", ai: "café-eigenaar" } as Item], "cafe cafe"), [{ cat: "nl", kop: "Café", ai: "café-eigenaar" }]);
+const talen = ["C++", "C#", "C", "Cursus café"].map((kop) => ({ cat: "tech", kop }) as Item);
+for (const [term, verwacht] of [["C++", 0], ["c#", 1], ["C", 2]] as const) {
+  assert.deepEqual(zoekItems(talen.slice(0, 3), term), [talen[verwacht]], term);
+}
+assert.deepEqual(zoekItems(talen, "curs cafe"), [talen[3]]);
+assert.deepEqual(zoekItems([{ cat: "tech", kop: "Nieuws over C++, en C#." } as Item], "C++ C#").length, 1);
+assert.equal(normaliseer("C++/C#; café-nieuws"), "c++ c# cafe nieuws");
+assert.equal(normaliseer("+++ ###"), "");
+assert.deepEqual(zoekItems([talen[0]], "C++ C++"), []);
+assert.deepEqual(zoekItems([{ cat: "tech", kop: "C++ en C++" } as Item], "C++ C++").length, 1);
 // Lettervarianten (#735): zoekterm en tekst, ongeacht hoofdletters.
 const soren = { cat: "nl", kop: "Søren Kierkegaard herdacht", samenvatting: "Lech Wałęsa en Łukasz bij Æbleskiver-feest" } as Item;
 for (const term of ["Soren", "SØREN", "søren", "lukasz", "ŁUKASZ", "walesa", "Wałęsa", "aebleskiver", "Æbleskiver", "soren kierkegaard"]) assert.deepEqual(zoekItems([soren], term), [soren], term);

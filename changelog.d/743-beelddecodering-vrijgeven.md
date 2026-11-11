@@ -1,0 +1,1 @@
+- Vastgelopen voorladen van artikelfoto’s wordt na tien seconden vrijgegeven voor een nieuwe poging (#743).
