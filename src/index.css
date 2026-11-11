@@ -441,7 +441,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .app-feed .tabs{position:relative;top:auto;margin:0 -32px;border-bottom:0}
 .app-feed .filternote{border-bottom:0}
 .nf-box{position:relative;flex:1;min-height:0}
-.nf{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;outline:none}
+.nf{position:absolute;inset:0;overflow-anchor:auto;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior:contain;scrollbar-width:none;outline:none}
 .nc-head{min-height:100%;scroll-snap-align:start;padding-bottom:72px}
 .nc-head .dateline{padding-left:0;padding-right:0;padding-top:28px}
 .nc-head .front{padding-bottom:0}
