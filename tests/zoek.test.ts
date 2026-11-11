@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { normaliseer, zoekItems } from "../src/zoek";
+import { normaliseer, zoekItems, markeerDelen } from "../src/zoek";
 import type { Item } from "../src/types";
 
 const item: Item = { cat: "buitenland", kop: "Ajax", ai: "Wedstrijd", samenvatting: "Café bij PSV", punten: ["Supporters"], bronnen: [{ site: "NOS", href: "" }], tijd: "" };
@@ -51,4 +51,9 @@ for (const [eerste, tweede] of [["कल", "काल"], ["عَلَم", "عِل�
   assert.deepEqual(zoekItems(artikelen, tweede), [artikelen[1]]);
 }
 assert.equal(normaliseer("José"), normaliseer("Jose\u0301"));
+assert.deepEqual(markeerDelen("Café en cafe\u0301", "cafe"), [{ tekst: "Café", markeer: true }, { tekst: " en ", markeer: false }, { tekst: "cafe\u0301", markeer: true }]);
+assert.deepEqual(markeerDelen("Ajax tegen PSV en ajax", "psv AJAX"), [{ tekst: "Ajax", markeer: true }, { tekst: " tegen ", markeer: false }, { tekst: "PSV", markeer: true }, { tekst: " en ", markeer: false }, { tekst: "ajax", markeer: true }]);
+assert.deepEqual(markeerDelen("(test)*", "(test)*"), [{ tekst: "(", markeer: false }, { tekst: "test", markeer: true }, { tekst: ")*", markeer: false }]);
+assert.deepEqual(markeerDelen("veilig", "(*"), [{ tekst: "veilig", markeer: false }]);
+assert.deepEqual(markeerDelen("Debat over Onderwijs in Nederland, de toekomst", "de"), [{ tekst: "De", markeer: true }, { tekst: "bat over Onderwijs in Nederland, ", markeer: false }, { tekst: "de", markeer: true }, { tekst: " toekomst", markeer: false }]);
 console.log("zoek: tests geslaagd");
