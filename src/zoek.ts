@@ -20,3 +20,7 @@ export function zoekItems(items: Item[], query: string): Item[] {
     return woorden.every((woord) => haystack.includes(" " + woord));
   });
 }
+
+export function resultaatTekst(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}`;
+}

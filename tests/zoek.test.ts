@@ -1,3 +1,4 @@
+import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
 import { normaliseer, zoekItems } from "../src/zoek";
 import type { Item } from "../src/types";
@@ -23,3 +24,7 @@ assert.deepEqual(zoekItems([katten], "kat debat"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 100 van 2026" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "00"), []);
 console.log("zoek: tests geslaagd");
+
+for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 resultaten"]] as const) {
+  assert.equal(resultaatTekst(aantal), tekst);
+}

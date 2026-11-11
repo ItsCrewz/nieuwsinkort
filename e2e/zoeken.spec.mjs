@@ -124,4 +124,3 @@ test("spatie bladert nog door de feed als de focus niet op een bedienbaar elemen
   await expect.poll(top).toBeLessThan(na);
 });
 
-import "../tests/regressie/zoekmeldingen-711.spec.mjs";

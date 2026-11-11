@@ -1,7 +1,7 @@
 import { Icon } from "./icons";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import { normaliseer } from "./zoek";
+import { normaliseer, resultaatTekst } from "./zoek";
 
 const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 
@@ -23,7 +23,7 @@ export function Zoekbalk({ query, onChange, aantal }: { query: string; onChange:
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
       {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} />}
-      <span className="zoek-status" aria-live="polite">{query.trim() && !normaliseer(query) ? zoekAanwijzing : open && query.trim() && melding?.query === query && melding.aantal === aantal ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}` : ""}</span>
+      <span className="zoek-status" aria-live="polite">{query.trim() && !normaliseer(query) ? zoekAanwijzing : open && query.trim() && melding?.query === query && melding.aantal === aantal ? resultaatTekst(aantal) : ""}</span>
     </div>
   );
 }
