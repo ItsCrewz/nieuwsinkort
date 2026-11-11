@@ -1,0 +1,1 @@
+- Houd de actieve foto en scrollpositie gelijk wanneer berichtfoto’s veranderen (#721).
