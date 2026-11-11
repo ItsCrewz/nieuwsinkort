@@ -409,6 +409,8 @@ Zoeken (#816): `src/zoek.ts` verwijdert accenttekens bij Latijnse letters, maar 
 
 Terugvegen begint alleen bij een aanraking op het artikel of een kind daarvan; het aparte deelportaal valt daarbuiten. Invoer, media, horizontaal scrollbare inhoud en de Safari-rand blijven uitgesloten. Browserproef: `e2e/terugvegen.spec.mjs` (#740).
 
+Artikel-id's (#612) gebruiken ook de gesorteerde queryparameters van de bronlink, behalve bekende trackingparameters (`utm_*`, `fbclid`, `gclid`, `dclid`, `msclkid`, `mc_cid` en `mc_eid`). De Worker en frontend delen deze regel. Opgeslagen id's blijven geldig; de berichtpagina herkent ook bron-id's met en zonder query als alias. Een id die bij meer dan één bericht past, wordt niet opgelost en leidt tijdelijk naar het overzicht.
+
 Zoekknop (#576): `src/zoekbalk.tsx` toont een vergrootglasicoon (`Icon name="search"`, sprite in `src/icons.tsx`) met `aria-label="Zoeken"`, rond en 44×44 px in de topbalk, `:active` schaalt met `--dur-1`/`--ease-standaard` (alleen transform, reduced-motion via de centrale tokens). Tests: `tests/zoekbalk.test.tsx`, `e2e/zoeken.spec.mjs`.
 
 Zoeken (`src/zoek.ts`) normaliseert zoektermen en berichttekst gelijk: hoofdletters en accenten verdwijnen en ß/ẞ wordt ss. Elk zoekwoord moet aan het begin van een woord staan. Tests: `tests/zoek.test.ts` en `tests/regressie/zoeken-854.test.ts`.
@@ -421,6 +423,7 @@ Het bronnenfilter beperkt ook brongebonden extra artikeltekst uit `/meer`: de de
 
 Een uitgestelde sluiting of terugveeranimatie bij terugvegen wordt bij een nieuwe aanraking en bij opruimen geannuleerd, zodat navigatie geen later scherm sluit (#658; `tests/regressie/terugvegen-navigatie-658.test.ts`).
 
+De nieuwsfeed bewaart per rubriek in sessionStorage het zichtbare artikel en de offset. Bij nieuwe artikelen blijft dat anker staan en verschijnt een melding; ontbreekt het artikel, dan volgt het eerstvolgende oudere bekende artikel.
 ## Zoeken (#735)
 
 `normaliseer()` in `src/zoek.ts` maakt zoekterm en artikeltekst gelijk: NFD zonder accenten, kleine letters, en een beperkte transliteratie voor letters die NFD niet ontleedt (ø→o, ł→l, æ→ae, œ→oe, đ→d, ß→ss), zodat `Soren` ook `Søren` vindt. Woordbegin-matching en meerwoordzoeken zijn ongewijzigd. Tests: `tests/zoek.test.ts`.
