@@ -1,0 +1,1 @@
+- Bug (#692): `/data.json` valt terug op geldige uurdata wanneer de statische data onleesbaar is; zijn beide bronnen onbruikbaar, dan volgt een 503 met `no-store`.

@@ -1,0 +1,1 @@
+- Voorkom dat vastgelopen netwerkvoorlading de videowachtrij onbeperkt bezet houdt (#723).
