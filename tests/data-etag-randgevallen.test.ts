@@ -169,7 +169,7 @@ try {
     const r = await data({ request: req("/data.json"), env });
     assert.equal(r.status, 503);
     assert.equal(r.headers.get("retry-after"), "60");
-    assert.deepEqual(kvLeest, ["data-vooraf"]);
+    assert.deepEqual(kvLeest, ["data-vooraf", "uur"]);
     assert.equal(r.headers.get("etag"), null);
   });
 

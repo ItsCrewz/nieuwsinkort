@@ -106,7 +106,7 @@ export function VideoGrid({
   }, [video, touch]);
   const opgeslagen = useRef(leesFeed());
   const vast = useRef<Video[] | null>(null);
-  if (!video) vast.current = null;
+  if (!video) { vast.current = null; opgeslagen.current = null; }
   else vast.current = vastLijst(vast.current, opgeslagen.current, cat, video, list);
   const feedVideos = vast.current ?? list;
   const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
