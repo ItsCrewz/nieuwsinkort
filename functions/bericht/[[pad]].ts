@@ -15,7 +15,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const geldig = pad && /^\d{4}-\d{2}-\d{2}$/.test(pad.dag) && !Number.isNaN(Date.parse(`${pad.dag}T00:00:00Z`)) && new Date(`${pad.dag}T00:00:00Z`).toISOString().slice(0, 10) === pad.dag;
   if (!pad || !geldig || pad.dag > nu.iso) return new Response("Niet gevonden", { status: 404, headers: { ...basis, "Cache-Control": "no-store" } });
   const gisteren = new Date(Date.UTC(nu.y, nu.m - 1, nu.d - 1)).toISOString().slice(0, 10);
-  if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, "/", "public, max-age=86400");
+  if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, `/${u.search}`, "public, max-age=86400");
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
   const sleutel = new Request(`${u.origin}${u.pathname}?versie=2`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
@@ -39,9 +39,13 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const canoniek = artikelPad(item, pad.dag);
   if (u.pathname !== canoniek) return redirect(301, `${canoniek}${u.search}`, "no-store");
   // De pagina is de app zelf (index.html met eigen kop-tags); lukt dat ophalen niet, dan opent de hash-route in de app.
+  // Ook het uitlezen van de body kan falen (afgebroken respons): dezelfde tijdelijke terugval, met behoud van de query.
+  const terugval = () => redirect(302, `/${u.search}#/bericht/${artikelId(item)}`, "no-store");
   const sjabloon = await env.ASSETS.fetch(new Request(`${u.origin}/`)).catch(() => null);
-  if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return redirect(302, `/${u.search}#/bericht/${artikelId(item)}`, "no-store");
-  const html = berichtHtml(await sjabloon.text(), item, pad.dag), tag = await etag(html);
+  if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return terugval();
+  const tekst = await sjabloon.text().catch(() => null);
+  if (tekst === null) return terugval();
+  const html = berichtHtml(tekst, item, pad.dag), tag = await etag(html);
   const headers = new Headers(sjabloon.headers);
   for (const [k, v] of Object.entries({ ...basis, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300, stale-while-revalidate=600", ETag: tag })) headers.set(k, v);
   headers.delete("Content-Length"); headers.delete("Content-Encoding");
