@@ -148,7 +148,7 @@ export function voerUit(p: Plan) {
             ok();
           };
           const timer = setTimeout(() => {
-            im.src = ""; // breekt de aanvraag af; handlers zijn al weg in klaar()
+            im.src = ""; // breekt de aanvraag af
             klaar();
           }, POSTER_MAX_MS);
           im.onload = im.onerror = klaar;

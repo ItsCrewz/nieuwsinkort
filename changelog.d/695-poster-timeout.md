@@ -1,1 +1,1 @@
-- Voorladen: een poster die geen load- of error-event geeft (vastgelopen verbinding) geeft na 8 seconden zijn plaats in de wachtrij vrij, zodat andere posters en de video-voorlading doorgaan; listeners en timer worden opgeruimd (#695).
+- Voorladen: de bestaande wachttijd voor vastgelopen posters gaat van 15 naar 8 seconden; bij een time-out wordt de aanvraag afgebroken en komt de plaats in de wachtrij vrij (#695).
