@@ -44,7 +44,7 @@ try {
     for (const naam of ["og:url", "og:image", "twitter:image"]) assert.equal(new URL(waarde(naam)).protocol, "https:");
     assert.ok(html.includes(`<link rel="canonical" href="https://nieuwsinkort.nl${pad}"`));
   };
-  controleerMeta(await r.clone().text(), "https://nieuwsinkort.nl/media/beeld/images.pubble.cloud/worker/jpg/quick/1200/2229725/648e3015/content/2026/11/1d8096c1-467a-4ef5-917b-d970306e659c");
+  controleerMeta(await r.clone().text(), "https://nieuwsinkort.nl/media/beeld/images.pubble.cloud/worker/jpg/quick/840/2229725/648e3015/content/2026/11/1d8096c1-467a-4ef5-917b-d970306e659c");
   controleerMeta(berichtHtml(sjabloon, { ...item, beelden: [] }, dag), "https://nieuwsinkort.nl/og-image.png");
   assert.ok(r.headers.get("content-security-policy")?.includes("default-src"));
   assert.ok((await r.clone().text()).includes('<div id="root"><article><h1>Nieuws &lt;script&gt;</h1>'), "de app-HTML met kop-tags en crawlertekst in #root");
