@@ -1,0 +1,1 @@
+- Scrollherstel bij nieuwe berichten blijft uit bij wijzigingen in zoeken en filters; scrollopslag is beperkt (#787).
