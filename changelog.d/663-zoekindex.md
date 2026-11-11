@@ -1,1 +1,2 @@
 - Zoeken hergebruikt genormaliseerde berichttekst tijdens het typen en werkt de index bij gewijzigde gegevens of zichtbare bronnen bij (#663).
+- Test en meetscript (`scripts/meet-zoek.mts`) leggen vast dat typen minder normalisatiewerk kost en dat resultaten en volgorde gelijk blijven (#663).

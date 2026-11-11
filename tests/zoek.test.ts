@@ -30,4 +30,19 @@ assert.deepEqual(zoekItems([katten], "kat asiel"), [katten]);
 assert.deepEqual(zoekItems([katten], "kat debat"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 100 van 2026" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "00"), []);
+// Minder normalisatiewerk (#663): eerste zoekactie N + 1, daarna 1 per toetsaanslag, 2 na wijziging van één bericht.
+{
+  const N = 50;
+  const lijst: Item[] = Array.from({ length: N }, (_, i) => ({ cat: "nl", kop: `Kop ${i} café`, ai: `Uitleg ${i}`, bronnen: [{ site: "NOS", href: "" }] }) as Item);
+  const orig = String.prototype.normalize;
+  let n = 0;
+  String.prototype.normalize = function (this: string, ...a: []) { n++; return orig.apply(this, a); };
+  try {
+    zoekItems(lijst, "k"); assert.equal(n, N + 1);
+    n = 0; zoekItems(lijst, "ko"); assert.equal(n, 1);
+    n = 0; zoekItems(lijst, "kop"); assert.equal(n, 1);
+    lijst[3].kop = "Nieuwe kop";
+    n = 0; zoekItems(lijst, "kop"); assert.equal(n, 2);
+  } finally { String.prototype.normalize = orig; }
+}
 console.log("zoek: tests geslaagd");
