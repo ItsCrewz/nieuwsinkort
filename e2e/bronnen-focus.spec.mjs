@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 
+// Lokaal zonder Playwright-chromium: PW_CHROME=/usr/bin/google-chrome.
+test.use({ launchOptions: { executablePath: process.env.PW_CHROME || undefined, args: ["--no-sandbox"] } });
+
 test("bronnenvenster houdt toetsenbordfocus vast en herstelt die bij sluiten", async ({ page }) => {
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
   await page.emulateMedia({ reducedMotion: "reduce" });
