@@ -13,6 +13,7 @@ const scopeId = "zoek-scope";
 
 export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
   const [open, setOpen] = useState(!!query);
+  useEffect(() => { if (query) setOpen(true); }, [query]);
   const [melding, setMelding] = useState<{ query: string; aantal: number } | null>(null);
   const verborgen = scope?.verborgen ?? 0;
   const scopeMelding = scope ? `. ${scope.tekst}${verborgen ? `. ${verborgenTekst(verborgen)}` : ""}` : "";
