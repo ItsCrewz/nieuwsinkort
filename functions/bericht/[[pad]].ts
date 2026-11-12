@@ -1,4 +1,4 @@
-import { artikelId, artikelPad, linkId, oudeLinkId, parsePad } from "../../src/artikelid";
+import { artikelId, artikelPad, indexeerbaar, linkId, oudeLinkId, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
 import { etagMatch } from "../../src/etagmatch";
@@ -24,7 +24,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
     return bestaand;
   }
   const tijdelijk = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...basis, "Cache-Control": "no-store" } });
-  let dag: { gegenereerd?: string; items?: { id?: string; kop: string; bronnen?: { site: string; href: string }[] }[] };
+  let dag: { gegenereerd?: string; items?: { id?: string; kop: string; cat?: string; ruw?: boolean; bronnen?: { site: string; href: string }[] }[] };
   try {
     const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env }, false);
     if (!data.ok) return tijdelijk();
@@ -45,7 +45,8 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return terugval();
   const tekst = await sjabloon.text().catch(() => null);
   if (tekst === null) return terugval();
-  const html = berichtHtml(tekst, item, pad.dag), tag = await etag(html);
+  const verwant = !item.cat ? [] : items.filter((i) => i !== item && i.cat === item.cat && indexeerbaar(i) && i.kop).slice(0, 5); // interne links naar dezelfde rubriek
+  const html = berichtHtml(tekst, item, pad.dag, verwant), tag = await etag(html);
   const headers = new Headers(sjabloon.headers);
   for (const [k, v] of Object.entries({ ...basis, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300, stale-while-revalidate=600", ETag: tag })) headers.set(k, v);
   headers.delete("Content-Length"); headers.delete("Content-Encoding");

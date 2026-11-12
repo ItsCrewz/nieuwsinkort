@@ -2,13 +2,20 @@ import { Icon } from "./icons";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { staatFocusInInvoer } from "./zoekfocus";
-import { normaliseer } from "./zoek";
+import { normaliseer, resultaatTekst } from "./zoek";
 import { touchNu } from "./invoer";
 
 const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 
 export function Zoekbalk({ query, onChange, aantal, invoer }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement> }) {
   const [open, setOpen] = useState(!!query);
+  useEffect(() => { if (query) setOpen(true); }, [query]);
+  const [melding, setMelding] = useState<{ query: string; aantal: number } | null>(null);
+  useEffect(() => {
+    if (!open || !query.trim()) return;
+    const timer = window.setTimeout(() => setMelding({ query, aantal }), 400);
+    return () => { window.clearTimeout(timer); setMelding(null); };
+  }, [open, query, aantal]);
   const knop = useRef<HTMLButtonElement>(null);
   const focusBijOpenen = useRef(false);
   const sluit = useCallback(() => { onChange(""); setOpen(false); knop.current?.focus(); }, [onChange]);
@@ -36,7 +43,7 @@ export function Zoekbalk({ query, onChange, aantal, invoer }: { query: string; o
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
       {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} />}
-      <span className="zoek-status" aria-live="polite">{query.trim() ? normaliseer(query) ? `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}` : zoekAanwijzing : ""}</span>
+      <span className="zoek-status" aria-live="polite">{query.trim() && !normaliseer(query) ? zoekAanwijzing : open && query.trim() && melding?.query === query && melding.aantal === aantal ? resultaatTekst(aantal) : ""}</span>
     </div>
   );
 }

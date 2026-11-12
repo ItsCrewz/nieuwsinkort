@@ -1,3 +1,4 @@
+import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
 import { normaliseer, zoekItems, markeerDelen } from "../src/zoek";
 import type { Item } from "../src/types";
@@ -135,3 +136,7 @@ assert.deepEqual(markeerDelen("(test)*", "(test)*"), [{ tekst: "(", markeer: fal
 assert.deepEqual(markeerDelen("veilig", "(*"), [{ tekst: "veilig", markeer: false }]);
 assert.deepEqual(markeerDelen("Debat over Onderwijs in Nederland, de toekomst", "de"), [{ tekst: "De", markeer: true }, { tekst: "bat over Onderwijs in Nederland, ", markeer: false }, { tekst: "de", markeer: true }, { tekst: " toekomst", markeer: false }]);
 console.log("zoek: tests geslaagd");
+
+for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 resultaten"]] as const) {
+  assert.equal(resultaatTekst(aantal), tekst);
+}
