@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { berichtHtml } from "../src/berichthtml";
+import { sitemap } from "../functions/sitemap.xml";
 
 const t = (naam: string, f: () => void) => { f(); console.log(`✓ ${naam}`); };
 const html = readFileSync("index.html", "utf8");
@@ -36,7 +37,7 @@ t("JSON-LD is geldige JSON met verplichte velden", () => {
   assert.ok(!JSON.stringify(ld).includes("/over"), "geen verwijzing naar een nog niet bestaande pagina");
 });
 t("sitemap: apex met lastmod, zonder changefreq", () => {
-  const s = readFileSync("public/sitemap.xml", "utf8");
+  const s = sitemap([], "2026-11-04", "2026-11-04T10:00:00.000Z");
   assert.match(s, /<loc>https:\/\/nieuwsinkort\.nl\/<\/loc>/);
   assert.match(s, /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/);
   assert.ok(!s.includes("changefreq"));
@@ -57,7 +58,7 @@ t("/over: statische pagina met lang, canonical, title, description en één h1; 
   assert.ok(!/vanzelf mee/.test(o) && /niet opnieuw gemaakt/.test(o), "bewaarde samenvattingen worden niet opnieuw gemaakt (docs/ai-budget.md)");
   assert.ok(!o.includes("@") && !o.includes("mailto"), "geen verzonnen contactadres");
   assert.match(readFileSync("src/app-frame.tsx", "utf8"), /href="\/over"/);
-  assert.match(readFileSync("public/sitemap.xml", "utf8"), /<loc>https:\/\/nieuwsinkort\.nl\/over<\/loc>/);
+  assert.match(sitemap([], "2026-11-04", "2026-11-04T10:00:00.000Z"), /<loc>https:\/\/nieuwsinkort\.nl\/over<\/loc>/);
 });
 
 const TITEL = "Nieuwsinkort - Het nieuws van vandaag samengevat";
