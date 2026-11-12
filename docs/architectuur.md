@@ -133,7 +133,7 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 
 | Chunk | Inhoud | Wanneer geladen |
 | --- | --- | --- |
-| `index` | React, `App.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
+| `index` | React, `App.tsx`, `nieuws-kaart.tsx`, `nieuws-feed.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
 | `sheet` | `SourcesSheet` | bij openen van Bronnen |
 | `filters-blad` | `FilterBlad` | bij openen van het filterblad |
 | `detail` | `DetailView` (`#/bericht/...`) | bij openen van een bericht |

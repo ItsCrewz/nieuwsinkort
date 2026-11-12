@@ -1,11 +1,8 @@
 import { Foutgrens } from "./foutgrens";
-import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId, artikelSlug } from "./artikelid";
 import { ams, dayDates } from "./tijd";
-import { toonBekendmaking } from "./bekendmaking";
-import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Data, Item, View, Weer } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
@@ -24,27 +21,26 @@ import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, filterNieuws, filterVideos, useFilters, useVideoKlok } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
-import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
+import { bronnenTekst, fotos } from "./leesverder";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, tabToets, wisselRichting, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
-import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
-import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, markeerDelen } from "./zoek";
+import { zoekItems } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
+import { NewsFeed } from "./nieuws-feed";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
 const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
 let detailModule: typeof import("./detail") | undefined;
 let detailBelofte: Promise<typeof import("./detail")> | undefined;
-const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
+export const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
 const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
 // Houd het componenttype gelijk zolang een artikel openstaat, ook als de module intussen laadt.
 function ArtikelDetail(props: React.ComponentProps<typeof DetailView>) {
@@ -64,9 +60,9 @@ let introDone = false;
 
 // ---------------------------------------------------------------- helpers
 const slugify = artikelSlug;
-const itemKey = (i: Item) => slugify(i.kop) || i.bronnen?.[0]?.href || i.kop;
+export const itemKey = (i: Item) => slugify(i.kop) || i.bronnen?.[0]?.href || i.kop;
 
-function bronLabel(bronnen: Bron[]) {
+export function bronLabel(bronnen: Bron[]) {
   const names: string[] = [];
   for (const b of bronnen ?? []) if (!names.includes(b.site)) names.push(b.site);
   if (names.length === 0) return "";
@@ -401,14 +397,14 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
 }
 
 // ---------------------------------------------------------------- nieuws
-function sortItems(items: Item[]) {
+export function sortItems(items: Item[]) {
   return items.slice().sort((a, b) => {
     if (!a.tijd !== !b.tijd) return a.tijd ? -1 : 1;
     return a.tijd < b.tijd ? 1 : a.tijd > b.tijd ? -1 : 0;
   });
 }
 // Openingsverhaal: het bericht met de meeste bronnen (meest gedekt), bij gelijkspel het nieuwste.
-function pickLead(sorted: Item[]) {
+export function pickLead(sorted: Item[]) {
   let best = -1;
   let n = -1;
   sorted.forEach((it, i) => {
@@ -421,8 +417,8 @@ function pickLead(sorted: Item[]) {
   return best;
 }
 
-type OpenFn = (k: string) => void;
-function useOpen(key: string, onOpen: OpenFn) {
+export type OpenFn = (k: string) => void;
+export function useOpen(key: string, onOpen: OpenFn) {
   return (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     e.preventDefault();
@@ -525,360 +521,6 @@ function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: {
             Toon alle {sorted.length} berichten
           </button>
         </div>
-      ) : null}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- nieuwsfeed (TikTok-achtig)
-// Eén bericht per kaart op schermhoogte, met scroll-snap. De bovenbalk en de rubrieken staan vast
-// (de pagina zelf scrolt niet); alleen deze lijst scrolt. Beweging: alleen transform/opacity.
-// Laat een kaart altijd passen zonder tekst half af te snijden: eerst het grote nummer weg, dan de
-// punten, dan de samenvatting inkorten op HELE regels (met …; volledige tekst via "Lees verder"),
-// en pas als het dan nog niet past mag de kaart zelf scrollen. De kop wordt nooit ingekort.
-function fitCard(el: HTMLElement) {
-  const sum = el.querySelector<HTMLElement>(".nc-sum");
-  el.classList.remove("fit-imgsm", "fit-imgxs", "fit-noimg", "fit-nopts", "fit-scroll");
-  el.querySelectorAll<HTMLElement>(".nc-pts li").forEach((li) => (li.hidden = false));
-  if (sum) {
-    sum.classList.remove("clamp");
-    sum.style.removeProperty("--sum-lines");
-  }
-  const over = () => el.scrollHeight - el.clientHeight > 1;
-  if (!el.clientHeight || !over()) return;
-  // eerst de foto kleiner, dan de punten en samenvatting, als laatste de foto weg
-  el.classList.add("fit-imgsm");
-  if (!over()) return;
-  // punten één voor één van achteren weghalen; pas als er geen meer past, de hele lijst weg
-  const pts = [...el.querySelectorAll<HTMLElement>(".nc-pts li")];
-  for (let k = pts.length - 1; k >= 0 && over(); k--) pts[k].hidden = true;
-  if (pts.length && !over()) return;
-  if (pts.length) el.classList.add("fit-nopts");
-  if (sum) {
-    const lh = parseFloat(getComputedStyle(sum).lineHeight) || 26;
-    const lines = Math.round(sum.getBoundingClientRect().height / lh);
-    let keep = lines - Math.ceil((el.scrollHeight - el.clientHeight) / lh);
-    sum.classList.add("clamp");
-    for (keep = Math.max(2, Math.min(keep, lines)); ; keep--) {
-      sum.style.setProperty("--sum-lines", String(keep));
-      if (!over() || keep <= 2) break;
-    }
-    if (!over()) return;
-  }
-  if (el.querySelector(".nc-img")) {
-    el.classList.add("fit-imgxs");
-    if (!over()) return;
-    el.classList.add("fit-noimg");
-    if (!over()) return;
-  }
-  el.classList.add("fit-scroll");
-}
-
-const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
-
-// De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
-const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
-  const key = itemKey(item);
-  return (
-    <div className={`nc cat-${item.cat}`} data-id={key} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
-      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} />}
-    </div>
-  );
-});
-
-function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
-  const key = itemKey(item);
-  const cardRef = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    // Alleen kaarten in/naast beeld passend maken: 150+ kaarten tegelijk meten blokkeert een iPhone seconden lang.
-    let raf = 0, near = false, dirty = true;
-    const run = () => {
-      dirty = true;
-      if (!near) return;
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => { dirty = false; fitCard(el); });
-    };
-    const r = el.getBoundingClientRect();
-    if (r.top < innerHeight * 3 && r.bottom > -innerHeight * 2) { near = true; dirty = false; fitCard(el); }
-    const io = new IntersectionObserver((es) => { near = es[es.length - 1].isIntersecting; if (near && dirty) run(); }, { rootMargin: "200% 0px" });
-    io.observe(el);
-    const ro = new ResizeObserver(run);
-    ro.observe(el);
-    el.addEventListener("nc-dirty", run);
-    document.fonts?.ready.then(run).catch(() => {});
-    return () => {
-      ro.disconnect();
-      io.disconnect();
-      el.removeEventListener("nc-dirty", run);
-      cancelAnimationFrame(raf);
-    };
-  }, [bionic, item, zoekterm]);
-  const click = useOpen(key, onOpen);
-  const beelden = useMemo(() => fotos(item), [item]);
-  const refit = useCallback(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    if (r.top < innerHeight * 3 && r.bottom > -innerHeight * 2) requestAnimationFrame(() => fitCard(el));
-    else el.dispatchEvent(new Event("nc-dirty")); // wordt bij in-beeld-komen alsnog gepast (ResizeObserver/IO)
-  }, []);
-  const bronnen = item.bronnen ?? [];
-  const first = bronnen[0];
-  const tekst = toonBekendmaking(item);
-  const sum = tekst.ai || tekst.samenvatting;
-  const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
-  const meer = heeftLeesVerder(item);
-  return (
-    <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
-      <div className="nc-body">
-      {beelden.length ? <Beelden urls={beelden} eager={i < 2} voorrang={false} /* eerste kaart ligt onder de kop, niet boven de vouw: geen hoge prioriteit */ className="nc-img" onChange={refit} /> : <span className="nc-rule" aria-hidden="true" />}
-      <div className="nc-meta">
-        <span className="nc-cat">{CAT_LABEL[item.cat] ?? item.cat}</span>
-        {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
-        {item.ruw ? <span>nog niet samengevat</span> : null}
-        <span className="nc-src" title={bronnen.map((b) => b.site).join(", ")}>
-          {bronnen.length ? bronLabel(bronnen) : "Geen bron"}
-        </span>
-      </div>
-      <h2 className="nc-title">
-        <a href={`#/bericht/${key}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
-          <ZoekTekst tekst={item.kop} query={zoekterm} />
-        </a>
-      </h2>
-      {sum ? (
-        <p className="nc-sum bn">
-          <ZoekTekst tekst={sum} query={zoekterm} bionic={bionic} />
-        </p>
-      ) : null}
-      {punten.length ? (
-        <ul className="nc-pts">
-          {punten.map((t, k) => (
-            <li key={k} className="bn">
-              <BionicText text={t} on={bionic} />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <div className="nc-act">
-        <div className="nc-act-row">
-        {meer ? (
-          <a className="btn" href={`#/bericht/${key}`} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); void prefetchMeer(item); }}>
-            Lees verder
-          </a>
-        ) : null}
-        {first ? (
-          <a className={`btn${meer ? " ghost" : ""}`} href={veiligeUrl(first.href)} target="_blank" rel="noopener noreferrer">
-            <span>Origineel bij {first.site}</span>
-            <Icon name="ext" />
-          </a>
-        ) : null}
-        </div>
-        {bronnen.length > 1 ? <span className="nc-more">+{bronnen.length - 1} {bronnen.length === 2 ? "bron" : "bronnen"}</span> : null}
-      </div>
-      </div>
-    </article>
-  );
-}
-
-function ZoekTekst({ tekst, query, bionic = false }: { tekst: string; query: string; bionic?: boolean }) {
-  return <>{markeerDelen(tekst, query).map((deel, i) => deel.markeer ? <mark key={i}><BionicText text={deel.tekst} on={bionic} /></mark> : <BionicText key={i} text={deel.tekst} on={bionic} />)}</>;
-}
-
-function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm }: { tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
-  const sorted = useMemo(() => {
-    if (keepOrder) return items;
-    const s = sortItems(items);
-    const li = pickLead(s);
-    return li > 0 ? [s[li], ...s.filter((_, k) => k !== li)] : s;
-  }, [items, keepOrder]);
-  const ref = useRef<HTMLDivElement>(null);
-  const railRef = useRef<HTMLSpanElement>(null);
-  const startRef = useRef<HTMLButtonElement>(null);
-  const [idx, setIdx] = useState(-1); // -1 = de "vandaag"-kaart met samenvatting en weer
-  const idxRef = useRef(idx);
-  idxRef.current = idx;
-  const total = sorted.length;
-  const positie = useRef<Nieuwspositie | null>(leesNieuwspositie(tab));
-  const [nieuw, setNieuw] = useState(0);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const ids = sorted.map(itemKey);
-    const oud = positie.current;
-    if (oud) {
-      const herstel = herstelNieuwspositie(oud, ids);
-      const kaart = Array.from(el.querySelectorAll<HTMLElement>(".nc")).find((c) => c.dataset.id === herstel.id);
-      if (kaart) {
-        el.scrollTop = kaart.offsetTop + oud.offset;
-        const i = ids.indexOf(herstel.id!);
-        setIdx(i);
-        [kaart.previousElementSibling, kaart, kaart.nextElementSibling].forEach((x) => { if (x instanceof HTMLElement && x.classList.contains("nc")) x.dataset.b = "1"; });
-      } else el.scrollTop = 0;
-      positie.current = { id: herstel.id, offset: herstel.id ? oud.offset : 0, volgorde: ids, nieuw: herstel.nieuw };
-      setNieuw(herstel.nieuw.length);
-    } else positie.current = { id: null, offset: 0, volgorde: ids, nieuw: [] };
-    bewaarNieuwspositie(tab, positie.current);
-  }, [nieuwsdata, tab]);
-  // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
-  const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
-  const mountRef = useRef(0);
-  mountRef.current = Math.max(mountRef.current, Math.min(total, Math.max(KAARTEN_VOORAF, idx + 1 + KAARTEN_VOORUIT, focusIdx + 1 + KAARTEN_VOORUIT)));
-  const mount = mountRef.current;
-
-  // Positie bijhouden: één rAF per scrollframe, state alleen bij een nieuwe kaart; de balk via transform.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let raf = 0;
-    let opgeslagen = positie.current;
-    const read = () => {
-      raf = 0;
-      const cards = el.querySelectorAll<HTMLElement>(".nc");
-      const y = el.scrollTop + el.clientHeight * 0.4;
-      let cur = -1;
-      for (let k = 0; k < cards.length; k++) if (cards[k].offsetTop <= y) cur = k;
-      if (cur !== idxRef.current) setIdx(cur);
-      const boven = Array.from(cards).reverse().find((c) => c.offsetTop <= el.scrollTop + 1);
-      const opTop = el.scrollTop < 60;
-      const p = positie.current;
-      if (p) {
-        const id = boven?.dataset.id ?? null;
-        positie.current = { ...p, id, offset: boven ? el.scrollTop - boven.offsetTop : 0, nieuw: opTop ? [] : p.nieuw };
-        if (opTop && p.nieuw.length) setNieuw(0);
-        if (id !== p.id || (opTop && p.nieuw.length)) {
-          bewaarNieuwspositie(tab, positie.current);
-          opgeslagen = positie.current;
-        }
-      }
-      const max = el.scrollHeight - el.clientHeight;
-      startRef.current?.classList.toggle("off", el.scrollTop > 60);
-      if (railRef.current) railRef.current.style.transform = `scaleY(${max > 0 ? Math.min(1, el.scrollTop / max) : 0})`;
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(read);
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    read();
-    // Kaart-entree (DOM-klassen, geen React-render): kaarten die bij het mounten buiten beeld liggen krijgen 'wacht' en spelen eenmalig 'in' af als ze in beeld komen.
-    // Kaarten die al in beeld staan (eerste kaart, LCP) of die bij terug-uit-artikel horen, en alles bij reduced motion, krijgen niets.
-    const io = new IntersectionObserver(
-      (es) => es.forEach((e) => {
-        if (!e.isIntersecting) return;
-        const c = e.target as HTMLElement;
-        if (c.classList.contains("wacht")) { c.classList.remove("wacht"); c.classList.add("in"); }
-        io.unobserve(c);
-      }),
-      { root: el, threshold: 0.35 }
-    );
-    const cards = Array.from(el.querySelectorAll<HTMLElement>(".nc"));
-    const nieuw = cards.filter((c) => !c.dataset.b); // bij een herrun (nieuwe data) alleen nieuwe kaarten beoordelen
-    const vr = el.getBoundingClientRect();
-    const rects = nieuw.map((c) => c.getBoundingClientRect()); // eerst alles meten, dan schrijven
-    nieuw.forEach((c, k) => {
-      c.dataset.b = "1";
-      if (!rustig() && !(rects[k].bottom > vr.top && rects[k].top < vr.bottom)) c.classList.add("wacht");
-    });
-    cards.forEach((c) => c.classList.contains("wacht") && io.observe(c));
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      if (raf) { cancelAnimationFrame(raf); read(); }
-      if (positie.current && positie.current !== opgeslagen) bewaarNieuwspositie(tab, positie.current);
-      io.disconnect();
-    };
-  }, [sorted, tab]);
-
-  // Terug uit een bericht: meteen weer op die kaart.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || !focusKey || positie.current?.id) return;
-    const n = el.querySelector<HTMLElement>(`[data-id="${CSS.escape(focusKey)}"]`);
-    if (!n) return;
-    el.scrollTop = n.offsetTop;
-    // doelkaart en buren: geen entree (dataset.b voorkomt 'wacht' in het IO-effect)
-    const c = n.closest<HTMLElement>(".nc");
-    [c?.previousElementSibling, c, c?.nextElementSibling].forEach((x) => { if (x instanceof HTMLElement && x.classList.contains("nc")) x.dataset.b = "1"; });
-  }, [focusKey]);
-
-  const go = useCallback((to: number) => {
-    const el = ref.current;
-    if (!el) return;
-    const cards = el.querySelectorAll<HTMLElement>(".nc");
-    const k = Math.max(-1, Math.min(cards.length - 1, to));
-    el.scrollTo({ top: k < 0 ? 0 : cards[k].offsetTop, behavior: scrollGedrag() });
-  }, []);
-
-  // Pijltjes, PageUp/Down, spatie, j/k, Home/End
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.closest("input,textarea,select,[contenteditable],.sheet,.menu,[role=dialog]") || document.querySelector(".sheet,.feed"))) return;
-      const k = e.key;
-      // spatie/Enter op een knop, link of ander bedienbaar element: native activatie laten werken
-      if ((k === " " || k === "Enter") && t && t.closest("button,a,input,textarea,select,summary,[role=button],[contenteditable]")) return;
-      let to: number | null = null;
-      if (k === "ArrowDown" || k === "PageDown" || k === "j" || (k === " " && !e.shiftKey)) to = idxRef.current + 1;
-      else if (k === "ArrowUp" || k === "PageUp" || k === "k" || (k === " " && e.shiftKey)) to = idxRef.current - 1;
-      else if (k === "Home") to = -1;
-      else if (k === "End") to = 1e6;
-      if (to === null) return;
-      if (t && t.closest(".tabs") && (k === "ArrowUp" || k === "ArrowDown")) return;
-      e.preventDefault();
-      go(to);
-    };
-    const onTop = () => go(-1);
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("nf-top", onTop);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("nf-top", onTop);
-    };
-  }, [go]);
-
-  return (
-    <div className="nf-box">
-      <div className="nf" ref={ref} tabIndex={-1} role="region" aria-label="Berichten, één per scherm">
-        <div className={kompakt ? `nc-head kompakt${samenvatting ? " samenvatting" : ""}` : "nc-head"}>{head}</div>
-        {total === 0 ? (
-          empty ?? <div className="empty">
-            <Icon name="clock" />
-            Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
-          </div>
-        ) : (
-          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} zoekterm={zoekterm} />)
-        )}
-        <div className="nc-end">
-          <Footer />
-        </div>
-      </div>
-      {nieuw > 0 && <div className="nf-nieuw" role="status"><button type="button" onClick={() => { if (positie.current) { positie.current.nieuw = []; bewaarNieuwspositie(tab, positie.current); } setNieuw(0); go(-1); }}>{nieuw} nieuwe {nieuw === 1 ? "artikel" : "artikelen"}</button><button type="button" aria-label="Melding sluiten" onClick={() => { if (positie.current) { positie.current.nieuw = []; bewaarNieuwspositie(tab, positie.current); } setNieuw(0); }}>×</button></div>}
-      {total > 0 ? (
-        <>
-        <FeedNavigatie verborgen={idx < 0}>
-          <span className="nf-rail">
-            <span ref={railRef} />
-          </span>
-          <div className={`nf-pos ${idx >= 0 ? "on" : ""}`}>
-            <button type="button" className="nf-btn" aria-label="Vorig bericht" onClick={() => go(idx - 1)}>
-              <Icon name="chevup" />
-            </button>
-            <span className="tnum" aria-live="polite">
-              {Math.max(1, idx + 1)}/{total}
-            </span>
-            <button type="button" className="nf-btn" aria-label="Volgend bericht" onClick={() => go(idx + 1)}>
-              <Icon name="chevdown" />
-            </button>
-          </div>
-        </FeedNavigatie>
-          {idx < 0 ? (
-            <button type="button" ref={startRef} className="nf-start" onClick={() => go(0)}>
-              {total} berichten
-              <Icon name="chevdown" />
-            </button>
-          ) : null}
-        </>
       ) : null}
     </div>
   );
@@ -1037,7 +679,7 @@ function TopBar({
 
 // true zodra data.json van de uur-Worker komt (functions/data.json.ts zet "uur")
 let UUR_ACTIEF = false;
-function Footer() {
+export function Footer() {
   return (
     <footer className="foot">
       <div className="foot-brand">
