@@ -1,0 +1,1 @@
+- Probeer actuele data opnieuw na een mislukte vroege aanvraag, voordat de statische terugval wordt gebruikt (#694).
