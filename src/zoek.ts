@@ -163,3 +163,14 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   if (eind < tekst.length) delen.push({ tekst: tekst.slice(eind), markeer: false });
   return delen;
 }
+
+export function leesZoekterm(zoek: string): string {
+  return new URLSearchParams(zoek).get("q") ?? "";
+}
+
+export function schrijfZoekterm(url: string, term: string): string {
+  const u = new URL(url);
+  if (term) u.searchParams.set("q", term);
+  else u.searchParams.delete("q");
+  return u.pathname + u.search + u.hash;
+}

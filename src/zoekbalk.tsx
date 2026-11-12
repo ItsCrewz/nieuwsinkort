@@ -9,6 +9,7 @@ const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 
 export function Zoekbalk({ query, onChange, aantal, invoer }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement> }) {
   const [open, setOpen] = useState(!!query);
+  useEffect(() => { if (query) setOpen(true); }, [query]);
   const [melding, setMelding] = useState<{ query: string; aantal: number } | null>(null);
   useEffect(() => {
     if (!open || !query.trim()) return;
