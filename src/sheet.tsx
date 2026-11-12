@@ -32,6 +32,11 @@ import { rustig } from "./beweging";
 import { Switch } from "./ui";
 import { veiligeUrl } from "./url";
 
+/** Groepsregel: een onvolledige telling wordt nooit als volledig dagtotaal getoond. */
+function groupLine(g: SourceGroup): string {
+  if (g.published == null) return `${g.total} in overzicht`;
+  return g.onvolledig ? `minstens ${g.published} berichten vandaag (onvolledig)` : `${g.published} berichten vandaag`;
+}
 
 /** Paneel met alle bronnen; rechts op desktop, onderaan (bottom sheet) op mobiel. */
 export function SourcesSheet({
@@ -130,7 +135,7 @@ export function SourcesSheet({
                       </h3>
                       <span className="sh-gmeta">
                         {g.sources.length} {g.sources.length === 1 ? "bron" : "bronnen"} ·{" "}
-                        {g.published != null ? `${g.published} berichten vandaag` : `${g.total} in overzicht`}
+                        {groupLine(g)}
                       </span>
                     </div>
                     <label className="sh-all">

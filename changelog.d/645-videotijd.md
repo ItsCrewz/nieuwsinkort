@@ -1,0 +1,1 @@
+- Videofilters gebruiken de volledige publicatiedatum, zodat terugvalvideo’s van gisteren niet als recent verschijnen (#645).

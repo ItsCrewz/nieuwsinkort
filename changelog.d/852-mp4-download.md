@@ -1,0 +1,1 @@
+- Begrens MP4-downloads voor videosamenvattingen, ook als de server het bytebereik negeert (#852).

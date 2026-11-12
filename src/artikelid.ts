@@ -1,10 +1,14 @@
 // Stabiele sleutel op basis van de genormaliseerde ankerlink.
-export const normArtikelLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
-export function linkId(link: string): string {
+import { normLink } from "./linknorm";
+export const normArtikelLink = normLink;
+export const oudeArtikelLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
+function hashLink(link: string): string {
   let h = 0xcbf29ce484222325n;
-  for (const b of new TextEncoder().encode(normArtikelLink(link))) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
+  for (const b of new TextEncoder().encode(link)) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
   return (h & 0xffffffffffn).toString(36).padStart(8, "0");
 }
+export const linkId = (link: string) => hashLink(normArtikelLink(link));
+export const oudeLinkId = (link: string) => hashLink(oudeArtikelLink(link));
 export function artikelId(item: { id?: string; bronnen?: { href: string }[] }): string { return item.id || linkId(item.bronnen?.[0]?.href || ""); }
 export function artikelSlug(s: string): string { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80); }
 export function artikelPad(item: { id?: string; kop: string; bronnen?: { href: string }[] }, dag: string): string { return `/bericht/${dag}/${artikelId(item)}-${artikelSlug(item.kop) || "bericht"}`; }

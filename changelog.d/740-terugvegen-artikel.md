@@ -1,0 +1,1 @@
+- Terugvegen begint alleen binnen het geopende artikel, niet op andere elementen of het deelportaal (#740).
