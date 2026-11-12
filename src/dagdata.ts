@@ -86,7 +86,10 @@ export function merge(S: any, H: any) {
   };
   // Rubriektekst per rubriek van de recentste bron; ontbrekende rubrieken vallen terug op de andere.
   const [tabNieuw, tabOud] = hNieuwer ? [H.tab_samenvatting, base.tab_samenvatting] : [base.tab_samenvatting, H.tab_samenvatting];
-  const tabSam = tabNieuw || tabOud ? { ...tabOud, ...tabNieuw } : undefined;
+  const tabSam = tabNieuw || tabOud ? { ...tabOud } : undefined;
+  if (tabSam && tabNieuw) for (const [rubriek, samenvatting] of Object.entries(tabNieuw)) {
+    if (samenvatting != null) tabSam[rubriek] = samenvatting;
+  }
   const routineItems = (base.items || []).map(metMeer);
   return {
     ...base,

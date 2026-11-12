@@ -1,0 +1,1 @@
+- Behoud beschikbare rubrieksamenvattingen bij het samenvoegen van routine- en uurdata (#810).

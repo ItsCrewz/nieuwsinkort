@@ -68,8 +68,8 @@ t("merge 00:30 Amsterdam: uur-data van de nieuwe dag wordt wel gebruikt, statisc
 
 t("merge: rubrieksamenvatting van de recentste bron, per rubriek met terugval", () => {
   const tab = (tekst: string, g: string) => ({ tekst, ai: true, bron: "x", gegenereerd: g });
-  const S = { gegenereerd: "2026-11-04T09:00:00Z", items: [], filmpjes: [], dumpert: [], tab_samenvatting: { nl: tab("routine nl", "r"), tech: tab("routine tech", "r") } };
-  const Houd = { gegenereerd: "2026-11-04T08:00:00Z", items: [], filmpjes: [], dumpert: [], tab_samenvatting: { nl: tab("uur nl", "u"), sport: tab("uur sport", "u") } };
+  const S = { gegenereerd: "2026-11-04T09:00:00Z", dag_samenvatting: "routine dag", items: [{ kop: "Routinebericht", bronnen: [{ href: "https://nos.nl/routine" }] }], filmpjes: [], dumpert: [], tab_samenvatting: { nl: tab("routine nl", "r"), tech: tab("routine tech", "r") } };
+  const Houd = { gegenereerd: "2026-11-04T08:00:00Z", dag_samenvatting: "uur dag", items: [{ kop: "Uurbericht", bronnen: [{ href: "https://nos.nl/uur" }] }], filmpjes: [], dumpert: [], tab_samenvatting: { nl: tab("uur nl", "u"), sport: tab("uur sport", "u") } };
   const oud: any = merge(S, Houd).tab_samenvatting;
   assert.equal(oud.nl.tekst, "routine nl");
   assert.equal(oud.tech.tekst, "routine tech");
@@ -78,8 +78,16 @@ t("merge: rubrieksamenvatting van de recentste bron, per rubriek met terugval", 
   const nw: any = merge(S, Hnieuw).tab_samenvatting;
   assert.equal(nw.nl.tekst, "uur nl");
   assert.equal(nw.tech.tekst, "routine tech");
+  for (const [uur, dagtekst, tijd] of [[Houd, "routine dag", S.gegenereerd], [Hnieuw, "uur dag", Hnieuw.gegenereerd]] as const) {
+    const uit = merge(S, uur);
+    assert.equal(uit.dag_samenvatting, dagtekst);
+    assert.equal(uit.gegenereerd, tijd);
+    assert.deepEqual(uit.items.map((i: any) => i.kop), ["Uurbericht", "Routinebericht"]);
+  }
   // Nieuwere uurdata zonder samenvatting: de routinetekst blijft.
   assert.equal((merge(S, { ...Hnieuw, tab_samenvatting: undefined }) as any).tab_samenvatting.nl.tekst, "routine nl");
   assert.equal(merge({ ...S, tab_samenvatting: undefined }, { ...Houd, tab_samenvatting: undefined }).tab_samenvatting, undefined);
   assert.equal((merge({ ...S, tab_samenvatting: undefined }, Houd) as any).tab_samenvatting.nl.tekst, "uur nl");
+  assert.equal(merge(S, { ...Hnieuw, tab_samenvatting: { nl: null } }).tab_samenvatting.nl.tekst, "routine nl");
+  assert.equal(merge({ ...S, tab_samenvatting: { nl: undefined } }, Houd).tab_samenvatting.nl.tekst, "uur nl");
 }, Date.parse("2026-11-04T10:00:00Z"));
