@@ -108,3 +108,15 @@ Bij een cron van elke 5 minuten (`runInterval` = 5, #451) mag de AI niet elke ru
 - **Kosten**: ongeveer 4 tot 8 neuronen bij een paar nieuwe filmpjes (±350 tokens vaste instructie, ±70 tokens per filmpje, ±15 tokens uitvoer per filmpje); een volle call van 40 filmpjes ongeveer 40 neuronen. In een gewone dag ligt het totaal ruim onder 100 neuronen (<1% van `BUDGET`).
 - **Terugval**: geen budget, AI-fout, time-out (25 s) of ongeldige JSON geeft de deterministische kanaalregel (`terugvalGroep`: sportkanalen Sport, RTL Boulevard/Shownieuws Showbizz, PowNews/AutoWeek e.d. Opvallend, Politiek-kanalen uit `bronnen.json` Politiek, de rest Nieuws). Die terugval wordt niet bewaard, een volgende run probeert opnieuw. Een geldig antwoord waarin één filmpje ontbreekt of een onbekende groep krijgt, telt als poging; na 3 pogingen (`GROEP_POGINGEN`) wordt de terugval bewaard, zodat één onbruikbaar filmpje niet elke run een call kost.
 - **Meta in `uur`**: `filmGroepNieuw` (aantal nieuw en definitief ingedeeld) en `filmGroepAi` (true als er deze run een call was).
+
+## Timeout en retry van LLM-aanroepen (#873)
+
+`src/llm-aanroep.ts` (gedeeld door `worker/src/ai.ts` en `functions/samenvatting.ts`):
+
+- **Timeout**: elke Cloudflare-chataanroep krijgt een timeout uit env `LLM_TIMEOUT_MS` (standaard 45 s, begrensd op 1–120 s; ongeldig = standaard). `wrangler.toml` zet de variabele niet; de standaard staat in de code.
+- **Retry**: hooguit één, na 1,5 s backoff, alleen bij een timeout of 5xx. 429, capaciteit (3040) en dagquota (4006) worden niet opnieuw geprobeerd; de aanroeper valt dan terug op Groq/Mistral zoals voorheen.
+- **Foutclassificatie** (`classificeer`): alleen `status`/`statusCode`, de Workers AI-codes (`3040:`, `3043:`, `4006`) en "HTTP 503"/"status 503". Een los getal in vrije tekst is nooit een status. `aiFout` in `src/budget.ts` blijft ongewijzigd voor het quotabeleid.
+- **Logs**: `llm: <soort> model=<model> duur=<ms>ms poging=<n>`; nooit prompt, antwoord of sleutel.
+- **Budgetmeting**: elke mislukte poging gaat apart door `meetFout` (invoer plus de helft van `max_tokens`), ook de retry en ook een timeout. Het timeoutbericht bevat bewust niet het woord "timeout", zodat de meting het niet als afgewezen aanroep (zonder uitvoerkosten) telt.
+- **Whisper**: wel een timeout (60 s), geen retry. De vooraf gereserveerde neuronen blijven staan en bij een timeout wordt niets extra verrekend, dus er komt geen dubbele kost bij.
+- **Beperking**: `ai.run` kent geen annuleersignaal. Na een timeout loopt de eerste call door en kan hij toch neuronen kosten; de retry kan dus dubbel kosten. Beide pogingen worden gemeten en de kosten blijven begrensd door één extra poging, `BUDGET` en de run-tiers. De dagelijkse Cloudflare-teller blijft de eindwaarheid (`NEURON_FACTOR`).

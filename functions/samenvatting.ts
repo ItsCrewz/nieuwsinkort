@@ -13,15 +13,16 @@
 import { Buffer } from "node:buffer";
 import { svSleutel } from "../src/slug";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
+import { llmTimeoutMs, metRetry, metTimeout, WHISPER_TIMEOUT } from "../src/llm-aanroep";
 import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState } from "../worker/src/llm";
 
 type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
-async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage): Promise<string> {
+async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage, timeoutMs = llmTimeoutMs()): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
   let r: any;
-  try { r = await ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }); }
-  catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } // een mislukte aanroep kan toch neuronen kosten
+  // timeout + hooguit één retry (#873); elke mislukte poging apart gemeten (een niet-afgebroken call kan toch neuronen kosten)
+  r = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e) });
   u.calls++;
   meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
   const txt = typeof r?.response === "string" ? r.response : r?.choices?.[0]?.message?.content || "";
@@ -30,7 +31,7 @@ async function chat(ai: any, model: string, sys: string, user: string, maxTokens
 
 interface KV { get(key: string, type?: "json" | "text"): Promise<any>; put(key: string, v: string, o?: { expirationTtl?: number }): Promise<void>; delete(key: string): Promise<void> }
 interface DO { idFromName(n: string): unknown; get(id: unknown): { fetch(url: string, init?: RequestInit): Promise<Response> } }
-interface Env { NIEUWS: KV; AI: any; GROQ_API_KEY?: string; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string }
+interface Env { NIEUWS: KV; AI: any; GROQ_API_KEY?: string; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string; LLM_TIMEOUT_MS?: string }
 interface Ctx { request: Request; env: Env }
 
 const BUDGET_DEF = 9000;
@@ -257,7 +258,7 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
   if (!t) {
     const fout = cloudToegestaan();
     if (fout) throw new CloudBudgetFout(fout);
-    t = await chat(env.AI, model, STIJL, user, 320, u);
+    t = await chat(env.AI, model, STIJL, user, 320, u, llmTimeoutMs(env.LLM_TIMEOUT_MS));
   }
   return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5) };
 }
@@ -446,7 +447,8 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
         if (res === "budget") return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
         if (res === "druk") return json({ ok: false, code: pre ? "budget-pre" : "druk", fout: MSG.druk });
         reserved = schat;
-        const r: any = await env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false });
+        // wel een timeout, geen retry: de gereserveerde neuronen (`reserved`) blijven staan, dus er komt nooit een tweede Whisper-kost bij
+        const r: any = await metTimeout(() => env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false }), WHISPER_TIMEOUT);
         const dur = +r?.transcription_info?.duration || estMin * 60;
         if (!(+r?.transcription_info?.duration > 0)) u.geschat = (u.geschat || 0) + 1; // Whisper meldt geen neuronen, duur is de enige meting
         u.neurons += (dur / 60) * WHISPER_PER_MIN; u.calls++;

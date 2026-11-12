@@ -1,0 +1,1 @@
+- LLM-aanroepen krijgen een timeout (`LLM_TIMEOUT_MS`, standaard 45 s) en hooguit één retry bij timeout of 5xx; 429 en dagquota niet. Foutclassificatie gebruikt alleen echte statusvelden en Workers AI-codes, elke poging wordt apart in het neuronbudget gemeten en Whisper krijgt een timeout zonder retry (#873).
