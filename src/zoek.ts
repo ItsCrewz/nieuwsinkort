@@ -6,7 +6,6 @@ const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae"
 
 export function normaliseer(tekst: string): string {
   return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
-    .replace(/(?<=\bios\s)(\p{N}+)\.(?=\p{N}+)/gu, "$1 ")
     .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
@@ -34,6 +33,8 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
       for (const d of delen) { woorden.push(d); lijm.push(false); }
       vorige = true;
     }
+    // Een iOS-versie is ook op het hoofdversienummer vindbaar.
+    for (const match of veld.matchAll(/\bios\s+(\p{N}+)\.\p{N}+(?![\p{N}.])/giu)) { woorden.push(match[1]); lijm.push(false); }
     woorden.push(""); lijm.push(false);
   }
   return { woorden, lijm };
@@ -147,7 +148,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
     while ((index = vlak.indexOf(woord, vanaf)) !== -1) {
       const numeriek = /^\p{N}+(?:\.\p{N}+)?$/u.test(woord);
       const getal = numeriek ? vlak.slice(0, index).match(/[\p{N}.,]*$/u)![0] + vlak.slice(index).match(/^[\p{N}.,]*/u)![0] : "";
-      if ((index === 0 || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && (!numeriek || normaliseer(getal).split(" ").includes(woord))) {
+      if ((index === 0 || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
         bereiken.push({ begin: posities[index].begin, eind: posities[index + woord.length - 1].eind });
       }
       vanaf = index + 1;

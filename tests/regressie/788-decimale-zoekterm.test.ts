@@ -25,5 +25,9 @@ const datum = { cat: "nl", kop: "Datum 12.11.2026" } as Item;
 const versie = { cat: "nl", kop: "iOS 17.4 verschijnt" } as Item;
 for (const term of ["500", "2 500"]) assert.deepEqual(zoekItems([duizend], term), [duizend]);
 assert.deepEqual(zoekItems([datum], "12 11 2026"), [datum]);
-assert.deepEqual(zoekItems([versie], "17"), [versie]);
+for (const term of ["17", "17.4", "17,4"]) assert.deepEqual(zoekItems([versie], term), [versie]);
+assert.deepEqual(markeerDelen(versie.kop!, "17"), [{ tekst: "iOS ", markeer: false }, { tekst: "17", markeer: true }, { tekst: ".4 verschijnt", markeer: false }]);
+assert.deepEqual(markeerDelen(versie.kop!, "17,4"), [{ tekst: "iOS ", markeer: false }, { tekst: "17.4", markeer: true }, { tekst: " verschijnt", markeer: false }]);
+// Een punt met drie cijfers wordt als duizendtalscheiding gelezen.
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "2 auto's en 500 fietsen" } as Item], "2.500").length, 1);
 assert.deepEqual(markeerDelen("Café: 2,5", "5"), [{ tekst: "Café: 2,5", markeer: false }]);
