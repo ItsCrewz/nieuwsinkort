@@ -15,7 +15,7 @@ export type SourceRow = CatSource & {
   /** door de pipeline geteld uit de feed zelf; undefined = geen bronstats in data.json */
   stat?: import("./types").BronStat;
 };
-export type SourceGroup = { id: GroupId; label: string; sources: SourceRow[]; total: number; published: number | null };
+export type SourceGroup = { id: GroupId; label: string; sources: SourceRow[]; total: number; published: number | null; /** minstens één bron zonder bekende telling of deels mislukt: published is een ondergrens */ onvolledig: boolean };
 
 export const GROUP_ORDER: { id: GroupId; label: string }[] = [
   { id: "nl", label: "Nederland" },
@@ -156,7 +156,9 @@ export function buildSources(catalog: Catalog | null, data: Data | null): { grou
       ...g,
       sources,
       total: sources.reduce((n, s) => n + s.count, 0),
-      published: stats ? sources.reduce((n, s) => n + (s.stat?.vandaag ?? 0), 0) : null,
+      // Ontbrekende of mislukte tellingen zijn onbekend, geen nul: dan is het totaal een ondergrens.
+      published: stats && sources.some((s) => s.stat?.vandaag != null) ? sources.reduce((n, s) => n + (s.stat?.vandaag ?? 0), 0) : null,
+      onvolledig: !!stats && sources.some((s) => s.stat?.vandaag == null || s.stat.fout || s.stat.storing),
     };
   }).filter((g) => g.sources.length > 0);
   return { groups, index };
