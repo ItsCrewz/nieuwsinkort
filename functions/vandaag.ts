@@ -1,5 +1,5 @@
 // Lichte server-HTML met links naar alle berichtpagina's van vandaag: zonder JavaScript hebben crawlers anders geen interne links.
-import { artikelPad, indexeerbaar } from "../src/artikelid";
+import { artikelPad, heeftArtikelId, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
 import { GELDIG_TOT, nogGeldig, overzichtBeleid } from "../src/overzichtcache";
@@ -13,7 +13,7 @@ const HDR = { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Option
 const RUBRIEKEN: [string, string][] = [["nl", "Nederland"], ["buitenland", "Buitenland"], ["haarlem", "Haarlem"], ["tech", "Tech"], ["sport", "Sport"], ["voetbal", "Voetbal"], ["f1", "Formule 1"], ["auto", "Auto"], ["showbizz", "Showbizz"]];
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 export function vandaagHtml(items: Item[], dag: string): string {
-  const lijst = items.filter((i) => i.kop && indexeerbaar(i));
+  const lijst = items.filter((i) => i.kop && heeftArtikelId(i) && indexeerbaar(i));
   const delen = RUBRIEKEN.map(([cat, naam]) => {
     const rij = lijst.filter((i) => i.cat === cat).slice(0, 200);
     return rij.length ? `<h2>${naam}</h2><ul>${rij.map((i) => `<li><a href="${esc(artikelPad(i, dag))}">${esc(i.kop)}</a></li>`).join("")}</ul>` : "";
