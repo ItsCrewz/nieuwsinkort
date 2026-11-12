@@ -18,6 +18,15 @@ export function midnight(t = Date.now()) {
   }
   return guess;
 }
+// Tijdstip van h:min op de Amsterdamse dag van t; null als die kloktijd niet bestaat, bij dubbele tijd de eerste.
+export function amsTijdstip(t: number, h: number, min: number): number | null {
+  const iso = ams(t).iso, basis = midnight(t) + (h * 60 + min) * 60e3;
+  for (const c of [basis - 3600e3, basis, basis + 3600e3]) {
+    const a = ams(c);
+    if (a.iso === iso && a.h === h && a.min === min) return c;
+  }
+  return null;
+}
 
 const WD = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 const MO = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
