@@ -116,9 +116,16 @@ await t("useCatalog herstelt na een tijdelijke fout en stopt daarna", async () =
   CATALOG_RETRY_MS.splice(0, 3, 5, 5, 5);
   const cat: Catalog = { groepen: [{ id: "nl", label: "Nederland", bronnen: [{ id: "nos", naam: "NOS" }] }] };
   let n = 0;
-  const calls = mockFetch(async () => (++n === 1 ? Promise.reject(new TypeError("offline")) : { ok: true, json: async () => cat }));
+  let hervat!: () => void;
+  const wachtOpAntwoord = new Promise<void>((resolve) => { hervat = resolve; });
+  const calls = mockFetch(async () => {
+    if (++n === 1) throw new TypeError("offline");
+    await wachtOpAntwoord;
+    return { ok: true, json: async () => cat };
+  });
   const h = await renderHook(() => useCatalog(), null);
   assert.deepEqual(h.result.current, { groepen: [] });
+  hervat();
   await wacht(40);
   assert.deepEqual(h.result.current, cat);
   assert.equal(calls.length, 2);

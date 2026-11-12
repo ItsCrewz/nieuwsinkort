@@ -11,14 +11,14 @@ bewaarFeed(status);
 assert.deepEqual(leesFeed(), status);
 assert.deepEqual((history.state as { feed?: unknown }).feed, status);
 assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, [lijst[0], lijst[2]]).slug, videoSlug(lijst[2]));
-assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, []).lijst.length, 3);
-assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, []).slug, status.slug);
+assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, null).lijst.length, 3);
+assert.equal(herstelFeed(leesFeed(), "dumpert", status.slug, null).slug, status.slug);
 wisFeed(); (history as any).state = null; assert.equal(leesFeed(), null);
 console.log("feedstatus: geslaagd");
 
 // Lege lijsten en een andere categorie mogen geen oude selectie overnemen.
-assert.deepEqual(herstelFeed(null, "dumpert", "onbekend", []), { lijst: [], slug: "onbekend" });
-assert.deepEqual(herstelFeed(status, "filmpjes", status.slug, []), { lijst: [], slug: status.slug });
+assert.deepEqual(herstelFeed(null, "dumpert", "onbekend", null), { lijst: [], slug: "onbekend" });
+assert.deepEqual(herstelFeed(status, "filmpjes", status.slug, null), { lijst: [], slug: status.slug });
 assert.equal(herstelFeed(status, "dumpert", "onbekend", lijst).slug, videoSlug(lijst[0]));
 assert.equal(herstelFeed(status, "dumpert", videoSlug(lijst[2]), [lijst[0]]).slug, videoSlug(lijst[0]));
 assert.equal(herstelFeed(status, "dumpert", status.slug, [lijst[2], lijst[1]]).slug, status.slug);

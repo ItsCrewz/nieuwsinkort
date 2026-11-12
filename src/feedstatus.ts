@@ -4,8 +4,12 @@ import { oudeSlug, videoSlug, vindSlug } from "./slug";
 export type FeedStatus = { cat: "filmpjes" | "dumpert"; slug: string; soort: Soort; positie: number; speelt: boolean; lijst: Video[] };
 const KEY = "nieuwsinkort-feedstatus";
 
-export function herstelFeed(status: FeedStatus | null, cat: FeedStatus["cat"], slug: string, lijst: Video[]): { lijst: Video[]; slug: string | null } {
-  const bron = lijst.length ? lijst : status?.cat === cat ? status.lijst : [];
+export function herstelFeed(status: FeedStatus | null, cat: FeedStatus["cat"], slug: string, lijst: Video[] | null): { lijst: Video[]; slug: string | null } {
+  // null = data nog aan het laden: voorlopig de opgeslagen lijst. Een array is actuele data (ook leeg = definitief leeg):
+  // de opgeslagen lijst dient dan alleen voor de positie, nooit als bron van items (#659).
+  if (lijst && !lijst.length) return { lijst: [], slug: null };
+  const opgeslagen = status?.cat === cat ? status.lijst : [];
+  const bron = lijst ?? opgeslagen;
   const gevonden = vindSlug(bron, slug);
   const oud = status?.cat === cat ? status.lijst.findIndex((v) => videoSlug(v) === slug) : -1;
   const dubbel = bron.filter((v) => oudeSlug(v) === slug).length > 1;
