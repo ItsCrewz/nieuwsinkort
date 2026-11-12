@@ -245,10 +245,10 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
 /** Index van de foto die Thumb probeert. Verandert de inhoud van de lijst (ververst bericht), dan terug naar de eerste;
  *  een rerender met dezelfde lijst (nieuwe array, zelfde urls) laat de index staan. */
 export function useThumbIndex(urls: string[]): [number, (k: number) => void] {
-  const sleutel = urls.join("\n");
+  const sleutel = JSON.stringify(urls);
   const [st, setSt] = useState({ sleutel, k: 0 });
-  if (st.sleutel !== sleutel) { setSt({ sleutel, k: 0 }); return [0, (k) => setSt({ sleutel, k })]; }
-  return [st.k, (k) => setSt({ sleutel, k })];
+  if (st.sleutel !== sleutel) setSt({ sleutel, k: 0 });
+  return [st.sleutel === sleutel ? st.k : 0, (k) => setSt((huidig) => huidig.sleutel === sleutel ? { sleutel, k } : huidig)];
 }
 
 export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
