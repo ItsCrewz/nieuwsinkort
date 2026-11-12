@@ -1,0 +1,1 @@
+- Een hervatte YouTube-video herstelt zijn opgeslagen positie nu pas nadat de speler van de actieve video gereed meldt (`onReady`), zodat het seek-bericht bij langzaam laden niet meer verloren gaat; meldingen van andere frames en oude video's tellen niet mee en herstel gebeurt hooguit eenmaal per video.

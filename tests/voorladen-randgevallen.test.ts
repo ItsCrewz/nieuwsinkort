@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MP4_BYTES, POSTER_MAX_MS, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -259,6 +259,34 @@ try {
     assert.equal(afbeeldingen.length - begin, GELIJK + 2);
     afbeeldingen.slice(begin + 2).forEach((img) => img.onload!());
     await wacht();
+  });
+
+  await test("vastgelopen posters geven na de time-out hun plaats vrij", async () => {
+    const echt = globalThis.setTimeout;
+    const timers: { fn: () => void; ms: number; weg: boolean }[] = [];
+    installeer("setTimeout", (fn: () => void, ms: number) => { timers.push({ fn, ms, weg: false }); return timers.length - 1; });
+    installeer("clearTimeout", (id: number) => { if (timers[id]) timers[id].weg = true; });
+    try {
+      const begin = afbeeldingen.length;
+      voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK + 1 }, (_, i) => `https://vast.example/${i}.jpg`) });
+      assert.equal(afbeeldingen.length - begin, GELIJK);
+      assert.deepEqual(timers.map((t) => t.ms), Array(GELIJK).fill(POSTER_MAX_MS));
+      timers[0].fn(); // eerste vastloper: time-out geeft de plaats vrij
+      await new Promise<void>((r) => echt(r, 0));
+      assert.equal(afbeeldingen.length - begin, GELIJK + 1);
+      assert.equal(afbeeldingen[begin].src, "");
+      assert.equal(afbeeldingen[begin].onload, null);
+      assert.equal(afbeeldingen[begin].onerror, null);
+      assert.equal(timers[0].weg, true);
+      // succes en fout ruimen hun timer op
+      afbeeldingen[begin + 1].onload!();
+      afbeeldingen[begin + 2].onerror!();
+      assert.equal(timers[1].weg && timers[2].weg, true);
+      afbeeldingen[begin + GELIJK].onload!();
+    } finally {
+      installeer("setTimeout", echt);
+      herstel(["clearTimeout"]);
+    }
   });
 
   await test("naIdle wacht op load, idle en zichtbaarheid en kan annuleren", () => {

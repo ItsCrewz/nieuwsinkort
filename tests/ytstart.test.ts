@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ytStartBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint } from "../src/ytstart";
+import { ytStartBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint, ytIsGereed } from "../src/ytstart";
 
 for (const actief of [true, false]) {
   const url = new URL(ytEmbedUrl("abc123", actief, "https://voorbeeld.nl"));
@@ -54,3 +54,18 @@ assert.equal(geluidMag(true, false, false), false);
 assert.equal(geluidMag(true, true, true), false);
 assert.equal(geluidMag(false, true, false), false);
 assert.equal(ytStatusNaam(-1), "unstarted");
+
+// #661: herstel pas na onReady van het actieve frame.
+{
+  const win = {}, ander = {};
+  const frame = { contentWindow: win };
+  const O = "https://www.youtube-nocookie.com";
+  const ready = JSON.stringify({ event: "onReady" });
+  assert.equal(ytIsGereed({ origin: O, source: win, data: ready }, frame), true);
+  assert.equal(ytIsGereed({ origin: O, source: ander, data: ready }, frame), false); // ander frame / oude video
+  assert.equal(ytIsGereed({ origin: "https://evil.example", source: win, data: ready }, frame), false);
+  assert.equal(ytIsGereed({ origin: O, source: win, data: JSON.stringify({ event: "infoDelivery" }) }, frame), false); // nog niet gereed
+  assert.equal(ytIsGereed({ origin: O, source: win, data: "geen json" }, frame), false);
+  assert.equal(ytIsGereed({ origin: O, source: win, data: ready }, null), false);
+  assert.equal(ytIsGereed({ origin: O, source: undefined, data: ready }, { contentWindow: null }), false);
+}
