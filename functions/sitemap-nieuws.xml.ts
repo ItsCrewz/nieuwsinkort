@@ -42,7 +42,6 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
     gegenereerd = dag.gegenereerd;
     xml = nieuwsSitemap(datasetVerlopen(gegenereerd, Date.now()) ? [] : dag.items, ams(Date.parse(gegenereerd)).iso);
   } catch { console.error("sitemap-nieuws: data lezen mislukt"); return fout(); }
-  if (datasetVerlopen(gegenereerd, Date.now())) xml = nieuwsSitemap([], ams(Date.parse(gegenereerd)).iso);
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd);
   if (!beleid) return new Response(xml, { headers: { ...HDR, "Cache-Control": "no-store" } });
   const response = new Response(xml, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });

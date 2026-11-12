@@ -37,7 +37,6 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
     gegenereerd = dag.gegenereerd;
     html = vandaagHtml(datasetVerlopen(gegenereerd, Date.now()) ? [] : dag.items, ams(Date.parse(gegenereerd)).iso);
   } catch { console.error("vandaag: data lezen mislukt"); return fout(); }
-  if (datasetVerlopen(gegenereerd, Date.now())) html = vandaagHtml([], ams(Date.parse(gegenereerd)).iso);
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
   if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
   const response = new Response(html, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });

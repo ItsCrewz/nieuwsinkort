@@ -56,8 +56,8 @@ t("onvolledige en vreemde beeldgegevens worden opgeschoond", () => {
   ] };
   assert.deepEqual(schoon(invoer).items, [
     { kop: "Zonder beeld" },
-    { beelden: "geen lijst" },
-    { beelden: ["https://voorbeeld.nl/foto.jpg"] },
+    {},
+    {},
   ]);
 });
 

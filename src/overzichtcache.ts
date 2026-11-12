@@ -37,7 +37,8 @@ export const nogGeldig = (r: Response, nu: number) => nu < Number(r.headers.get(
 export function cacheHit(r: Response, nu: number): Response {
   const headers = new Headers(r.headers);
   const ttl = Math.max(0, Math.floor((Number(headers.get(GELDIG_TOT)) - nu) / 1000));
-  headers.set("Cache-Control", `public, max-age=${ttl}`);
+  const swr = headers.get("Cache-Control")?.match(/(?:^|,)\s*stale-while-revalidate=(\d+)/i)?.[1];
+  headers.set("Cache-Control", `public, max-age=${ttl}${swr ? `, stale-while-revalidate=${swr}` : ""}`);
   headers.delete("Age");
   return new Response(r.body, { status: r.status, statusText: r.statusText, headers });
 }

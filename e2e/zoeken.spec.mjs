@@ -230,3 +230,52 @@ for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 8
     await expect(invoer).toBeHidden();
   });
 }
+
+test("zoekopdracht blijft bij terug en herladen behouden", async ({ page }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("/?nietmeten=1#/alles");
+  const eerste = page.locator(".nc-title a").first();
+  await expect(eerste).toBeVisible();
+  const woord = (await eerste.textContent()).trim().split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "")).find((w) => w.length >= 5);
+  expect(woord, "De eerste titel moet een zoekbaar woord van minstens vijf tekens bevatten.").toBeTruthy();
+  await page.getByRole("button", { name: "Zoeken", exact: true }).click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill(woord);
+  await expect(eerste).toBeVisible();
+  const titel = await eerste.textContent();
+  await eerste.click();
+  await expect(page).toHaveURL(/#\/bericht\//);
+  await page.goBack();
+  await expect(invoer).toHaveValue(woord);
+  await expect(page.locator(".nc-title a").first()).toHaveText(titel);
+  await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(woord);
+  expect(new URL(page.url()).searchParams.get("nietmeten")).toBe("1");
+  await page.reload();
+  await expect(invoer).toHaveValue(woord);
+  await expect(page.locator(".nc-title a").first()).toHaveText(titel);
+  await invoer.press("Escape");
+  await expect.poll(() => new URL(page.url()).searchParams.has("q")).toBe(false);
+});
+
+test("terug uit een zoekresultaat herstelt de scrollpositie", async ({ page }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("/#/alles");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await page.getByRole("button", { name: "Zoeken", exact: true }).click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill("de");
+  const resultaten = page.locator(".nc-title a");
+  await expect.poll(() => resultaten.count()).toBeGreaterThan(3);
+  const doel = resultaten.nth(2);
+  await doel.scrollIntoViewIfNeeded();
+  const titel = await doel.textContent();
+  const scroll = () => page.locator(".nf").evaluate((el) => el.scrollTop);
+  const voor = await scroll();
+  expect(voor).toBeGreaterThan(0);
+  await doel.click();
+  await expect(page).toHaveURL(/#\/bericht\//);
+  await page.goBack();
+  await expect(invoer).toHaveValue("de");
+  await expect(resultaten.nth(2)).toHaveText(titel);
+  await expect.poll(async () => Math.abs((await scroll()) - voor)).toBeLessThan(5);
+});
