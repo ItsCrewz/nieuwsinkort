@@ -21,8 +21,15 @@ function ankers(inhoud: string): Set<string> {
 
 for (const bestand of bestanden) {
   const inhoud = readFileSync(bestand, "utf8");
-  for (const match of inhoud.matchAll(/\]\(([^)]+)\)/g)) {
-    const link = match[1];
+  const linktekst = inhoud.replace(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm, "").replace(/`[^`\n]*`/g, "");
+  const definities = new Map([...linktekst.matchAll(/^\[([^\]]+)\]:\s*(\S+)/gm)].map((m) => [m[1].toLowerCase(), m[2]]));
+  const links = [...linktekst.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]);
+  for (const match of linktekst.matchAll(/(?<!!)\[([^\]\n]+)\]\[([^\]\n]*)\]/g)) {
+    const naam = (match[2] || match[1]).toLowerCase();
+    assert.ok(definities.has(naam), `${bestand}: ontbrekende linkdefinitie ${naam}`);
+    links.push(definities.get(naam)!);
+  }
+  for (const link of links) {
     if (/^(?:[a-z]+:\/\/|mailto:)/i.test(link)) continue;
     const [pad, anker] = link.split("#");
     const doel = pad ? resolve(dirname(bestand), decodeURIComponent(pad)) : resolve(bestand);
@@ -35,9 +42,19 @@ for (const bestand of bestanden) {
       assert.ok(scripts.includes(script[1]), `${bestand}: onbekend npm-script ${script[1]}`);
     }
     for (const pad of code.matchAll(/(?:^|\s)((?:\.\/)?(?:src|worker|functions|scripts|tests|docs|public|changelog\.d|e2e)\/[\w.\-/]+)(?=$|\s)/g)) {
-      if (pad[1] === "scripts/.cache/" || (bestand === "docs/codebase-review-20261030.md" && ["src/netwerk.ts", "src/soort.ts", "worker/src/ua.ts", "src/videosamenvatting.tsx", "src/weer-ui.tsx", "src/nieuwslijst.tsx", "src/nieuwsfeed.tsx", "src/usedata.ts", "src/thema.ts", "worker/src/jobs.ts", "worker/src/auth.ts", "worker/src/leesverder.ts", "worker/src/ai-trap.ts"].includes(pad[1]))) continue; // Cache en historische bevinding.
+      if (pad[1] === "scripts/.cache/") {
+        assert.match(readFileSync(".gitignore", "utf8"), /(?:^|\n)\s*(?:\/)?scripts\/\.cache\/?\s*(?:\n|$)/);
+        continue; // De cache wordt lokaal gegenereerd en niet ingecheckt.
+      }
       assert.ok((existsSync(pad[1]) || existsSync(`${pad[1]}.ts`) || existsSync(`${pad[1]}.tsx`)), `${bestand}: ontbrekend codepad ${pad[1]}`);
     }
   }
 }
 console.log("✓ Documentatielinks, ankers, codepaden en npm-scripts bestaan");
+
+// Worker-routes staan in de router; Pages leidt routes af uit bestandsnamen.
+const workerRouter = readFileSync("worker/src/index.ts", "utf8");
+for (const route of ["/run", "/uur"]) {
+  assert.ok(workerRouter.includes(`u.pathname === "${route}"`), `ontbrekende Worker-route ${route}`);
+}
+assert.ok(existsSync("functions/samenvatting.ts"), "ontbrekende Pages-route /samenvatting");

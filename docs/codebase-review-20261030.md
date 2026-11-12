@@ -95,7 +95,7 @@ De aantallen in het issue zijn verouderd. Huidige stand: `src/feed.tsx` 1627, `s
 |---|---|---|
 | `AGENTS.md:24` | `buffer.ts` zou "nog niet in `feed.tsx` gekoppeld" zijn, met "vanaf +4 niets" en "Save-Data = alleen playlist" | `src/feed.tsx:22` gebruikt `planVoor`; `src/buffer.ts:12-19` geeft 30 s / 60 MB voor de actieve speler en 12/6/2 s voor de volgende |
 | `AGENTS.md:37-38` | Bij Save-Data/2G zou alleen de actieve speler laden, met HLS ~4 s/2 s | `src/videopool.ts:4-12` geeft altijd de actieve en de volgende speler een bron; grenzen zoals in CLAUDE.md "Direct starten" |
-| `AGENTS.md:40` | `src/netwerk.ts` met niveaus geen/zuinig/normaal | Het bestand bestaat niet; vooraf laden is op alle verbindingen gelijk (`src/voorladen.ts`) |
+| `AGENTS.md:40` | netwerk.ts met niveaus geen/zuinig/normaal | Het bestand bestaat niet; vooraf laden is op alle verbindingen gelijk (`src/voorladen.ts`) |
 | `AGENTS.md:22`, `CLAUDE.md:21` | `npm run build` zonder `build-version.mjs` | `package.json` (`scripts.build`) |
 | `CLAUDE.md` (Vooraf laden) | "Wijzig `feed.tsx`-`warmHls` en dit samen" | `warmHls` bestaat alleen nog in `src/voorladen.ts:92`; in `feed.tsx` laadt `NativePlayer` hls.js zelf |
 | `CLAUDE.md` (Neuronbudget) | "≥ 100%: geen AI, feedtekst met `ruw: true`" | Volgens AGENTS.md:11 en docs/architectuur.md:120-122 is er bij ≥100% een terugval op Groq/Mistral of extractieve tekst (`worker/src/index.ts:534`, `extractief.ts`) |
@@ -140,7 +140,7 @@ Elke refactor laat het gedrag ongewijzigd en is één PR op `origin/main`. Draai
    - Bestanden: `src/ui.tsx` (of een nieuwe `src/beweging.ts`), `src/App.tsx`, `src/feed.tsx`, `src/sheet.tsx`
    - Omvang: XS. Risico: laag.
 6. **`soortVan`/`JOURNAAL_RE` delen tussen frontend en Worker**
-   - Bestanden: een nieuwe `src/soort.ts`, `src/video.tsx`, `worker/src/videos.ts`, `tests/videos.test.ts`, commentaar in `filmpjes.py`
+   - Bestanden: een nieuwe soort.ts, `src/video.tsx`, `worker/src/videos.ts`, `tests/videos.test.ts`, commentaar in `filmpjes.py`
    - Omvang: S. Risico: laag. Voeg een test toe die beide aanroepers op dezelfde fixtures controleert.
 7. **`slugify` naar `src/slug.ts`**
    - Bestanden: `src/App.tsx`, `src/slug.ts`, plus een test in `tests/slug.test.ts`
@@ -153,34 +153,34 @@ Elke refactor laat het gedrag ongewijzigd en is één PR op `origin/main`. Draai
    - Bestanden: `worker/src/ai.ts`, `functions/samenvatting.ts`
    - Omvang: S. Risico: laag-middel. Het neuronbudget hangt hiervan af: bedragen identiek houden. Tests: `budget-meting`, `samenvatting-*`.
 10. **UA-constanten centraliseren in de Worker**
-    - Bestanden: een nieuwe `worker/src/ua.ts`, `worker/src/index.ts`, `worker/src/x.ts`, `worker/src/llm.ts`
+    - Bestanden: een nieuwe ua.ts, `worker/src/index.ts`, `worker/src/x.ts`, `worker/src/llm.ts`
     - Omvang: S. Risico: laag. Neem beide `BR_UA`-varianten letterlijk over; gelijktrekken hoort in een apart issue.
 11. **Video-samenvatting uit `feed.tsx` halen**
     - Wat: `svCache`, `zaaiSamenvattingen`, `haalSamenvatting`, `SamenvattingKnop`, `SamenvattingBlad`
-    - Bestanden: een nieuwe `src/videosamenvatting.tsx`, `src/feed.tsx`, `src/App.tsx` (import)
+    - Bestanden: een nieuwe videosamenvatting.tsx, `src/feed.tsx`, `src/App.tsx` (import)
     - Omvang: S (~95 regels). Risico: laag. Raakt pool, spelers en voorladen niet.
 12. **Weer-UI en nieuwslijst uit `App.tsx` halen**
-    - Bestanden: nieuwe `src/weer-ui.tsx` (75-211) en `src/nieuwslijst.tsx` (399-532), `src/App.tsx`
+    - Bestanden: nieuwe weer-ui.tsx (75-211) en nieuwslijst.tsx (399-532), `src/App.tsx`
     - Omvang: M (~270 regels verplaatst). Risico: laag (alleen presentatie).
 13. **Detail en "Lees verder" uit `App.tsx` halen**
     - Bestanden: een nieuwe `src/detail.tsx` (820-991), `src/App.tsx`
     - Omvang: M (~170). Risico: laag-middel. `meerCache` moet één singleton blijven.
 14. **Kaartenfeed (`NewsFeed`/`NewsCard`/`fitCard`) uit `App.tsx` halen**
-    - Bestanden: een nieuwe `src/nieuwsfeed.tsx`, `src/App.tsx`, mogelijk `tests/laadprestaties.test.ts` (die test controleert bronteksten)
+    - Bestanden: een nieuwe nieuwsfeed.tsx, `src/App.tsx`, mogelijk `tests/laadprestaties.test.ts` (die test controleert bronteksten)
     - Omvang: M (~290). Risico: middel. De constanten van #35, `data-id` en `aria-label` blijven gelijk.
 15. **`useData` en thema in eigen modules**
-    - Bestanden: nieuwe `src/usedata.ts` en `src/thema.ts`, `src/App.tsx`
+    - Bestanden: nieuwe usedata.ts en thema.ts, `src/App.tsx`
     - Omvang: S (~80). Risico: middel. Hangt samen met `src/vroeg.ts`. Raak `index.html` niet aan, anders verandert de CSP-hash.
 16. **Job-runners uit de Worker-entry halen**
     - Wat: `runInsta`, `runOg`, `runArt`, `runArtJ`, `runX`, `get`, `viaRedlib`, `runJob`
-    - Bestanden: een nieuwe `worker/src/jobs.ts`, `worker/src/index.ts`
+    - Bestanden: een nieuwe jobs.ts, `worker/src/index.ts`
     - Omvang: M (~200). Risico: laag-middel. `redlibN` verhuist mee. `Fetcher` blijft vanuit `index.ts` geëxporteerd.
 17. **Auth-hulpfuncties `hash`/`toegelaten` naar een eigen module**
-    - Bestanden: een nieuwe `worker/src/auth.ts`, `worker/src/index.ts`
+    - Bestanden: een nieuwe auth.ts, `worker/src/index.ts`
     - Omvang: XS. Risico: laag. Test: `tests/worker-run.test.ts`.
 18. **`Runner.run()` opdelen in fasefuncties met een expliciete context**
     - Eerst Lees verder (637-741) en de AI-trappen (493-554).
-    - Bestanden: `worker/src/index.ts`, nieuwe `worker/src/leesverder.ts` en `worker/src/ai-trap.ts`
+    - Bestanden: `worker/src/index.ts`, nieuwe leesverder.ts en ai-trap.ts
     - Omvang: L. Risico: middel-hoog. `usage`, `kvWrites`, `st` en `R` worden gedeeld; neuronbudget en KV-teller mogen niet verschuiven. Pas na 16. Tests: `worker-run`, `showbizz-run`, `kv-schrijven`, `run-status`.
 19. **Captions- en audio-helpers uit de samenvatting-Function halen**
     - Bestanden: `functions/samenvatting.ts` en een nieuwe module buiten de routing van Pages, bijvoorbeeld `src/` of `worker/src/`
