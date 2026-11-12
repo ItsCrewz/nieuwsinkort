@@ -21,7 +21,7 @@ import { startIndex } from "./feedstatus";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
 import { bronIndexen, gebruiktNativeHls, maakBronvrij, PoolEigenaars, POOL_GROOTTE, slotVan } from "./videopool";
-import { decodeTeller, FrameGezondheid, frameTeller, HerstelBudget } from "./framegezondheid";
+import { decodeTeller, FrameGezondheid, frameTeller, frameTellerBron, HerstelBudget } from "./framegezondheid";
 import { maxBufferSeconden, niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
@@ -488,7 +488,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       const st = frameStand.current;
       const besluit = fg.tik({ now, currentTime: video.currentTime, paused: video.paused, hidden: document.hidden,
         seeking: video.seeking, ended: video.ended, seekRecent: now - seekOp.current < 1500,
-        frames: frameTeller(st), videoWidth: video.videoWidth, readyState: video.readyState });
+        frames: frameTeller(st), bron: frameTellerBron(st), videoWidth: video.videoWidth, readyState: video.readyState });
       if (besluit === "ok") return;
       debugEvent(besluit);
       diag.vast++;
