@@ -12,7 +12,7 @@ import { prefetchMeer } from "./meer";
 import { markeerDelen } from "./zoek";
 import { bronLabel, itemKey } from "./nieuws-hulp";
 import { laadDetail } from "./artikel-detail";
-import { useOpen, type OpenFn } from "./nieuws-open";
+import { useOpen, type OpenFn } from "./nieuws-lijst";
 
 // ---------------------------------------------------------------- nieuwsfeed (TikTok-achtig)
 // Eén bericht per kaart op schermhoogte, met scroll-snap. De bovenbalk en de rubrieken staan vast

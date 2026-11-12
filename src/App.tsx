@@ -2,42 +2,35 @@ import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
 import { artikelId } from "./artikelid";
-import { ams, dayDates } from "./tijd";
-import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Data, Item, View, Weer } from "./types";
-import { BionicText, FocusSwitch } from "./ui";
+import { ams } from "./tijd";
+import { Suspense, lazy, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { View } from "./types";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
-import { Icon, IconSprite, type IconName } from "./icons";
-import { playerFor, soortVan, startSoort } from "./videosoort";
-import { sorteerOpGroep } from "./filmgroep";
+import { Icon } from "./icons";
+import { soortVan, startSoort } from "./videosoort";
 import { useVoorladen } from "./usevoorladen";
 import { videoSlug } from "./slug";
-import { zaaiSamenvattingen } from "./samenvattingcache";
-import { schoon } from "./schoon";
-import { valideer } from "./valideer";
-import { debug } from "./debug";
-import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, filterNieuws, filterVideos, useFilters, useVideoKlok } from "./filters";
-import { veiligeUrl } from "./url";
-import { herindeel } from "./regio";
-import { bronnenTekst, fotos } from "./leesverder";
 import { touchNu } from "./invoer";
-import { laadData, neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, tabToets, wisselRichting, type TabOpt } from "./tabs";
+import { wisselRichting } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { LeegMelding } from "./leegmelding";
-import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems } from "./zoek";
 import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 import { useKlok } from "./useklok";
-import { maakFeedNavigatie } from "./feedsluiten";
 import { NewsFeed } from "./nieuws-feed";
 import { ArtikelDetail, laadDetail } from "./artikel-detail";
-import { bronLabel, itemKey, pickLead, sortItems } from "./nieuws-hulp";
-import { useOpen, type OpenFn } from "./nieuws-open";
-import { Footer, UUR_ACTIEF } from "./app-frame";
+import { itemKey } from "./nieuws-hulp";
+import { Footer, UUR_ACTIEF, TopBar, Front, Frame } from "./app-frame";
+import { useData, useTheme } from "./app-data";
+import { intro,  feedNav,  geopendBinnen } from "./app-status";
+import { WeatherBox } from "./app-weer";
+import { Briefing, Tabs } from "./app-tabs";
+import { NewsList } from "./nieuws-lijst";
+import { amsterdamTime, cap } from "./nieuws-hulp";
+export { useData, useTheme } from "./app-data";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -45,22 +38,8 @@ const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGr
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
 
-const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
-const THEME_KEY = "nieuwsinkort-thema";
-let openedInside = false;
-// feed geopend vanuit het overzicht (dan is sluiten = history.back())
-const feedNav = maakFeedNavigatie({ get location() { return window.location; }, get history() { return window.history; } });
-// Intro-animatie alleen bij de eerste keer laden; daarna (tabwissel, herladen) niet opnieuw.
-let introDone = false;
 
-// ---------------------------------------------------------------- helpers
-function amsterdamTime(iso?: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam" }).format(d);
-}
-const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
 
 // De oude Alles-route vervangen zonder een extra geschiedenisitem.
 function huidigeRoute(): Route {
@@ -68,587 +47,6 @@ function huidigeRoute(): Route {
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#/`);
   }
   return parseHash(window.location.hash);
-}
-
-// ---------------------------------------------------------------- weer
-type Kind = "sun" | "rain" | "partly" | "cloud";
-function weatherKind(s?: string): Kind {
-  const t = (s || "").toLowerCase();
-  if (/half|wisselend|opklaring|zon en wolk|licht bewolkt|af en toe zon/.test(t)) return "partly";
-  if (/regen|bui|motregen|onweer|hagel|sneeuw|natte/.test(t)) return "rain";
-  if (/zon|helder|onbewolkt/.test(t)) return "sun";
-  return "cloud";
-}
-const KIND_CLASS: Record<Kind, string> = { sun: "ic-sun", rain: "ic-rain", partly: "ic-partly", cloud: "" };
-
-function WarnBanner({ text }: { text: string }) {
-  const t = text.toLowerCase();
-  const lvl = t.includes("rood") ? "lvl-rood" : t.includes("oranje") ? "lvl-oranje" : "";
-  const m = /^(.{0,80}?[.:])\s+(.*)$/s.exec(text);
-  return (
-    <div className={`alert ${lvl}`} role="status">
-      <Icon name="alert" className="sm" />
-      <div>{m ? <><strong>{m[1]}</strong> {m[2]}</> : <strong>{text}</strong>}</div>
-    </div>
-  );
-}
-
-function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
-  const nu = W?.nu ?? {};
-  const vd = W?.vandaag ?? {};
-  const dagen = (Array.isArray(W?.dagen) ? W.dagen : []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
-  const heeftNu = typeof nu.temp === "number";
-  const stats: { k: string; v: string }[] = [];
-  if (typeof nu.van === "number" && typeof nu.tot === "number" && nu.van !== nu.tot) stats.push({ k: "Nu in het land", v: `${nu.van}° tot ${nu.tot}°` });
-  if (typeof vd.min === "number" || typeof vd.max === "number")
-    stats.push({ k: "Vandaag", v: `${typeof vd.min === "number" ? `${vd.min}°` : "–"} / ${typeof vd.max === "number" ? `${vd.max}°` : "–"}` });
-  if (typeof vd.neerslagkans === "number") stats.push({ k: "Neerslag", v: `${vd.neerslagkans}%` });
-  if (vd.wind) stats.push({ k: "Wind", v: vd.wind });
-  const leeg = !W || (!heeftNu && stats.length === 0 && !W.verwachting && dagen.length === 0 && !W.waarschuwing);
-  const plaats = W?.plaats || "Nederland";
-  const kind = weatherKind(nu.omschrijving);
-  const dates = dayDates(dagen.slice(0, 4));
-  return (
-    <section className="wx" aria-label={`Weer in ${plaats === "Nederland" ? "heel Nederland" : plaats}`}>
-      <div className="wx-head">
-        <h2 className="kicker">Weer · {plaats}</h2>
-        {W?.bijgewerkt ? <span className="wx-upd tnum">{W.bijgewerkt}</span> : null}
-      </div>
-      {W?.waarschuwing ? <WarnBanner text={W.waarschuwing} /> : null}
-      {leeg ? (
-        <p className="wx-empty">Het weerbericht is er nu even niet. Kom straks nog eens kijken.</p>
-      ) : (
-        <>
-          {heeftNu ? (
-            <div className="wx-now">
-              <span className="wx-temp tnum">{nu.temp}°</span>
-              <div className="wx-cond">
-                <Icon name={kind as IconName} className={`wx-icon ${KIND_CLASS[kind]}`} />
-                <span>
-                  {nu.omschrijving || ""}
-                  {typeof nu.gevoel === "number" ? (
-                    <>
-                      <br />
-                      <span className="muted">voelt als {nu.gevoel}°</span>
-                    </>
-                  ) : null}
-                </span>
-              </div>
-            </div>
-          ) : null}
-          {W?.verwachting ? (
-            <p className="wx-text bn">
-              <BionicText text={W.verwachting} on={bionic} />
-            </p>
-          ) : null}
-          {stats.length ? (
-            <dl className="wx-stats">
-              {stats.map((s) => (
-                <div key={s.k}>
-                  <dt>{s.k}</dt>
-                  <dd className="tnum">{s.v}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-          {dagen.length ? (
-            <ol className="wx-days" style={{ gridTemplateColumns: `repeat(${Math.min(dagen.length, 4)},minmax(0,1fr))` }}>
-              {dagen.slice(0, 4).map((d, i) => {
-                const k = weatherKind(d.omschrijving);
-                const label = d.omschrijving || { sun: "Zonnig", rain: "Regen", partly: "Half bewolkt", cloud: "Bewolkt" }[k];
-                return (
-                  <li className="day" key={d.dag + i} title={label}>
-                    <span className="dn">{cap(d.dag)}</span>
-                    <span className="dd tnum">{dates[i] || ""}</span>
-                    <Icon name={k} className={KIND_CLASS[k]} label={label} />
-                    <span className="hl tnum">
-                      <b>{typeof d.max === "number" ? `${d.max}°` : "–"}</b> {typeof d.min === "number" ? `${d.min}°` : "–"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : null}
-        </>
-      )}
-      {W?.bronnen?.length ? (
-        <div className="wx-src">
-          Bron:{" "}
-          {W.bronnen.map((b, i) => (
-            <span key={b.href}>
-              {i ? ", " : ""}
-              <a href={veiligeUrl(b.href)} target="_blank" rel="noreferrer">
-                {b.site}
-              </a>
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function Briefing({ text, bionic, sources, time, note }: { text: string; bionic: boolean; sources: number; time: string; note?: string }) {
-  return (
-    <section className="brief" aria-label="In het kort">
-      <h2 className="kicker">In het kort</h2>
-      {text ? (
-        <p className="brief-text bn">
-          <BionicText text={text} on={bionic} />
-        </p>
-      ) : (
-        <p className="brief-text muted">De samenvatting van vandaag komt er zo aan.</p>
-      )}
-      {sources > 0 ? (
-        <p className="brief-meta">
-          Samengevat uit {bronnenTekst(sources)}
-          {time ? <> · <span className="tnum">{time}</span></> : null}
-        </p>
-      ) : null}
-      {note ? <p className="brief-note">{note}</p> : null}
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------- tabs
-// Gesegmenteerde rubriekkeuze. Past alles niet op één regel, dan gaan de laatste rubrieken in "Meer"
-// (er scrollt dus niets zijwaarts in de header). De actieve rubriek staat altijd zichtbaar.
-function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: View) => void }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const indRef = useRef<HTMLSpanElement>(null);
-  const moreRef = useRef<HTMLDivElement>(null);
-  const prev = useRef<{ x: number; w: number } | null>(null);
-  const [fit, setFit] = useState<{ short: boolean; count: number }>({ short: false, count: 99 });
-  const [open, setOpen] = useState(false);
-  const options: TabOpt[] = useMemo(() => tabOpties(data.items, view), [data.items, view]);
-  const activeIdx = Math.max(0, options.findIndex((o) => o.value === view));
-
-  // Welke tabs passen? Meten in een onzichtbare kopie (vaste breedtes, geen layout-sprongen in beeld).
-  const compute = useCallback(() => {
-    const wrap = wrapRef.current;
-    const m = measureRef.current;
-    if (!wrap || !m) return;
-    const avail = wrap.clientWidth;
-    const pick = (short: boolean) => {
-      const row = m.querySelector<HTMLElement>(short ? ".m-short" : ".m-long");
-      if (!row) return null;
-      const kids = [...row.children] as HTMLElement[];
-      const pad = 6; // binnenrand van de track
-      const ws = kids.slice(0, options.length).map((k) => k.offsetWidth);
-      const meer = kids[options.length]?.offsetWidth ?? 70;
-      const total = ws.reduce((a, b) => a + b, 0) + pad;
-      if (total <= avail) return options.length;
-      let k = options.length - 1;
-      const need = (n: number) => {
-        let sum = ws.slice(0, n).reduce((a, b) => a + b, 0);
-        if (activeIdx >= n) sum += ws[activeIdx];
-        return sum + meer + pad;
-      };
-      while (k > 1 && need(k) > avail) k--;
-      return k;
-    };
-    const long = avail >= 560 ? pick(false) : null;
-    if (long !== null && long === options.length) setFit((f) => (f.short || f.count !== long ? { short: false, count: long } : f));
-    else {
-      const k = pick(true) ?? options.length;
-      setFit((f) => (!f.short || f.count !== k ? { short: true, count: k } : f));
-    }
-  }, [options, activeIdx]);
-  useLayoutEffect(() => compute(), [compute]);
-  useEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap || !window.ResizeObserver) return;
-    const ro = new ResizeObserver(() => compute());
-    ro.observe(wrap);
-    document.fonts?.ready.then(() => compute()).catch(() => {});
-    return () => ro.disconnect();
-  }, [compute]);
-
-  const shown = options.filter((_, i) => i < fit.count || i === activeIdx);
-  const rest = options.filter((o) => !shown.includes(o));
-
-  // Pil-indicator: breedte staat stil op de eindmaat; de beweging is een FLIP met alleen transform.
-  const place = useCallback((sel: HTMLElement | null, animate: boolean) => {
-    const ind = indRef.current;
-    if (!ind || !sel) return;
-    const x = sel.offsetLeft;
-    const w = sel.offsetWidth;
-    const from = prev.current;
-    prev.current = { x, w };
-    if (from && from.x === x && from.w === w && ind.classList.contains("ready")) return;
-    ind.style.width = `${w}px`;
-    if (animate && from && !rustig()) {
-      ind.style.transition = "none";
-      ind.style.transform = `translate3d(${from.x}px,0,0) scaleX(${from.w / w})`;
-      void ind.offsetWidth;
-      ind.style.transition = "";
-    }
-    ind.style.transform = `translate3d(${x}px,0,0)`;
-    ind.classList.add("ready");
-  }, []);
-  const firstPlace = useRef(true);
-  useLayoutEffect(() => {
-    place(listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]') ?? null, !firstPlace.current);
-    firstPlace.current = false;
-  }, [view, fit, place]);
-  useEffect(() => {
-    if (!open) return;
-    const down = (e: PointerEvent) => {
-      if (!moreRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("pointerdown", down);
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("pointerdown", down);
-      document.removeEventListener("keydown", key);
-    };
-  }, [open]);
-
-  const label = (o: TabOpt) => (fit.short ? o.short : o.label);
-  return (
-    <nav className="tabs" aria-label="Rubrieken">
-      <div className="tabs-in" ref={wrapRef}>
-        <div className="seg" ref={listRef}>
-          <span className="seg-ind" ref={indRef} aria-hidden="true" />
-          <div className="seg-tabs" role="tablist" aria-label="Rubrieken">
-          {shown.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              className={`tab cat-${o.id}`}
-              role="tab"
-              data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
-              aria-controls="rubriek-paneel"
-              aria-selected={view === o.value}
-              tabIndex={view === o.value ? 0 : -1}
-              onKeyDown={tabToets}
-              onClick={(e) => {
-                place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
-                onChange(o.value);
-              }}
-            >
-              {label(o)}
-            </button>
-          ))}
-          </div>
-          {rest.length ? (
-            <div className="more-wrap" ref={moreRef}>
-              <button type="button" className={`tab more-btn ${open ? "open" : ""}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-                Meer <Icon name="chevdown" className="sm" />
-              </button>
-              {open ? (
-                <div className="menu" role="menu">
-                  {rest.map((o) => (
-                    <button
-                      key={o.value}
-                      type="button"
-                      role="menuitem"
-                      className="menu-item"
-                      data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
-                      onClick={() => {
-                        setOpen(false);
-                        onChange(o.value);
-                      }}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <div className="seg-measure" ref={measureRef} aria-hidden="true">
-          {[false, true].map((short) => (
-            <div key={String(short)} className={`seg ${short ? "m-short" : "m-long"}`}>
-              {options.map((o) => (
-                <span key={o.value} className="tab-m">
-                  {short ? o.short : o.label}
-                </span>
-              ))}
-              <span className="tab-m">
-                Meer <Icon name="chevdown" className="sm" />
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-// ---------------------------------------------------------------- nieuws
-const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { item: Item; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
-  const key = itemKey(item);
-  const click = useOpen(key, onOpen);
-  const n = item.bronnen?.length ?? 0;
-  return (
-    <a onPointerDown={laadDetail} onMouseEnter={laadDetail} className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
-      {fotos(item).length ? <Beelden urls={fotos(item)} eager className="lead-img" /> : null}
-      <div className="meta">
-        {CAT_LABEL[item.cat] ?? item.cat}
-        {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
-        {item.ruw ? <span>nog niet samengevat</span> : null}
-      </div>
-      <h2 className="lead-title">{item.kop}</h2>
-      {item.ai ? (
-        <p className="lead-sum bn">
-          <BionicText text={item.ai} on={bionic} />
-        </p>
-      ) : null}
-      <div className="row-foot">
-        <span className="src">{n > 0 ? `${bronLabel(item.bronnen)} · ${bronnenTekst(n)}` : "Geen bron"}</span>
-      </div>
-    </a>
-  );
-});
-
-const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item: Item; i: number; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
-  const key = itemKey(item);
-  const click = useOpen(key, onOpen);
-  const n = item.bronnen?.length ?? 0;
-  const anim = enter && i < 12;
-  return (
-    <a
-      className={`row cat-${item.cat} ${anim ? "enter" : ""} ${fotos(item).length ? "has-img" : ""}`}
-      data-id={key}
-      href={`#/bericht/${key}`}
-      style={anim ? ({ "--i": i + 1 } as React.CSSProperties) : undefined}
-      onClick={click}
-      onPointerDown={laadDetail} onMouseEnter={laadDetail}
-    >
-      {fotos(item).length ? <Thumb urls={fotos(item)} /> : null}
-      <div className="row-main">
-        <div className="meta">
-          {CAT_LABEL[item.cat] ?? item.cat}
-          {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
-          {item.ruw ? <span>nog niet samengevat</span> : null}
-        </div>
-        <h2 className="row-title">{item.kop}</h2>
-        {item.ai ? (
-          <p className="row-sum bn">
-            <BionicText text={item.ai} on={bionic} />
-          </p>
-        ) : null}
-        <div className="row-foot">
-          <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
-            {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
-          </span>
-        </div>
-      </div>
-    </a>
-  );
-});
-
-function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: { items: Item[]; view: View; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
-  const [enter] = useState(() => !introDone && !rustig());
-  const [showAll, setShowAll] = useState(false);
-  const sorted = useMemo(() => (keepOrder ? items : sortItems(items)), [items, keepOrder]);
-  const leadIdx = useMemo(() => (keepOrder ? 0 : pickLead(sorted)), [sorted, keepOrder]);
-  if (sorted.length === 0)
-    return (
-      empty ?? <div className="empty">
-        <Icon name="clock" />
-        Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
-      </div>
-    );
-  const lead = sorted[leadIdx];
-  const rest = sorted.filter((_, i) => i !== leadIdx);
-  const limit = view === "alles" && !showAll && rest.length > ALLES_FIRST + 6;
-  const focusIdx = focusKey ? rest.findIndex((x) => itemKey(x) === focusKey) : -1;
-  const shown = limit && focusIdx < ALLES_FIRST ? rest.slice(0, ALLES_FIRST) : rest;
-  return (
-    <div className={enter ? "" : "swap"}>
-      <LeadStory item={lead} bionic={bionic} enter={enter} onOpen={onOpen} />
-      {shown.length ? (
-        <div className="rows">
-          {shown.map((it, i) => (
-            <NewsRow key={itemKey(it)} item={it} i={i} bionic={bionic} enter={enter} onOpen={onOpen} />
-          ))}
-        </div>
-      ) : null}
-      {shown.length < rest.length ? (
-        <div className="morewrap">
-          <button type="button" className="btn" onClick={() => setShowAll(true)}>
-            Toon alle {sorted.length} berichten
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-let afgewezenBerichten = 0;
-// ---------------------------------------------------------------- data + thema
-export function useData() {
-  const volgnummer = useRef(0);
-  const [data, setData] = useState<Data | null>(null);
-  const [error, setError] = useState(false);
-  const load = useCallback(async () => {
-    const aanvraag = ++volgnummer.current;
-    try {
-      const antwoord = await laadData(neemVroegeData());
-      if (aanvraag !== volgnummer.current) return;
-      const gevalideerd = valideer(antwoord);
-      afgewezenBerichten = gevalideerd.afgewezen;
-      const d = schoon(gevalideerd.data as Data); // ook hier ontdubbelen: statische data zonder Pages Function
-      d.items ??= [];
-      d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
-      d.filmpjes ??= [];
-      zaaiSamenvattingen(d.samenvattingen);
-      d.dumpert ??= [];
-      d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
-      d.filmpjes = sorteerOpGroep(d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }))); // Shorts of Journaals; op onderwerpgroep (#459): Sport onderaan, ook voor de volgorde van doorlopend kijken
-      setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
-      setError(false);
-    } catch {
-      if (aanvraag === volgnummer.current) setError(true);
-    }
-  }, []);
-  useEffect(() => {
-    load();
-    // ververs als je terugkomt op het tabblad, en elk kwartier
-    const onVis = () => document.visibilityState === "visible" && load();
-    document.addEventListener("visibilitychange", onVis);
-    const t = window.setInterval(load, 15 * 60 * 1000);
-    const grens = window.setInterval(() => setData((d) => d && verwijderGisteren(d, Date.now())), 1000);
-    return () => {
-      volgnummer.current++;
-      document.removeEventListener("visibilitychange", onVis);
-      window.clearInterval(t);
-      window.clearInterval(grens);
-    };
-  }, [load]);
-  return { data, error, reload: load };
-}
-
-type Theme = "light" | "dark";
-function systemTheme(): Theme {
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-function savedTheme(): Theme | null {
-  try {
-    const t = localStorage.getItem(THEME_KEY);
-    return t === "dark" || t === "light" ? t : null;
-  } catch {
-    return null;
-  }
-}
-function applyTheme(t: Theme) {
-  document.documentElement.dataset.theme = t;
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", t === "dark" ? "#0f0f0f" : "#ffffff"));
-}
-export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme as Theme) || savedTheme() || systemTheme());
-  const handmatig = useRef(false);
-  useLayoutEffect(() => applyTheme(theme), [theme]);
-  useEffect(() => {
-    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    if (!mq) return;
-    const on = () => {
-      if (!handmatig.current && !savedTheme()) setTheme(mq.matches ? "dark" : "light");
-    };
-    mq.addEventListener?.("change", on);
-    return () => mq.removeEventListener?.("change", on);
-  }, []);
-  // Direct wisselen: geen kleurovergang op elk element (dat hapert), één repaint en klaar.
-  const toggle = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    handmatig.current = true;
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch {
-      /* negeer */
-    }
-    applyTheme(next);
-    setTheme(next);
-  };
-  return { theme, toggle };
-}
-
-// ---------------------------------------------------------------- app
-function TopBar({
-  theme,
-  onTheme,
-  bionic,
-  onBionic,
-  onHome,
-  onSources,
-  filtered,
-  zoeken,
-}: {
-  zoeken?: ReactNode;
-  theme: Theme;
-  onTheme: () => void;
-  bionic: boolean;
-  onBionic: (v: boolean) => void;
-  onHome: () => void;
-  onSources: () => void;
-  filtered: number;
-}) {
-  return (
-    <header className="topbar">
-      <div className="bar">
-        <a
-          className="brand"
-          href="#/"
-          aria-label="Nieuws in het kort, naar de voorpagina"
-          onClick={(e) => {
-            e.preventDefault();
-            onHome();
-          }}
-        >
-          <span className="mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          Nieuws in het kort
-        </a>
-        <div className="ctrls">
-          <FocusSwitch value={bionic} onChange={onBionic} />
-          {zoeken}
-          <button
-            type="button"
-            className={`srcbtn ${filtered ? "has" : ""}`}
-            onClick={onSources}
-            aria-haspopup="dialog"
-            aria-label={filtered ? `Bronnen: ${filtered} uit` : "Bronnen"}
-            title="Bronnen kiezen"
-          >
-            <Icon name="sliders" />
-            <span className="srcbtn-l">Bronnen</span>
-            {filtered ? <span className="badge tnum">{filtered}</span> : null}
-          </button>
-          <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
-            <Icon name={theme === "dark" ? "sun" : "moon"} />
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function Front({ children }: { children: ReactNode }) {
-  const [enter] = useState(() => !introDone && !rustig());
-  return <div className={`front ${enter ? "enter" : ""}`}>{children}</div>;
-}
-
-function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; feed?: boolean }) {
-  return (
-    <div className={`app ${feed ? "app-feed" : ""}`}>
-      <IconSprite />
-      {debug && <div style={{ position: "fixed", right: 4, top: 4, zIndex: 2147483647, background: "black", color: "white", padding: 4, fontSize: 10 }}>Afgewezen berichten: {afgewezenBerichten}</div>}
-      <div className="shell">
-        <a className="skip" href="#top" onClick={(e) => { e.preventDefault(); document.getElementById("top")?.focus(); }}>Naar de inhoud</a>
-        {top}
-        {children}
-      </div>
-    </div>
-  );
 }
 
 export default function App() {
@@ -757,7 +155,7 @@ export default function App() {
   }, [route.selected]);
 
   useEffect(() => {
-    if (data) introDone = true;
+    if (data) intro.done = true;
   }, [data]);
 
   const setBionicPersist = (v: boolean) => {
@@ -787,7 +185,7 @@ export default function App() {
     feedNav.sluit(cat);
   }, []);
   const open = useCallback((key: string) => {
-    openedInside = true;
+    geopendBinnen.waarde = true;
     window.location.hash = `#/bericht/${key}`;
   }, []);
   const goHome = () => {
@@ -878,7 +276,7 @@ export default function App() {
               onBack={(opties) => {
                 geveegd.current = !!opties?.geveegd;
                 if (geveegd.current) setTimeout(() => { geveegd.current = false; }, 1000);
-                if (openedInside || window.history.state?.binnen) window.history.back();
+                if (geopendBinnen.waarde || window.history.state?.binnen) window.history.back();
                 else window.location.hash = "#/";
               }}
             />
@@ -990,7 +388,7 @@ export default function App() {
               list={view === "filmpjes" ? vids!.filmpjes : vids!.dumpert}
               bionic={bionic}
               bronFilter={view === "filmpjes"}
-              enter={!introDone && !rustig()}
+              enter={!intro.done && !rustig()}
               video={route.video}
               onOpen={(slug) => openFeed(view, slug)}
               onCloseFeed={() => closeFeed(view)}

@@ -32,3 +32,13 @@ export function pickLead(sorted: Item[]) {
   return best;
 }
 
+
+// ---------------------------------------------------------------- helpers
+export function amsterdamTime(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam" }).format(d);
+}
+export const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
