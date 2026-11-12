@@ -1,0 +1,1 @@
+- Voorlaadbeelden worden alleen vastgehouden zolang hun taak loopt en na load, error, abort of timeout vrijgegeven; regressietest met Image-doubles over meerdere plannen (#637).
