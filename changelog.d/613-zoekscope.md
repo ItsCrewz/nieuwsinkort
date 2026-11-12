@@ -1,0 +1,1 @@
+- Zoeken toont de actieve zoekscope, meldt door filters verborgen treffers (ook bij nul resultaten) en wist beperkende filters vanuit de zoekbalk (#613).
