@@ -6,7 +6,7 @@ const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae"
 
 export function normaliseer(tekst: string): string {
   return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
-    .replace(/(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => deel === "c++" || deel === "c#" ? deel : " ").trim();
+    .replace(/\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
 // Koppelteken tussen twee letters/cijfers, behalve tussen twee losse tekens ("V-S" blijft geen "VS"): "corona-maatregelen" is dezelfde samenstelling als "coronamaatregelen".
@@ -51,7 +51,7 @@ function zoektekst(item: Item): Zoektekst {
 }
 
 // Exact i.p.v. woordbegin: c++/c# en volledig numerieke termen (2024 vindt geen 20240, 20 geen 2026).
-const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+$/u.test(term);
+const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+(?:\.\p{N}+)?$/u.test(term);
 const past = (term: string, woord: string) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : woord.startsWith(term);
 
 // Reeksen [begin, eind] waarop een term past. Aaneengeschreven vorm: één woord, of woorden met koppelteken ("coronamaatregelen" = "corona-maatregelen").
@@ -108,7 +108,7 @@ export function zoekItems(items: Item[], query: string): Item[] {
   const termen: string[][] = [];
   // Het stuurteken \u0001 is bewust de markering voor termkoppeltekens (#811).
   // eslint-disable-next-line no-control-regex
-  for (const token of afkortingen(query).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001]+/u)) {
+  for (const token of afkortingen(query).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
     const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
   }
@@ -133,7 +133,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   for (const teken of tekst) {
     const begin = offset;
     offset += teken.length;
-    const genormaliseerd = teken.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    const genormaliseerd = teken.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(",", ".");
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
       vlak += letter;
