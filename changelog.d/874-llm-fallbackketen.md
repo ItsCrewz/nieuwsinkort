@@ -1,0 +1,1 @@
+- LLM-fallbackketen vastgelegd en geborgd met tests; foutcodes LLM_TIMEOUT, LLM_HTTP_5XX, LLM_RATE_LIMIT, LLM_PARSE, LLM_BUDGET en LLM_OVERIG worden samen met bron, model en duur gelogd (#874).
