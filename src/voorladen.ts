@@ -17,6 +17,7 @@ const THUMBS = 6;
 const KIJK = 3; // zoveel items per tab telt als "eerste"
 const HLS_MAX = 2;
 export const MP4_BYTES = 256 * 1024;
+export const HLS_BYTES = 256 * 1024; // totaal over de voorgeladen segmenten van één stream
 export const GELIJK = 3;
 export const NETWERK_TIMEOUT = 10000;
 
@@ -162,36 +163,45 @@ async function warmHls(master: string, signal: AbortSignal) {
     const v = laagsteVariant(txt, b);
     ({ txt, base: b } = v ? await get(v) : { txt: "", base: b });
   }
+  let rest = HLS_BYTES;
   for (const s of segmentenBereik(txt, b)) {
     signal.throwIfAborted();
-    if (!s.bereik) await fetch(s.url, { ...LOW, signal }).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("hls"))));
-    else await warmBereik(s.url, s.bereik.van, s.bereik.tot, signal);
+    if (rest <= 0) break;
+    const van = s.bereik?.van ?? 0;
+    const tot = Math.min(s.bereik?.tot ?? van + rest - 1, van + rest - 1);
+    rest -= await warmBereik(s.url, van, tot, signal, !!s.bereik);
   }
 }
 
 // Bytebereik-segment: alleen dat bereik. Antwoordt de server met 200 (Range genegeerd = heel bestand), dan stoppen we meteen.
-async function warmBereik(url: string, van: number, tot: number, signal: AbortSignal) {
+async function warmBereik(url: string, van: number, tot: number, signal: AbortSignal, strikt: boolean): Promise<number> {
   const r = await fetch(url, { ...LOW, signal, headers: { Range: `bytes=${van}-${tot}` } });
   signal.throwIfAborted();
-  if (r.status >= 400) {
+  if (r.status >= 400 || r.ok === false) {
     r.body?.cancel?.().catch(() => {});
     throw new Error("hls");
   }
-  const m = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(r.headers.get("Content-Range") ?? "");
+  const m = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(r.headers?.get("Content-Range") ?? "");
   const geldig = m && Number(m[1]) === van && Number(m[2]) === tot && (m[3] === "*" || Number(m[3]) > tot);
-  const rd = r.status === 206 && geldig ? r.body?.getReader() : undefined;
-  if (!rd) return void r.body?.cancel?.().catch(() => {});
+  if (strikt && (r.status !== 206 || !geldig)) {
+    r.body?.cancel?.().catch(() => {});
+    return 0;
+  }
+  const rd = r.body?.getReader();
+  if (!rd) return 0;
   const stop = () => { rd.cancel().catch(() => {}); };
   signal.addEventListener("abort", stop, { once: true });
+  let got = 0;
   try {
-    for (let got = 0, max = tot - van + 1; got < max; ) {
+    while (got < tot - van + 1) {
       const { done, value } = await rd.read();
       signal.throwIfAborted();
-      if (done) return;
+      if (done) return got;
       got += value.length;
     }
-    stop();
+    return Math.min(got, tot - van + 1);
   } finally {
+    stop();
     signal.removeEventListener("abort", stop);
   }
 }

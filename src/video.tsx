@@ -143,10 +143,8 @@ export function VideoGrid({
     return () => window.removeEventListener("message", onReady);
   }, [video, touch]);
   const opgeslagen = useRef(leesFeed());
-  const vast = useRef<Video[] | null>(null);
-  if (!video) { vast.current = null; opgeslagen.current = null; }
-  else if (!vast.current) vast.current = herstelFeed(opgeslagen.current, cat, video, list).lijst;
-  const feedVideos = vast.current ?? list;
+  if (!video) opgeslagen.current = null;
+  const feedVideos = list;
   const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
   // Dubbelzinnige oude titelroute: geen video openen, terug naar het overzicht.
   const dubbelzinnig = !!video && start === null;
