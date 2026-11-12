@@ -137,7 +137,22 @@ t("tellerwisseling met stilstaande nieuwe teller: melding 2,5 s na de wisseling,
   assert.equal(speel(fg, 0, 1500, { frames: () => 80, extra: { bron: "decode" } }).b, "ok");
   const r = speel(fg, 2000, 5000, { t0: 1.5, frames: () => 5, extra: { bron: "presentatie" } });
   assert.equal(r.b, "frame-vast");
-  assert.ok(r.now - 2000 >= 2500);
+  assert.equal(r.now - 2000, 2500);
+});
+
+t("tellerwisseling met gelijke waarde (1 -> 1): geen valse melding op de wisseltik (faalt op main)", () => {
+  const fg = new FrameGezondheid();
+  assert.equal(speel(fg, 0, 2000, { frames: () => 1, extra: { bron: "decode" } }).b, "ok");
+  // Op 2500 vuurt rVFC voor het eerst: presentatieteller 1, daarna loopt hij door.
+  assert.equal(speel(fg, 2500, 10000, { t0: 2.5, frames: (n) => 1 + Math.floor((n - 2500) / 40), extra: { bron: "presentatie" } }).b, "ok");
+});
+
+t("tellerwisseling met gelijke waarde en daarna stilstand: melding exact 2,5 s na de wisseling", () => {
+  const fg = new FrameGezondheid();
+  assert.equal(speel(fg, 0, 2000, { frames: () => 1, extra: { bron: "decode" } }).b, "ok");
+  const r = speel(fg, 2500, 10000, { t0: 2.5, frames: () => 1, extra: { bron: "presentatie" } });
+  assert.equal(r.b, "frame-vast");
+  assert.equal(r.now, 5000);
 });
 
 t("echte stilstand zonder wisseling en normale voortgang blijven gelijk; frameTellerBron", () => {
@@ -145,5 +160,6 @@ t("echte stilstand zonder wisseling en normale voortgang blijven gelijk; frameTe
   assert.equal(speel(new FrameGezondheid(), 0, 20000, { frames: (n) => n / 40, extra: { bron: "presentatie" } }).b, "ok");
   assert.equal(frameTellerBron({ gepresenteerd: 3, rvfc: true, decode: true }), "presentatie");
   assert.equal(frameTellerBron({ gepresenteerd: 0, rvfc: true, decode: true }), "decode");
+  assert.equal(frameTellerBron({ gepresenteerd: 0, rvfc: true, decode: false }), "presentatie");
   assert.equal(frameTellerBron({ gepresenteerd: 0, rvfc: false, decode: false }), null);
 });
