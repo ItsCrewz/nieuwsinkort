@@ -68,6 +68,8 @@ Kopkaart (#150): `.nc-head` is alleen op Home schermvullend. Tabs krijgen de kla
 
 De feednavigatie is met `inert` niet focusbaar zolang zij verborgen is; de startknop blijft daarbuiten bereikbaar. Bij zichtbare navigatie werkt Tab weer normaal (#275).
 
+Video-sleutel (#687): `videoSlug` gebruikt het platform-id (`yt-`, `d-`, `x-`, `r-`, `ig-`); anders `v-<53-bits hash van href>` (titel telt niet mee). Oude titel-only routes lossen via `vindSlug` alleen op bij precies één treffer (bij een dubbelzinnige route kiest `herstelFeed` geen willekeurige video); oude samenvattingscache onder titel-only sleutels wordt niet hergebruikt.
+
 `src/feedstatus.ts` bewaart en leest de feedstatus en kiest bij herstel de beschikbare lijst en een passende slug. Geldige sessiedata heeft voorrang; bij onbeschikbare of ongeldige sessiedata dient `history.state.feed` als terugval voor de video en afspeelpositie. `wisFeed` wist zowel sessionStorage als `history.state.feed` (andere geschiedenisvelden blijven; een niet-beschikbare opslag blokkeert het wissen van de andere niet).
 
 Swipe-feed (#64): De open swipe-feed bewaart per tabblad de categorie, soort, slug, afspeelpositie en de videolijst in sessionStorage en history.state. De lijst blijft tijdens verversen vaststaan; bij herladen wordt een verdwenen slug opgevangen met een naburig filmpje of de bewaarde lijst. Bij verbergen pauzeert de actieve speler en bij terugkomst hervat deze als hij speelde. Browserbeleid kan automatisch hervatten blokkeren. Een YouTube-positie wordt pas hersteld (`seekTo`, eenmaal per video) na `onReady` van het actieve frame (`ytIsGereed` in `src/ytstart.ts`; andere frames, origins en oude video's tellen niet); mp4/HLS herstelt zodra `readyState > 0`.

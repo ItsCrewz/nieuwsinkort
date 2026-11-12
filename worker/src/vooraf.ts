@@ -1,11 +1,11 @@
 // Video-samenvattingen vooraf maken, zodat het onderblad "Samenvatting" meteen klaar is.
 // Draait als alarm van de Runner-DO ná de uurrun (het uurnieuws gaat dus altijd voor) en roept per filmpje
 // de Pages Function /samenvatting aan met pre:true. Die bewaakt het gedeelde dagbudget (max 85%, 600 marge,
-// boven 70% klein model + korter luisteren) en bewaart de uitkomst in KV (vs:<id>).
+// boven 70% klein model + korter luisteren) en bewaart de uitkomst in KV (vs:<id>, vs2:v-<hash>).
 // Volgorde: wat bovenaan staat eerst, om en om Shorts / Journaals / Dumpert; goedkope YouTube-ondertiteling vóór
 // Whisper. Per alarm hooguit MAX_CALLS verzoeken (free plan: 50 subrequests) en PER_ALARM neuronen; daarna
 // eventueel een volgend alarm (max 3 per uur) zodat het werk over het uur verspreid wordt.
-import { videoSlug } from "../../src/slug";
+import { svSleutel, videoSlug } from "../../src/slug";
 import { soortVan } from "./videos";
 
 const MAX_CALLS = 30;
@@ -34,7 +34,7 @@ export async function vooraf(env: { NIEUWS: KVNamespace; SITE: string; BUDGET?: 
   const d: any = await (await fetch(`${env.SITE}/data.json?vooraf=${T0}`, { signal: AbortSignal.timeout(15000) })).json();
   const lijst = volgorde(d);
   const ids = lijst.map((v) => videoSlug(v as any));
-  const cache = await Promise.all(ids.map((id) => env.NIEUWS.get(`vs:${id}`, "json").catch(() => null)));
+  const cache = await Promise.all(ids.map((id) => env.NIEUWS.get(svSleutel(id), "json").catch(() => null)));
   const todo = lijst.map((v, i) => ({ v, id: ids[i] })).filter((_, i) => !cache[i]);
   let neur = 0, calls = 0, gemaakt = 0, stop = "";
   const fouten: string[] = [];
