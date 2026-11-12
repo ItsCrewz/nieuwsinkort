@@ -106,6 +106,8 @@ function alleTermenPassen(kand: [number, number][][], aantal: number): boolean {
 export function zoekItems(items: Item[], query: string): Item[] {
   // Alleen gekoppelde woorddelen vormen een reeks; andere leestekens scheiden zoekwoorden.
   const termen: string[][] = [];
+  // Het stuurteken \u0001 is bewust de markering voor termkoppeltekens (#811).
+  // eslint-disable-next-line no-control-regex
   for (const token of afkortingen(query).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001]+/u)) {
     const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
