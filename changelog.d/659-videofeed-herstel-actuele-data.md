@@ -1,0 +1,1 @@
+- Videofeed: een lege of gefilterde actuele lijst brengt geen oude video's meer terug; herstel gebeurt pas op actuele data en er verschijnt de lege toestand als niets meer beschikbaar is (#659).

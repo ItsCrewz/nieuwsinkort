@@ -127,6 +127,14 @@ export function resultaatTekst(aantal: number): string {
   return `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}`;
 }
 
+// Zoekscope (#613): binnen welke rubriek en filters wordt gezocht, en hoeveel treffers de filters verbergen.
+export function scopeTekst(s: { rubriek: string; zonderPolitiek: boolean; tijd: string; bronnenUit: number }): string {
+  return ["Zoekt in " + s.rubriek + (s.zonderPolitiek ? " (zonder Politiek)" : ""), s.tijd, ...(s.bronnenUit ? [`${s.bronnenUit} ${s.bronnenUit === 1 ? "bron" : "bronnen"} uit`] : [])].join(" · ");
+}
+export function verborgenTekst(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? "treffer" : "treffers"} verborgen door filters`;
+}
+
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
 export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
   const woorden = normaliseer(query).split(" ").filter(Boolean);

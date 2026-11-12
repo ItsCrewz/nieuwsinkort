@@ -1201,22 +1201,23 @@ export function Feed({
   groups?: FeedGroup[];
   onGroup?: (id: string) => void;
 }) {
-  // Lijsten vastzetten zolang de feed open is (de 15-minuten-verversing schuift dan niets onder je duim weg).
-  const [gs] = useState(() => (groups && groups.length > 1 ? groups : null));
+  const gs = groups && groups.length > 1 ? groups : null;
   const [gi, setGi] = useState(() => {
     if (!gs) return 0;
     const k = gs.findIndex((g) => g.list.some((v) => videoSlug(v) === start));
     return k < 0 ? 0 : k;
   });
-  const [items, setItems] = useState(() => (gs ? gs[gi].list : list));
+  const [verwijderd, setVerwijderd] = useState<ReadonlySet<string>>(() => new Set());
+  const bronItems = gs ? (gs[gi]?.list ?? gs[0].list) : list;
+  const items = useMemo(() => bronItems.filter((v) => !verwijderd.has(videoSlug(v))), [bronItems, verwijderd]);
   const [first] = useState(() => startIndex(items, start));
   const [active, setActive] = useState(first);
+  useEffect(() => { setActive((i) => Math.min(i, Math.max(0, items.length - 1))); }, [items.length]);
   // Wisselen tussen Shorts en Journaals: nieuwe lijst, vanaf de eerste video (de scroller wordt vers opgebouwd).
   const pickGroup = useCallback(
     (k: number) => {
       if (!gs || k === gi) return;
       setGi(k);
-      setItems(gs[k].list);
       setActive(0);
       setPaused(false);
       onGroup?.(gs[k].id);
@@ -1232,7 +1233,7 @@ export function Feed({
   const [ytBlok, setYtBlok] = useState<ReadonlySet<number>>(() => new Set());
   const ytBlokAan = useCallback((i: number) => setYtBlok((s) => (s.has(i) ? s : new Set(s).add(i))), []);
   const ytBlokWis = useCallback(() => setYtBlok((s) => (s.size ? new Set() : s)), []);
-  const activeKind = playerFor(items[active])?.kind ?? "";
+  const activeKind = items[active] ? playerFor(items[active])?.kind ?? "" : "";
   const muted = !geluidVoorSlide(activeKind, want, getikt, nativeBlocked, ytBlok.has(active));
   const unmutedAt = useRef(0);
   const [closing, setClosing] = useState(false);
@@ -1339,11 +1340,11 @@ export function Feed({
     swipeStart.current = null;
     activeRef.current = besluit.actief;
     flushSync(() => {
-      setItems((oud) => oud.filter((_, index) => index !== i));
+      setVerwijderd((oud) => new Set([...oud, videoSlug(items[i])]));
       setActive(besluit.actief);
     });
     if (s) s.scrollTop = nieuwTop;
-  }, [items.length]);
+  }, [items]);
   const ytSpeelt = useCallback(() => {}, []);
 
   // Start op de gekozen video, vóór de eerste paint.
