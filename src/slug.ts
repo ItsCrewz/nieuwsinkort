@@ -56,3 +56,8 @@ export function vindSlug(lijst: Video[], slug: string): Video | null {
   const oud = lijst.filter((v) => oudeSlug(v) === slug);
   return oud.length === 1 ? oud[0] : null;
 }
+
+// KV-sleutel voor video-samenvattingen: v-<hash> krijgt een eigen versie-prefix, zodat een oude titel-slug nooit op een hash-sleutel kan vallen.
+export function svSleutel(id: string): string {
+  return /^v-/.test(id) ? `vs2:${id}` : `vs:${id}`;
+}

@@ -11,6 +11,7 @@
 // `Budget` (binding BUDGET_DO, atomair); ontbreekt die binding (lokaal/preview), dan het oudere KV-gedrag (een rem, geen garantie).
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
+import { svSleutel } from "../src/slug";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
 import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState } from "../worker/src/llm";
 
@@ -346,7 +347,7 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   // pre = vooraf maken door de uur-Worker: strenger budget (marge voor nieuws + verzoeken), korter luisteren
   const pre = body?.pre === true;
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 400);
-  const key = `vs:${id}`;
+  const key = svSleutel(id);
   const hit = await env.NIEUWS.get(key, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   if (hit) return json({ ...hit, cached: true });
   const { v, volledig } = await vindVideo(env, request, id);
@@ -491,6 +492,6 @@ export const onRequestGet = async ({ request, env }: Ctx) => {
   // GET /samenvatting?id=... alleen uit de cache (handig om te tonen of er al een samenvatting is)
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false }, 400);
-  const hit = await env.NIEUWS.get(`vs:${id}`, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
+  const hit = await env.NIEUWS.get(svSleutel(id), "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   return json(hit ? { ...hit, cached: true } : { ok: false, code: "geen" });
 };

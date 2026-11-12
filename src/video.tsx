@@ -110,9 +110,13 @@ export function VideoGrid({
   else if (!vast.current) vast.current = herstelFeed(opgeslagen.current, cat, video, list).lijst;
   const feedVideos = vast.current ?? list;
   const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
+  // Dubbelzinnige oude titelroute: geen video openen, terug naar het overzicht.
+  const dubbelzinnig = !!video && start === null;
+  useEffect(() => { if (dubbelzinnig) onCloseFeed(); }, [dubbelzinnig, onCloseFeed]);
   useEffect(() => {
     if (!touch) return;
     if (!video) { wisFeed(); return; }
+    if (!start) return;
     let vorigeSlug = "";
     let positie = 0;
     let speelt = true;
@@ -252,7 +256,7 @@ export function VideoGrid({
         </div>
       )}
       </div>
-      {video && touch ? (
+      {video && touch && !dubbelzinnig ? (
         <Foutgrens code="CLIENT_FILMPJES"><Suspense fallback={null}>
           <Feed
             key={cat}
