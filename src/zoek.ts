@@ -38,6 +38,18 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
   return { woorden, lijm };
 }
 
+type Zoektekst = { velden: (string | undefined)[]; woorden: string[]; lijm: boolean[] };
+const index = new WeakMap<Item, Zoektekst>();
+
+function zoektekst(item: Item): Zoektekst {
+  const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]];
+  const bewaard = index.get(item);
+  if (bewaard && velden.length === bewaard.velden.length && velden.every((veld, i) => veld === bewaard.velden[i])) return bewaard;
+  const resultaat = { velden, ...woordenVan(velden.filter(Boolean) as string[], KOPPEL) };
+  index.set(item, resultaat);
+  return resultaat;
+}
+
 // Exact i.p.v. woordbegin: c++/c# en volledig numerieke termen (2024 vindt geen 20240, 20 geen 2026).
 const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+$/u.test(term);
 const past = (term: string, woord: string) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : woord.startsWith(term);
@@ -94,18 +106,23 @@ function alleTermenPassen(kand: [number, number][][], aantal: number): boolean {
 export function zoekItems(items: Item[], query: string): Item[] {
   // Alleen gekoppelde woorddelen vormen een reeks; andere leestekens scheiden zoekwoorden.
   const termen: string[][] = [];
+  // Het stuurteken \u0001 is bewust de markering voor termkoppeltekens (#811).
+  // eslint-disable-next-line no-control-regex
   for (const token of afkortingen(query).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001]+/u)) {
     const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
   }
   if (!termen.length) return query.trim() ? [] : items;
   return items.filter((item) => {
-    const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]].filter(Boolean) as string[];
-    const { woorden, lijm } = woordenVan(velden, KOPPEL);
+    const { woorden, lijm } = zoektekst(item);
     // Woordbegin: elke term moet op een eigen woord (of eigen reeks) vallen ("mark markt" vraagt twee woorden).
     const kand = termen.map((delen) => kandidaten(delen, woorden, lijm));
     return kand.every((k) => k.length) && alleTermenPassen(kand, woorden.length);
   });
+}
+
+export function resultaatTekst(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}`;
 }
 
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.

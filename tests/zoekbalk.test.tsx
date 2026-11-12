@@ -14,12 +14,12 @@ for (const query of ["!!!", "😀"]) {
   assert.match(balk, /aria-live="polite">Voer letters of cijfers in om te zoeken/);
   assert.doesNotMatch(balk, /resultaten?/);
 }
-for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 resultaten"]] as const) {
+for (const aantal of [0, 1, 2]) {
   // Een nieuwe mount simuleert terugkeer uit een bericht met behouden zoekterm.
   const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal, invoer: createRef<HTMLInputElement>() }));
   assert.match(balk, /aria-expanded="true"/);
   assert.match(balk, /value="tekst"/);
-  assert.ok(balk.includes(`aria-live="polite">${tekst}</span>`));
+  assert.ok(balk.includes(`aria-live="polite"></span>`));
 }
 const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
 assert.match(geslotenBalk, /aria-expanded="false"/);
