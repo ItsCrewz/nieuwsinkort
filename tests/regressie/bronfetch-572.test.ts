@@ -3,9 +3,12 @@ import { Fetcher } from "../../worker/src/index";
 
 const bleep = "https://www.bleepingcomputer.com/feed/";
 const cisa = "https://www.cisa.gov/cybersecurity-advisories/all.xml";
-const xml = `<rss><channel><item><title>Beveiligingsnieuws</title><link>https://www.bleepingcomputer.com/news/bericht/</link><pubDate>${new Date().toUTCString()}</pubDate></item></channel></rss>`;
+const testtijd = Date.parse("2025-06-15T12:00:00Z");
+const xml = `<rss><channel><item><title>Beveiligingsnieuws</title><link>https://www.bleepingcomputer.com/news/bericht/</link><pubDate>${new Date(testtijd).toUTCString()}</pubDate></item></channel></rss>`;
 const fetcher = new Fetcher({ storage: {} } as any, {} as any);
 const echteFetch = globalThis.fetch;
+const echteDateNow = Date.now;
+Date.now = () => testtijd;
 const aanvragen: { url: string; ua: string }[] = [];
 let herstel = false;
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -37,4 +40,4 @@ try {
   assert.equal(gelukt.entries?.length, 1);
   assert.equal(aanvragen.length, 2);
   console.log("ok - feedfetch meldt fouten en verwerkt een geslaagde herpoging");
-} finally { globalThis.fetch = echteFetch; }
+} finally { globalThis.fetch = echteFetch; Date.now = echteDateNow; }
