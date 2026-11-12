@@ -121,6 +121,10 @@ export function zoekItems(items: Item[], query: string): Item[] {
   });
 }
 
+export function resultaatTekst(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}`;
+}
+
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
 export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
   const woorden = normaliseer(query).split(" ").filter(Boolean);
