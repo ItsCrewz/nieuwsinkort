@@ -11,6 +11,7 @@
 // `Budget` (binding BUDGET_DO, atomair); ontbreekt die binding (lokaal/preview), dan het oudere KV-gedrag (een rem, geen garantie).
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
+import { svSleutel } from "../src/slug";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
 import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState } from "../worker/src/llm";
 
@@ -176,12 +177,31 @@ async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{
   let o = 0; for (const p of parts) { bytes.set(p, o); o += p.length; }
   return { bytes, sec: d };
 }
-async function mp4Audio(url: string, why: string[], maxBytes = MAX_MP4): Promise<{ bytes: Uint8Array; sec: number } | null> {
+export async function mp4Audio(url: string, why: string[], maxBytes = MAX_MP4): Promise<{ bytes: Uint8Array; sec: number } | null> {
   const H = { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" };
   // eerst alleen het begin: staat de index (moov) vooraan, dan is een afgeknipt stuk nog af te spelen
   const r = await fetch(url, { headers: { ...H, Range: `bytes=0-${maxBytes - 1}` }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) { why.push(`mp4: HTTP ${r.status}${r.status === 403 ? " (link verlopen)" : ""}`); return null; }
-  const bytes = new Uint8Array(await r.arrayBuffer());
+  const delen: Uint8Array[] = [];
+  let lengte = 0;
+  const lezer = r.body?.getReader();
+  if (lezer) {
+    try {
+      while (true) {
+        const { done, value } = await lezer.read();
+        if (done) break;
+        lengte += value.length;
+        if (lengte > maxBytes) {
+          await lezer.cancel().catch(() => {});
+          why.push("mp4: te groot (downloadlimiet overschreden)");
+          return { bytes: new Uint8Array(0), sec: -1 };
+        }
+        delen.push(value);
+      }
+    } finally { lezer.releaseLock(); }
+  }
+  const bytes = new Uint8Array(lengte);
+  let offset = 0; for (const deel of delen) { bytes.set(deel, offset); offset += deel.length; }
   const total = +((r.headers.get("content-range") || "").split("/")[1] || 0) || bytes.length;
   if (total <= bytes.length) return { bytes, sec: 0 };
   const head = new TextDecoder("latin1").decode(bytes.subarray(0, 4096));
@@ -346,7 +366,7 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   // pre = vooraf maken door de uur-Worker: strenger budget (marge voor nieuws + verzoeken), korter luisteren
   const pre = body?.pre === true;
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 400);
-  const key = `vs:${id}`;
+  const key = svSleutel(id);
   const hit = await env.NIEUWS.get(key, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   if (hit) return json({ ...hit, cached: true });
   const { v, volledig } = await vindVideo(env, request, id);
@@ -491,6 +511,6 @@ export const onRequestGet = async ({ request, env }: Ctx) => {
   // GET /samenvatting?id=... alleen uit de cache (handig om te tonen of er al een samenvatting is)
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false }, 400);
-  const hit = await env.NIEUWS.get(`vs:${id}`, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
+  const hit = await env.NIEUWS.get(svSleutel(id), "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   return json(hit ? { ...hit, cached: true } : { ok: false, code: "geen" });
 };

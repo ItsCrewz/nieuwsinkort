@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { bewaarFeed, leesFeed, herstelFeed, wisFeed, type FeedStatus } from "../src/feedstatus";
+import { bewaarFeed, leesFeed, herstelFeed, startIndex, wisFeed, type FeedStatus } from "../src/feedstatus";
 import { videoSlug } from "../src/slug";
 import type { Video } from "../src/types";
 const opslag = new Map<string, string>();
@@ -50,6 +50,25 @@ try {
 }
 console.log("feedstatus-randgevallen: geslaagd");
 
+// #687: dubbelzinnige oude titelroute opent geen willekeurige video; hash botst niet op bekende FNV-botsing.
+{
+  const a = { titel: "Zelfde", href: "https://example.com/a/1" } as any, b = { titel: "Zelfde", href: "https://example.com/a/2" } as any;
+  assert.equal(herstelFeed(null, "dumpert", "zelfde", [a, b]).slug, null);
+  // Geopende video: dubbelzinnige oude route opent niets; eigen sleutel precies die video; titelwijziging behoudt de sleutel.
+  const lst = [a, b];
+  const r0 = herstelFeed(null, "dumpert", "zelfde", lst);
+  assert.equal(r0.slug, null);
+  const sb = videoSlug(b);
+  assert.equal(lst[startIndex(lst, herstelFeed(null, "dumpert", sb, lst).slug)], b);
+  const gewijzigd = [a, { ...b, titel: "Anders" }];
+  assert.equal(gewijzigd[startIndex(gewijzigd, herstelFeed(null, "dumpert", sb, gewijzigd).slug)].titel, "Anders");
+  // Oude route met één treffer opent die video; yt-/d-video's blijven op hun eigen id.
+  const c = { titel: "Uniek", href: "https://example.com/a/3" } as any;
+  assert.equal(lst.concat(c)[startIndex(lst.concat(c), herstelFeed(null, "dumpert", "uniek", lst.concat(c)).slug)], c);
+  const yt = { titel: "T", href: "https://www.youtube.com/watch?v=abcdefghijk" } as any, dp = { titel: "T", href: "https://www.dumpert.nl/item/123_abc" } as any;
+  for (const v of [yt, dp]) assert.equal([a, v, b][startIndex([a, v, b], herstelFeed(null, "dumpert", videoSlug(v), [a, v, b]).slug)], v);
+  assert.notEqual(videoSlug({ titel: "x", href: "https://example.com/video/9h5kto" } as any), videoSlug({ titel: "x", href: "https://example.com/video/b2yzyf" } as any));
+}
 // Wissen haalt de status uit beide opslagplaatsen en laat andere geschiedenisvelden staan (#802).
 {
   const g = new Map<string, string>();

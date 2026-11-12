@@ -78,7 +78,7 @@ t("filmpjes: tijdgrens van de routine, bestaande hrefs en Instagram van vóór d
 t("meerKeys: routine-berichten krijgen meer-sleutel; bestaande meer blijft; meta/meerKeys lekken niet", () => {
   const S = { gegenereerd: ROUTINE, items: [item("A", "https://www.nos.nl/a/"), item("B", "https://nos.nl/b", { meer: "eigen" }), item("C", "https://nos.nl/c")], filmpjes: [], dumpert: [] };
   const H = { gegenereerd: UUR, dumpert: [], filmpjes: [], meta: { model: "m", aiStand: "ok" }, meerKeys: ["nos.nl/a", "nos.nl/b", "x.nl/d?z=1"],
-    items: [item("D", "https://x.nl/d?z=1")] };
+    items: [item("D", "https://x.nl/d?z=1&utm_source=1")] };
   const out = merge(S, H);
   const per = Object.fromEntries(out.items.map((i: any) => [i.kop, i.meer]));
   assert.deepEqual(per, { D: "x.nl/d?z=1", A: "nos.nl/a", B: "eigen", C: undefined });

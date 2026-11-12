@@ -17,6 +17,7 @@ import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
+import { startIndex } from "./feedstatus";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
 import { bronIndexen, gebruiktNativeHls, maakBronvrij, PoolEigenaars, POOL_GROOTTE, slotVan } from "./videopool";
@@ -1208,7 +1209,7 @@ export function Feed({
     return k < 0 ? 0 : k;
   });
   const [items, setItems] = useState(() => (gs ? gs[gi].list : list));
-  const [first] = useState(() => Math.max(0, items.findIndex((v) => videoSlug(v) === start)));
+  const [first] = useState(() => startIndex(items, start));
   const [active, setActive] = useState(first);
   // Wisselen tussen Shorts en Journaals: nieuwe lijst, vanaf de eerste video (de scroller wordt vers opgebouwd).
   const pickGroup = useCallback(
