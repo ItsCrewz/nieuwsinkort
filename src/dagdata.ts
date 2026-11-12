@@ -7,7 +7,7 @@ import { normLink as norm } from "./linknorm";
 import { alleenVandaag } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
-import { ams } from "./tijd";
+import { ams, vorigeDag } from "./tijd";
 import { ontdubbelVerhalen } from "./verhaaldubbel";
 interface KV { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
@@ -117,7 +117,7 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   if (!u.searchParams.has("statisch") && env.NIEUWS) {
     try {
       const vooraf = await env.NIEUWS.get("data-vooraf", kvOpt("text"));
-      if (vooraf && (vooraf.slice(0, 10) === dag() || (ams().h < 6 && vooraf.slice(0, 10) === dag(new Date(Date.now() - 24 * 3600e3).toISOString()))) && vooraf[10] === "\n") {
+      if (vooraf && (vooraf.slice(0, 10) === dag() || (ams().h < 6 && vooraf.slice(0, 10) === vorigeDag())) && vooraf[10] === "\n") {
         const einde = vooraf.indexOf("\n", 11);
         if (einde > 11) {
           const nu = Date.now(), vandaag = dag();
