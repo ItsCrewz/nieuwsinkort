@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { chat, summarize, type Usage } from "../worker/src/ai";
 import { keten, type Aanbieder, type LlmState } from "../worker/src/llm";
-import { llmCode } from "../worker/src/llmfout";
+import { llmCode, budgetTier, kiesModel } from "../worker/src/llmfout";
 
 let n = 0;
 const t = async (naam: string, fn: () => Promise<void> | void) => { logs.length = 0; await fn(); n++; console.log("✓", naam); };
@@ -117,6 +117,26 @@ try {
     globalThis.fetch = (async () => { fetches++; return Response.json({ choices: [{ message: { content: "ook kapot" } }] }); }) as typeof fetch;
     assert.equal((await summarize(ai(async () => ({ response: "kapot" })), "@cf/x", items, u)).size, 0);
     assert.equal(fetches, 1);
+  });
+
+  await t("summarize: leeg Cloudflare-antwoord zonder sleutel → precies één LLM_PARSE-regel", async () => {
+    const u = usage();
+    globalThis.fetch = (async () => { throw new Error("netwerk is verboden in deze test"); }) as typeof fetch;
+    await assert.rejects(summarize(ai(async () => ({ response: "" })), "@cf/x", items, u), /AI-keten uitgeput/);
+    assert.deepEqual(codes().filter((c) => c === "LLM_PARSE"), ["LLM_PARSE"]);
+  });
+
+  await t("ketenvolgorde: hoofdmodel < 70%, klein model 70–100%, daarna geen AI (trap 4)", () => {
+    const B = 9000;
+    assert.equal(budgetTier(0, B), 1); assert.equal(budgetTier(0.7 * B - 1, B), 1);
+    assert.equal(budgetTier(0.7 * B, B), 2); assert.equal(budgetTier(0.9 * B - 1, B), 2);
+    assert.equal(budgetTier(0.9 * B, B), 3); assert.equal(budgetTier(B - 1, B), 3);
+    assert.equal(budgetTier(B, B), 4); assert.equal(budgetTier(B * 2, B), 4);
+    assert.equal(kiesModel(1, "hoofd", "klein"), "hoofd");
+    for (const trap of [2, 3, 4]) assert.equal(kiesModel(trap, "hoofd", "klein"), "klein");
+    const src = readFileSync("worker/src/index.ts", "utf8");
+    assert.match(src, /budgetTier\(used\(\), BUDGET\)/); assert.match(src, /kiesModel\(tier\(\), model, SMALL\)/);
+    assert.match(src, /tier0 === 4 && todo\.length\) logLlmFout\("LLM_BUDGET"/);
   });
 
   await t("zoekopdracht: AI-aanroepen alleen op de toegestane plekken", () => {

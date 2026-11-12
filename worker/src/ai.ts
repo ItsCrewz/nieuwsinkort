@@ -113,7 +113,8 @@ async function jsonStap<T>(ai: Ai, model: string, sys: string, user: string, max
   const out = lees(txt);
   if (out.size) return out;
   const bron = u.laatsteBron;
-  logLlmFout("LLM_PARSE", bron || "onbekend", model, Date.now() - start); // antwoord ontvangen maar onbruikbaar (leeg, kapotte JSON, geen items)
+  // Een leeg antwoord is al door chat()/cf() gelogd; hier alleen een niet-leeg antwoord met kapotte JSON of zonder items (geen dubbele regel).
+  if (txt) logLlmFout("LLM_PARSE", bron || "onbekend", model, Date.now() - start);
   const reden = !txt ? LEEG : !jsonFrom(txt) ? "Geen geldige JSON" : "Geen bruikbare items";
   const v: Verzoek = { sys, user, maxTokens, json };
   if (bron !== "cloudflare" || !u.llm || !ruimteVoor(externe(u), u.llm.state, v)) { telOutputFout(u, reden, bron); return out; }

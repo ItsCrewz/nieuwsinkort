@@ -22,3 +22,12 @@ export function llmCode(e: unknown): LlmCode {
 export function logLlmFout(code: LlmCode, bron: string, model: string, ms: number): void {
   console.error("LLM-fout", code, bron, model, `${Math.max(0, Math.round(ms))}ms`);
 }
+
+/** Budgettrap (1–4) uit verbruikte neuronen en het dagplafond: <70% hoofdmodel, 70–90% klein model, 90–100% klein model (alleen NL/Haarlem), ≥100% geen AI. */
+export function budgetTier(gebruikt: number, budget: number): 1 | 2 | 3 | 4 {
+  return gebruikt < 0.7 * budget ? 1 : gebruikt < 0.9 * budget ? 2 : gebruikt < budget ? 3 : 4;
+}
+/** Ketenvolgorde Cloudflare: hoofdmodel alleen in trap 1, daarna het kleine model. */
+export function kiesModel(trap: number, hoofd: string, klein: string): string {
+  return trap === 1 ? hoofd : klein;
+}
