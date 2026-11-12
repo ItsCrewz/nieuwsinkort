@@ -5,7 +5,9 @@ import { rustig, scrollGedrag } from "./beweging";
 import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { FeedNavigatie } from "./feednavigatie";
 import { KAARTEN_VOORAF, KAARTEN_VOORUIT, NewsCard } from "./nieuws-kaart";
-import { Footer, itemKey, pickLead, sortItems, type OpenFn } from "./App";
+import { Footer } from "./app-frame";
+import { itemKey, pickLead, sortItems } from "./nieuws-hulp";
+import type { OpenFn } from "./nieuws-open";
 
 export function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm }: { tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {

@@ -1,1 +1,1 @@
-- Onderhoud: nieuwskaart (`nieuws-kaart.tsx`) en nieuwsfeed (`nieuws-feed.tsx`) uit `App.tsx` verplaatst, zonder gedragswijziging (#878, stap 3 van #302).
+- Onderhoud: nieuwskaart (`nieuws-kaart.tsx`) en nieuwsfeed (`nieuws-feed.tsx`) uit `App.tsx` verplaatst, zonder gedragswijziging (#878, stap 3 van #302). Gedeelde helpers en de voetregel staan in zelfstandige modules, zodat de nieuwsfeed niet terug naar App importeert.

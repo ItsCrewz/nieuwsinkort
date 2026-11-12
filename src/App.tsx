@@ -1,10 +1,10 @@
 import { Foutgrens } from "./foutgrens";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
-import { artikelId, artikelSlug } from "./artikelid";
+import { artikelId } from "./artikelid";
 import { ams, dayDates } from "./tijd";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Bron, Data, Item, View, Weer } from "./types";
+import type { Data, Item, View, Weer } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
@@ -34,19 +34,14 @@ import { Zoekbalk, ZoekLeeg } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
 import { NewsFeed } from "./nieuws-feed";
+import { ArtikelDetail, laadDetail } from "./artikel-detail";
+import { bronLabel, itemKey, pickLead, sortItems } from "./nieuws-hulp";
+import { useOpen, type OpenFn } from "./nieuws-open";
+import { Footer, UUR_ACTIEF } from "./app-frame";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
 const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
-let detailModule: typeof import("./detail") | undefined;
-let detailBelofte: Promise<typeof import("./detail")> | undefined;
-export const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
-const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
-// Houd het componenttype gelijk zolang een artikel openstaat, ook als de module intussen laadt.
-function ArtikelDetail(props: React.ComponentProps<typeof DetailView>) {
-  const [Component] = useState(() => detailModule?.DetailView ?? DetailView);
-  return <Component {...props} />;
-}
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
 
@@ -59,17 +54,6 @@ const feedNav = maakFeedNavigatie({ get location() { return window.location; }, 
 let introDone = false;
 
 // ---------------------------------------------------------------- helpers
-const slugify = artikelSlug;
-export const itemKey = (i: Item) => slugify(i.kop) || i.bronnen?.[0]?.href || i.kop;
-
-export function bronLabel(bronnen: Bron[]) {
-  const names: string[] = [];
-  for (const b of bronnen ?? []) if (!names.includes(b.site)) names.push(b.site);
-  if (names.length === 0) return "";
-  if (names.length === 1) return names[0];
-  return `${names[0]} + ${names.length - 1}`;
-}
-
 function amsterdamTime(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -397,35 +381,6 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
 }
 
 // ---------------------------------------------------------------- nieuws
-export function sortItems(items: Item[]) {
-  return items.slice().sort((a, b) => {
-    if (!a.tijd !== !b.tijd) return a.tijd ? -1 : 1;
-    return a.tijd < b.tijd ? 1 : a.tijd > b.tijd ? -1 : 0;
-  });
-}
-// Openingsverhaal: het bericht met de meeste bronnen (meest gedekt), bij gelijkspel het nieuwste.
-export function pickLead(sorted: Item[]) {
-  let best = -1;
-  let n = -1;
-  sorted.forEach((it, i) => {
-    const c = new Set((it.bronnen ?? []).map((b) => b.site)).size;
-    if (c > n) {
-      n = c;
-      best = i;
-    }
-  });
-  return best;
-}
-
-export type OpenFn = (k: string) => void;
-export function useOpen(key: string, onOpen: OpenFn) {
-  return (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
-    onOpen(key);
-  };
-}
-
 const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { item: Item; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
   const key = itemKey(item);
   const click = useOpen(key, onOpen);
@@ -677,26 +632,6 @@ function TopBar({
   );
 }
 
-// true zodra data.json van de uur-Worker komt (functions/data.json.ts zet "uur")
-let UUR_ACTIEF = false;
-export function Footer() {
-  return (
-    <footer className="foot">
-      <div className="foot-brand">
-        <span className="mark" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </span>
-        Nieuws in het kort
-      </div>
-      <p>Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron.</p>
-      <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk kwartier bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
-      <p><a href="/over">Over deze site</a></p>
-    </footer>
-  );
-}
-
 function Front({ children }: { children: ReactNode }) {
   const [enter] = useState(() => !introDone && !rustig());
   return <div className={`front ${enter ? "enter" : ""}`}>{children}</div>;
@@ -723,7 +658,7 @@ export default function App() {
     error && raw ? "Bijwerken lukt even niet; je ziet het nieuws van de laatste keer." : "",
     raw?.uur?.ai === "op" ? "Samenvatten lukt even niet meer vandaag (dagruimte op). Nieuwe berichten staan er wel, met de tekst van de bron." : "",
   ].filter(Boolean).join(" ");
-  UUR_ACTIEF = Date.now() - Date.parse((raw as any)?.uur?.gegenereerd || "") < 2.5 * 3600e3; // alleen als de uur-run recent draaide
+  UUR_ACTIEF.actief = Date.now() - Date.parse((raw as any)?.uur?.gegenereerd || "") < 2.5 * 3600e3; // alleen als de uur-run recent draaide
   const { theme, toggle } = useTheme();
   const catalog = useCatalog();
   const { off, setMany, reset } = useSourceFilter();

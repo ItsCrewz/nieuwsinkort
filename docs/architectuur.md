@@ -133,7 +133,7 @@ Het hoofdscherm laadt alleen wat nodig is voor de nieuwslijst; de rest is `React
 
 | Chunk | Inhoud | Wanneer geladen |
 | --- | --- | --- |
-| `index` | React, `App.tsx`, `nieuws-kaart.tsx`, `nieuws-feed.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
+| `index` | React, `App.tsx`, `app-frame.tsx`, `artikel-detail.tsx`, `nieuws-hulp.tsx`, `nieuws-open.ts`, `nieuws-kaart.tsx`, `nieuws-feed.tsx`, `filters.tsx` (logica + `FilterBalk`), `sources.ts`, `videosoort.ts`, `meer.ts`, `samenvattingcache.ts`, `voorladen.ts` | altijd |
 | `sheet` | `SourcesSheet` | bij openen van Bronnen |
 | `filters-blad` | `FilterBlad` | bij openen van het filterblad |
 | `detail` | `DetailView` (`#/bericht/...`) | bij openen van een bericht |
@@ -261,7 +261,7 @@ nieuwsinkort.nl en www.nieuwsinkort.nl zijn custom domains van het Pages-project
 
 De SEO-routes `/vandaag` en `/sitemap-nieuws.xml` geven bij onleesbare of onvolledige dagdata een 503 met `no-store` en `Retry-After`; geldige data met een lege berichtenlijst blijft een cachebaar leeg overzicht (#599).
 
-Statische pagina `/over` (`public/over.html`, #518): over de site (wat, AI-gebruik, bronnen, fouten, privacy), zonder persoonsnaam of verzonnen contactadres en zonder script. Pages serveert hem zonder `.html`; link in de voetregel (`App.tsx`) en in `sitemap.xml`. Test: `tests/seo-meta.test.ts`.
+Statische pagina `/over` (`public/over.html`, #518): over de site (wat, AI-gebruik, bronnen, fouten, privacy), zonder persoonsnaam of verzonnen contactadres en zonder script. Pages serveert hem zonder `.html`; link in de voetregel (`app-frame.tsx`) en in `sitemap.xml`. Test: `tests/seo-meta.test.ts`.
 
 Nieuwssitemap (`/sitemap-nieuws.xml`, `functions/sitemap-nieuws.xml.ts`, #712): per bericht `loc`, `news:publication_date` en titel; bewust geen `lastmod`, omdat de dagdata alleen de publicatietijd `t` kent en geen werkelijke wijzigingstijd. Voeg `lastmod` pas toe als items een betrouwbaar wijzigingsveld krijgen.
 

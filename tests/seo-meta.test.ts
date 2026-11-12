@@ -56,7 +56,7 @@ t("/over: statische pagina met lang, canonical, title, description en één h1; 
   assert.ok(o.includes('href="/bronnen.json"'));
   assert.ok(!/vanzelf mee/.test(o) && /niet opnieuw gemaakt/.test(o), "bewaarde samenvattingen worden niet opnieuw gemaakt (docs/ai-budget.md)");
   assert.ok(!o.includes("@") && !o.includes("mailto"), "geen verzonnen contactadres");
-  assert.match(readFileSync("src/App.tsx", "utf8"), /href="\/over"/);
+  assert.match(readFileSync("src/app-frame.tsx", "utf8"), /href="\/over"/);
   assert.match(readFileSync("public/sitemap.xml", "utf8"), /<loc>https:\/\/nieuwsinkort\.nl\/over<\/loc>/);
 });
 
