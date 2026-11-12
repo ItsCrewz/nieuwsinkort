@@ -8,12 +8,12 @@ const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g,
 type Bericht = { id?: string; kop: string; ai?: string; samenvatting?: string; punten?: string[]; bronnen?: { site: string; href: string }[]; ruw?: boolean; cat?: string; t?: number | string; beeld?: string; beelden?: string[] };
 type Verwant = { id?: string; kop: string; bronnen?: { href: string }[] };
 const BASIS = "https://nieuwsinkort.nl";
-// Beschrijving op een woordgrens (≤ 155 tekens, geen afgebroken woord); eerste zin(nen) van de samenvatting.
+// Beschrijving op een woordgrens (inclusief "…" hooguit 155 tekens); alleen een eerste woord > 154 tekens wordt hard geknipt.
 export function beschrijving(tekst: string): string {
   const t = tekst.replace(/\s+/g, " ").trim();
   if (t.length <= 155) return t;
-  const knip = t.slice(0, 155), i = knip.lastIndexOf(" ");
-  return `${(i > 80 ? knip.slice(0, i) : knip).replace(/[\s,;:.-]+$/, "")}…`;
+  const knip = t.slice(0, 154), i = knip.lastIndexOf(" ");
+  return `${(i > 0 ? knip.slice(0, i) : knip).replace(/[\s,;:.-]+$/, "")}…`;
 }
 // Vervang de content van één meta-tag (op name of property); bestaat hij niet, dan wordt hij vlak voor </head> toegevoegd.
 function zetMeta(html: string, attr: "name" | "property", sleutel: string, waarde: string): string {
@@ -38,7 +38,7 @@ function deelbeeld(item: Bericht): string {
 }
 export function berichtHtml(sjabloon: string, item: Bericht, dag: string, verwant: Verwant[] = []): string {
   const url = `https://nieuwsinkort.nl${artikelPad(item, dag)}`, title = item.kop, indexeer = !item.ruw && item.cat !== "politiek";
-  const tekst = indexeer ? item.ai || "" : "", desc = beschrijving(tekst || (indexeer ? item.samenvatting || "" : "")) || "Het nieuws van vandaag in het kort.";
+  const tekst = indexeer ? item.ai || "" : "", desc = beschrijving(tekst || (indexeer ? item.samenvatting || item.punten?.join(". ") || title : "")) || "Het nieuws van vandaag in het kort."; // indexeerbaar: altijd uniek (kop als laatste terugval)
   const beeld = deelbeeld(item);
   const bronnen = (item.bronnen || []).filter((b) => veiligeUrl(b.href));
   const tms = item.t ? new Date(item.t).getTime() : NaN, datum = Number.isFinite(tms) ? new Date(tms).toISOString() : `${dag}T00:00:00+01:00`; // ongeldige t mag de pagina niet breken
