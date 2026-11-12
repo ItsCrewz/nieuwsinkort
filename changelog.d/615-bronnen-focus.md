@@ -1,0 +1,1 @@
+- Toegankelijkheid: Tab en Shift+Tab blijven binnen het bronnenvenster en lopen aan beide uiteinden rond; focus buiten het venster gaat terug naar de sluitknop (#615).
