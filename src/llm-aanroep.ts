@@ -52,8 +52,9 @@ export type RetryOpties = {
   onFout?: (e: unknown, soort: FoutSoort) => void; // elke mislukte poging, ook de laatste: hier hoort de budgetmeting
   nu?: () => number; timer?: Timer; slaap?: (ms: number) => Promise<void>; backoffMs?: number;
   log?: (regel: string) => void;
+  magRetry?: () => boolean; // budgetcheck vóór de retry na een timeout; zonder callback of bij false geen retry (de eerste call loopt door en kan nog kosten)
 };
-/** Eén poging plus hooguit één retry, alleen bij timeout of 5xx. 429 en dagquota gaan direct door naar de aanroeper (die valt terug op een andere aanbieder). */
+/** Eén poging plus hooguit één retry, alleen bij timeout (mits `magRetry` ja zegt) of 5xx. 429 en dagquota gaan direct door naar de aanroeper (die valt terug op een andere aanbieder). */
 export async function metRetry<T>(run: () => Promise<T>, o: RetryOpties): Promise<T> {
   const nu = o.nu ?? Date.now, log = o.log ?? ((r) => console.error(r));
   const slaap = o.slaap ?? ((ms) => new Promise<void>((k) => setTimeout(k, ms)));
@@ -65,6 +66,7 @@ export async function metRetry<T>(run: () => Promise<T>, o: RetryOpties): Promis
       log(`llm: ${soort} model=${o.model} duur=${nu() - t0}ms poging=${poging}`); // nooit prompt, antwoord of sleutels
       o.onFout?.(e, soort);
       if (poging >= 2 || (soort !== "timeout" && soort !== "5xx")) throw e;
+      if (soort === "timeout" && !o.magRetry?.()) throw e; // niet-afgebroken eerste call: geen tweede zonder ruimte
       await slaap(o.backoffMs ?? LLM_BACKOFF);
     }
   }

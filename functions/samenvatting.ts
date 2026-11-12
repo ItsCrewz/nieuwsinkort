@@ -18,11 +18,11 @@ import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState 
 
 type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
-async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage, timeoutMs = llmTimeoutMs()): Promise<string> {
+export async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage, timeoutMs = llmTimeoutMs(), magRetry?: () => boolean): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
   let r: any;
   // timeout + hooguit één retry (#873); elke mislukte poging apart gemeten (een niet-afgebroken call kan toch neuronen kosten)
-  r = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e) });
+  r = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry });
   u.calls++;
   meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
   const txt = typeof r?.response === "string" ? r.response : r?.choices?.[0]?.message?.content || "";
@@ -240,7 +240,7 @@ async function groqAudio(env: Env, bytes: Uint8Array, schatting: number): Promis
 
 // ---------------- samenvatten
 const STIJL = "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf in heel simpel, informeel Nederlands: korte zinnen, gewone woorden, geen jargon. Gebruik ALLEEN wat in de tekst staat; verzin niets, geen eigen mening. Is de tekst Engels, schrijf toch in het Nederlands.";
-async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null): Promise<{ punten: string[]; model: string }> {
+async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null, ruimteOver: () => number): Promise<{ punten: string[]; model: string }> {
   const user = `Dit is wat er gezegd wordt in een filmpje van ${bron} met de titel "${titel}".\nVat het samen in 3 tot 5 korte punten (elk max 15 woorden). Zet elk punt op een nieuwe regel en begin met "- ". Geen inleiding, geen kopje.\n\nTekst:\n${tekst}`;
   let t = "", gebruikt = model;
   const aanbieder = groq(env.GROQ_API_KEY);
@@ -258,7 +258,7 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
   if (!t) {
     const fout = cloudToegestaan();
     if (fout) throw new CloudBudgetFout(fout);
-    t = await chat(env.AI, model, STIJL, user, 320, u, llmTimeoutMs(env.LLM_TIMEOUT_MS));
+    t = await chat(env.AI, model, STIJL, user, 320, u, llmTimeoutMs(env.LLM_TIMEOUT_MS), () => ruimteOver() - u.neurons >= 60); // retry na timeout alleen met nog ruim 60 neuronen over, na aftrek van de eerste poging
   }
   return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5) };
 }
@@ -467,7 +467,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
       await verreken(u.neurons - reserved);
       return uit({ ...out, neuronen: Math.round(u.neurons * 10) / 10 });
     }
-    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan);
+    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan, () => ruimte);
     const p = resultaat.punten;
     await verreken(u.neurons - reserved);
     if (p.length < 2) {

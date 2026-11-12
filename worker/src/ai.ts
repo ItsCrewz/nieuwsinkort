@@ -17,7 +17,7 @@ export const RATES: Record<string, [number, number]> = { // neuronen per 1M toke
 export type AiBron = "cloudflare" | "groq" | "mistral";
 export type AiLaatsteFout = { soort: "aanroep" | "output"; bericht: string; tijd: string; bron?: AiBron };
 // fails = fAanroep + fOutput (aiFouten in de run-meta); terugval = pogingen via de externe keten, terugvalGroq = daarvan geslaagd via Groq
-export type Usage = Meting & { llmTimeoutMs?: number; fAanroep?: number; fOutput?: number; laatsteFout?: AiLaatsteFout; laatsteBron?: string; terugval?: number; terugvalGroq?: number; somAfgekeurd?: number; somHerpoging?: number; somOpgegeven?: number; aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
+export type Usage = Meting & { llmTimeoutMs?: number; magRetry?: () => boolean; fAanroep?: number; fOutput?: number; laatsteFout?: AiLaatsteFout; laatsteBron?: string; terugval?: number; terugvalGroq?: number; somAfgekeurd?: number; somHerpoging?: number; somOpgegeven?: number; aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
 
 // Alleen een echte Cloudflare-dagquota-fout (zelfde regel als #79) telt als "Cloudflare op"; geen brede regex.
 export const ketenQuota = (e: unknown) => e instanceof KetenFout && !!e.cloudflare && isDagQuota(e.cloudflare);
@@ -72,7 +72,7 @@ export async function chat(ai: Ai, model: string, sys: string, user: string, max
         max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3,
         chat_template_kwargs: { enable_thinking: false, thinking: false },
         ...(json ? { response_format: { type: "json_object" } } : {}),
-      } as any), { model, timeoutMs: llmTimeoutMs(u.llmTimeoutMs), onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e) });
+      } as any), { model, timeoutMs: llmTimeoutMs(u.llmTimeoutMs), onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry: u.magRetry });
     } catch (e) { tokensCf(i0, o0); throw e; }
     u.calls++;
     meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);

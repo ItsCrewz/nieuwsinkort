@@ -701,6 +701,7 @@ export class Runner extends DurableObject<Env> {
     const runsLeft = runsOver(now, interval);
     const runBudget = runPlafonds(BUDGET - st.neurons - vidN, runsLeft, interval).runBudget;
     const tier0 = tier();
+    usage.magRetry = () => tier() === 1 && usage.neurons < runBudget; // retry na timeout alleen in de ruimste tier en binnen het runplafond (#873)
     let runCapped = false;
     const modelsUsed = new Set<string>();
     // prioriteit: meer bronnen eerst, dan nieuwste; eerlijk verdeeld over rubrieken
