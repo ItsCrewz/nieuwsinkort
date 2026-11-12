@@ -59,11 +59,12 @@ export function uniekeBeelden(urls: (string | null | undefined)[], max = 6): str
   const out: string[] = [];
   for (const raw of urls) {
     const u = typeof raw === "string" ? beterBeeld(raw) : "";
-    if (!goedBeeld(u)) continue;
+    // De beeldproxy haalt alleen HTTPS op; HTTP kan de browser niet veilig laden.
+    if (!goedBeeld(u) || !u.startsWith("https://")) continue;
     const k = beeldKey(u);
     if (seen.has(k)) continue;
     seen.add(k);
-    out.push(u.replace(/^http:\/\//, "https://"));
+    out.push(u);
     if (out.length >= max) break;
   }
   return out;

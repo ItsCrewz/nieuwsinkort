@@ -1,0 +1,1 @@
+- HTTP-afbeeldingen worden veilig weggelaten in plaats van ongevraagd naar HTTPS omgezet (#770).
