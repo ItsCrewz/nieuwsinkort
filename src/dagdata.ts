@@ -3,8 +3,8 @@
 // - samenvattingen, "In het kort" en kernpunten van de routine blijven staan;
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
+import { normLink as norm } from "./linknorm";
 import { alleenVandaag } from "./vandaag";
-import { normArtikelLink } from "./artikelid";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams } from "./tijd";
@@ -17,7 +17,6 @@ const dag = (iso?: string) => {
   const t = iso ? Date.parse(iso) : Date.now();
   return Number.isFinite(t) ? new Date(t).toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }) : "";
 };
-const norm = (l = "") => normArtikelLink(l);
 // KV-edgecache (60 s is het minimum van KV): de leesvertraging blijft kleiner dan het kwartier tussen twee Worker-runs.
 const kvOpt = (type: "json" | "text") => ({ type, cacheTtl: 60 });
 // Per isolate: het verwerkte vooraf-antwoord 30 s hergebruiken zolang KV dezelfde tekst geeft (scheelt parse, dagfilter, stringify en SHA-1).
@@ -79,11 +78,11 @@ export function merge(S: any, H: any) {
   const extraF = [...extra.filter((v: any) => v.soort !== "journaal").slice(0, 12), ...extra.filter((v: any) => v.soort === "journaal").slice(0, 10)];
   const { meta, meerKeys, ...h } = H;
   // "Lees verder": ook berichten van de routine krijgen hun extra tekst (sleutel = eerste bron met tekst in KV "meer")
-  const mk = new Set<string>(Array.isArray(meerKeys) ? meerKeys : []);
+  const mk = new Map<string, string>((Array.isArray(meerKeys) ? meerKeys : []).filter((k: unknown): k is string => typeof k === "string").map((k: string) => [norm(k), k]));
   const metMeer = (i: any) => {
     if (i.meer || !mk.size) return i;
     const k = (i.bronnen || []).map((b: any) => norm(b.href)).find((x: string) => mk.has(x));
-    return k ? { ...i, meer: k } : i;
+    return k ? { ...i, meer: mk.get(k) } : i;
   };
   // Rubriektekst per rubriek van de recentste bron; ontbrekende rubrieken vallen terug op de andere.
   const [tabNieuw, tabOud] = hNieuwer ? [H.tab_samenvatting, base.tab_samenvatting] : [base.tab_samenvatting, H.tab_samenvatting];

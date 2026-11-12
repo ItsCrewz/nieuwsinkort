@@ -1,14 +1,7 @@
 // Stabiele sleutel op basis van de genormaliseerde ankerlink.
+import { normLink } from "./linknorm";
+export const normArtikelLink = normLink;
 export const oudeArtikelLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
-export function normArtikelLink(l: string): string {
-  const basis = oudeArtikelLink(l), vraag = l.indexOf("?"), hekje = l.indexOf("#");
-  if (vraag < 0 || (hekje >= 0 && hekje < vraag)) return basis;
-  const params = new URLSearchParams(l.slice(vraag + 1, hekje >= 0 ? hekje : undefined));
-  for (const naam of [...params.keys()]) if (/^(utm_.*|fbclid|gclid|dclid|msclkid|mc_cid|mc_eid)$/i.test(naam)) params.delete(naam);
-  params.sort();
-  const query = params.toString();
-  return query ? `${basis}?${query}` : basis;
-}
 function hashLink(link: string): string {
   let h = 0xcbf29ce484222325n;
   for (const b of new TextEncoder().encode(link)) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);

@@ -1,0 +1,1 @@
+- Behoud betekenisvolle queryparameters bij het ontdubbelen van nieuws en koppelen van verdieping (#707).
