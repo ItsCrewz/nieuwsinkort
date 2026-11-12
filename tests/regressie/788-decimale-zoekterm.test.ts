@@ -19,3 +19,11 @@ assert.deepEqual(zoekItems(items, "cafe groei"), [punt, langer]);
 assert.deepEqual(markeerDelen("Café: 2,5", "cafe 2.5"), [
   { tekst: "Café", markeer: true }, { tekst: ": ", markeer: false }, { tekst: "2,5", markeer: true },
 ]);
+
+const duizend = { cat: "nl", kop: "Café kost 2.500 euro" } as Item;
+const datum = { cat: "nl", kop: "Datum 12.11.2026" } as Item;
+const versie = { cat: "nl", kop: "iOS 17.4 verschijnt" } as Item;
+for (const term of ["500", "2 500"]) assert.deepEqual(zoekItems([duizend], term), [duizend]);
+assert.deepEqual(zoekItems([datum], "12 11 2026"), [datum]);
+assert.deepEqual(zoekItems([versie], "17"), [versie]);
+assert.deepEqual(markeerDelen("Café: 2,5", "5"), [{ tekst: "Café: 2,5", markeer: false }]);

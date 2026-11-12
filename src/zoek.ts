@@ -6,7 +6,8 @@ const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae"
 
 export function normaliseer(tekst: string): string {
   return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
-    .replace(/\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
+    .replace(/(?<=\bios\s)(\p{N}+)\.(?=\p{N}+)/gu, "$1 ")
+    .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
 // Koppelteken tussen twee letters/cijfers, behalve tussen twee losse tekens ("V-S" blijft geen "VS"): "corona-maatregelen" is dezelfde samenstelling als "coronamaatregelen".
@@ -144,7 +145,9 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   for (const woord of woorden) {
     let vanaf = 0, index: number;
     while ((index = vlak.indexOf(woord, vanaf)) !== -1) {
-      if (index === 0 || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) {
+      const numeriek = /^\p{N}+(?:\.\p{N}+)?$/u.test(woord);
+      const getal = numeriek ? vlak.slice(0, index).match(/[\p{N}.,]*$/u)![0] + vlak.slice(index).match(/^[\p{N}.,]*/u)![0] : "";
+      if ((index === 0 || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && (!numeriek || normaliseer(getal).split(" ").includes(woord))) {
         bereiken.push({ begin: posities[index].begin, eind: posities[index + woord.length - 1].eind });
       }
       vanaf = index + 1;
