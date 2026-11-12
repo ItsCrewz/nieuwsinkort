@@ -2,7 +2,7 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ComponentProps } from "react";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
 
@@ -68,6 +68,12 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
   }).finally(() => { if (bezig.get(u) === p) bezig.delete(u); });
   bezig.set(u, p);
   return p;
+}
+function BeeldImg({ url, bijFout, ...props }: ComponentProps<"img"> & { url: string; bijFout: () => void }) {
+  const [src, setSrc] = useState(() => bronUrl(url));
+  const [voorgeladen] = useState(() => klaar.get(url) === src);
+  return <img {...props} src={src} className={voorgeladen ? "in" : undefined}
+    onError={() => { if (naarRechtstreeks(url, src)) setSrc(url); else bijFout(); }} />;
 }
 type Reg = { el: HTMLElement; wake: () => void; first: () => string | undefined; second: () => string | undefined };
 const regs = new Set<Reg>();
@@ -144,7 +150,6 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     if (!el) return;
     return register({ el, wake: () => setNear(true), first: () => listRef.current[0], second: () => listRef.current[iRef.current + 1] });
   }, []);
-  const [, herlaad] = useState(0);
   const raf = useRef(0);
   useLayoutEffect(() => {
     const huidig = listRef.current[iRef.current];
@@ -207,17 +212,16 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
         {list.map((u, k) => (
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
             {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
-              <img
-                src={bronUrl(u)}
+              <BeeldImg
+                url={u}
+                bijFout={() => drop(u)}
                 alt=""
                 aria-hidden="true"
                 draggable={false}
                 loading={k === 0 ? "eager" : "lazy"}
                 fetchPriority={voorrang && k === 0 ? "high" : undefined}
-                className={klaar.get(u) === bronUrl(u) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"
-                onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : drop(u))}
                 onLoad={(e) => {
                   const im = e.currentTarget;
                   const w = im.naturalWidth, h = im.naturalHeight;
@@ -256,13 +260,11 @@ export function useThumbIndex(urls: string[]): [number, (k: number) => void] {
 
 export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
   const [k, setK] = useThumbIndex(urls);
-  const [, herlaad] = useState(0);
   const u = urls[k];
   if (!u) return null;
   return (
     <span className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
-      <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
-        onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : setK(k + 1))}
+      <BeeldImg key={u} url={u} bijFout={() => setK(k + 1)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
         onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />
     </span>
   );
