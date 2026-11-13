@@ -38,6 +38,14 @@ export async function etag(body: string) {
   return `W/"${[...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("")}"`;
 }
 
+// GET gebruikt zwakke vergelijking; een komma kan ook binnen een opaque tag staan.
+function etagPast(kop: string | null, tag: string) {
+  if (!kop) return false;
+  if (kop.trim() === "*") return true;
+  const waarde = tag.slice(2);
+  return [...kop.matchAll(/(?:^|,)[ \t]*(?:W\/)?("[\x21\x23-\x7e\x80-\xff]*")[ \t]*(?=,|$)/g)].some((m) => m[1] === waarde);
+}
+
 export function merge(S: any, H: any) {
   const vandaag = dag();
   if (!H || dag(H.gegenereerd) !== vandaag) return S; // uur-data van gisteren: niet gebruiken
@@ -132,7 +140,7 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
             g = voorafGeheugen = { vooraf, dag: vandaag, tot: nu + 30e3, body, tag: await etag(body) };
           }
           const { body, tag } = g;
-          if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
+          if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
           return new Response(body, { headers: { ...HDR, ETag: tag } });
         }
       }
@@ -175,6 +183,6 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
   const body = JSON.stringify(slim(out));
   const tag = await etag(body);
-  if (request.headers.get("If-None-Match") === tag) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
+  if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
   return new Response(body, { headers: { ...HDR, ETag: tag } });
 };

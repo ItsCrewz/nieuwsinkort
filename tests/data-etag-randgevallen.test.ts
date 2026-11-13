@@ -108,16 +108,29 @@ try {
     assert.equal(r.headers.get("cache-control"), "public, max-age=0, s-maxage=60, stale-while-revalidate=240");
   });
 
-  await t("afwijkende of sterke If-None-Match geeft gewoon 200 met body", async () => {
-    const { env } = maakEnv({});
-    const tag = (await data({ request: req("/data.json"), env })).headers.get("etag")!;
-    for (const kop of ['W/"0000"', tag.slice(2), `${tag}, W/"anders"`, "*"]) {
-      const r = await data({ request: req("/data.json", { headers: { "If-None-Match": kop } }), env });
-      assert.equal(r.status, 200, kop);
-      assert.equal(r.headers.get("etag"), tag);
-      assert.equal((await r.json() as any).items.length, 1);
-    }
-  });
+  for (const [naam, inhoud] of [
+    ["samengestelde data", {}],
+    ["voorafdata", { "data-vooraf": `2026-10-30\nvooraf\n${JSON.stringify(statisch)}` }],
+  ] as const) {
+    await t(`${naam}: zwakke vergelijking van validators`, async () => {
+      const { env, assetsVragen } = maakEnv(inhoud);
+      const eerste = await data({ request: req("/data.json"), env });
+      const tag = eerste.headers.get("etag")!;
+      const body = await eerste.text();
+      const passend = [tag, tag.slice(2), `"anders", ${tag.slice(2)}`, `${tag}, W/"anders"`, `"met,komma", ${tag}`, "*"];
+      const afwijkend = ['W/"0000"', '"met,komma"', `"prefix${tag.slice(3)}`, `x${tag}`, `* , "anders"`];
+      for (const [kop, status] of [...passend.map((k) => [k, 304] as const), ...afwijkend.map((k) => [k, 200] as const)]) {
+        const r = await data({ request: req("/data.json", { headers: { "If-None-Match": kop } }), env });
+        assert.equal(r.status, status, kop);
+        for (const header of ["etag", "cache-control", "content-type", "x-content-type-options", "access-control-allow-origin"]) {
+          assert.equal(r.headers.get(header), eerste.headers.get(header), `${kop}: ${header}`);
+        }
+        assert.equal(await r.text(), status === 304 ? "" : body, kop);
+      }
+      if (naam === "voorafdata") assert.equal(assetsVragen.length, 0);
+      else assert.ok(assetsVragen.length > 0);
+    });
+  }
 
   await t("?statisch=1 slaat de KV over en geeft no-cache zonder ETag", async () => {
     const { env, kvLeest, assetsVragen } = maakEnv({ uur: { ...statisch, gegenereerd: "2026-10-30T10:00:00Z", dag_samenvatting: "Uur" } });

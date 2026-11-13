@@ -38,6 +38,7 @@ import { zoekItems, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijf
 import { Zoekbalk, ZoekLeeg, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
+import { feedToetsDoel } from "./toetsdoel";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
@@ -815,6 +816,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.closest("input,textarea,select,[contenteditable],.sheet,.menu,[role=dialog]") || document.querySelector(".sheet,.feed"))) return;
+      if (!feedToetsDoel(t, ref.current)) return;
       const k = e.key;
       // spatie/Enter op een knop, link of ander bedienbaar element: native activatie laten werken
       if ((k === " " || k === "Enter") && t && t.closest("button,a,input,textarea,select,summary,[role=button],[contenteditable]")) return;

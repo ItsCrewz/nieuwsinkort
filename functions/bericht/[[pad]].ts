@@ -1,4 +1,4 @@
-import { artikelId, artikelPad, indexeerbaar, linkId, oudeLinkId, parsePad } from "../../src/artikelid";
+import { artikelId, artikelPad, heeftArtikelId, indexeerbaar, linkId, oudeLinkId, parsePad } from "../../src/artikelid";
 import { berichtHtml } from "../../src/berichthtml";
 import { dagdata, etag } from "../../src/dagdata";
 import { etagMatch } from "../../src/etagmatch";
@@ -35,6 +35,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   } catch { return tijdelijk(); }
   if (!dag || typeof dag.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items) || ams(Date.parse(dag.gegenereerd)).iso !== pad.dag) return tijdelijk();
   const items = dag.items;
+  // Een pad-id is nooit leeg, dus een bericht zonder id en bron matcht hier nooit en gaat naar /.
   const exact = items.filter((i) => artikelId(i) === pad.id);
   const matches = exact.length ? exact : items.filter((i) => i.bronnen?.some((b) => linkId(b.href) === pad.id || oudeLinkId(b.href) === pad.id));
   const item = matches.length === 1 ? matches[0] : undefined;
@@ -48,7 +49,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return terugval();
   const tekst = await sjabloon.text().catch(() => null);
   if (tekst === null) return terugval();
-  const verwant = !item.cat ? [] : items.filter((i) => i !== item && i.cat === item.cat && indexeerbaar(i) && i.kop).slice(0, 5); // interne links naar dezelfde rubriek
+  const verwant = !item.cat ? [] : items.filter((i) => i !== item && i.cat === item.cat && heeftArtikelId(i) && indexeerbaar(i) && i.kop).slice(0, 5); // interne links naar dezelfde rubriek
   const html = berichtHtml(tekst, item, pad.dag, verwant), tag = await etag(html);
   const nuMs = Date.now();
   if (datasetVerlopen(dag.gegenereerd, nuMs)) return redirect(301, `/${u.search}`, "public, max-age=86400");

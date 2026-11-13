@@ -1,5 +1,5 @@
 // Sitemap met de vaste pagina's en alle indexeerbare berichtpagina's van vandaag (zelfde URL's als /bericht/…); verlopen berichten vallen er vanzelf uit.
-import { artikelId, artikelPad, indexeerbaar } from "../src/artikelid";
+import { artikelId, artikelPad, heeftArtikelId, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
 import { GELDIG_TOT, nogGeldig, overzichtBeleid, cacheHit, datasetVerlopen } from "../src/overzichtcache";
@@ -17,7 +17,7 @@ export function sitemap(items: Item[], dag: string, gegenereerd: string): string
   const tel = new Map<string, number>();
   for (const i of items) tel.set(artikelId(i), (tel.get(artikelId(i)) || 0) + 1);
   for (const i of items) {
-    if (tel.get(artikelId(i)) !== 1) continue; // niet-unieke id: /bericht/… stuurt door naar /
+    if (!heeftArtikelId(i) || tel.get(artikelId(i)) !== 1) continue; // niet-unieke id: /bericht/… stuurt door naar /
     if (regels.length >= 1000) break;
     if (!indexeerbaar(i) || !i.kop) continue;
     const ms = i.t ? new Date(i.t).getTime() : NaN;
