@@ -5,6 +5,8 @@ import { onRequestGet as vandaag } from "../functions/vandaag";
 
 const geldig = { gegenereerd: "2026-11-04T10:00:00Z", items: [{ kop: "Testbericht", cat: "nl", t: Date.parse("2026-11-04T09:00:00Z"), bronnen: [{ href: "https://nos.nl/bericht" }] }] };
 const ongeldig = ["{", "null", JSON.stringify({ items: [] }), JSON.stringify({ gegenereerd: "ongeldig", items: [] }), JSON.stringify({ gegenereerd: 123, items: [] }), JSON.stringify({ gegenereerd: geldig.gegenereerd }), JSON.stringify({ gegenereerd: geldig.gegenereerd, items: {} })];
+const echteNu = Date.now;
+Date.now = () => Date.parse("2026-11-04T12:00:00Z");
 const vorigeCache = Object.getOwnPropertyDescriptor(globalThis, "caches");
 try {
   for (const [pad, route] of [["/vandaag", vandaag], ["/sitemap-nieuws.xml", sitemap]] as const) {
@@ -53,6 +55,7 @@ try {
     assert.match(await leeg.text(), pad === "/vandaag" ? /nog geen berichten/ : /<urlset[^>]*><\/urlset>/);
   }
 } finally {
+  Date.now = echteNu;
   if (vorigeCache) Object.defineProperty(globalThis, "caches", vorigeCache);
   else Reflect.deleteProperty(globalThis, "caches");
 }

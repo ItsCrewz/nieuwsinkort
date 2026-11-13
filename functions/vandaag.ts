@@ -2,7 +2,7 @@
 import { artikelPad, heeftArtikelId, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
-import { GELDIG_TOT, nogGeldig, overzichtBeleid } from "../src/overzichtcache";
+import { GELDIG_TOT, nogGeldig, overzichtBeleid, cacheHit, datasetVerlopen } from "../src/overzichtcache";
 import { ICOON_TAGS } from "../src/icoontags";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
@@ -26,7 +26,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   const start = Date.now();
-  if (bestaand && nogGeldig(bestaand, start)) return bestaand;
+  if (bestaand && nogGeldig(bestaand, start)) return cacheHit(bestaand, start);
   const fout = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
   let html: string, gegenereerd: string;
   try {
@@ -35,7 +35,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
     const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
     if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
     gegenereerd = dag.gegenereerd;
-    html = vandaagHtml(dag.items, ams(Date.parse(gegenereerd)).iso);
+    html = vandaagHtml(datasetVerlopen(gegenereerd, Date.now()) ? [] : dag.items, ams(Date.parse(gegenereerd)).iso);
   } catch { console.error("vandaag: data lezen mislukt"); return fout(); }
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
   if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
