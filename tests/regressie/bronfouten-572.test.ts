@@ -3,7 +3,7 @@ import { webcrypto } from "node:crypto";
 import { Runner, runJob } from "../../worker/src/index";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
-const urls = ["https://www.bleepingcomputer.com/feed/", "https://www.cisa.gov/news.xml", "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"];
+const urls = ["https://www.bleepingcomputer.com/feed/", "https://www.cisa.gov/news.xml", "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json", "https://voorbeeld.nl/feed/"];
 const oorspronkelijkeFetch = globalThis.fetch;
 const kv = new Map<string, string>();
 const opslag = new Map<string, any>();
@@ -12,7 +12,8 @@ globalThis.fetch = (async (input: any) => {
   if (url.includes("/bronnen.json")) return Response.json({ groepen: [{ id: "tech", bronnen: urls.map((feed, i) => ({ id: String(i), naam: `Bron ${i}`, feeds: [{ url: feed }] })) }] });
   if (url === urls[0]) return new Response("", { status: 403 });
   if (url === urls[1]) return new Response("", { status: 404 });
-  if (url === urls[2]) return new Response("<rss><channel><item><title>Testbericht</title><link>https://www.cisa.gov/nieuws</link></item></channel></rss>");
+  if (url === urls[2]) return Response.json({ vulnerabilities: [{ cveID: "CVE-2026-1234", vulnerabilityName: "Voorbeeldlek", dateAdded: new Date().toISOString().slice(0, 10), shortDescription: "Een voorbeeld van een kwetsbaarheid." }] });
+  if (url === urls[3]) return new Response(`<rss><channel><item><title>Gemeente opent nieuwe openbare bibliotheek</title><link>https://voorbeeld.nl/bibliotheek</link><pubDate>${new Date().toUTCString()}</pubDate><description>De gemeente opent vandaag een nieuwe openbare bibliotheek voor inwoners.</description></item></channel></rss>`);
   return new Response("", { status: 404 });
 }) as typeof fetch;
 try {
@@ -23,5 +24,5 @@ try {
   const data: any = JSON.parse(kv.get("uur")!);
   assert.deepEqual(data.meta.bronfouten.filter((f: any) => urls.includes(f.url)).map((f: any) => [f.url, f.code, f.status]), [[urls[0], "SRC_HTTP", 403], [urls[1], "SRC_HTTP", 404]]);
   assert.deepEqual(JSON.parse(kv.get("run-status")!).bronfouten, data.meta.bronfouten);
-  assert.equal((await runJob({ url: urls[2], kind: "feed" }, 0)).ok, true);
+  assert.ok(data.items.some((item: any) => item.bronnen?.some((bron: any) => bron.href === "https://voorbeeld.nl/bibliotheek")));
 } finally { globalThis.fetch = oorspronkelijkeFetch; }
