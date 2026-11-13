@@ -65,7 +65,7 @@ export function beterBeeld(raw: string): string {
   return u;
 }
 
-export function uniekeBeelden(urls: (string | null | undefined)[], max = 6): string[] {
+export function uniekeBeelden(urls: (string | null | undefined)[], max = 12): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of urls) {

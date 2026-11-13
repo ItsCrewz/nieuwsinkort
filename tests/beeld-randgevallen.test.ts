@@ -66,10 +66,10 @@ t("uniekeBeelden geeft precies max unieke beelden in bronvolgorde", () => {
   assert.deepEqual(uniekeBeelden([null, eerste, eerste, tweede, derde], 2), [eerste, tweede]);
 });
 
-t("uniekeBeelden begrenst standaard tot zes unieke beelden", () => {
-  const urls = Array.from({ length: 7 }, (_, i) => `https://nieuws.nl/stadsbeeld${i}.jpg`);
+t("uniekeBeelden begrenst standaard tot twaalf unieke beelden", () => {
+  const urls = Array.from({ length: 14 }, (_, i) => `https://nieuws.nl/stadsbeeld${i}.jpg`);
   assert.deepEqual(uniekeBeelden(urls.slice(0, 6)), urls.slice(0, 6));
-  assert.deepEqual(uniekeBeelden(urls), urls.slice(0, 6));
+  assert.deepEqual(uniekeBeelden(urls), urls.slice(0, 12));
 });
 
 t("ogImage lost een relatief pad met enkele aanhalingstekens en entities op", () => {

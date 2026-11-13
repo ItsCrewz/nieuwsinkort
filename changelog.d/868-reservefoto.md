@@ -1,0 +1,1 @@
+- Toon een reservefoto als eerdere foto's niet laden of te klein zijn (#868).
