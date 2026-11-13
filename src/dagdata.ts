@@ -83,7 +83,7 @@ export function merge(S: any, H: any) {
   // Nieuwe filmpjes van het uur (na de routine), plus alle Instagram-reels (die zijn altijd van nieuwsaccounts).
   // Per soort (Shorts/Journaals) apart begrensd, zodat de ene soort de andere niet wegdrukt.
   // Bij een geldige t telt het volledige moment; alleen zonder bruikbare t (oudere data) de klokstring.
-  const sMs = Date.parse(S.gegenereerd);
+  const sMs = sOk ? Date.parse(S.gegenereerd) : NaN;
   const naRoutine = (v: any) => {
     const t = publicatieTijd(v.t, nu);
     return t != null && Number.isFinite(sMs) ? t >= sMs : (v.tijd || "") >= sTijd;

@@ -44,6 +44,12 @@ t("merge weert ook geblokkeerde routinevideo's uit beide lijsten", () => {
   assert.deepEqual(uit.dumpert, []);
 });
 
+t("merge(null, H) met een filmpje met t gooit niet", () => {
+  const nu = new Date(Date.now()).toISOString();
+  const H = { gegenereerd: nu, items: [], filmpjes: [{ href: "https://video.test/x", t: Date.now() }], dumpert: [] };
+  assert.equal(merge(null, H).filmpjes.length, 1);
+});
+
 t("merge weert F1-Shorts via de kanaalblokkade van de Worker", () => {
   const nu = new Date(Date.now()).toISOString();
   const xml = `<entry><yt:videoId>gmkJBKiE77Q</yt:videoId><title>F1</title><link rel="alternate" href="https://www.youtube.com/shorts/gmkJBKiE77Q"/><published>${nu}</published></entry>`;
