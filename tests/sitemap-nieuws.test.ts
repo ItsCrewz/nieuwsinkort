@@ -34,6 +34,38 @@ try {
   r = await vraag({ ASSETS: { fetch: async () => new Response("", { status: 500 }) }, NIEUWS: { get: async () => null } });
   assert.equal(r.status, 503); assert.equal(r.headers.get("cache-control"), "no-store");
 
+  // cache over de Amsterdamse daggrens (#919): gewone dag en wintertijd-wisseldag, vaste klok + lokale cache-double
+  const vorigeCache = Object.getOwnPropertyDescriptor(globalThis, "caches");
+  const opslag = new Map<string, Response>();
+  Object.defineProperty(globalThis, "caches", { configurable: true, value: { default: {
+    match: async (q: Request) => opslag.get(q.url)?.clone(),
+    put: async (q: Request, res: Response) => { opslag.set(q.url, res.clone()); },
+  } } });
+  try {
+    for (const [d, voor, grens, zes] of [["2026-11-04", "2026-11-04T22:59:30Z", "2026-11-04T23:00:00Z", "2026-11-05T05:00:00Z"], ["2026-10-25", "2026-10-25T22:59:30Z", "2026-10-25T23:00:00Z", "2026-10-26T05:00:00Z"]]) {
+      opslag.clear();
+      const it = { ...a, t: Date.parse(`${d}T09:00:00Z`) };
+      let reads = 0;
+      const env = { ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => { reads++; return `${d}\ntag\n${JSON.stringify({ gegenereerd: `${d}T09:00:00Z`, items: [it] })}`; } } };
+      const pad = artikelPad(it, d);
+      let nu = Date.parse(voor); Date.now = () => nu;
+      r = await vraag(env);
+      assert.equal(r.headers.get("cache-control"), "public, max-age=30", `${d}: begrensd tot de daggrens`);
+      assert.ok((await r.text()).includes(pad));
+      nu += 20000; const gelezen = reads;
+      r = await vraag(env);
+      assert.equal(reads, gelezen, `${d}: cachehit voor de grens`);
+      assert.equal(r.headers.get("cache-control"), "public, max-age=10");
+      nu = Date.parse(grens); r = await vraag(env);
+      assert.ok(reads > gelezen, `${d}: na de grens opnieuw dagdata`);
+      assert.equal(r.status, 200);
+      nu = Date.parse(zes); r = await vraag(env);
+      assert.ok(!(await r.text()).includes(pad), `${d}: oude dag valt na 06:00 weg`);
+    }
+  } finally {
+    if (vorigeCache) Object.defineProperty(globalThis, "caches", vorigeCache); else Reflect.deleteProperty(globalThis, "caches");
+  }
+
   // koppelingen: robots.txt noemt de sitemap, _routes.json sluit hem niet uit
   assert.ok(readFileSync("public/robots.txt", "utf8").includes("Sitemap: https://nieuwsinkort.nl/sitemap-nieuws.xml"));
   assert.ok(!JSON.parse(readFileSync("public/_routes.json", "utf8")).exclude.some((p: string) => p.includes("sitemap-nieuws")));
