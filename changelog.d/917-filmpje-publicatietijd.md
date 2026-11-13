@@ -1,0 +1,1 @@
+- Beoordeel nieuwe uurfilmpjes bij de dagmerge op hun publicatietijd `t` in plaats van de klokstring, met terugval voor oudere data (#917).
