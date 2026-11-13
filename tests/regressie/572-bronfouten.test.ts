@@ -20,7 +20,9 @@ try {
   const ctx: any = { storage: { get: async (k: string) => opslag.get(k), put: async (k: string | Record<string, any>, v?: any) => { if (typeof k === "string") opslag.set(k, v); else for (const [key, waarde] of Object.entries(k)) opslag.set(key, waarde); }, delete: async (k: string) => opslag.delete(k), getAlarm: async () => null, setAlarm: async () => {} }, blockConcurrencyWhile: async (fn: any) => fn() };
   const response = await new Runner(ctx, env).fetch(new Request("https://do/run"));
   assert.equal(response.status, 200);
-  const fouten = JSON.parse(kv.get("uur")!).meta.bronfouten;
+  const meta = JSON.parse(kv.get("uur")!).meta;
+  const fouten = meta.bronfouten;
   assert.deepEqual(fouten.filter((f: any) => urls.includes(f.url)).map((f: any) => [f.url, f.code, f.status]), [[urls[0], "SRC_HTTP", 403], [urls[1], "SRC_HTTP", 404]]);
+  assert.deepEqual(meta.bronnenMislukt.filter((f: any) => urls.includes(f.url)), [[urls[0], 403], [urls[1], 404]].map(([url, status]) => ({ url, code: "SRC_HTTP", status })));
   console.log("✓ bronfouten met HTTP-status blokkeren de run niet");
 } finally { globalThis.fetch = echte; }

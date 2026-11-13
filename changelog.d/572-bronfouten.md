@@ -1,1 +1,1 @@
-- Toon bij mislukte feeds de foutcode en HTTP-status in de run-meta, zodat uitval van onder meer BleepingComputer en CISA zichtbaar blijft (#572).
+- Mislukte feeds staan als overgeslagen bronnen met foutcode en HTTP-status in de run-meta; andere bronnen blijven beschikbaar (#572).
