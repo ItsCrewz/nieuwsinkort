@@ -91,7 +91,7 @@ export function ontdubbel(item: Tekst, bronnen: string[][]): { punten: string[];
 // Gewone leestekens, witruimte, hoofdletters en het taalvoorvoegsel (Engels) tellen niet mee.
 export function zelfdeRuweTekst(a: string | null | undefined, b: string | null | undefined): boolean {
   const norm = (s: string | null | undefined) => (s || "").replace(/^\s*\(Engels\)\s*/iu, "").toLocaleLowerCase("nl").normalize("NFC")
-    .replace(/(?<!\p{N})[.,]|[.,](?!\p{N})|[:;!?…'"‘’“”„‚«»|()[\]]/gu, "").replace(/\s+/gu, " ").trim();
+    .replace(/(?<!\p{N})[.,]|[.,](?!\p{N})|[:;!?…'"‘’“”„‚«»|()[\]]/gu, " ").replace(/\s+/gu, " ").trim();
   const x = norm(a), y = norm(b);
   return !!x && x === y;
 }

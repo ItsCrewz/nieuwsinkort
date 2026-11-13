@@ -57,6 +57,9 @@ test("normalisatie en betekenisvolle verschillen bij ruwe tekst", () => {
 test("woordgrenzen blijven behouden bij ruwe tekst", () => {
   assert.ok(zelfdeRuweTekst(" (Engels) Inbraak,\n  GEPLEEGD!", "inbraak gepleegd"));
   assert.ok(!zelfdeRuweTekst("inbraak gepleegd", "in braak gepleegd"));
+  assert.ok(!zelfdeRuweTekst("in;braak gepleegd", "inbraak gepleegd"));
+  assert.ok(!zelfdeRuweTekst("zei:ja", "zeija"));
+  assert.ok(zelfdeRuweTekst("“inbraak”", "inbraak"));
   assert.ok(!zelfdeRuweTekst("Er zijn 1.000 mensen", "Er zijn 1000 mensen"));
   const basis = items[3];
   const kop = "Inbraak gepleegd";
