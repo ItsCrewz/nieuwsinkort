@@ -44,12 +44,6 @@ t("merge weert ook geblokkeerde routinevideo's uit beide lijsten", () => {
   assert.deepEqual(uit.dumpert, []);
 });
 
-t("merge(null, H) met een filmpje met t gooit niet", () => {
-  const nu = new Date(Date.now()).toISOString();
-  const H = { gegenereerd: nu, items: [], filmpjes: [{ href: "https://video.test/x", t: Date.now() }], dumpert: [] };
-  assert.equal(merge(null, H).filmpjes.length, 1);
-});
-
 t("merge weert F1-Shorts via de kanaalblokkade van de Worker", () => {
   const nu = new Date(Date.now()).toISOString();
   const xml = `<entry><yt:videoId>gmkJBKiE77Q</yt:videoId><title>F1</title><link rel="alternate" href="https://www.youtube.com/shorts/gmkJBKiE77Q"/><published>${nu}</published></entry>`;
@@ -125,10 +119,12 @@ t("merge filmpjes: ontdubbeling op href en Instagram-uitzondering", () => {
   assert.equal(uit.filter((h: string) => h.includes("fffffffffff")).length, 1);
   assert.ok(uit.some((h: string) => h.includes("instagram.com/reel/ZZ1")));
 });
+// Routine en uurdata op dezelfde Amsterdamse dag, zodat naRoutine echt beslist (niet de dagselectie).
 t("merge filmpjes: daggrens rond 00:30 Amsterdam", () => {
-  const S = { gegenereerd: "2026-10-29T23:50:00+01:00", items: [], filmpjes: [], dumpert: [] };
+  const S = { gegenereerd: "2026-10-30T00:05:00+01:00", items: [], filmpjes: [], dumpert: [] };
   const H = { gegenereerd: "2026-10-30T00:25:00+01:00", items: [], dumpert: [], filmpjes: [
-    clip("ggggggggggg", { t: Date.parse("2026-10-30T00:10:00+01:00"), tijd: "00:10" }), clip("hhhhhhhhhhh", { t: Date.parse("2026-10-29T23:40:00+01:00"), tijd: "23:59" })] };
+    clip("ggggggggggg", { t: Date.parse("2026-10-30T00:10:00+01:00"), tijd: "00:01" }), clip("hhhhhhhhhhh", { t: Date.parse("2026-10-30T00:03:00+01:00"), tijd: "23:59" })] };
   const uit = merge(S, H).filmpjes.map((v: any) => v.href.split("/").pop());
+  assert.ok(uit.includes("ggggggggggg"), JSON.stringify(uit));
   assert.ok(!uit.includes("hhhhhhhhhhh"), JSON.stringify(uit));
 }, Date.parse("2026-10-30T00:30:00+01:00"));

@@ -15,7 +15,8 @@ try {
   const H = {
     gegenereerd: "2026-11-04T09:00:00Z", dag_samenvatting: "Uur",
     items: [{ titel: "Nieuw bericht", bronnen: [{ href: "https://nos.nl/nieuw" }] }],
-    filmpjes: [{ href: "https://video.test/1", tijd: "10:00", t:Date.parse("2026-11-04T09:00:00Z") }],
+    // tijd "10:00" is bewust consistent met t, zodat oud en nieuw gelijk uitkomen; het verschil bij ontbrekende of tegenstrijdige tijd staat in data-merge.test.ts.
+    filmpjes: [{ href: "https://video.test/1", tijd: "10:00", t: Date.parse("2026-11-04T09:00:00Z") }],
     dumpert: [], meta: { aiStand: "normaal" }, meerKeys: ["nos.nl/routine"],
   };
   const sv = { klaar: { video: { tekst: "Samenvatting" } } };
