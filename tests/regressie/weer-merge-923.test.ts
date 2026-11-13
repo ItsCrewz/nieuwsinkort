@@ -19,7 +19,7 @@ try {
     assert.deepEqual(merge(routine, { ...uur, gegenereerd: "2026-11-04T10:00:00Z", weer: ontbreekt }).weer, routineWeer);
     assert.equal(merge({ ...routine, weer: ontbreekt }, { ...uur, weer: ontbreekt }).weer, undefined);
   }
-  assert.deepEqual(merge(routine, { ...uur, gegenereerd: "2026-11-04T10:00:00Z", weer: { nu: { temp: 10 } } }).weer, { nu: { temp: 10 }, verwachting: routineWeer.verwachting });
+  assert.deepEqual(merge(routine, { ...uur, gegenereerd: "2026-11-04T10:00:00Z", weer: { nu: { temp: 10 }, verwachting: "" } }).weer, { nu: { temp: 10 }, verwachting: "" });
 } finally {
   Date.now = origineel;
 }

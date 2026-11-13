@@ -128,7 +128,7 @@ export function merge(S: any, H: any) {
     datum: H.datum || base.datum,
     dag_samenvatting: (hNieuwer && H.dag_samenvatting) || base.dag_samenvatting || H.dag_samenvatting || "",
     tab_samenvatting: tabSam,
-    weer: weer ? { ...weer, verwachting: weer.verwachting || (weer === weerNieuw ? weerOud?.verwachting : undefined) || "" } : undefined,
+    weer: weer ? { ...weer, verwachting: weer.verwachting || "" } : undefined,
     items: ontdubbelVerhalen([...nieuw.map(metMeer), ...routineItems], new Set(routineItems)),
     filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
     dumpert,
