@@ -1,0 +1,1 @@
+- Test de nieuwssitemapcache rond de Amsterdamse daggrens op een gewone dag en op de wintertijd-wisseldag (#919).
