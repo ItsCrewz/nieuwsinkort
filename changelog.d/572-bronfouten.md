@@ -1,0 +1,1 @@
+- Mislukte feeds staan met foutcode en HTTP-status in de run-meta, ook als andere feeds van dezelfde bron wel werken (#572).
