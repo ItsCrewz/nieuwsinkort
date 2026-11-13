@@ -4,7 +4,7 @@
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { normLink as norm } from "./linknorm";
-import { alleenVandaag } from "./vandaag";
+import { alleenVandaag, publicatieTijd } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams, vorigeDag } from "./tijd";
@@ -82,7 +82,13 @@ export function merge(S: any, H: any) {
   const sTijd = sOk ? new Date(S.gegenereerd).toLocaleTimeString("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }) : "00:00";
   // Nieuwe filmpjes van het uur (na de routine), plus alle Instagram-reels (die zijn altijd van nieuwsaccounts).
   // Per soort (Shorts/Journaals) apart begrensd, zodat de ene soort de andere niet wegdrukt.
-  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.gisteren || v.bron === "Instagram" || (v.tijd || "") >= sTijd));
+  // Bij een geldige t telt het volledige moment; alleen zonder bruikbare t (oudere data) de klokstring.
+  const sMs = Date.parse(S.gegenereerd);
+  const naRoutine = (v: any) => {
+    const t = publicatieTijd(v.t, nu);
+    return t != null && Number.isFinite(sMs) ? t >= sMs : (v.tijd || "") >= sTijd;
+  };
+  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.gisteren || v.bron === "Instagram" || naRoutine(v)));
   const extraF = [...extra.filter((v: any) => v.soort !== "journaal").slice(0, 12), ...extra.filter((v: any) => v.soort === "journaal").slice(0, 10)];
   const { meta, meerKeys, ...h } = H;
   // "Lees verder": ook berichten van de routine krijgen hun extra tekst (sleutel = eerste bron met tekst in KV "meer")
