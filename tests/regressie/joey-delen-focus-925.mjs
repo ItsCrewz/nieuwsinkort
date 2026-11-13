@@ -21,6 +21,11 @@ export function testDelenFocus(serveer, artikelid, item) {
     await page.keyboard.press("Control+c");
     await page.keyboard.press("Tab");
     await expect(invoer).not.toBeFocused();
+    const focusNaTab = await page.evaluateHandle(() => document.activeElement);
+    const schakelaar = page.getByRole("switch", { name: "Focus-lezen" });
+    await schakelaar.evaluate((el) => el.click());
+    await expect(schakelaar).toHaveAttribute("aria-checked", "true");
+    expect(await focusNaTab.evaluate((el) => el === document.activeElement)).toBe(true);
     await page.keyboard.press("Shift+Tab");
     await expect(invoer).toBeFocused();
   });
