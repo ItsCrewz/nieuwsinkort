@@ -113,6 +113,9 @@ export function merge(S: any, H: any) {
     if (samenvatting != null) tabSam[rubriek] = samenvatting;
   }
   const routineItems = (base.items || []).map(metMeer);
+  const [weerNieuw, weerOud] = hNieuwer ? [H.weer, base.weer] : [base.weer, H.weer];
+  const bruikbaarWeer = (weer: any) => weer && typeof weer === "object" && !Array.isArray(weer) && (weer.nu || (Array.isArray(weer.dagen) && weer.dagen.length > 0));
+  const weer = bruikbaarWeer(weerNieuw) ? weerNieuw : bruikbaarWeer(weerOud) ? weerOud : undefined;
   const dumpertGezien = new Set<string>();
   const dumpert = (hNieuwer ? [...H.dumpert, ...base.dumpert] : [...base.dumpert, ...H.dumpert]).filter((v: any) => {
     const id = norm(v.href);
@@ -125,7 +128,7 @@ export function merge(S: any, H: any) {
     datum: H.datum || base.datum,
     dag_samenvatting: (hNieuwer && H.dag_samenvatting) || base.dag_samenvatting || H.dag_samenvatting || "",
     tab_samenvatting: tabSam,
-    weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
+    weer: weer ? { ...weer, verwachting: weer.verwachting || (weer === weerNieuw ? weerOud?.verwachting : undefined) || "" } : undefined,
     items: ontdubbelVerhalen([...nieuw.map(metMeer), ...routineItems], new Set(routineItems)),
     filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
     dumpert,
