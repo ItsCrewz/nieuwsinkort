@@ -32,6 +32,21 @@ try {
       assert.match(await (await vraag()).text(), /Testbericht/, "geldig antwoord blijft in cache");
       assert.equal(writes, 1);
     }
+    // ASSETS die faalt (niet-ok status of exception): ook tijdelijk 503, nooit cachen, daarna herstel.
+    for (const modus of ["status", "gooit"] as const) {
+      let writes = 0, stuk = true;
+      Object.defineProperty(globalThis, "caches", { configurable: true, value: { default: { match: async () => undefined, put: async () => { writes++; } } } });
+      const wachten: Promise<unknown>[] = [];
+      const vraag = () => route({ request: new Request(`https://nieuwsinkort.nl${pad}`), env: { ASSETS: { fetch: async () => { if (stuk && modus === "gooit") throw new Error("kapot"); return stuk ? new Response("fout", { status: 500 }) : Response.json(geldig); } } }, waitUntil: (p) => { wachten.push(p); } });
+      const fout = await vraag();
+      assert.equal(fout.status, 503, `${pad}: ASSETS ${modus}`);
+      assert.equal(fout.headers.get("cache-control"), "no-store");
+      assert.equal(writes, 0);
+      stuk = false;
+      assert.match(await (await vraag()).text(), /Testbericht/);
+      await Promise.all(wachten);
+      assert.equal(writes, 1);
+    }
     Object.defineProperty(globalThis, "caches", { configurable: true, value: undefined });
     const leeg = await route({ request: new Request(`https://nieuwsinkort.nl${pad}`), env: { ASSETS: { fetch: async () => Response.json({ ...geldig, items: [] }) } }, waitUntil: () => {} });
     assert.equal(leeg.status, 200);
