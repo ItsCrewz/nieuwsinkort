@@ -105,7 +105,7 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
   );
 }
 
-function DeelBlok({ item, url }: { item: Item; url: string }) {
+export function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
   const actie = useRef(0);
   const focusInvoer = useCallback((el: HTMLInputElement | null) => {
