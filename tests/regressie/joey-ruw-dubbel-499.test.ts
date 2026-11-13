@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
 import { DetailView } from "../../src/detail";
+import { zelfdeRuweTekst } from "../../src/dubbel";
 import type { Item } from "../../src/types";
 
 const items = JSON.parse(readFileSync("tests/fixtures/joey/ruw-dubbel-499.json", "utf8")) as Item[];
@@ -52,4 +53,16 @@ test("normalisatie en betekenisvolle verschillen bij ruwe tekst", () => {
   assert.ok(h.includes("(Engels) Hallo, WERELD!") && !h.includes(">hallo wereld<"));
   const verschillend = html({ ...basis, kop: "Een andere kop", ai: "De zaak is beslist.", samenvatting: "De zaak is niet beslist." });
   assert.ok(verschillend.includes("De zaak is beslist.") && verschillend.includes("De zaak is niet beslist."));
+});
+test("woordgrenzen blijven behouden bij ruwe tekst", () => {
+  assert.ok(zelfdeRuweTekst(" (Engels) Inbraak,\n  GEPLEEGD!", "inbraak gepleegd"));
+  assert.ok(!zelfdeRuweTekst("inbraak gepleegd", "in braak gepleegd"));
+  assert.ok(!zelfdeRuweTekst("Er zijn 1.000 mensen", "Er zijn 1000 mensen"));
+  const basis = items[3];
+  const kop = "Inbraak gepleegd";
+  const tekst = "In braak gepleegd";
+  const h = html({ ...basis, kop, ai: tekst, samenvatting: tekst });
+  assert.ok(h.includes(escaped(kop)) && h.includes(escaped(tekst)));
+  const samenvatting = html({ ...basis, kop: "Een andere kop", ai: kop, samenvatting: tekst });
+  assert.ok(samenvatting.includes(escaped(kop)) && samenvatting.includes(escaped(tekst)));
 });
