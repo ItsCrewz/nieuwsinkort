@@ -1,0 +1,1 @@
+- Micro-interacties (#539): één tikregel voor knoppen, hover alleen met `(hover:hover)`, zon/maan-wissel en crossfade bij het thema, vinkje en toast bij „Link gekopieerd”, tellerschuif en badge-pop; carrousel-dots animeren `transform` in plaats van `width`.

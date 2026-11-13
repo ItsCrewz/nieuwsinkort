@@ -17,6 +17,7 @@ import { CAT_LABEL } from "./tabs";
 import { useMeer } from "./meer";
 import { artikelUrl, deel } from "./delen";
 import { useTerugvegen } from "./terugvegen";
+import { DUUR, rustig } from "./beweging";
 
 function monoOf(site: string) {
   return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
@@ -107,27 +108,35 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
 
 function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
+  const [uitfaden, setUitfaden] = useState(false); // korte uitfade-fase voor het leegmaken (:empty verbergt anders direct)
   const actie = useRef(0);
   useEffect(() => {
     return () => { actie.current++; };
   }, []);
   useEffect(() => {
     if (deelStatus !== "gekopieerd") return;
-    const t = setTimeout(() => setDeelStatus(""), 3000);
-    return () => clearTimeout(t);
+    setUitfaden(false);
+    let t2: ReturnType<typeof setTimeout>;
+    const t = setTimeout(() => {
+      if (rustig()) { setDeelStatus(""); return; }
+      setUitfaden(true);
+      t2 = setTimeout(() => setDeelStatus(""), DUUR[2]);
+    }, 2000);
+    return () => { clearTimeout(t); clearTimeout(t2); };
   }, [deelStatus]);
   return (
     <>
-      <button type="button" className="deel-knop" aria-label="Deel dit bericht" disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
+      <button type="button" className={`deel-knop${deelStatus === "gekopieerd" ? " gedaan" : ""}`} aria-label="Deel dit bericht" disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
         const huidig = ++actie.current;
         setDeelStatus("");
         if (!url) return;
         const status = await deel(navigator, item.kop, url);
         if (actie.current === huidig) setDeelStatus(status);
       }}>
-        <Icon name="share" />
+        <Icon name="share" className="ic-deel" />
+        <Icon name="check" className="ic-vink" />
       </button>
-      <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
+      <span className={`deel-melding${deelStatus === "gekopieerd" ? (uitfaden ? " uit" : " toon") : ""}`} role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
       {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
     </>
   );

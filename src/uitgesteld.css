@@ -1,61 +1,76 @@
 /* Uitgestelde beweging (css-kritiek): transities, animaties, keyframes, hover-/pressvlakken en View-Transition-regels.
    Wordt na de eerste weergave geladen (src/uitgesteld.ts); layout en begintoestanden staan in index.css.
    Intro-animaties van de eerste weergave (.enter, .swap, .page-in, kaart-in) blijven kritiek om een flits te voorkomen. */
-.mark{transition:transform var(--f) var(--e)}
-.iconbtn{transition:transform var(--f) var(--e)}
-.srcbtn{transition:transform var(--f) var(--e)}
+.mark{transition:transform var(--dur-2) var(--e)}
+.iconbtn{transition:transform var(--dur-2) var(--e)}
+.srcbtn{transition:transform var(--dur-2) var(--e)}
 .sw::before{transition:opacity var(--bs) var(--e)}
 .sw-k{transition:transform 240ms cubic-bezier(.3,1.4,.5,1)}
 .tab,.tab-m{transition:color var(--f) var(--e),transform var(--f) var(--e)}
 .more-btn .ic{transition:transform var(--bs) var(--e)}
 .seg-ind{transition:transform var(--dur-3) var(--ease-in)}
 .menu{animation:mni 160ms var(--e) both}
-.chip{transition:transform var(--f) var(--e)}
+.chip{transition:transform var(--dur-2) var(--e)}
 .lead::before,.row::before{transition:opacity var(--f) var(--e)}
 .lead,.row{transition:transform var(--f) var(--e)}
-.btn{transition:transform var(--f) var(--e),opacity var(--f) var(--e)}
+.btn{transition:transform var(--dur-2) var(--e),opacity var(--f) var(--e)}
 .vthumb img{transition:transform var(--pg) var(--e)}
 .playbtn{transition:transform var(--f) var(--e)}
 .vthumb{transition:transform var(--f) var(--e)}
 .back .ic{transition:transform var(--f) var(--e)}
+.back,.fpill,.fchip,.textbtn{transition:transform var(--dur-2) var(--e)}
 .feed{animation:fadein 240ms var(--e) backwards}
 .feed.out{animation:fadeout 180ms var(--eo) both}
 .f-poster{transition:opacity 160ms ease,visibility 0s linear 160ms}
 .fstate{animation:pop 160ms var(--e) both}
-.f-btn{transition:opacity var(--f) var(--e)}
+.f-btn{transition:opacity var(--f) var(--e),transform var(--dur-2) var(--e)}
 .f-bar{transition:transform 160ms var(--e)}
 .f-time{animation:pop 140ms var(--e) both}
 .f-scrub.drag ~ .f-info,.fcol:has(.f-scrub.drag) .f-info{transition:opacity 120ms var(--e)}
 .fjump{animation:jump 600ms var(--e) both}
-.f-icon{transition:opacity var(--f) var(--e),transform var(--f) var(--e)}
+.f-icon{transition:opacity var(--f) var(--e),transform var(--dur-2) var(--e)}
 .scrim{animation:fadein var(--pg) var(--e) both}
 .sheet{animation:sli 300ms cubic-bezier(.2,.9,.3,1) both}
 .sheet-root.out .scrim{animation:fadeout 200ms var(--eo) both}
 .sheet-root.out .sheet{animation:slo 200ms var(--eo) both}
 .skel::after,.d-meer-laden span::after{animation:glans 1.4s var(--ease-standaard) 300ms infinite}
 .nc-title a{transition:opacity var(--f) var(--e)}
-.nf-btn{transition:transform var(--f) var(--e),color var(--f) var(--e)}
-.vseg button{transition:background-color var(--f) var(--e),color var(--f) var(--e),transform var(--f) var(--e)}
+.nf-btn{transition:transform var(--dur-2) var(--e),color var(--f) var(--e)}
+.vseg button{transition:background-color var(--f) var(--e),color var(--f) var(--e),transform var(--dur-2) var(--e)}
 .f-tab{transition:color var(--f) var(--e)}
 .f-tab[aria-selected="true"]::after{animation:tbl var(--dur-2) var(--ease-standaard) both}
 .feed-scroll.g0,.feed-scroll.g1{animation:fadein 180ms var(--e) backwards}
 .bl-slide img{transition:opacity 260ms var(--e)}
-.bl-dots span{transition:width 220ms var(--e),background 220ms var(--e)}
+.bl-dots span{transition:transform 220ms var(--e),background 220ms var(--e)}
 .row-img img{transition:opacity 260ms var(--e)}
 .sv-wrap{animation:fadein 180ms var(--e) both}
 .sv-sheet{animation:svup 220ms var(--e) both}
 .sv-dot{animation:svs .8s linear infinite}
 .tab:active{transform:scale(.97)}
 .lead:active,.row:active{transform:scale(.995)}
-.vcard:hover .vthumb img{transform:scale(1.025)}
-.vcard:hover .playbtn{transform:scale(1.08)}
+@media (hover:hover){
+  .vcard:hover .vthumb img{transform:scale(1.025)}
+  .vcard:hover .playbtn{transform:scale(1.08)}
+  .back:hover .ic{transform:translateX(-3px)}
+}
 .vcard:active .vthumb{transform:scale(.985)}
-.back:hover .ic{transform:translateX(-3px)}
-.deel-knop,.zoek-knop{transition:transform var(--dur-1) var(--e)}
-.deel-knop:active,.zoek-knop:active{transform:scale(.96)}
-.f-icon:active{transform:scale(.94)}
-.nf-btn:active{transform:scale(.92)}
-.nf-start:active{transform:translateX(-50%) scale(.98)}
+.deel-knop,.zoek-knop{transition:transform var(--dur-2) var(--e)}
+.deel-knop:active{transform:scale(.9)}
+.zoek-knop:active{transform:scale(.97)}
+.nf-start:active{transform:translateX(-50%) scale(.97)}
+/* indrukken sneller dan loslaten */
+.btn:active,.iconbtn:active,.srcbtn:active,.chip:active,.fpill:active,.fchip:active,.textbtn:active,.f-btn:active,.nf-btn:active,.f-icon:active,.back:active,.vseg button:active,.deel-knop:active,.zoek-knop:active,.brand:active .mark{transition-duration:var(--dur-1)}
+/* iconen: wissel van thema en delen (alleen transform/opacity) */
+.iconbtn.thema .ic,.deel-knop .ic{transition:transform var(--dur-2) var(--ease-veer),opacity var(--dur-2) var(--ease-veer)}
+.iconbtn.thema.wissel .ic.on{animation:ti-in var(--dur-2) var(--ease-veer) both}
+.iconbtn.thema.wissel .ic:not(.on){animation:ti-uit var(--dur-2) var(--ease-veer) both}
+/* teller en badge */
+.nf-getal.v{animation:nf-v var(--dur-2) var(--e) both}
+.nf-getal.o{animation:nf-o var(--dur-2) var(--e) both}
+.badge.pop{animation:badge-pop var(--dur-2) var(--ease-veer) both}
+/* deel-toast */
+.deel-melding.toon{animation:toast-in var(--dur-3) var(--ease-in) both}
+.deel-melding.uit{animation:toast-uit var(--dur-2) var(--eo) both}
 .nf-pos{transition:opacity 200ms var(--e),transform 240ms var(--e)}
 .nf-start{animation:nfs 300ms var(--e) backwards;transition:opacity 180ms var(--e),transform 220ms var(--e)}
 @media (max-width:640px){
@@ -64,6 +79,13 @@
 }
 @keyframes mni{from{opacity:0;transform:translate3d(0,-4px,0) scale(.97)}}
 @keyframes jump{0%{opacity:0;transform:translate3d(0,-50%,0) scale(.85)}20%{opacity:1;transform:translate3d(0,-50%,0) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate3d(0,-50%,0)}}
+@keyframes ti-in{from{opacity:0;transform:rotate(90deg) scale(.8)}}
+@keyframes ti-uit{from{opacity:1;transform:none}to{opacity:0;transform:rotate(-90deg)}}
+@keyframes nf-v{from{opacity:0;transform:translateY(6px)}}
+@keyframes nf-o{from{opacity:0;transform:translateY(-6px)}}
+@keyframes badge-pop{from{opacity:0;transform:scale(.6)}}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}}
+@keyframes toast-uit{to{opacity:0}}
 @keyframes pop{from{opacity:0;transform:scale(.8)}}
 @keyframes fadeout{to{opacity:0}}
 @keyframes sli{from{transform:translate3d(calc(100% + 20px),0,0)}}
@@ -80,6 +102,9 @@
 @keyframes vtn{from{opacity:.6;transform:translateX(-24px)}}
 html[data-overgang] .topbar{view-transition-name:topbalk}
 html[data-overgang] .page-in{animation:none}
+/* themawissel: crossfade van alleen opacity, ook de topbalk */
+html[data-overgang="thema"] .topbar{view-transition-name:none}
+html[data-overgang="thema"]::view-transition-old(root),html[data-overgang="thema"]::view-transition-new(root){animation-duration:var(--dur-2);animation-timing-function:var(--e)}
 html[data-overgang]::view-transition-old(topbalk),html[data-overgang]::view-transition-new(topbalk){animation:none;mix-blend-mode:normal}
 html[data-overgang="open"]::view-transition-old(root){animation:voo var(--dur-2) var(--eo) both}
 html[data-overgang="open"]::view-transition-new(root){animation:von var(--dur-3) var(--ease-in) both}

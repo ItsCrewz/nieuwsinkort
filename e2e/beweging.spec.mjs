@@ -139,3 +139,65 @@ test("reduced motion: geen lopende animaties bij rubriekwissel", async ({ page }
     expect(await traag(page)).toEqual([]);
   }
 });
+
+// Micro-interacties (#539): thema-icoon, tellerschuif, badge, carrousel-dots.
+const kortDuur = (page) => page.evaluate(() => document.getAnimations().filter((a) => (a.effect?.getTiming().duration ?? 0) > 0.01).map((a) => a.animationName || a.transitionProperty));
+
+for (const [naam, vt] of [["met View Transitions", true], ["zonder View Transitions", false]]) {
+  for (const focus of [false, true]) {
+    test(`thema wisselen ${naam}${focus ? ", Focus lezen aan" : ""}: licht <-> donker, theme-color mee`, async ({ page }) => {
+      await blokkeer(page);
+      await page.addInitScript((met) => { if (!met) document.startViewTransition = undefined; localStorage.setItem("nieuwsinkort-bionic", "x"); }, vt);
+      await page.emulateMedia({ colorScheme: "light" });
+      await page.goto("#/");
+      if (focus) await page.locator(".focus").click();
+      await expect(page.locator(".nc-title a").first()).toBeVisible();
+      const html = page.locator("html");
+      await page.getByRole("button", { name: "Schakel naar donkere modus" }).click();
+      await expect(html).toHaveAttribute("data-theme", "dark");
+      await expect(page.locator('meta[name="theme-color"]').first()).toHaveAttribute("content", "#0f0f0f");
+      await expect(page.locator(".iconbtn.thema .ic.on use")).toHaveAttribute("href", "#i-sun");
+      await page.getByRole("button", { name: "Schakel naar lichte modus" }).click();
+      await expect(html).toHaveAttribute("data-theme", "light");
+      await expect(page.locator('meta[name="theme-color"]').first()).toHaveAttribute("content", "#ffffff");
+      await expect(page.locator(".iconbtn.thema .ic.on use")).toHaveAttribute("href", "#i-moon");
+    });
+  }
+}
+
+test("reduced motion: thema, tellerschuif en badge zonder lopende animatie, functie gelijk", async ({ page }) => {
+  await blokkeer(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await page.getByRole("button", { name: "Schakel naar donkere modus" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await naarKaart(page, 2);
+  await expect(page.locator(".nf-pos .nf-getal")).toHaveText(/^3\//);
+  await page.waitForTimeout(100);
+  expect(await kortDuur(page)).toEqual([]);
+});
+
+test("tellerschuif: getal schuift in scrollrichting (alleen transform/opacity)", async ({ page }) => {
+  await blokkeer(page);
+  await page.goto("#/");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await naarKaart(page, 2);
+  await expect(page.locator(".nf-pos .nf-getal")).toHaveClass(/\bv\b/);
+  await naarKaart(page, 1);
+  await expect(page.locator(".nf-pos .nf-getal")).toHaveClass(/\bo\b/);
+  await expect(page.locator(".nf-pos .nf-getal")).toHaveAttribute("aria-live", "polite");
+});
+
+test("carrousel-dots: geen width-transition, vaste breedte, actieve stip schaalt", async ({ page }) => {
+  await blokkeer(page);
+  await page.goto("#/");
+  await page.setContent(`<div class="bl-dots"><span></span><span class="on"></span></div>`).catch(() => {});
+  const r = await page.evaluate(async () => {
+    const css = await (await fetch("/src/index.css")).text();
+    const ui = await (await fetch("/src/uitgesteld.css")).text();
+    return { css, ui };
+  });
+  expect(r.ui).not.toMatch(/\.bl-dots span\{[^}]*width/);
+  expect(r.css).toMatch(/\.bl-dots span\{width:16px;[^}]*scaleX\(\.375\)/);
+});

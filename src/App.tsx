@@ -701,6 +701,9 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const total = sorted.length;
+  // richting van de tellerschuif: omlaag scrollen = nieuw getal van onder
+  const getal = useRef({ idx, dir: "" });
+  if (getal.current.idx !== idx) getal.current = { idx, dir: idx > getal.current.idx ? "v" : "o" };
   const positie = useRef<Nieuwspositie | null>(leesNieuwspositie(tab));
   const [nieuw, setNieuw] = useState(0);
   useLayoutEffect(() => {
@@ -866,7 +869,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
             <button type="button" className="nf-btn" aria-label="Vorig bericht" onClick={() => go(idx - 1)}>
               <Icon name="chevup" />
             </button>
-            <span className="tnum" aria-live="polite">
+            <span key={Math.max(1, idx + 1)} className={`tnum nf-getal ${getal.current.dir}`} aria-live="polite">
               {Math.max(1, idx + 1)}/{total}
             </span>
             <button type="button" className="nf-btn" aria-label="Volgend bericht" onClick={() => go(idx + 1)}>
@@ -959,7 +962,7 @@ export function useTheme() {
     mq.addEventListener?.("change", on);
     return () => mq.removeEventListener?.("change", on);
   }, []);
-  // Direct wisselen: geen kleurovergang op elk element (dat hapert), één repaint en klaar.
+  // Geen kleurovergang op elk element (dat hapert): één crossfade van het hele beeld (alleen opacity) via View Transitions, anders direct wisselen.
   const toggle = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     handmatig.current = true;
@@ -968,8 +971,10 @@ export function useTheme() {
     } catch {
       /* negeer */
     }
-    applyTheme(next);
-    setTheme(next);
+    void metOvergang(() => {
+      applyTheme(next);
+      flushSync(() => setTheme(next));
+    }, "thema");
   };
   return { theme, toggle };
 }
@@ -994,6 +999,10 @@ function TopBar({
   onSources: () => void;
   filtered: number;
 }) {
+  const [gewisseld, setGewisseld] = useState(false); // pas na de eerste tik animeren
+  const badgeVorig = useRef(filtered);
+  const badgePop = useRef(false);
+  if (badgeVorig.current !== filtered) { badgeVorig.current = filtered; badgePop.current = true; }
   return (
     <header className="topbar">
       <div className="bar">
@@ -1026,10 +1035,11 @@ function TopBar({
           >
             <Icon name="sliders" />
             <span className="srcbtn-l">Bronnen</span>
-            {filtered ? <span className="badge tnum">{filtered}</span> : null}
+            {filtered ? <span key={filtered} className={`badge tnum${badgePop.current ? " pop" : ""}`}>{filtered}</span> : null}
           </button>
-          <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
-            <Icon name={theme === "dark" ? "sun" : "moon"} />
+          <button type="button" className={`iconbtn thema${gewisseld ? " wissel" : ""}`} aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={() => { setGewisseld(true); onTheme(); }}>
+            <Icon name="sun" className={theme === "dark" ? "on" : ""} />
+            <Icon name="moon" className={theme === "dark" ? "" : "on"} />
           </button>
         </div>
       </div>

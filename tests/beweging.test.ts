@@ -137,6 +137,33 @@ await t("er is maar één prefers-reduced-motion-check in de JS-bronnen", () => 
   assert.deepEqual(treffers, ["beweging.ts"]);
 });
 
+await t("metOvergang: soort 'thema' zet data-overgang, ruimt op en valt terug op direct wisselen (#539)", async () => {
+  const root = { dataset: {} as Record<string, string> };
+  const gezien: string[] = [];
+  g.window = { matchMedia: mq(false) };
+  g.document = { hidden: false, documentElement: root, querySelector: () => null, startViewTransition: (cb: () => void) => { gezien.push(root.dataset.overgang); cb(); return { finished: Promise.resolve() }; } };
+  let klaar = 0;
+  await metOvergang(() => { klaar++; }, "thema");
+  assert.deepEqual(gezien, ["thema"]);
+  assert.equal(klaar, 1);
+  assert.equal(root.dataset.overgang, undefined);
+  g.document = { hidden: false, documentElement: root, querySelector: () => null };
+  await metOvergang(() => { klaar++; }, "thema");
+  assert.equal(klaar, 2);
+});
+
+await t("micro-interacties: één tikregel scale(.97), bl-dots zonder width-transition, hover alleen met (hover:hover)", () => {
+  assert.match(css, /\.btn:active,[^{]*\.f-icon:active[^{]*\{transform:scale\(\.97\)\}/);
+  assert.doesNotMatch(uitgesteld, /\.bl-dots span\{[^}]*width/);
+  assert.match(css, /\.bl-dots span\{width:16px;[^}]*transform:scaleX\(\.375\)/);
+  assert.match(uitgesteld, /@keyframes ti-in\{[^@]*\}/);
+  for (const k of ["ti-in", "ti-uit", "nf-v", "nf-o", "badge-pop", "toast-in", "toast-uit"]) {
+    const kf = new RegExp(`@keyframes ${k}\\{([^\\n]*)\\}\\n`).exec(uitgesteld)![1];
+    assert.doesNotMatch(kf, /width|height|margin|left|top|padding/);
+  }
+  assert.doesNotMatch(css.replace(/@media \(hover:hover\)\{[^}]*\}\}?/g, ""), /^\.(btn|iconbtn|srcbtn|chip|nf-btn):hover/m);
+});
+
 console.log(`\n${n} tests OK`);
 
 await t("rubriekwissel/shimmer (#538): richting, keyframes alleen transform, 300ms vertraging, reduced motion statisch", async () => {
