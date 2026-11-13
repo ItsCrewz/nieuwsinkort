@@ -173,31 +173,54 @@ test("reduced motion: thema, tellerschuif en badge zonder lopende animatie, func
   await page.getByRole("button", { name: "Schakel naar donkere modus" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await naarKaart(page, 2);
-  await expect(page.locator(".nf-pos .nf-getal")).toHaveText(/^3\//);
+  await expect(page.locator(".nf-pos [aria-live] .nf-getal")).toHaveText(/^3\//);
   await page.waitForTimeout(100);
   expect(await kortDuur(page)).toEqual([]);
 });
 
-test("tellerschuif: getal schuift in scrollrichting (alleen transform/opacity)", async ({ page }) => {
+test("tellerschuif: live-region blijft behouden, binnenste getal schuift in scrollrichting", async ({ page }) => {
   await blokkeer(page);
   await page.goto("#/");
   await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const live = page.locator(".nf-pos > [aria-live=polite]");
+  await expect(live).toHaveCount(1);
+  await live.evaluate((el) => { el.dataset.zelfde = "1"; });
   await naarKaart(page, 2);
-  await expect(page.locator(".nf-pos .nf-getal")).toHaveClass(/\bv\b/);
+  await expect(live.locator(".nf-getal")).toHaveClass(/\bv\b/);
+  await expect(live).toContainText("3/");
   await naarKaart(page, 1);
-  await expect(page.locator(".nf-pos .nf-getal")).toHaveClass(/\bo\b/);
-  await expect(page.locator(".nf-pos .nf-getal")).toHaveAttribute("aria-live", "polite");
+  await expect(live.locator(".nf-getal")).toHaveClass(/\bo\b/);
+  await expect(live).toContainText("2/");
+  // hetzelfde DOM-element: niet opnieuw gemount, dus voorleesbaar voor schermlezers
+  await expect(page.locator(".nf-pos > [aria-live=polite][data-zelfde='1']")).toHaveCount(1);
+  await expect(live).toHaveAttribute("aria-live", "polite");
 });
 
-test("carrousel-dots: geen width-transition, vaste breedte, actieve stip schaalt", async ({ page }) => {
+test("carrousel-dots: geen width-transition, vaste breedte, actieve stip schaalt (licht en donker)", async ({ page }, info) => {
+  await page.route("**/foto-*.svg", (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="300" height="200" fill="#789"/></svg>' }));
   await blokkeer(page);
-  await page.goto("#/");
-  await page.setContent(`<div class="bl-dots"><span></span><span class="on"></span></div>`).catch(() => {});
-  const r = await page.evaluate(async () => {
-    const css = await (await fetch("/src/index.css")).text();
-    const ui = await (await fetch("/src/uitgesteld.css")).text();
-    return { css, ui };
+  await page.goto("/");
+  await page.evaluate(async () => {
+    const reactMod = await import("/node_modules/.vite/deps/react.js");
+    const React = reactMod.createElement ? reactMod : reactMod.default;
+    const dom = await import("/node_modules/.vite/deps/react-dom_client.js");
+    const createRoot = dom.createRoot ?? dom.default.createRoot;
+    const { Beelden } = await import("/src/beelden.tsx");
+    const host = document.createElement("div");
+    host.style.cssText = "position:fixed;inset:0;z-index:9999;background:var(--bg,white)";
+    document.body.append(host);
+    createRoot(host).render(React.createElement(Beelden, { urls: ["/foto-1.svg", "/foto-2.svg", "/foto-3.svg"] }));
   });
-  expect(r.ui).not.toMatch(/\.bl-dots span\{[^}]*width/);
-  expect(r.css).toMatch(/\.bl-dots span\{width:16px;[^}]*scaleX\(\.375\)/);
+  const dots = page.locator(".bl-dots span");
+  await expect(dots).toHaveCount(3);
+  for (const thema of ["light", "dark"]) {
+    await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), thema);
+    const stip = await dots.evaluateAll((els) => els.map((e) => { const c = getComputedStyle(e); return { w: c.width, props: c.transitionProperty, op: e.classList.contains("on") }; }));
+    for (const d of stip) { expect(d.w).toBe("16px"); expect(d.props).not.toMatch(/\bwidth\b|\ball\b/); }
+    expect(stip.filter((d) => d.op)).toHaveLength(1);
+    const tf = await dots.evaluateAll((els) => els.map((e) => getComputedStyle(e).transform));
+    expect(tf[0]).toBe("none");
+    expect(tf[1]).not.toBe("none");
+    await page.locator(".bl").last().screenshot({ path: info.outputPath(`dots-${thema}.png`) });
+  }
 });

@@ -869,8 +869,10 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
             <button type="button" className="nf-btn" aria-label="Vorig bericht" onClick={() => go(idx - 1)}>
               <Icon name="chevup" />
             </button>
-            <span key={Math.max(1, idx + 1)} className={`tnum nf-getal ${getal.current.dir}`} aria-live="polite">
-              {Math.max(1, idx + 1)}/{total}
+            <span aria-live="polite">
+              <span key={Math.max(1, idx + 1)} className={`tnum nf-getal ${getal.current.dir}`}>
+                {Math.max(1, idx + 1)}/{total}
+              </span>
             </span>
             <button type="button" className="nf-btn" aria-label="Volgend bericht" onClick={() => go(idx + 1)}>
               <Icon name="chevdown" />
@@ -1000,9 +1002,9 @@ function TopBar({
   filtered: number;
 }) {
   const [gewisseld, setGewisseld] = useState(false); // pas na de eerste tik animeren
-  const badgeVorig = useRef(filtered);
-  const badgePop = useRef(false);
-  if (badgeVorig.current !== filtered) { badgeVorig.current = filtered; badgePop.current = true; }
+  const [badgeVorig, setBadgeVorig] = useState(filtered);
+  const [badgePop, setBadgePop] = useState(false);
+  if (badgeVorig !== filtered) { setBadgeVorig(filtered); setBadgePop(true); } // afgeleid tijdens render: StrictMode-veilig
   return (
     <header className="topbar">
       <div className="bar">
@@ -1035,7 +1037,7 @@ function TopBar({
           >
             <Icon name="sliders" />
             <span className="srcbtn-l">Bronnen</span>
-            {filtered ? <span key={filtered} className={`badge tnum${badgePop.current ? " pop" : ""}`}>{filtered}</span> : null}
+            {filtered ? <span key={filtered} className={`badge tnum${badgePop ? " pop" : ""}`}>{filtered}</span> : null}
           </button>
           <button type="button" className={`iconbtn thema${gewisseld ? " wissel" : ""}`} aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={() => { setGewisseld(true); onTheme(); }}>
             <Icon name="sun" className={theme === "dark" ? "on" : ""} />

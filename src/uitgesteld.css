@@ -65,6 +65,7 @@
 .iconbtn.thema.wissel .ic.on{animation:ti-in var(--dur-2) var(--ease-veer) both}
 .iconbtn.thema.wissel .ic:not(.on){animation:ti-uit var(--dur-2) var(--ease-veer) both}
 /* teller en badge */
+.nf-getal{display:inline-block}
 .nf-getal.v{animation:nf-v var(--dur-2) var(--e) both}
 .nf-getal.o{animation:nf-o var(--dur-2) var(--e) both}
 .badge.pop{animation:badge-pop var(--dur-2) var(--ease-veer) both}
