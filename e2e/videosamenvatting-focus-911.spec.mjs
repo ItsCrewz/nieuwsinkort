@@ -3,6 +3,9 @@ import { test, expect } from "@playwright/test";
 test("focus blijft in de videosamenvatting en keert terug bij sluiten", async ({ page }) => {
   let beantwoord;
   const wacht = new Promise((resolve) => { beantwoord = resolve; });
+  let beantwoordOpnieuw;
+  const wachtOpnieuw = new Promise((resolve) => { beantwoordOpnieuw = resolve; });
+  let verzoeken = 0;
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
   await page.route("**/data.json*", async (route) => {
     const response = await route.fetch();
@@ -15,7 +18,7 @@ test("focus blijft in de videosamenvatting en keert terug bij sluiten", async ({
     await route.fulfill({ response, json: data });
   });
   await page.route("**/samenvatting", async (route) => {
-    await wacht;
+    await (++verzoeken === 1 ? wacht : wachtOpnieuw);
     await route.fulfill({ json: { ok: false, code: "fout", fout: "Probeer het later" } });
   });
   await page.goto("/#/filmpjes/yt-OojWxAiS5ew");
@@ -25,7 +28,11 @@ test("focus blijft in de videosamenvatting en keert terug bij sluiten", async ({
   const sluit = page.getByRole("button", { name: "Sluit samenvatting" });
   await expect(sluit).toBeFocused();
   const hash = new URL(page.url()).hash;
+  const geluid = page.locator(".f-sound");
+  await expect(geluid).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowUp");
+  await expect(geluid).toHaveAttribute("aria-pressed", "false");
   await page.waitForTimeout(500);
   expect(new URL(page.url()).hash).toBe(hash);
   await page.keyboard.press("Tab");
@@ -45,6 +52,14 @@ test("focus blijft in de videosamenvatting en keert terug bij sluiten", async ({
   await expect(sluit).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(opnieuw).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(sluit).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(sluit).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(sluit).toBeFocused();
+  beantwoordOpnieuw();
+  await expect(opnieuw).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(opener).toBeFocused();
   await expect(page.getByRole("dialog")).toHaveCount(0);

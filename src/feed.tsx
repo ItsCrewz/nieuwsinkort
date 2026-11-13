@@ -1184,7 +1184,7 @@ function SamenvattingBlad({ v, opener, onClose }: { v: Video; opener: React.RefO
             <>
               <p className="sv-fout">{res.fout}</p>
               {["fout", "net", "bezig", "geblokkeerd"].includes(res.code) ? (
-                <button type="button" className="f-btn" onClick={opnieuw}>Probeer opnieuw</button>
+                <button type="button" className="f-btn" onClick={() => { closeBtn.current?.focus({ preventScroll: true }); opnieuw(); }}>Probeer opnieuw</button>
               ) : null}
             </>
           )}
@@ -1467,6 +1467,7 @@ export function Feed({
     if (!r) return;
     const onGesture = (e: Event) => {
       if (!e.isTrusted) return;
+      if (e.type === "keydown" && (e.target as HTMLElement)?.closest?.(".sv-wrap")) return;
       const eerste = !geluidTik();
       onthoudGeluidTik();
       setGetikt(true);
