@@ -11,7 +11,7 @@
 // `Budget` (binding BUDGET_DO, atomair); ontbreekt die binding (lokaal/preview), dan het oudere KV-gedrag (een rem, geen garantie).
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
-import { svSleutel } from "../src/slug";
+import { svSleutel, youtubeId } from "../src/slug";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
 import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState } from "../worker/src/llm";
 
@@ -64,7 +64,6 @@ function ams(t = Date.now()) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
   return { iso: `${p.year}-${p.month}-${p.day}`, h: +p.hour };
 }
-export const ytId = (u = "") => /(?:youtube(?:-nocookie)?\.com\/(?:shorts\/|embed\/|watch\?(?:.*&)?v=|live\/)|youtu\.be\/)([\w-]{11})/.exec(u)?.[1] || null;
 
 // ---------------- tekst uit YouTube-ondertiteling
 function capText(j: any): string {
@@ -419,7 +418,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
   let reserved = 0; // vooraf weggeschreven schatting, wordt na afloop gecorrigeerd
   let tekst = "", bron = "", sec = 0;
   try {
-    const yt = ytId(v.embed) || ytId(v.href);
+    const yt = youtubeId(v.embed || "") || youtubeId(v.href || "");
     if (yt) {
       tekst = await ytCaptions(yt, why);
       bron = "ondertiteling";

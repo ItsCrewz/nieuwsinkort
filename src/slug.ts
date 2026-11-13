@@ -1,21 +1,43 @@
 // Vaste id per filmpje (voor #/filmpjes/<id>, en de KV-cache van video-samenvattingen). Zonder React, ook bruikbaar in Functions.
 import type { Video } from "./types";
+export function videoUrl(url: string): URL | null {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:" ? u : null;
+  } catch {
+    return null;
+  }
+}
+
+export function videoHost(host: string, domein: string): boolean {
+  return host === domein || host.endsWith(`.${domein}`);
+}
+
 export function youtubeId(url: string): string | null {
-  const m = /youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|live\/|watch\?(?:.*&)?v=)([\w-]{6,})/.exec(url) || /youtu\.be\/([\w-]{6,})/.exec(url);
-  return m ? m[1] : null;
+  const u = videoUrl(url);
+  if (!u) return null;
+  let id: string | null = null;
+  if (videoHost(u.hostname, "youtu.be")) id = /^\/([\w-]+)/.exec(u.pathname)?.[1] || null;
+  else if (videoHost(u.hostname, "youtube.com") || videoHost(u.hostname, "youtube-nocookie.com")) {
+    id = u.pathname === "/watch" ? u.searchParams.get("v") : /^\/(?:embed|shorts|live)\/([\w-]+)/.exec(u.pathname)?.[1] || null;
+  }
+  return id && /^[\w-]{6,}$/.test(id) ? id : null;
 }
 
 export function videoSlug(v: Video): string {
   const yt = youtubeId(v.embed || "") || youtubeId(v.href);
   if (yt) return `yt-${yt}`;
-  let m = /dumpert\.nl\/item\/([\w-]+)/.exec(v.href);
-  if (m) return `d-${m[1]}`;
-  m = /\/status\/(\d+)/.exec(v.href);
-  if (m) return `x-${m[1]}`;
-  m = /reddit\.com\/r\/[\w-]+\/comments\/(\w+)/.exec(v.href);
-  if (m) return `r-${m[1]}`;
-  m = /instagram\.com\/(?:reel|p)\/([\w-]+)/.exec(v.href);
-  if (m) return `ig-${m[1]}`;
+  const u = videoUrl(v.href);
+  if (u) {
+    let m = videoHost(u.hostname, "dumpert.nl") && /^\/item\/([\w-]+)/.exec(u.pathname);
+    if (m) return `d-${m[1]}`;
+    m = (videoHost(u.hostname, "x.com") || videoHost(u.hostname, "twitter.com")) && /^\/[^/]+\/status\/(\d+)/.exec(u.pathname);
+    if (m) return `x-${m[1]}`;
+    m = videoHost(u.hostname, "reddit.com") && /^\/r\/[\w-]+\/comments\/(\w+)/.exec(u.pathname);
+    if (m) return `r-${m[1]}`;
+    m = videoHost(u.hostname, "instagram.com") && /^\/(?:reel|p)\/([\w-]+)/.exec(u.pathname);
+    if (m) return `ig-${m[1]}`;
+  }
   // Titel is geen identiteit: alleen de href (stabiel bij titelwijziging) bepaalt de sleutel.
   return `v-${hrefHash(v.href)}`;
 }

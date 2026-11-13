@@ -33,7 +33,6 @@ export function kortGetal(n: number | undefined | null, eenheid: string) {
   else s = String(n);
   return `${s} ${eenheid}`;
 }
-const YT = /(?:youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|watch\?(?:.*&)?v=)|youtu\.be\/)([\w-]{6,})/;
 const isMp4 = (u?: string) => /\.mp4(\?|$)/i.test(u || "");
 const isHls = (u?: string) => /\.m3u8(\?|$)/i.test(u || "");
 // Alleen een herkenbare status van de embedspeler is bewijs; andere pagina's blijven onbekend.
@@ -95,7 +94,7 @@ export function dumpertEmbed(it: any): string {
   for (const md of it?.media || []) {
     const t = String(md.mediatype || "").toUpperCase();
     const vs: [string, string][] = (md.variants || []).map((v: any) => [v.version || "", v.uri || ""]);
-    for (const [, u] of vs) { const m = YT.exec(u); if (m) return `https://www.youtube-nocookie.com/embed/${m[1]}?autoplay=1&rel=0`; }
+    for (const [, u] of vs) { const id = youtubeId(u); if (id) return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`; }
     if (t.includes("YOUTUBE")) { const id = vs.map(([, u]) => u).find((u) => /^[\w-]{11}$/.test(u)); if (id) return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`; }
     if (t && t !== "VIDEO") continue;
     const d = Object.fromEntries(vs);
