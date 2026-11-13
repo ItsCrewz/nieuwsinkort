@@ -117,7 +117,7 @@ function DeelBlok({ item, url }: { item: Item; url: string }) {
     return () => clearTimeout(t);
   }, [deelStatus]);
   const melding = deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : !url ? "Dit bericht heeft geen eigen link om te delen" : "";
-  const laatsteMelding = useRef(""); // blijft staan tijdens het uitfaden
+  const laatsteMelding = useRef(""); // alleen voor de zichtbare toast tijdens het uitfaden; de aria-live-regio wordt wel leeg
   if (melding) laatsteMelding.current = melding;
   return (
     <>
@@ -131,7 +131,8 @@ function DeelBlok({ item, url }: { item: Item; url: string }) {
         <Icon name="share" className="ic-deel" />
         <Icon name="check" className="ic-ok" />
       </button>
-      <span className={`deel-melding${melding ? " toon" : ""}`} role="status" aria-live="polite">{melding || laatsteMelding.current}</span>
+      <span className={`deel-melding${melding ? " toon" : ""}`} aria-hidden="true">{melding || laatsteMelding.current}</span>
+      <span className="sr-only deel-status" role="status" aria-live="polite">{melding}</span>
       {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
     </>
   );

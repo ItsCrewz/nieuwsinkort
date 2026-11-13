@@ -19,7 +19,7 @@ test("kopieert de eigen berichtlink", async ({ page }) => {
   await page.goto("/#/");
   await page.locator(".nc-title a").first().click();
   await page.getByRole("button", { name: "Deel dit bericht" }).click();
-  await expect(page.getByText("Link gekopieerd")).toBeVisible();
+  await expect(page.locator(".deel-melding")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.gekopieerdeLink)).toMatch(/^https:\/\/nieuwsinkort\.nl\/bericht\//);
 });
 
@@ -54,4 +54,17 @@ test("reduced motion: toast staat er direct zonder lopende animatie", async ({ p
   await expect.poll(() => opacity(page, ".deel-melding")).toBe("1");
   const traag = await page.evaluate(() => document.getAnimations().filter((a) => (a.effect?.getTiming().duration ?? 0) > 0.01 && a.playState === "running").length);
   expect(traag).toBe(0);
+});
+
+test("tweede kopie meldt opnieuw: aria-live-regio gaat tussendoor leeg", async ({ page }) => {
+  await kopieerInit(page);
+  await page.goto("/#/");
+  await page.locator(".nc-title a").first().click();
+  const knop = page.getByRole("button", { name: "Deel dit bericht" });
+  const status = page.locator(".deel-status");
+  await knop.click();
+  await expect(status).toHaveText("Link gekopieerd");
+  await expect(status).toHaveText("", { timeout: 3500 });
+  await knop.click();
+  await expect(status).toHaveText("Link gekopieerd");
 });

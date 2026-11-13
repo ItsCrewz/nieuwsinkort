@@ -205,3 +205,50 @@ test("reduced motion: teller wisselt zonder lopende animatie", async ({ page }) 
   await expect(page.locator(".nf-pos .nf-n")).toHaveText(/^3\//);
   expect(await traag(page)).toEqual([]);
 });
+
+// #539 herwerk: dot-afstand (gap 5 px tot de actieve stip, 11 px tussen inactieve middelpunten) en micro-interacties met Focus lezen aan.
+for (const thema of ["light", "dark"]) {
+  test(`dots: afstand blijft gelijk aan het oude ontwerp in ${thema}`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem("nieuwsinkort-thema", t), thema);
+    await blokkeer(page);
+    await page.goto("#/");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", thema);
+    const m = await page.evaluate(() => {
+      const d = document.createElement("div");
+      d.className = "bl-dots"; d.style.cssText = "position:fixed;left:0;right:0;top:100px;background:#444";
+      d.innerHTML = "<span></span><span></span><span class=on></span><span></span><span></span>";
+      document.body.append(d);
+      // zichtbare rand van een stip = box ingekrompen door scaleX
+      return [...d.children].map((s) => { const r = s.getBoundingClientRect(); return { l: r.left, r: r.right, c: (r.left + r.right) / 2, b: r.width }; });
+    });
+    expect(m[0].b).toBeCloseTo(6, 1); expect(m[2].b).toBeCloseTo(16, 1);
+    expect(m[1].c - m[0].c).toBeCloseTo(11, 1); // tussen inactieve stippen
+    expect(m[2].l - m[1].r).toBeCloseTo(5, 1); // inactief naar actief
+    expect(m[3].l - m[2].r).toBeCloseTo(5, 1);
+    await page.screenshot({ path: `test-results/dots-${thema}.png`, clip: { x: 120, y: 90, width: 150, height: 30 } });
+  });
+}
+
+for (const thema of ["light", "dark"]) {
+  test(`Focus lezen aan: thema-icoon, teller en deel-vinkje werken in ${thema}`, async ({ page }) => {
+    await page.addInitScript(([t, k]) => {
+      localStorage.setItem("nieuwsinkort-thema", t); localStorage.setItem(k, "aan");
+      Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => {} } });
+    }, [thema, "nieuwsinkort-focus-lezen-keuze"]);
+    await blokkeer(page);
+    await page.goto("#/");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", thema);
+    await expect(page.locator(".nc-title a").first()).toBeVisible();
+    const volgende = thema === "light" ? ["Schakel naar donkere modus", ".tm-maan"] : ["Schakel naar lichte modus", ".tm-zon"];
+    await expect.poll(() => page.getByRole("button", { name: volgende[0] }).locator(volgende[1]).evaluate((e) => getComputedStyle(e).opacity)).toBe("1");
+    await page.waitForTimeout(400);
+    await naarKaart(page, 2);
+    await expect(page.locator(".nf-pos .nf-n")).toHaveText(/^3\//);
+    await page.locator(".nc-title a").first().click();
+    await page.getByRole("button", { name: "Deel dit bericht" }).click();
+    await expect(page.locator(".deel-status")).toHaveText("Link gekopieerd");
+    await expect.poll(() => page.locator(".deel-knop .ic-ok").evaluate((e) => getComputedStyle(e).opacity)).toBe("1");
+    await expect(page.locator(".deel-melding.toon")).toBeVisible();
+  });
+}
