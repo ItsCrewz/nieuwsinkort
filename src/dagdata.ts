@@ -65,6 +65,10 @@ export function merge(S: any, H: any) {
     nieuw.length = 150;
   }
   const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
+  const geldigDumpert = (v: any) => {
+    if (typeof v?.href !== "string") return false;
+    try { return ["http:", "https:"].includes(new URL(v.href).protocol); } catch { return false; }
+  };
   // Selecteer de dag vóór de keuze tussen routine en uurdata.
   const nu = Date.now();
   for (const key of ["filmpjes", "dumpert"] as const) {
@@ -73,6 +77,10 @@ export function merge(S: any, H: any) {
       const gekozen = alleenVandaag({ gegenereerd: H.gegenereerd, [key]: bekend }, nu)[key];
       return [...gekozen, ...lijst.filter((v: any) => typeof v?.t !== "number" && !v?.gisteren)];
     };
+    if (key === "dumpert") {
+      base[key] = (base[key] || []).filter(geldigDumpert);
+      H = { ...H, [key]: (H[key] || []).filter(geldigDumpert) };
+    }
     const samen = selectie([...(base[key] || []), ...(H[key] || [])]);
     const vandaagVideo = samen.some((v: any) => !v.gisteren);
     base[key] = selectie(base[key] || []).filter((v: any) => !!v.gisteren !== vandaagVideo);
@@ -99,6 +107,13 @@ export function merge(S: any, H: any) {
     if (samenvatting != null) tabSam[rubriek] = samenvatting;
   }
   const routineItems = (base.items || []).map(metMeer);
+  const dumpertGezien = new Set<string>();
+  const dumpert = (hNieuwer ? [...H.dumpert, ...base.dumpert] : [...base.dumpert, ...H.dumpert]).filter((v: any) => {
+    const id = norm(v.href);
+    if (dumpertGezien.has(id) || !toegestaan(v)) return false;
+    dumpertGezien.add(id);
+    return true;
+  }).slice(0, 25);
   return {
     ...base,
     datum: H.datum || base.datum,
@@ -107,7 +122,7 @@ export function merge(S: any, H: any) {
     weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
     items: ontdubbelVerhalen([...nieuw.map(metMeer), ...routineItems], new Set(routineItems)),
     filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
-    dumpert: ((H.dumpert || []).length >= 5 || !(base.dumpert || []).length ? H.dumpert || [] : base.dumpert).filter(toegestaan),
+    dumpert,
     bronstats: h.bronstats || base.bronstats,
     gegenereerd: hNieuwer ? H.gegenereerd : S.gegenereerd,
     routine_gegenereerd: sOk ? S.gegenereerd : null,
