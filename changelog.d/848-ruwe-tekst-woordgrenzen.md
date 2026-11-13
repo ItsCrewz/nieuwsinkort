@@ -1,0 +1,1 @@
+- Behoud woordgrenzen bij het herkennen van dubbele ruwe artikeltekst (#848).

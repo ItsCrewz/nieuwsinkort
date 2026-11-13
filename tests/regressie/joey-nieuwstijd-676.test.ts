@@ -14,10 +14,10 @@ try {
     bericht("oud formaat", "02:40"), bericht("zonder datum", ""), bericht("ongeldig", "02:35", NaN)];
   const filter = (tijd: typeof STANDAARD.tijd, sort: typeof STANDAARD.sort = "nieuw") =>
     filterNieuws(items, { ...STANDAARD, tijd, sort }, eerste + 1, gen, true);
-  assert.deepEqual(filter("alles").items.map((x) => x.kop), ["tweede", "oud formaat", "ongeldig", "eerste", "zonder datum"]);
-  assert.deepEqual(filter("alles", "oud").items.map((x) => x.kop), ["eerste", "ongeldig", "oud formaat", "tweede", "zonder datum"]);
-  assert.deepEqual(filter("1u").items.map((x) => x.kop), ["tweede", "zonder datum"]);
-  assert.equal(filter("3u").per["1u"], 2);
+  assert.deepEqual(filter("alles").items.map((x) => x.kop), ["oud formaat", "ongeldig", "tweede", "eerste", "zonder datum"]);
+  assert.deepEqual(filter("alles", "oud").items.map((x) => x.kop), ["eerste", "tweede", "ongeldig", "oud formaat", "zonder datum"]);
+  assert.deepEqual(filter("1u").items.map((x) => x.kop), ["oud formaat", "ongeldig", "tweede", "zonder datum"]);
+  assert.equal(filter("3u").per["1u"], 4);
   assert.equal(filter("sinds").per.sinds, 4);
   const nieuw = Array.from({ length: 5 }, (_, i) => bericht(`nieuw ${i}`, "00:00", tweede + i));
   const auto = filterNieuws([bericht("oud", "02:30", eerste), ...nieuw], STANDAARD, eerste + 1, gen, true);

@@ -8,7 +8,7 @@ import { GELDIG_TOT, nogGeldig, overzichtBeleid, cacheHit, datasetVerlopen } fro
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
 type CacheMetDefault = CacheStorage & { default?: Cache };
-const basis = { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=86400" };
+const basis = { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=604800" };
 const redirect = (status: number, locatie: string, cache: string) => new Response(null, { status, headers: { ...basis, Location: locatie, "Cache-Control": cache, ...(status === 302 ? { "X-Robots-Tag": "noindex" } : {}) } });
 export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const { request, env } = ctx;

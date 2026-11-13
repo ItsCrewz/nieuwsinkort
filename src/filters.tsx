@@ -126,8 +126,8 @@ export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   const t = +m[1] * 60 + +m[2];
   const g = ams(gen);
   const dag = t > g.h * 60 + g.min + 20 ? midnight(gen) - 1 : gen;
-  // Een dubbele kloktijd is de eerste keer; een overgeslagen kloktijd is onbekend.
-  return amsTijdstip(dag, +m[1], +m[2]);
+  // Kies bij een dubbele kloktijd de dichtstbijzijnde binnen de toekomstmarge.
+  return amsTijdstip(dag, +m[1], +m[2], gen);
 }
 function vanafVoor(t: Exclude<Tijd, "auto">, vorig: number): number {
   const now = Date.now();
