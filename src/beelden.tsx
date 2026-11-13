@@ -121,6 +121,7 @@ function register(r: Reg) {
 export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = eager, className = "", onChange }: { urls: string[]; eager?: boolean; voorrang?: boolean; className?: string; onChange?: () => void }) {
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
+  const zichtbare = list.slice(0, 6);
   const instructieId = useId();
   const track = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -145,7 +146,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   const raf = useRef(0);
   useLayoutEffect(() => {
     const huidig = listRef.current[iRef.current];
-    const nieuw = Math.max(0, urls.indexOf(huidig));
+    const nieuw = Math.max(0, Math.min(5, urls.indexOf(huidig)));
     cancelAnimationFrame(raf.current);
     setList(urls);
     setI(nieuw);
@@ -167,17 +168,17 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
       const el = track.current;
-      if (el && el.clientWidth) setI(Math.max(0, Math.min(list.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
+      if (el && el.clientWidth) setI(Math.max(0, Math.min(zichtbare.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
     });
-  }, [list.length]);
+  }, [zichtbare.length]);
   const go = (k: number) => {
     const el = track.current;
     if (!el) return;
-    const n = (k + list.length) % list.length;
+    const n = (k + zichtbare.length) % zichtbare.length;
     el.scrollTo({ left: n * el.clientWidth, behavior: scrollGedrag() });
   };
   if (!list.length) return null;
-  const multi = list.length > 1;
+  const multi = zichtbare.length > 1;
   return (
     <div ref={box} className={`bl ${multi ? "multi" : ""} ${className}`} aria-roledescription={multi ? "fotocarrousel" : undefined}>
       <div
@@ -201,9 +202,9 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
           go(e.clientX - r.left > r.width * 0.35 ? i + 1 : i - 1);
         } : undefined}
       >
-        {list.map((u, k) => (
+        {zichtbare.map((u, k) => (
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
-            {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
+            {near && (k <= i + 1 || k === zichtbare.length - 1 && i === 0) ? (
               <img
                 src={bronUrl(u)}
                 alt=""
@@ -230,11 +231,11 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
         <>
           <span id={instructieId} className="sr-only">Gebruik de pijltjestoetsen links en rechts om van foto te wisselen.</span>
           <div className="bl-dots" aria-hidden="true">
-            {list.map((u, k) => <span key={u} className={k === i ? "on" : ""} />)}
+            {zichtbare.map((u, k) => <span key={u} className={k === i ? "on" : ""} />)}
           </div>
           <button type="button" className="bl-nav prev" aria-label="Vorige foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(i - 1); }}>‹</button>
           <button type="button" className="bl-nav next" aria-label="Volgende foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(i + 1); }}>›</button>
-          <span className="sr-only" aria-live="polite">Foto {i + 1} van {list.length}</span>
+          <span className="sr-only" aria-live="polite">Foto {i + 1} van {zichtbare.length}</span>
         </>
       ) : null}
     </div>
