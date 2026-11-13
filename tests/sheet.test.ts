@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import React from "react";
 import { SourcesSheet } from "../src/sheet";
-import { Switch } from "../src/ui";
+import { GroupToggle, Switch } from "../src/ui";
 import type { SourceGroup } from "../src/sources";
 
 // De component wordt rechtstreeks gerenderd; effecten en timers zijn bestuurbaar.
@@ -70,11 +70,13 @@ assert.match(tekst(root), /Ophalen mislukt · laatst gelukt do 29 okt · 1 in ov
 assert.match(tekst(root), /3 vandaag/);
 assert.equal(nodes(root, "a")[0].props.href, undefined);
 assert.equal(nodes(root, "a")[0].props.rel, "noreferrer");
+const groep = nodes(root, GroupToggle);
 const switches = nodes(root, Switch);
-assert.equal(switches[0].props.checked, "mixed");
-assert.equal(switches[2].props.checked, false);
-switches[0].props.onChange(true);
-switches[2].props.onChange(true);
+assert.equal(groep[0].props.checked, "mixed");
+assert.equal(switches.length, 6);
+assert.equal(switches[1].props.checked, false);
+groep[0].props.onChange(true);
+switches[1].props.onChange(true);
 assert.deepEqual(calls, [[['a', 'b', 'c', 'd', 'e', 'f'], true], [["b"], true]]);
 const reset = nodes(root, "button").find((n) => tekst(n) === "Alles weer aan");
 assert.equal(reset.props.disabled, false);
