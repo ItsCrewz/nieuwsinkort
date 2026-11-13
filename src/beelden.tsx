@@ -2,7 +2,7 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ComponentProps } from "react";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
 
@@ -11,35 +11,38 @@ import { scrollGedrag } from "./beweging";
 // inclusief decoderen, zodat hij er meteen staat. Van het bericht in beeld ook al de 2e carrouselfoto.
 // Begrensd: nooit meer dan een handvol tegelijk, dus niet alle 200 foto's in één keer (die bevriezing blijft weg).
 const AHEAD = 3;
-const klaar = new Set<string>(); // url's die al gedecodeerd zijn
-// Vangnet: faalt de proxy (bijv. botbescherming van de uitgever), dan één keer rechtstreeks (oude gedrag) voor het wegvallen.
-const rechtstreeks = new Set<string>();
-export const bronUrl = (u: string): string => (rechtstreeks.has(u) ? u : beeldViaProxy(u));
-/** Proxy gefaald: true als er nog een rechtstreekse poging is (nu ingepland), false als dat al geprobeerd is of niet kan.
- *  `huidig` = src-attribuut van de falende <img>: had die nog de proxy-URL, dan altijd één poging, ook als de preload
- *  de URL al in `rechtstreeks` zette (race). Na die poging is huidig === u, dus geen lus. */
+const klaar = new Map<string, string>(); // originele URL naar de gedecodeerde bron
+// Na een tijdelijke fout krijgt de proxy bij een volgende aanvraag opnieuw een kans.
+const TERUGVAL_MS = 60_000;
+const rechtstreeks = new Map<string, number>();
+export const bronUrl = (u: string): string => {
+  const tot = rechtstreeks.get(u);
+  if (tot !== undefined && Date.now() < tot) return u;
+  if (tot !== undefined) rechtstreeks.delete(u);
+  return beeldViaProxy(u);
+};
+/** Een falende proxy krijgt één rechtstreekse poging, ook bij gelijktijdige preload en weergave. */
 export function naarRechtstreeks(u: string, huidig?: string | null): boolean {
-  if (beeldViaProxy(u) === u) return false;
-  if (huidig != null && huidig !== u) { rechtstreeks.add(u); return true; }
-  if (rechtstreeks.has(u)) return false;
-  rechtstreeks.add(u);
+  if (beeldViaProxy(u) === u || huidig === u) return false;
+  if (huidig == null && bronUrl(u) === u) return false;
+  rechtstreeks.set(u, Date.now() + TERUGVAL_MS);
   return true;
 }
 const bezig = new Map<string, Promise<void>>();
 export function preloadBeeld(u: string | undefined): Promise<void> {
-  if (!u || klaar.has(u)) return Promise.resolve();
+  if (!u || klaar.get(u) === bronUrl(u)) return Promise.resolve();
   const p0 = bezig.get(u);
   if (p0) return p0;
   let afgerond = false;
   let im: HTMLImageElement | undefined;
   let timer: ReturnType<typeof setTimeout>;
   const p = new Promise<void>((resolve) => {
-    const stop = (gelukt: boolean) => {
+    const stop = (geladen?: string) => {
       if (afgerond) return;
       afgerond = true;
       clearTimeout(timer);
       if (im) { im.onload = null; im.onerror = null; }
-      if (gelukt) klaar.add(u);
+      if (geladen) klaar.set(u, geladen);
       resolve();
     };
     const laad = (src: string) => {
@@ -49,22 +52,28 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
       const fout = () => {
         if (afgerond) return;
         if (im) { im.onload = null; im.onerror = null; }
-        if (naarRechtstreeks(u)) laad(u);
-        else stop(false);
+        if (naarRechtstreeks(u, src)) laad(u);
+        else stop();
       };
-      if (im.decode) { im.src = src; im.decode().then(() => stop(true), fout); return; }
+      if (im.decode) { im.src = src; im.decode().then(() => stop(src), fout); return; }
       // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
       // voltooide afbeelding direct afhandelen.
-      im.onload = () => stop(true);
+      im.onload = () => stop(src);
       im.onerror = fout;
       im.src = src;
-      if (im.complete) { if (im.naturalWidth > 0) stop(true); else fout(); }
+      if (im.complete) { if (im.naturalWidth > 0) stop(src); else fout(); }
     };
-    timer = setTimeout(() => stop(false), 10000);
+    timer = setTimeout(() => stop(), 10000);
     laad(bronUrl(u)); // zelfde URL als de <img src>, anders dubbele downloads
   }).finally(() => { if (bezig.get(u) === p) bezig.delete(u); });
   bezig.set(u, p);
   return p;
+}
+function BeeldImg({ url, bijFout, ...props }: ComponentProps<"img"> & { url: string; bijFout: () => void }) {
+  const [src, setSrc] = useState(() => bronUrl(url));
+  const [voorgeladen] = useState(() => klaar.get(url) === src);
+  return <img {...props} src={src} className={voorgeladen ? "in" : undefined}
+    onError={() => { if (naarRechtstreeks(url, src)) setSrc(url); else bijFout(); }} />;
 }
 type Reg = { el: HTMLElement; wake: () => void; first: () => string | undefined; second: () => string | undefined };
 const regs = new Set<Reg>();
@@ -141,7 +150,6 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     if (!el) return;
     return register({ el, wake: () => setNear(true), first: () => listRef.current[0], second: () => listRef.current[iRef.current + 1] });
   }, []);
-  const [, herlaad] = useState(0);
   const raf = useRef(0);
   useLayoutEffect(() => {
     const huidig = listRef.current[iRef.current];
@@ -204,17 +212,16 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
         {list.map((u, k) => (
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
             {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
-              <img
-                src={bronUrl(u)}
+              <BeeldImg
+                url={u}
+                bijFout={() => drop(u)}
                 alt=""
                 aria-hidden="true"
                 draggable={false}
                 loading={k === 0 ? "eager" : "lazy"}
                 fetchPriority={voorrang && k === 0 ? "high" : undefined}
-                className={klaar.has(u) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"
-                onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : drop(u))}
                 onLoad={(e) => {
                   const im = e.currentTarget;
                   const w = im.naturalWidth, h = im.naturalHeight;
@@ -253,13 +260,11 @@ export function useThumbIndex(urls: string[]): [number, (k: number) => void] {
 
 export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
   const [k, setK] = useThumbIndex(urls);
-  const [, herlaad] = useState(0);
   const u = urls[k];
   if (!u) return null;
   return (
     <span className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
-      <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
-        onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : setK(k + 1))}
+      <BeeldImg key={u} url={u} bijFout={() => setK(k + 1)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
         onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />
     </span>
   );
