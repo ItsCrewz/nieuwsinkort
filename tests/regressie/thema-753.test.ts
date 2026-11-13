@@ -11,7 +11,7 @@ Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
   setItem() { throw new Error("opslag geblokkeerd"); },
 } });
 const { createRoot } = await import("react-dom/client");
-const { useTheme } = await import("../../src/App");
+const { useTheme } = await import("../../src/app-data");
 let huidig: ReturnType<typeof useTheme>;
 function Component() { huidig = useTheme(); return null; }
 const root = createRoot(container as unknown as Element);
