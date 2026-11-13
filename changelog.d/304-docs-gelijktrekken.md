@@ -1,0 +1,1 @@
+- Documentatie gelijkgetrokken met de code (README, AGENTS.md, docs/, pipeline-README) en een test (`tests/docs-paden.test.ts`) die bestandspaden, `npm run`-scripts en ankers in de docs controleert (#304).

@@ -2,12 +2,12 @@
 import { artikelPad, heeftArtikelId, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
-import { GELDIG_TOT, nogGeldig, overzichtBeleid } from "../src/overzichtcache";
+import { GELDIG_TOT, nogGeldig, overzichtBeleid, cacheHit, datasetVerlopen } from "../src/overzichtcache";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
 type CacheMetDefault = CacheStorage & { default?: Cache };
-const HDR = { "Content-Type": "application/xml; charset=utf-8", "X-Content-Type-Options": "nosniff", "Strict-Transport-Security": "max-age=86400" };
+const HDR = { "Content-Type": "application/xml; charset=utf-8", "X-Content-Type-Options": "nosniff", "Strict-Transport-Security": "max-age=604800" };
 // XML 1.0 staat alleen deze codepunten toe.
 // eslint-disable-next-line no-control-regex
 const esc = (s: unknown) => String(s ?? "").replace(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -31,7 +31,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de sitemap niet breken
   const start = Date.now();
-  if (bestaand && nogGeldig(bestaand, start)) return bestaand;
+  if (bestaand && nogGeldig(bestaand, start)) return cacheHit(bestaand, start);
   const fout = () => new Response(leeg(""), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
   let xml: string, gegenereerd: string;
   try {
@@ -40,7 +40,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
     const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
     if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
     gegenereerd = dag.gegenereerd;
-    xml = nieuwsSitemap(dag.items, ams(Date.parse(gegenereerd)).iso);
+    xml = nieuwsSitemap(datasetVerlopen(gegenereerd, Date.now()) ? [] : dag.items, ams(Date.parse(gegenereerd)).iso);
   } catch { console.error("sitemap-nieuws: data lezen mislukt"); return fout(); }
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd);
   if (!beleid) return new Response(xml, { headers: { ...HDR, "Cache-Control": "no-store" } });

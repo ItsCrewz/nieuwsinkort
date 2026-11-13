@@ -32,3 +32,19 @@ export function overzichtBeleid(start: number, nu: number, gegenereerd?: string,
 /** Eigen verlooptijd in de cache-entry, zodat ook een cache zonder eigen expiry (of een mock) geen oud antwoord geeft. */
 export const GELDIG_TOT = "X-Geldig-Tot";
 export const nogGeldig = (r: Response, nu: number) => nu < Number(r.headers.get(GELDIG_TOT));
+
+// Een cachehit mag de resterende browsercache niet opnieuw vanaf vijf minuten laten beginnen.
+export function cacheHit(r: Response, nu: number): Response {
+  const headers = new Headers(r.headers);
+  const ttl = Math.max(0, Math.floor((Number(headers.get(GELDIG_TOT)) - nu) / 1000));
+  const swr = headers.get("Cache-Control")?.match(/(?:^|,)\s*stale-while-revalidate=(\d+)/i)?.[1];
+  headers.set("Cache-Control", `public, max-age=${ttl}${swr ? `, stale-while-revalidate=${swr}` : ""}`);
+  headers.delete("Age");
+  return new Response(r.body, { status: r.status, statusText: r.statusText, headers });
+}
+
+export function datasetVerlopen(gegenereerd: string, nu: number): boolean {
+  const a = ams(nu), dag = ams(Date.parse(gegenereerd)).iso;
+  const gisteren = ams(midnight(nu) - 1).iso;
+  return dag < gisteren || (dag === gisteren && a.h >= 6);
+}

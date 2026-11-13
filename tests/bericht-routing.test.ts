@@ -40,7 +40,7 @@ try {
   const sterk = tag.replace(/^W\//, "");
   for (const kop of [`"x", ${tag}`, sterk, `"x" , ${tag}, "y"`, "*"]) { r = await bezoek(env, pad, wu, { "If-None-Match": kop }); assert.equal(r.status, 304, kop); assert.equal(r.headers.get("etag"), tag); }
   r = await bezoek(env, pad, wu, { "If-None-Match": "foo*" }); assert.equal(r.status, 200, "losse * is geen wildcard");
-  r = await bezoek(env, pad, wu, { "If-None-Match": '"a", W/"b"' }); assert.equal(r.status, 200); assert.ok((await r.text()).length > 100); assert.equal(r.headers.get("cache-control"), "public, max-age=300, stale-while-revalidate=600");
+  r = await bezoek(env, pad, wu, { "If-None-Match": '"a", W/"b"' }); assert.equal(r.status, 200); assert.ok((await r.text()).length > 100); assert.match(r.headers.get("cache-control")!, /^public, max-age=\d+, stale-while-revalidate=600$/);
   // vers gegenereerd pad (lege cache)
   for (const [kop, status] of [[`"x", ${tag}`, 304], [sterk, 304], ["*", 304], ['"a", "b"', 200]] as const) {
     opslag.clear(); r = await bezoek(env, pad, wu, { "If-None-Match": kop }); await Promise.all(pending);
@@ -115,7 +115,7 @@ try {
   // headers
   r = await bezoek(maakEnv(dag, [item], { reads: 0 }), pad, wu);
   assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("x-frame-options"), "DENY");
-  assert.equal(r.headers.get("strict-transport-security"), "max-age=86400"); assert.equal(r.headers.get("content-security-policy"), csp);
+  assert.equal(r.headers.get("strict-transport-security"), "max-age=604800"); assert.equal(r.headers.get("content-security-policy"), csp);
 
   // id-botsingen in echte dagdata (routine zonder id) en met worker-ids
   const echt2 = JSON.parse(readFileSync("public/data.json", "utf8")).items as any[];

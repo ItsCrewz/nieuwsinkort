@@ -19,9 +19,9 @@ De filmpjespipeline meldt ook fouten bij het lezen van politieke feeds en Instag
 ## Koppeling met de rest van de repo
 
 - `scripts/build-bronnen.mjs` leest `feeds.json` via de omgevingsvariabele `FEEDS_JSON`
-  (standaard `/workspace/nieuws/feeds.json`) en `filmpjes.py` via `FILMPJES_PY`
-  (standaard `/workspace/nieuws/filmpjes.py`). Wil je deze kopie gebruiken, zet dan
-  `FEEDS_JSON=scripts/pipeline/feeds.json` en `FILMPJES_PY=scripts/pipeline/filmpjes.py`.
+  (standaard `scripts/pipeline/feeds.json`) en `filmpjes.py` via `FILMPJES_PY`
+  (standaard `scripts/pipeline/filmpjes.py`). Een andere invoer kan met die variabelen;
+  een `FEEDS_JSON` buiten de repo geeft een waarschuwing.
 - Vastgelegde `/workspace`-paden in de scripts zijn bewust niet aangepast.
 
 ## Optionele velden in `feeds.json`
