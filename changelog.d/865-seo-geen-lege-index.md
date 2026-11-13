@@ -1,0 +1,1 @@
+- Test: `/vandaag` en `/sitemap-nieuws.xml` geven ook bij een falende dataset-fetch een niet-gecachete 503 en herstellen daarna normaal (#865).
