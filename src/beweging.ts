@@ -1,6 +1,6 @@
 // Beweging: duren (gelijk aan de CSS-tokens in index.css) en de enige prefers-reduced-motion-check in JS.
 export const DUUR = { 1: 120, 2: 180, 3: 240, 4: 320 } as const; // ms, = --dur-1..4
-export type Overgang = "open" | "terug" | "wissel";
+export type Overgang = "open" | "terug" | "wissel" | "thema";
 
 /** Reduced motion aan? Zonder matchMedia: gewoon animeren. */
 export const rustig = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;

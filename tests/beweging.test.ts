@@ -91,6 +91,10 @@ await t("metOvergang: met startViewTransition, zonder, en bij reduced motion", a
   assert.deepEqual(log, ["vt:open", "update"]);
   assert.equal(dataset.overgang, undefined);
   log.length = 0;
+  await metOvergang(() => { log.push("update"); }, "thema");
+  assert.deepEqual(log, ["vt:thema", "update"]);
+  assert.equal(dataset.overgang, undefined);
+  log.length = 0;
   delete doc.startViewTransition;
   await metOvergang(() => { log.push("update"); });
   assert.deepEqual(log, ["update"]);
@@ -99,6 +103,14 @@ await t("metOvergang: met startViewTransition, zonder, en bij reduced motion", a
   zetWindow(mq(true));
   await metOvergang(() => { log.push("update"); });
   assert.deepEqual(log, ["update"]);
+});
+
+await t("micro-interacties (#539): geen width-transitie in dots, hover alleen binnen (hover:hover), één :active-schaal", () => {
+  assert.ok(!/\.bl-dots[^{]*\{[^}]*transition:[^}]*width/.test(alles));
+  assert.ok(/\.bl-dots span\{[^}]*width:16px[^}]*scaleX\(\.375\)/.test(css));
+  for (const k of [".btn", ".iconbtn", ".srcbtn", ".chip", ".textbtn", ".f-btn", ".nf-btn", ".back"]) assert.ok(!new RegExp(`(^|\\n)\\${k}:hover`).test(css), `${k}:hover moet binnen (hover:hover)`);
+  assert.ok(/\.btn:active,[^{]*\{transform:scale\(\.97\)/.test(uitgesteld));
+  assert.ok(!/:active\{transform:scale\(\.(98|96|94|92)\)/.test(alles));
 });
 
 await t("CSS-tokens --dur-1..4 zijn gelijk aan DUUR", () => {

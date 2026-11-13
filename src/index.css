@@ -77,7 +77,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .brand:active .mark{transform:scale(.94)}
 .ctrls{display:flex;align-items:center;gap:2px}
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:20px;color:var(--i2);flex:none}
-.iconbtn:hover{background:var(--h);color:var(--ink)}
+@media (hover:hover){.iconbtn:hover{background:var(--h);color:var(--ink)}}
 .ic{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .ic.sm{width:15px;height:15px}
 .ic.fill{fill:currentColor;stroke:none}
@@ -85,7 +85,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .focus{display:inline-flex;align-items:center;gap:9px;min-height:40px;padding:0 10px;border-radius:20px;font-size:0.875rem;font-weight:400;color:var(--muted);white-space:nowrap}
 .focus:hover,.focus.on{color:var(--ink)}
 .srcbtn{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 12px;border-radius:20px;font-size:0.875rem;font-weight:400;color:var(--i2)}
-.srcbtn:hover{background:var(--h);color:var(--ink)}
+@media (hover:hover){.srcbtn:hover{background:var(--h);color:var(--ink)}}
 .srcbtn .ic{width:17px;height:17px}
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--a);color:#fff;font-size:0.6875rem;font-weight:600;line-height:1}
 
@@ -171,12 +171,12 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .menu-item:hover{background:var(--h)}
 .filternote{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;padding:12px 0;font-size:0.8125rem;color:var(--muted);border-bottom:1px solid var(--r2)}
 .textbtn{font-size:0.8125rem;font-weight:500;color:var(--a);min-height:32px}
-.textbtn:hover{text-decoration:underline;text-underline-offset:3px}
+@media (hover:hover){.textbtn:hover{text-decoration:underline;text-underline-offset:3px}}
 .textbtn:disabled{color:var(--muted);opacity:.6;cursor:default;text-decoration:none}
 
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:20px 0 4px}
 .chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--rl);font-size:0.8125rem;font-weight:400;color:var(--i2)}
-.chip:hover{border-color:var(--muted)}
+@media (hover:hover){.chip:hover{border-color:var(--muted)}}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--p)}
 .chip span{font-size:0.75rem;opacity:.75}
 
@@ -204,8 +204,7 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .bn b{font-weight:600;color:var(--ink)}
 .morewrap{display:flex;justify-content:center;margin-top:36px}
 .btn{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 20px;border-radius:21px;background:var(--ink);color:var(--p);font-size:0.875rem;font-weight:500}
-.btn:hover{opacity:.88}
-.btn:active,.iconbtn:active,.srcbtn:active,.chip:active,.f-btn:active,.textbtn:active,.back:active{transform:scale(.98)}
+@media (hover:hover){.btn:hover{opacity:.88}}
 .empty{padding:48px 16px;text-align:center;font-size:0.9375rem;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:10px}
 .empty .ic{width:22px;height:22px;stroke-width:1.4}
 .linkbtn{text-decoration:underline;text-underline-offset:3px;color:var(--ink);font-weight:500}
@@ -235,12 +234,20 @@ body { margin:0; background:var(--p); color:var(--ink); overflow-x:clip; overscr
 .detail.veegt{position:relative}
 .detail.veegt::before{content:"";position:absolute;inset:0 100% 0 auto;width:24px;background:linear-gradient(to left,rgba(0,0,0,.18),transparent);pointer-events:none}
 .back{display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:0.875rem;color:var(--muted)}
-.back:hover{color:var(--ink)}
+@media (hover:hover){.back:hover{color:var(--ink)}}
 /* Deelknop (#541) en zoekknop (#576, links i.p.v. rechts): vast onderin, altijd zichtbaar, tapdoel 48px; drukbeweging in uitgesteld.css */
 .deel-knop,.zoek-knop{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:30;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--s);color:var(--ink);border:1px solid var(--rl);box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .deel-knop .ic,.zoek-knop .ic{width:22px;height:22px}
 .deel-melding{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 58px);z-index:30;background:var(--ink);color:var(--p);border-radius:8px;padding:8px 12px;font-size:.875rem}
-.deel-melding:empty{display:none}
+.deel-melding{opacity:0;visibility:hidden;transform:translateY(8px)}
+.deel-melding.toon{opacity:1;visibility:visible;transform:none}
+.deel-knop .ic{position:absolute}.deel-knop .ic-ok{opacity:0;transform:scale(.6)}
+.deel-knop.ok .ic-ok{opacity:1;transform:none}
+.deel-knop.ok .ic-deel{opacity:0;transform:scale(.6)}
+.tema{position:relative}.tema .ic{position:absolute;left:50%;top:50%;margin:-9.5px 0 0 -9.5px}
+.tema .tm-zon{opacity:0;transform:rotate(90deg) scale(.8)}.tema .tm-maan{opacity:0;transform:rotate(90deg) scale(.8)}
+.tema[data-actief="light"] .tm-maan,.tema[data-actief="dark"] .tm-zon{opacity:1;transform:none}
+.tema[data-actief="light"] .tm-zon,.tema[data-actief="dark"] .tm-maan{transform:rotate(-90deg)}
 .deel-invoer{display:block;width:100%;margin-top:8px}
 .d-head{display:flex;flex-direction:column;gap:14px;margin-top:28px}
 .d-title{font-size:clamp(1.875rem,calc(6cqw + 1rem - 12pt),2.75rem);line-height:1.12;font-weight:600;letter-spacing:-.035em;text-wrap:balance}
@@ -296,7 +303,7 @@ iframe.f-media{opacity:1}
 .f-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .f-actions .f-btn{white-space:nowrap}
 .f-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:17px;background:#fff;color:#111;font-size:0.8125rem;font-weight:500;border:0;cursor:pointer}
-.f-btn:hover{opacity:.86}
+@media (hover:hover){.f-btn:hover{opacity:.86}}
 .f-btn.ghost{background:rgba(255,255,255,.14);color:#fff}
 /* voortgangsbalk = doorspoelbalk: dun in rust, dikker tijdens slepen; ruim raakvlak eronder */
 .f-scrub{position:absolute;left:0;right:0;bottom:0;height:24px;z-index:3;touch-action:none;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;outline:0}
@@ -504,9 +511,10 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nf-pos{position:absolute;right:28px;bottom:26px;display:flex;align-items:center;gap:2px;height:36px;padding:0 4px;border-radius:18px;background:var(--pp);box-shadow:var(--ps);
   font-size:0.8125rem;font-weight:500;color:var(--ink);opacity:0;transform:translateY(8px)}
 .nf-pos.on{opacity:1;transform:none;pointer-events:auto}
-.nf-pos > span{min-width:44px;text-align:center}
+.nf-pos > span{min-width:44px;text-align:center;overflow:hidden}
+.nf-n{display:inline-block}
 .nf-btn{width:28px;height:28px;border-radius:14px;display:grid;place-items:center;color:var(--muted)}
-.nf-btn:hover{color:var(--ink)}
+@media (hover:hover){.nf-btn:hover{color:var(--ink)}}
 .nf-btn .ic{width:16px;height:16px}
 .nf-start{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);pointer-events:auto;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border-radius:19px;
   background:var(--ink);color:var(--p);font-size:0.84375rem;font-weight:500;box-shadow:var(--ps)}
@@ -534,7 +542,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .vseg button{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 16px;border:0;border-radius:9px;background:none;color:var(--i2);font-size:0.875rem;font-weight:500;cursor:pointer;white-space:nowrap}
 .vseg button span{font-size:0.75rem;opacity:.75}
 .vseg button[aria-selected="true"]{background:var(--seg-on);box-shadow:var(--ss);color:var(--ink)}
-.vseg button:active{transform:scale(.97)}
 .vseg + .chips{margin-top:12px}
 .vthumb.tall{aspect-ratio:4/5}
 .feed-topcol{flex-wrap:wrap}
@@ -554,9 +561,9 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .bl-slide img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;-webkit-user-drag:none;user-select:none}
 .bl-slide img.in{opacity:1}
 .bl.multi .bl-track{cursor:pointer}
-.bl-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:5px;pointer-events:none;z-index:1}
-.bl-dots span{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.55);box-shadow:0 0 0 .5px rgba(0,0,0,.25)}
-.bl-dots span.on{width:16px;background:#fff}
+.bl-dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;pointer-events:none;z-index:1}
+.bl-dots span{width:16px;height:6px;border-radius:8px/3px;transform:scaleX(.375);background:rgba(255,255,255,.55);box-shadow:0 0 0 .5px rgba(0,0,0,.25)}
+.bl-dots span.on{transform:none;background:#fff}
 .bl-nav{position:absolute;top:50%;width:34px;height:34px;margin-top:-17px;border-radius:50%;border:0;background:rgba(0,0,0,.42);color:#fff;font-size:1.375rem;line-height:32px;display:none;z-index:1;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .bl-nav.prev{left:8px}.bl-nav.next{right:8px}
 @media (hover:hover) and (pointer:fine){.bl.multi:hover .bl-nav{display:block}}
@@ -609,7 +616,6 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .fpill-n{color:var(--muted);font-size:0.75rem}
 .fpill-n::before{content:"· "}
 .fpill-x{padding:1px 7px;border-radius:9px;background:var(--a);color:#fff;font-size:0.6875rem;font-weight:600}
-.fpill:active{transform:scale(.98)}
 .app-feed .fbar{padding:4px 0 6px}
 .fbody{padding-top:0}
 .fgroup{padding-top:20px}
