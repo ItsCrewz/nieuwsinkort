@@ -113,21 +113,26 @@ function DeelBlok({ item, url }: { item: Item; url: string }) {
   }, []);
   useEffect(() => {
     if (deelStatus !== "gekopieerd") return;
-    const t = setTimeout(() => setDeelStatus(""), 3000);
+    const t = setTimeout(() => setDeelStatus(""), 2000);
     return () => clearTimeout(t);
   }, [deelStatus]);
+  const melding = deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : !url ? "Dit bericht heeft geen eigen link om te delen" : "";
+  const laatsteMelding = useRef(""); // alleen voor de zichtbare toast tijdens het uitfaden; de aria-live-regio wordt wel leeg
+  if (melding) laatsteMelding.current = melding;
   return (
     <>
-      <button type="button" className="deel-knop" aria-label="Deel dit bericht" disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
+      <button type="button" className={`deel-knop${deelStatus === "gekopieerd" ? " ok" : ""}`} aria-label="Deel dit bericht" disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
         const huidig = ++actie.current;
         setDeelStatus("");
         if (!url) return;
         const status = await deel(navigator, item.kop, url);
         if (actie.current === huidig) setDeelStatus(status);
       }}>
-        <Icon name="share" />
+        <Icon name="share" className="ic-deel" />
+        <Icon name="check" className="ic-ok" />
       </button>
-      <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
+      <span className={`deel-melding${melding ? " toon" : ""}`} aria-hidden="true">{melding || laatsteMelding.current}</span>
+      <span className="sr-only deel-status" role="status" aria-live="polite">{melding}</span>
       {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
     </>
   );

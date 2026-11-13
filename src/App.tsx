@@ -700,6 +700,10 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
   const [idx, setIdx] = useState(-1); // -1 = de "vandaag"-kaart met samenvatting en weer
   const idxRef = useRef(idx);
   idxRef.current = idx;
+  // Richting van de tellerwissel (= scrollrichting); niet bij de eerste weergave.
+  const telVorig = useRef(idx);
+  const telRichting = useRef("");
+  if (telVorig.current !== idx) { telRichting.current = idx > telVorig.current ? "nf-op" : "nf-neer"; telVorig.current = idx; }
   const total = sorted.length;
   const positie = useRef<Nieuwspositie | null>(leesNieuwspositie(tab));
   const [nieuw, setNieuw] = useState(0);
@@ -867,7 +871,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
               <Icon name="chevup" />
             </button>
             <span className="tnum" aria-live="polite">
-              {Math.max(1, idx + 1)}/{total}
+              <span key={idx} className={`nf-n ${telRichting.current}`}>{Math.max(1, idx + 1)}/{total}</span>
             </span>
             <button type="button" className="nf-btn" aria-label="Volgend bericht" onClick={() => go(idx + 1)}>
               <Icon name="chevdown" />
@@ -968,8 +972,8 @@ export function useTheme() {
     } catch {
       /* negeer */
     }
-    applyTheme(next);
-    setTheme(next);
+    // Zachte crossfade (alleen opacity) waar de browser het kent; anders direct. theme-color wisselt in dezelfde update.
+    void metOvergang(() => flushSync(() => { applyTheme(next); setTheme(next); }), "thema");
   };
   return { theme, toggle };
 }
@@ -994,6 +998,9 @@ function TopBar({
   onSources: () => void;
   filtered: number;
 }) {
+  const vorigFiltered = useRef(filtered);
+  const pop = vorigFiltered.current !== filtered;
+  useEffect(() => { vorigFiltered.current = filtered; });
   return (
     <header className="topbar">
       <div className="bar">
@@ -1026,10 +1033,11 @@ function TopBar({
           >
             <Icon name="sliders" />
             <span className="srcbtn-l">Bronnen</span>
-            {filtered ? <span className="badge tnum">{filtered}</span> : null}
+            {filtered ? <span key={filtered} className={`badge tnum${pop ? " pop" : ""}`}>{filtered}</span> : null}
           </button>
-          <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
-            <Icon name={theme === "dark" ? "sun" : "moon"} />
+          <button type="button" className="iconbtn tema" data-actief={theme} aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
+            <Icon name="sun" className="tm-zon" />
+            <Icon name="moon" className="tm-maan" />
           </button>
         </div>
       </div>
