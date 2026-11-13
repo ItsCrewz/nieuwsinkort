@@ -115,7 +115,7 @@ try {
   // headers
   r = await bezoek(maakEnv(dag, [item], { reads: 0 }), pad, wu);
   assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("x-frame-options"), "DENY");
-  assert.equal(r.headers.get("strict-transport-security"), "max-age=86400"); assert.equal(r.headers.get("content-security-policy"), csp);
+  assert.equal(r.headers.get("strict-transport-security"), "max-age=604800"); assert.equal(r.headers.get("content-security-policy"), csp);
 
   // id-botsingen in echte dagdata (routine zonder id) en met worker-ids
   const echt2 = JSON.parse(readFileSync("public/data.json", "utf8")).items as any[];

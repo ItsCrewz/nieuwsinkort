@@ -28,7 +28,7 @@ try {
   let r = await vraag(data("2026-11-04T10:00:00Z", [a]));
   assert.equal(r.status, 200); assert.equal(r.headers.get("content-type"), "application/xml; charset=utf-8");
   assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("cache-control"), "public, max-age=300");
-  assert.equal(r.headers.get("strict-transport-security"), "max-age=86400");
+  assert.equal(r.headers.get("strict-transport-security"), "max-age=604800");
   assert.ok((await r.text()).includes(artikelPad(a, dag)));
   r = await vraag(data("", [a])); assert.equal(r.status, 503);
   r = await vraag({ ASSETS: { fetch: async () => new Response("", { status: 500 }) }, NIEUWS: { get: async () => null } });

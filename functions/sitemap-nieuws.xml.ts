@@ -7,7 +7,7 @@ import { GELDIG_TOT, nogGeldig, overzichtBeleid, cacheHit, datasetVerlopen } fro
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
 type CacheMetDefault = CacheStorage & { default?: Cache };
-const HDR = { "Content-Type": "application/xml; charset=utf-8", "X-Content-Type-Options": "nosniff", "Strict-Transport-Security": "max-age=86400" };
+const HDR = { "Content-Type": "application/xml; charset=utf-8", "X-Content-Type-Options": "nosniff", "Strict-Transport-Security": "max-age=604800" };
 // XML 1.0 staat alleen deze codepunten toe.
 // eslint-disable-next-line no-control-regex
 const esc = (s: unknown) => String(s ?? "").replace(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
