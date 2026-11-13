@@ -1,0 +1,1 @@
+- Onderhoud: nieuwskaart, nieuwsfeed en hun voorgangers voor appgegevens, vormgeving, weer, tabs en nieuwslijst naar zelfstandige modules verplaatst, zonder gedragswijziging (#878).
