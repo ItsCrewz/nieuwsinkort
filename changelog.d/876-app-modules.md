@@ -1,0 +1,1 @@
+- Verplaats hulpfuncties, weerblok en tabs uit `App.tsx` naar `nieuws-hulp`, `app-weer` en `app-tabs`, zonder gedragswijziging (#876).
