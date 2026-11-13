@@ -4,6 +4,7 @@ import { videoSlug, vindSlug, youtubeId } from "../../src/slug";
 import type { Video } from "../../src/types";
 import { playerFor } from "../../src/videosoort";
 import { dumpertEmbed } from "../../worker/src/videos";
+import { onRequestPost } from "../../functions/samenvatting";
 
 const id = "abcdefghijk";
 const video = (href: string, titel = "Eerste") => ({ href, titel, bron: "Test" }) as Video;
@@ -36,3 +37,21 @@ const b = video(`https://ander.test/tweede/youtube.com/watch?v=${id}`, "Tweede")
 assert.notEqual(videoSlug(a), videoSlug(b));
 assert.equal(vindSlug([a, b], videoSlug(b)), b);
 assert.equal(dedupVideos([a, b]).list.length, 2);
+
+for (const veld of ["href", "embed"] as const) {
+  const v = { ...video("https://ander.test/filmpje"), [veld]: `https://evil.test/?url=https://youtube.com/watch?v=${id}` };
+  const data = new Map<string, string>([["uur", JSON.stringify({ filmpjes: [v] })]]);
+  const env: any = { NIEUWS: {
+    get: async (k: string, type: string) => type === "json" ? JSON.parse(data.get(k) || "null") : data.get(k) || null,
+    put: async (k: string, waarde: string) => { data.set(k, waarde); }, delete: async (k: string) => { data.delete(k); },
+  }, ASSETS: { fetch: async () => Response.json({}) }, AI: { run: async () => { throw new Error("Onverwachte AI-aanroep"); } } };
+  const origineel = globalThis.fetch;
+  let aanroepen = 0;
+  try {
+    globalThis.fetch = (async () => { aanroepen++; throw new Error("Onverwachte netwerkaanroep"); }) as typeof fetch;
+    const request = new Request("https://nieuwsinkort.test/samenvatting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: videoSlug(v), pre: true }) });
+    const resultaat: any = await (await onRequestPost({ request, env })).json();
+    assert.equal(resultaat.code, "geen-tekst");
+    assert.equal(aanroepen, 0);
+  } finally { globalThis.fetch = origineel; }
+}
