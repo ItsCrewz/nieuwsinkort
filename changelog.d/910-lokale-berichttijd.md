@@ -1,0 +1,1 @@
+- Herstel lokale berichttijden rond de zomer- en wintertijdwisseling (#910).

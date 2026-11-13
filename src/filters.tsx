@@ -2,7 +2,7 @@
 // Tijd staat standaard op "Automatisch": "Sinds je laatste bezoek" als er sindsdien genoeg nieuw is, anders "Vandaag".
 import { useCallback, useEffect, useState } from "react";
 import type { Cat, Item, Video } from "./types";
-import { midnight } from "./tijd";
+import { ams, amsTijdstip, midnight } from "./tijd";
 import { publicatieTijd } from "./vandaag";
 import { BUITEN_WOORD } from "./regio";
 import { Icon } from "./icons";
@@ -120,20 +120,14 @@ export function useFilters() {
 // ------------------------------------------------------------- tijd
 // Terugval voor data met alleen "HH:MM" (Amsterdam); gegenereerd bepaalt de referentiedag.
 // Tot 20 minuten vooruit blijft op die dag, zodat de toekomstmarge van de Worker past.
-const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const minVan = (d: Date) => {
-  const [h, m] = fmt.format(d).split(":").map(Number);
-  return h * 60 + m;
-};
 export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   const m = /^(\d{1,2})[:.](\d{2})$/.exec(hhmm || "");
   if (!m || +m[1] > 23 || +m[2] > 59) return null; // onmogelijke kloktijd = onbekend
   const t = +m[1] * 60 + +m[2];
-  const g = new Date(gen);
-  const gm = minVan(g);
-  let ts = gen - g.getSeconds() * 1000 - g.getMilliseconds() - (gm - t) * 60e3;
-  if (t > gm + 20) ts -= 86400e3;
-  return ts;
+  const g = ams(gen);
+  const dag = t > g.h * 60 + g.min + 20 ? midnight(gen) - 1 : gen;
+  // Een dubbele kloktijd is de eerste keer; een overgeslagen kloktijd is onbekend.
+  return amsTijdstip(dag, +m[1], +m[2]);
 }
 function vanafVoor(t: Exclude<Tijd, "auto">, vorig: number): number {
   const now = Date.now();
