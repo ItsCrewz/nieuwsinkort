@@ -553,7 +553,7 @@ export class Runner extends DurableObject<Env> {
     };
     const [gehaaldAnder, gehaaldYt] = await Promise.all([haalNietYt(), haalYt()]);
     const gehaald = [...gehaaldYt, ...gehaaldAnder];
-    meldBronfouten(gehaald.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0 })));
+    meldBronfouten(gehaald.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0, ...(r.status ? { status: r.status } : {}) })));
     const nieuwsUrls = new Set(srcFeeds.flatMap((f) => f.urls));
     if (nieuwsUrls.size && !gehaald.some((r) => nieuwsUrls.has(r.url) && r.ok)) throw new Error("Geen nieuwsbron bereikbaar; vorige data behouden");
     const xUrls = new Set(xj.map((j) => j.url));
