@@ -1,1 +1,1 @@
-- Mislukte feeds staan als overgeslagen bronnen met foutcode en HTTP-status in de run-meta; andere bronnen blijven beschikbaar (#572).
+- Mislukte feeds staan met foutcode en eventuele HTTP-status in `meta.bronfouten`; andere bronnen blijven beschikbaar (#572).

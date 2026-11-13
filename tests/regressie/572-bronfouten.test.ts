@@ -23,6 +23,5 @@ try {
   const meta = JSON.parse(kv.get("uur")!).meta;
   const fouten = meta.bronfouten;
   assert.deepEqual(fouten.filter((f: any) => urls.includes(f.url)).map((f: any) => [f.url, f.code, f.status]), [[urls[0], "SRC_HTTP", 403], [urls[1], "SRC_HTTP", 404]]);
-  assert.deepEqual(meta.bronnenMislukt.filter((f: any) => urls.includes(f.url)), [[urls[0], 403], [urls[1], 404]].map(([url, status]) => ({ url, code: "SRC_HTTP", status })));
   console.log("✓ bronfouten met HTTP-status blokkeren de run niet");
 } finally { globalThis.fetch = echte; }
