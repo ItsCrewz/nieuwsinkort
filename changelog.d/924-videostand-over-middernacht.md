@@ -1,0 +1,1 @@
+- Videostand (`video:`/`videovuil:`) van de vorige UTC-dag blijft bewaard bij `reserveer()`, zodat verrekenen over UTC-middernacht de stand niet uit een achterlopende KV-spiegel hoeft te zaaien; oudere dagen worden nog steeds opgeruimd (#924).
