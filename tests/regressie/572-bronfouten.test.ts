@@ -31,5 +31,9 @@ try {
   const fouten = JSON.parse(kv.get("uur")!).meta.bronfouten;
   assert.deepEqual(fouten.map((f: any) => [f.url, f.code, f.status]).sort(), [[bleep, "SRC_HTTP", 403], [cisa, "SRC_HTTP", 404]].sort());
   assert.equal(JSON.parse(kv.get("uur")!).bronstats["tech|cisa"].fout, "1 van 3 feeds niet bereikbaar");
+  let volgendeFouten: any[] = [];
+  await new Runner(ctx, env).run(true, 60, undefined, undefined, (fouten) => { volgendeFouten = fouten; });
+  assert.equal(pogingen, 2);
+  assert.deepEqual(volgendeFouten.filter((f) => f.overgeslagen).map((f) => [f.url, f.code, f.status]).sort(), [[bleep, "SRC_HTTP", 403], [cisa, "SRC_HTTP", 404]].sort());
   console.log("✓ bronfouten blijven zichtbaar en de run gaat door");
 } finally { globalThis.fetch = oudFetch; }

@@ -519,6 +519,17 @@ export class Runner extends DurableObject<Env> {
       if (c && c.r && typeof c.at === "number") tcCache.set(j.url, c);
     }));
     const vd = verdeelJobs(all, bronTier, tcCache, since), uitvoeren = new Set(vd.uitvoeren.map((j) => j.url));
+    // Alleen deze gemelde probleemfeeds tijdelijk overslaan na een echte HTTP-fout; dagelijks opnieuw proberen.
+    const probleemfeed = (url: string) => url === "https://www.bleepingcomputer.com/feed/" || /^https:\/\/www\.cisa\.gov\/(?:cybersecurity-advisories\/all\.xml|news\.xml|sites\/default\/files\/feeds\/known_exploited_vulnerabilities\.json)$/.test(url);
+    const eerder = await opslag.get<Record<string, { at: number; status: number }>>("bron572").catch(() => undefined) || {};
+    const overgeslagen572: Res[] = [];
+    for (const j of vd.uitvoeren) {
+      const fout = eerder[j.url];
+      if (probleemfeed(j.url) && fout && now - fout.at >= 0 && now - fout.at < 86400000) {
+        uitvoeren.delete(j.url);
+        overgeslagen572.push({ url: j.url, ok: false, status: fout.status, code: "SRC_HTTP", err: `HTTP ${fout.status} (tijdelijk overgeslagen)`, ms: 0 });
+      }
+    }
     let fetcherHoofd = 0;
     const haalBatch = async (b: Job[], naam: string): Promise<Res[]> => batchesOphalen([b], async () => {
       fetcherHoofd++;
@@ -552,8 +563,14 @@ export class Runner extends DurableObject<Env> {
       return [...yk.canary, ...ytSkipRes, ...ytRest];
     };
     const [gehaaldAnder, gehaaldYt] = await Promise.all([haalNietYt(), haalYt()]);
-    const gehaald = [...gehaaldYt, ...gehaaldAnder];
-    const bronfouten = gehaald.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0, ...(r.status ? { status: r.status } : {}) }));
+    const gehaald = [...gehaaldYt, ...gehaaldAnder, ...overgeslagen572];
+    let bron572Gewijzigd = false;
+    for (const r of [...gehaaldYt, ...gehaaldAnder]) if (probleemfeed(r.url)) {
+      if (!r.ok && (r.status === 403 || r.status === 404)) { eerder[r.url] = { at: now, status: r.status }; bron572Gewijzigd = true; }
+      else if (eerder[r.url]) { delete eerder[r.url]; bron572Gewijzigd = true; }
+    }
+    if (bron572Gewijzigd) await opslag.put("bron572", eerder).catch(() => console.error("bronstatus schrijven mislukt"));
+    const bronfouten = gehaald.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0, ...(r.status ? { status: r.status } : {}), ...(overgeslagen572.includes(r) ? { overgeslagen: true } : {}) }));
     meldBronfouten(bronfouten);
     const nieuwsUrls = new Set(srcFeeds.flatMap((f) => f.urls));
     if (nieuwsUrls.size && !gehaald.some((r) => nieuwsUrls.has(r.url) && r.ok)) throw new Error("Geen nieuwsbron bereikbaar; vorige data behouden");

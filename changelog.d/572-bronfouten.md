@@ -1,1 +1,1 @@
-- Mislukte feeds staan met foutcode en HTTP-status in de run-meta, ook als andere feeds van dezelfde bron wel werken (#572).
+- Mislukte feeds staan met foutcode en HTTP-status in de run-meta; BleepingComputer en CISA-feeds met HTTP 403 of 404 worden een dag overgeslagen en daarna opnieuw geprobeerd (#572).
