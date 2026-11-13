@@ -127,8 +127,8 @@ function DeelBlok({ item, url }: { item: Item; url: string }) {
       }}>
         <Icon name="share" />
       </button>
-      <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
-      {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
+      <span id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
+      {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" aria-describedby="deel-instructie" readOnly value={url} ref={(el) => { if (el) { el.focus(); el.select(); } }} /> : null}
     </>
   );
 }
