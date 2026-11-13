@@ -55,7 +55,7 @@ await t("Budget: uurrem staat op 30 en geldt per uur", async () => {
   assert.equal((await call("reserveer", res({ schatting: 1, uur: "2026-10-30T11" }))).ok, true, "volgend uur weer ruimte");
   assert.equal([...data.keys()].filter((k) => k.startsWith("uur:2026-10-30T")).length, 2);
   await call("reserveer", res({ datum: "2026-10-31", uur: "2026-10-31T06", schatting: 1 }));
-  assert.deepEqual([...data.keys()].filter((k) => k.startsWith("uur:") || k.startsWith("video:")).sort(), ["uur:2026-10-31T06", "video:2026-10-31"], "oude dag opgeruimd");
+  assert.deepEqual([...data.keys()].filter((k) => k.startsWith("uur:") || k.startsWith("video:")).sort(), ["uur:2026-10-31T06", "video:2026-10-30", "video:2026-10-31"], "oude uren opgeruimd, vorige dag bewaard");
 });
 await t("Budget: mislukte KV-spiegel blijft gemarkeerd, herstart herstelt vid-neurons", async () => {
   const kv = new Map<string, string>(), opslag = new Map<string, unknown>();
