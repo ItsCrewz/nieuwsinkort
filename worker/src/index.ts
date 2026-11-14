@@ -3,6 +3,7 @@ import { relevantePunten, verzamelUrl, invoerBijKop } from "../../src/puntenrele
 import { videomoment, videoToegestaan, zonderGisteren } from "./videomoment";
 import { berekenBody, etag } from "../../functions/data.json";
 import { somStand, kopieStand, verschilStand, telOp, groqTokens, type LlmState } from "./llm";
+import { llmTimeoutMs } from "../../src/llm-aanroep";
 // nieuwsinkort-uur: elke 5 minuten (06:00–23:00 Amsterdam; zwaardere bronnen elke 15 of 30 minuten, zie tier.ts) feeds ophalen, samenvatten met Workers AI en in KV zetten.
 // De Pages Function /data.json voegt dit samen met de data.json van de routine.
 // Free plan: de cron zelf doet bijna niets (10 ms CPU); het werk gebeurt in Durable Objects (30 s CPU per verzoek)
@@ -69,7 +70,7 @@ export function kiesVoorAI<T>(byCat: Record<string, T[]>, tier: number, capN: nu
 
 export interface Env {
   NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>; BUDGET_DO: DurableObjectNamespace<Budget>;
-  RUN_KEY?: string; GROQ_API_KEY?: string; MISTRAL_API_KEY?: string; MISTRAL_MAAND_TOKENS?: string; MISTRAL_TUSSENPOOS_MS?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string; NEURON_FACTOR?: string;
+  RUN_KEY?: string; GROQ_API_KEY?: string; MISTRAL_API_KEY?: string; MISTRAL_MAAND_TOKENS?: string; MISTRAL_TUSSENPOOS_MS?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string; NEURON_FACTOR?: string; LLM_TIMEOUT_MS?: string;
 }
 const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";
 const TZ = "Europe/Amsterdam";
@@ -681,7 +682,7 @@ export class Runner extends DurableObject<Env> {
     const groqChatKey = `groq-chat:${U}`;
     const groqChat = ((await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null) || {};
     const ketenStand = somStand(st.llm!, groqChat, U), ketenVoor = kopieStand(ketenStand);
-    const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: ketenStand } };
+    const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llmTimeoutMs: llmTimeoutMs(env.LLM_TIMEOUT_MS), llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: ketenStand } };
     let llmKlaar: { stAt: number; llm: string } | null = null;
     this.llmBewaar = async () => { await this.bewaarLlmDo(tel, ketenVoor, ketenStand, llmKlaar); };
     // Alleen-politiek (losse partijposts) nooit door de AI: die tonen we zoals de partij ze schrijft.
@@ -700,6 +701,7 @@ export class Runner extends DurableObject<Env> {
     const runsLeft = runsOver(now, interval);
     const runBudget = runPlafonds(BUDGET - st.neurons - vidN, runsLeft, interval).runBudget;
     const tier0 = tier();
+    usage.magRetry = () => tier() === 1 && usage.neurons < runBudget; // retry na timeout alleen in de ruimste tier en binnen het runplafond (#873)
     let runCapped = false;
     const modelsUsed = new Set<string>();
     // prioriteit: meer bronnen eerst, dan nieuwste; eerlijk verdeeld over rubrieken

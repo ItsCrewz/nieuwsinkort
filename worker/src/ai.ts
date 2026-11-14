@@ -1,6 +1,7 @@
 import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
 import { controleerSom, vageKop } from "./somcheck";
 import { stripBronvermelding } from "../../src/bronvermelding";
+import { llmTimeoutMs, metRetry } from "../../src/llm-aanroep";
 import { groq, mistral, keten, ruimteVoor, type LlmState, type Verzoek, type Wacht } from "./llm";
 // Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq- en Mistral-terugval tellen tokens, geen neuronen.
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
@@ -16,7 +17,7 @@ export const RATES: Record<string, [number, number]> = { // neuronen per 1M toke
 export type AiBron = "cloudflare" | "groq" | "mistral";
 export type AiLaatsteFout = { soort: "aanroep" | "output"; bericht: string; tijd: string; bron?: AiBron };
 // fails = fAanroep + fOutput (aiFouten in de run-meta); terugval = pogingen via de externe keten, terugvalGroq = daarvan geslaagd via Groq
-export type Usage = Meting & { fAanroep?: number; fOutput?: number; laatsteFout?: AiLaatsteFout; laatsteBron?: string; terugval?: number; terugvalGroq?: number; somAfgekeurd?: number; somHerpoging?: number; somOpgegeven?: number; aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
+export type Usage = Meting & { llmTimeoutMs?: number; magRetry?: () => boolean; fAanroep?: number; fOutput?: number; laatsteFout?: AiLaatsteFout; laatsteBron?: string; terugval?: number; terugvalGroq?: number; somAfgekeurd?: number; somHerpoging?: number; somOpgegeven?: number; aanbieders?: Record<string, { inTok: number; outTok: number }>; llm?: { sleutel?: string; mistralSleutel?: string; mistralMaandTokens?: string; mistralTussenpoos?: string; state: LlmState; groqEerst?: boolean; cloudflare?: boolean; cloudflareFout?: string; wacht?: Wacht } };
 
 // Alleen een echte Cloudflare-dagquota-fout (zelfde regel als #79) telt als "Cloudflare op"; geen brede regex.
 export const ketenQuota = (e: unknown) => e instanceof KetenFout && !!e.cloudflare && isDagQuota(e.cloudflare);
@@ -65,13 +66,14 @@ export async function chat(ai: Ai, model: string, sys: string, user: string, max
     const i0 = u.inTok, o0 = u.outTok;
     const tokensCf = (i: number, o: number) => { const t = (u.aanbieders ||= {}).cloudflare ||= { inTok: 0, outTok: 0 }; t.inTok += u.inTok - i; t.outTok += u.outTok - o; };
     try {
-      r = await ai.run(model as any, {
-      messages: [{ role: "system", content: sys }, { role: "user", content: user }],
-      max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3,
-      chat_template_kwargs: { enable_thinking: false, thinking: false },
-      ...(json ? { response_format: { type: "json_object" } } : {}),
-    } as any);
-    } catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); tokensCf(i0, o0); throw e; } // een mislukte aanroep kan toch neuronen kosten
+      // timeout + hooguit één retry (#873); elke mislukte poging wordt apart gemeten, want een niet-afgebroken call kan toch neuronen kosten
+      r = await metRetry(() => ai.run(model as any, {
+        messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+        max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3,
+        chat_template_kwargs: { enable_thinking: false, thinking: false },
+        ...(json ? { response_format: { type: "json_object" } } : {}),
+      } as any), { model, timeoutMs: llmTimeoutMs(u.llmTimeoutMs), onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry: u.magRetry });
+    } catch (e) { tokensCf(i0, o0); throw e; }
     u.calls++;
     meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
     tokensCf(i0, o0);
