@@ -1,6 +1,6 @@
 import { Foutgrens } from "./foutgrens";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bron, Item } from "./types";
 import { BionicText, host } from "./ui";
 import { createPortal } from "react-dom";
@@ -105,9 +105,12 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
   );
 }
 
-function DeelBlok({ item, url }: { item: Item; url: string }) {
+export function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
   const actie = useRef(0);
+  const focusInvoer = useCallback((el: HTMLInputElement | null) => {
+    if (el) { el.focus(); el.select(); }
+  }, []);
   useEffect(() => {
     return () => { actie.current++; };
   }, []);
@@ -127,8 +130,8 @@ function DeelBlok({ item, url }: { item: Item; url: string }) {
       }}>
         <Icon name="share" />
       </button>
-      <span className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
-      {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
+      <span id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
+      {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" aria-describedby="deel-instructie" readOnly value={url} ref={focusInvoer} /> : null}
     </>
   );
 }
