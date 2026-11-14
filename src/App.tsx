@@ -2,16 +2,16 @@ import { Foutgrens } from "./foutgrens";
 import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
-import { artikelId, artikelSlug } from "./artikelid";
-import { ams, dayDates } from "./tijd";
+import { artikelId } from "./artikelid";
+import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Bron, Data, Item, View, Weer } from "./types";
+import type { Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
-import { Icon, IconSprite, type IconName } from "./icons";
+import { Icon, IconSprite } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
 import { sorteerOpGroep } from "./filmgroep";
 import { useVoorladen } from "./usevoorladen";
@@ -27,7 +27,7 @@ import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
-import { CAT_LABEL, tabOpties, tabToets, wisselRichting, type TabOpt } from "./tabs";
+import { CAT_LABEL, wisselRichting } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
@@ -38,6 +38,9 @@ import { zoekItems, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijf
 import { Zoekbalk, ZoekLeeg, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
+import { amsterdamTime, bronLabel, cap, itemKey, pickLead, sortItems } from "./nieuws-hulp";
+import { WeatherBox } from "./app-weer";
+import { Briefing, Tabs } from "./app-tabs";
 import { feedToetsDoel } from "./toetsdoel";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
@@ -63,26 +66,6 @@ const feedNav = maakFeedNavigatie({ get location() { return window.location; }, 
 // Intro-animatie alleen bij de eerste keer laden; daarna (tabwissel, herladen) niet opnieuw.
 let introDone = false;
 
-// ---------------------------------------------------------------- helpers
-const slugify = artikelSlug;
-const itemKey = (i: Item) => slugify(i.kop) || i.bronnen?.[0]?.href || i.kop;
-
-function bronLabel(bronnen: Bron[]) {
-  const names: string[] = [];
-  for (const b of bronnen ?? []) if (!names.includes(b.site)) names.push(b.site);
-  if (names.length === 0) return "";
-  if (names.length === 1) return names[0];
-  return `${names[0]} + ${names.length - 1}`;
-}
-
-function amsterdamTime(iso?: string) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam" }).format(d);
-}
-const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-
 // De oude Alles-route vervangen zonder een extra geschiedenisitem.
 function huidigeRoute(): Route {
   if (window.location.hash === "#/alles") {
@@ -91,337 +74,7 @@ function huidigeRoute(): Route {
   return parseHash(window.location.hash);
 }
 
-// ---------------------------------------------------------------- weer
-type Kind = "sun" | "rain" | "partly" | "cloud";
-function weatherKind(s?: string): Kind {
-  const t = (s || "").toLowerCase();
-  if (/half|wisselend|opklaring|zon en wolk|licht bewolkt|af en toe zon/.test(t)) return "partly";
-  if (/regen|bui|motregen|onweer|hagel|sneeuw|natte/.test(t)) return "rain";
-  if (/zon|helder|onbewolkt/.test(t)) return "sun";
-  return "cloud";
-}
-const KIND_CLASS: Record<Kind, string> = { sun: "ic-sun", rain: "ic-rain", partly: "ic-partly", cloud: "" };
-
-function WarnBanner({ text }: { text: string }) {
-  const t = text.toLowerCase();
-  const lvl = t.includes("rood") ? "lvl-rood" : t.includes("oranje") ? "lvl-oranje" : "";
-  const m = /^(.{0,80}?[.:])\s+(.*)$/s.exec(text);
-  return (
-    <div className={`alert ${lvl}`} role="status">
-      <Icon name="alert" className="sm" />
-      <div>{m ? <><strong>{m[1]}</strong> {m[2]}</> : <strong>{text}</strong>}</div>
-    </div>
-  );
-}
-
-function WeatherBox({ W, bionic }: { W?: Weer; bionic: boolean }) {
-  const nu = W?.nu ?? {};
-  const vd = W?.vandaag ?? {};
-  const dagen = (Array.isArray(W?.dagen) ? W.dagen : []).filter((d) => d && (typeof d.min === "number" || typeof d.max === "number"));
-  const heeftNu = typeof nu.temp === "number";
-  const stats: { k: string; v: string }[] = [];
-  if (typeof nu.van === "number" && typeof nu.tot === "number" && nu.van !== nu.tot) stats.push({ k: "Nu in het land", v: `${nu.van}° tot ${nu.tot}°` });
-  if (typeof vd.min === "number" || typeof vd.max === "number")
-    stats.push({ k: "Vandaag", v: `${typeof vd.min === "number" ? `${vd.min}°` : "–"} / ${typeof vd.max === "number" ? `${vd.max}°` : "–"}` });
-  if (typeof vd.neerslagkans === "number") stats.push({ k: "Neerslag", v: `${vd.neerslagkans}%` });
-  if (vd.wind) stats.push({ k: "Wind", v: vd.wind });
-  const leeg = !W || (!heeftNu && stats.length === 0 && !W.verwachting && dagen.length === 0 && !W.waarschuwing);
-  const plaats = W?.plaats || "Nederland";
-  const kind = weatherKind(nu.omschrijving);
-  const dates = dayDates(dagen.slice(0, 4));
-  return (
-    <section className="wx" aria-label={`Weer in ${plaats === "Nederland" ? "heel Nederland" : plaats}`}>
-      <div className="wx-head">
-        <h2 className="kicker">Weer · {plaats}</h2>
-        {W?.bijgewerkt ? <span className="wx-upd tnum">{W.bijgewerkt}</span> : null}
-      </div>
-      {W?.waarschuwing ? <WarnBanner text={W.waarschuwing} /> : null}
-      {leeg ? (
-        <p className="wx-empty">Het weerbericht is er nu even niet. Kom straks nog eens kijken.</p>
-      ) : (
-        <>
-          {heeftNu ? (
-            <div className="wx-now">
-              <span className="wx-temp tnum">{nu.temp}°</span>
-              <div className="wx-cond">
-                <Icon name={kind as IconName} className={`wx-icon ${KIND_CLASS[kind]}`} />
-                <span>
-                  {nu.omschrijving || ""}
-                  {typeof nu.gevoel === "number" ? (
-                    <>
-                      <br />
-                      <span className="muted">voelt als {nu.gevoel}°</span>
-                    </>
-                  ) : null}
-                </span>
-              </div>
-            </div>
-          ) : null}
-          {W?.verwachting ? (
-            <p className="wx-text bn">
-              <BionicText text={W.verwachting} on={bionic} />
-            </p>
-          ) : null}
-          {stats.length ? (
-            <dl className="wx-stats">
-              {stats.map((s) => (
-                <div key={s.k}>
-                  <dt>{s.k}</dt>
-                  <dd className="tnum">{s.v}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-          {dagen.length ? (
-            <ol className="wx-days" style={{ gridTemplateColumns: `repeat(${Math.min(dagen.length, 4)},minmax(0,1fr))` }}>
-              {dagen.slice(0, 4).map((d, i) => {
-                const k = weatherKind(d.omschrijving);
-                const label = d.omschrijving || { sun: "Zonnig", rain: "Regen", partly: "Half bewolkt", cloud: "Bewolkt" }[k];
-                return (
-                  <li className="day" key={d.dag + i} title={label}>
-                    <span className="dn">{cap(d.dag)}</span>
-                    <span className="dd tnum">{dates[i] || ""}</span>
-                    <Icon name={k} className={KIND_CLASS[k]} label={label} />
-                    <span className="hl tnum">
-                      <b>{typeof d.max === "number" ? `${d.max}°` : "–"}</b> {typeof d.min === "number" ? `${d.min}°` : "–"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : null}
-        </>
-      )}
-      {W?.bronnen?.length ? (
-        <div className="wx-src">
-          Bron:{" "}
-          {W.bronnen.map((b, i) => (
-            <span key={b.href}>
-              {i ? ", " : ""}
-              <a href={veiligeUrl(b.href)} target="_blank" rel="noreferrer">
-                {b.site}
-              </a>
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function Briefing({ text, bionic, sources, time, note }: { text: string; bionic: boolean; sources: number; time: string; note?: string }) {
-  return (
-    <section className="brief" aria-label="In het kort">
-      <h2 className="kicker">In het kort</h2>
-      {text ? (
-        <p className="brief-text bn">
-          <BionicText text={text} on={bionic} />
-        </p>
-      ) : (
-        <p className="brief-text muted">De samenvatting van vandaag komt er zo aan.</p>
-      )}
-      {sources > 0 ? (
-        <p className="brief-meta">
-          Samengevat uit {bronnenTekst(sources)}
-          {time ? <> · <span className="tnum">{time}</span></> : null}
-        </p>
-      ) : null}
-      {note ? <p className="brief-note">{note}</p> : null}
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------- tabs
-// Gesegmenteerde rubriekkeuze. Past alles niet op één regel, dan gaan de laatste rubrieken in "Meer"
-// (er scrollt dus niets zijwaarts in de header). De actieve rubriek staat altijd zichtbaar.
-function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: View) => void }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const indRef = useRef<HTMLSpanElement>(null);
-  const moreRef = useRef<HTMLDivElement>(null);
-  const prev = useRef<{ x: number; w: number } | null>(null);
-  const [fit, setFit] = useState<{ short: boolean; count: number }>({ short: false, count: 99 });
-  const [open, setOpen] = useState(false);
-  const options: TabOpt[] = useMemo(() => tabOpties(data.items, view), [data.items, view]);
-  const activeIdx = Math.max(0, options.findIndex((o) => o.value === view));
-
-  // Welke tabs passen? Meten in een onzichtbare kopie (vaste breedtes, geen layout-sprongen in beeld).
-  const compute = useCallback(() => {
-    const wrap = wrapRef.current;
-    const m = measureRef.current;
-    if (!wrap || !m) return;
-    const avail = wrap.clientWidth;
-    const pick = (short: boolean) => {
-      const row = m.querySelector<HTMLElement>(short ? ".m-short" : ".m-long");
-      if (!row) return null;
-      const kids = [...row.children] as HTMLElement[];
-      const pad = 6; // binnenrand van de track
-      const ws = kids.slice(0, options.length).map((k) => k.offsetWidth);
-      const meer = kids[options.length]?.offsetWidth ?? 70;
-      const total = ws.reduce((a, b) => a + b, 0) + pad;
-      if (total <= avail) return options.length;
-      let k = options.length - 1;
-      const need = (n: number) => {
-        let sum = ws.slice(0, n).reduce((a, b) => a + b, 0);
-        if (activeIdx >= n) sum += ws[activeIdx];
-        return sum + meer + pad;
-      };
-      while (k > 1 && need(k) > avail) k--;
-      return k;
-    };
-    const long = avail >= 560 ? pick(false) : null;
-    if (long !== null && long === options.length) setFit((f) => (f.short || f.count !== long ? { short: false, count: long } : f));
-    else {
-      const k = pick(true) ?? options.length;
-      setFit((f) => (!f.short || f.count !== k ? { short: true, count: k } : f));
-    }
-  }, [options, activeIdx]);
-  useLayoutEffect(() => compute(), [compute]);
-  useEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap || !window.ResizeObserver) return;
-    const ro = new ResizeObserver(() => compute());
-    ro.observe(wrap);
-    document.fonts?.ready.then(() => compute()).catch(() => {});
-    return () => ro.disconnect();
-  }, [compute]);
-
-  const shown = options.filter((_, i) => i < fit.count || i === activeIdx);
-  const rest = options.filter((o) => !shown.includes(o));
-
-  // Pil-indicator: breedte staat stil op de eindmaat; de beweging is een FLIP met alleen transform.
-  const place = useCallback((sel: HTMLElement | null, animate: boolean) => {
-    const ind = indRef.current;
-    if (!ind || !sel) return;
-    const x = sel.offsetLeft;
-    const w = sel.offsetWidth;
-    const from = prev.current;
-    prev.current = { x, w };
-    if (from && from.x === x && from.w === w && ind.classList.contains("ready")) return;
-    ind.style.width = `${w}px`;
-    if (animate && from && !rustig()) {
-      ind.style.transition = "none";
-      ind.style.transform = `translate3d(${from.x}px,0,0) scaleX(${from.w / w})`;
-      void ind.offsetWidth;
-      ind.style.transition = "";
-    }
-    ind.style.transform = `translate3d(${x}px,0,0)`;
-    ind.classList.add("ready");
-  }, []);
-  const firstPlace = useRef(true);
-  useLayoutEffect(() => {
-    place(listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]') ?? null, !firstPlace.current);
-    firstPlace.current = false;
-  }, [view, fit, place]);
-  useEffect(() => {
-    if (!open) return;
-    const down = (e: PointerEvent) => {
-      if (!moreRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("pointerdown", down);
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("pointerdown", down);
-      document.removeEventListener("keydown", key);
-    };
-  }, [open]);
-
-  const label = (o: TabOpt) => (fit.short ? o.short : o.label);
-  return (
-    <nav className="tabs" aria-label="Rubrieken">
-      <div className="tabs-in" ref={wrapRef}>
-        <div className="seg" ref={listRef}>
-          <span className="seg-ind" ref={indRef} aria-hidden="true" />
-          <div className="seg-tabs" role="tablist" aria-label="Rubrieken">
-          {shown.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              className={`tab cat-${o.id}`}
-              role="tab"
-              data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
-              aria-controls="rubriek-paneel"
-              aria-selected={view === o.value}
-              tabIndex={view === o.value ? 0 : -1}
-              onKeyDown={tabToets}
-              onClick={(e) => {
-                place(e.currentTarget, true); // meteen bewegen, de inhoud volgt
-                onChange(o.value);
-              }}
-            >
-              {label(o)}
-            </button>
-          ))}
-          </div>
-          {rest.length ? (
-            <div className="more-wrap" ref={moreRef}>
-              <button type="button" className={`tab more-btn ${open ? "open" : ""}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-                Meer <Icon name="chevdown" className="sm" />
-              </button>
-              {open ? (
-                <div className="menu" role="menu">
-                  {rest.map((o) => (
-                    <button
-                      key={o.value}
-                      type="button"
-                      role="menuitem"
-                      className="menu-item"
-                      data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
-                      onClick={() => {
-                        setOpen(false);
-                        onChange(o.value);
-                      }}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <div className="seg-measure" ref={measureRef} aria-hidden="true">
-          {[false, true].map((short) => (
-            <div key={String(short)} className={`seg ${short ? "m-short" : "m-long"}`}>
-              {options.map((o) => (
-                <span key={o.value} className="tab-m">
-                  {short ? o.short : o.label}
-                </span>
-              ))}
-              <span className="tab-m">
-                Meer <Icon name="chevdown" className="sm" />
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </nav>
-  );
-}
-
 // ---------------------------------------------------------------- nieuws
-function sortItems(items: Item[]) {
-  return items.slice().sort((a, b) => {
-    if (!a.tijd !== !b.tijd) return a.tijd ? -1 : 1;
-    return a.tijd < b.tijd ? 1 : a.tijd > b.tijd ? -1 : 0;
-  });
-}
-// Openingsverhaal: het bericht met de meeste bronnen (meest gedekt), bij gelijkspel het nieuwste.
-function pickLead(sorted: Item[]) {
-  let best = -1;
-  let n = -1;
-  sorted.forEach((it, i) => {
-    const c = new Set((it.bronnen ?? []).map((b) => b.site)).size;
-    if (c > n) {
-      n = c;
-      best = i;
-    }
-  });
-  return best;
-}
-
 type OpenFn = (k: string) => void;
 function useOpen(key: string, onOpen: OpenFn) {
   return (e: React.MouseEvent<HTMLAnchorElement>) => {
