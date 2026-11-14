@@ -1,0 +1,1 @@
+- App opgesplitst in modules voor data, thema, kader en nieuwslijst, zonder gedragswijziging (#877).

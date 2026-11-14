@@ -1,39 +1,36 @@
+import { useData, useTheme } from "./app-data";
+import { intro } from "./app-status";
+import { Footer, Frame, Front, TopBar, UUR_ACTIEF } from "./app-frame";
+import { ArtikelDetail, laadDetail } from "./artikel-detail";
+import { bronLabel, itemKey, NewsList, pickLead, sortItems, useOpen, type OpenFn } from "./nieuws-lijst";
 import { Foutgrens } from "./foutgrens";
 import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
-import { artikelId, artikelSlug } from "./artikelid";
+import { artikelId } from "./artikelid";
 import { ams, dayDates } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Bron, Data, Item, View, Weer } from "./types";
-import { BionicText, FocusSwitch } from "./ui";
+import type { Data, Item, View, Weer } from "./types";
+import { BionicText } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
 import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
-import { Icon, IconSprite, type IconName } from "./icons";
-import { playerFor, soortVan, startSoort } from "./videosoort";
-import { sorteerOpGroep } from "./filmgroep";
+import { Icon, type IconName } from "./icons";
+import { soortVan, startSoort } from "./videosoort";
 import { useVoorladen } from "./usevoorladen";
 import { videoSlug } from "./slug";
-import { zaaiSamenvattingen } from "./samenvattingcache";
-import { schoon } from "./schoon";
-import { valideer } from "./valideer";
-import { debug } from "./debug";
-import { Beelden, Thumb } from "./beelden";
+import { Beelden } from "./beelden";
 import { FilterBalk, TIJD_LABEL, filterNieuws, filterVideos, useFilters, useVideoKlok } from "./filters";
 import { veiligeUrl } from "./url";
-import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
-import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, tabOpties, tabToets, wisselRichting, type TabOpt } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
-import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm } from "./zoek";
 import { Zoekbalk, ZoekLeeg, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
@@ -43,38 +40,14 @@ import { feedToetsDoel } from "./toetsdoel";
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
 const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
 const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
-let detailModule: typeof import("./detail") | undefined;
-let detailBelofte: Promise<typeof import("./detail")> | undefined;
-const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
-const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
-// Houd het componenttype gelijk zolang een artikel openstaat, ook als de module intussen laadt.
-function ArtikelDetail(props: React.ComponentProps<typeof DetailView>) {
-  const [Component] = useState(() => detailModule?.DetailView ?? DetailView);
-  return <Component {...props} />;
-}
 const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
 
-const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
-const THEME_KEY = "nieuwsinkort-thema";
 let openedInside = false;
 // feed geopend vanuit het overzicht (dan is sluiten = history.back())
 const feedNav = maakFeedNavigatie({ get location() { return window.location; }, get history() { return window.history; } });
-// Intro-animatie alleen bij de eerste keer laden; daarna (tabwissel, herladen) niet opnieuw.
-let introDone = false;
 
 // ---------------------------------------------------------------- helpers
-const slugify = artikelSlug;
-const itemKey = (i: Item) => slugify(i.kop) || i.bronnen?.[0]?.href || i.kop;
-
-function bronLabel(bronnen: Bron[]) {
-  const names: string[] = [];
-  for (const b of bronnen ?? []) if (!names.includes(b.site)) names.push(b.site);
-  if (names.length === 0) return "";
-  if (names.length === 1) return names[0];
-  return `${names[0]} + ${names.length - 1}`;
-}
-
 function amsterdamTime(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -402,135 +375,6 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
 }
 
 // ---------------------------------------------------------------- nieuws
-function sortItems(items: Item[]) {
-  return items.slice().sort((a, b) => {
-    if (!a.tijd !== !b.tijd) return a.tijd ? -1 : 1;
-    return a.tijd < b.tijd ? 1 : a.tijd > b.tijd ? -1 : 0;
-  });
-}
-// Openingsverhaal: het bericht met de meeste bronnen (meest gedekt), bij gelijkspel het nieuwste.
-function pickLead(sorted: Item[]) {
-  let best = -1;
-  let n = -1;
-  sorted.forEach((it, i) => {
-    const c = new Set((it.bronnen ?? []).map((b) => b.site)).size;
-    if (c > n) {
-      n = c;
-      best = i;
-    }
-  });
-  return best;
-}
-
-type OpenFn = (k: string) => void;
-function useOpen(key: string, onOpen: OpenFn) {
-  return (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
-    onOpen(key);
-  };
-}
-
-const LeadStory = memo(function LeadStory({ item, bionic, enter, onOpen }: { item: Item; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
-  const key = itemKey(item);
-  const click = useOpen(key, onOpen);
-  const n = item.bronnen?.length ?? 0;
-  return (
-    <a onPointerDown={laadDetail} onMouseEnter={laadDetail} className={`lead cat-${item.cat} ${enter ? "enter" : ""}`} data-id={key} href={`#/bericht/${key}`} onClick={click}>
-      {fotos(item).length ? <Beelden urls={fotos(item)} eager className="lead-img" /> : null}
-      <div className="meta">
-        {CAT_LABEL[item.cat] ?? item.cat}
-        {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
-        {item.ruw ? <span>nog niet samengevat</span> : null}
-      </div>
-      <h2 className="lead-title">{item.kop}</h2>
-      {item.ai ? (
-        <p className="lead-sum bn">
-          <BionicText text={item.ai} on={bionic} />
-        </p>
-      ) : null}
-      <div className="row-foot">
-        <span className="src">{n > 0 ? `${bronLabel(item.bronnen)} · ${bronnenTekst(n)}` : "Geen bron"}</span>
-      </div>
-    </a>
-  );
-});
-
-const NewsRow = memo(function NewsRow({ item, i, bionic, enter, onOpen }: { item: Item; i: number; bionic: boolean; enter: boolean; onOpen: OpenFn }) {
-  const key = itemKey(item);
-  const click = useOpen(key, onOpen);
-  const n = item.bronnen?.length ?? 0;
-  const anim = enter && i < 12;
-  return (
-    <a
-      className={`row cat-${item.cat} ${anim ? "enter" : ""} ${fotos(item).length ? "has-img" : ""}`}
-      data-id={key}
-      href={`#/bericht/${key}`}
-      style={anim ? ({ "--i": i + 1 } as React.CSSProperties) : undefined}
-      onClick={click}
-      onPointerDown={laadDetail} onMouseEnter={laadDetail}
-    >
-      {fotos(item).length ? <Thumb urls={fotos(item)} /> : null}
-      <div className="row-main">
-        <div className="meta">
-          {CAT_LABEL[item.cat] ?? item.cat}
-          {item.tijd ? <time className="tnum">{item.tijd}</time> : null}
-          {item.ruw ? <span>nog niet samengevat</span> : null}
-        </div>
-        <h2 className="row-title">{item.kop}</h2>
-        {item.ai ? (
-          <p className="row-sum bn">
-            <BionicText text={item.ai} on={bionic} />
-          </p>
-        ) : null}
-        <div className="row-foot">
-          <span className="src" title={(item.bronnen ?? []).map((b) => b.site).join(", ")}>
-            {n > 0 ? bronLabel(item.bronnen) : "Geen bron"}
-          </span>
-        </div>
-      </div>
-    </a>
-  );
-});
-
-function NewsList({ items, view, bionic, focusKey, onOpen, keepOrder, empty }: { items: Item[]; view: View; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
-  const [enter] = useState(() => !introDone && !rustig());
-  const [showAll, setShowAll] = useState(false);
-  const sorted = useMemo(() => (keepOrder ? items : sortItems(items)), [items, keepOrder]);
-  const leadIdx = useMemo(() => (keepOrder ? 0 : pickLead(sorted)), [sorted, keepOrder]);
-  if (sorted.length === 0)
-    return (
-      empty ?? <div className="empty">
-        <Icon name="clock" />
-        Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
-      </div>
-    );
-  const lead = sorted[leadIdx];
-  const rest = sorted.filter((_, i) => i !== leadIdx);
-  const limit = view === "alles" && !showAll && rest.length > ALLES_FIRST + 6;
-  const focusIdx = focusKey ? rest.findIndex((x) => itemKey(x) === focusKey) : -1;
-  const shown = limit && focusIdx < ALLES_FIRST ? rest.slice(0, ALLES_FIRST) : rest;
-  return (
-    <div className={enter ? "" : "swap"}>
-      <LeadStory item={lead} bionic={bionic} enter={enter} onOpen={onOpen} />
-      {shown.length ? (
-        <div className="rows">
-          {shown.map((it, i) => (
-            <NewsRow key={itemKey(it)} item={it} i={i} bionic={bionic} enter={enter} onOpen={onOpen} />
-          ))}
-        </div>
-      ) : null}
-      {shown.length < rest.length ? (
-        <div className="morewrap">
-          <button type="button" className="btn" onClick={() => setShowAll(true)}>
-            Toon alle {sorted.length} berichten
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------- nieuwsfeed (TikTok-achtig)
 // Eén bericht per kaart op schermhoogte, met scroll-snap. De bovenbalk en de rubrieken staan vast
 // (de pagina zelf scrolt niet); alleen deze lijst scrolt. Beweging: alleen transform/opacity.
@@ -886,196 +730,6 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
   );
 }
 
-let afgewezenBerichten = 0;
-// ---------------------------------------------------------------- data + thema
-export function useData() {
-  const volgnummer = useRef(0);
-  const [data, setData] = useState<Data | null>(null);
-  const [error, setError] = useState(false);
-  const load = useCallback(async () => {
-    const aanvraag = ++volgnummer.current;
-    try {
-      const antwoord = await laadData(neemVroegeData());
-      if (aanvraag !== volgnummer.current) return;
-      const gevalideerd = valideer(antwoord);
-      afgewezenBerichten = gevalideerd.afgewezen;
-      const d = schoon(gevalideerd.data as Data); // ook hier ontdubbelen: statische data zonder Pages Function
-      d.items ??= [];
-      d.items = d.items.map(herindeel); // ook statische/oude data: buitenland uit "nl" halen
-      d.filmpjes ??= [];
-      zaaiSamenvattingen(d.samenvattingen);
-      d.dumpert ??= [];
-      d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
-      d.filmpjes = sorteerOpGroep(d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }))); // Shorts of Journaals; op onderwerpgroep (#459): Sport onderaan, ook voor de volgorde van doorlopend kijken
-      setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
-      setError(false);
-    } catch {
-      if (aanvraag === volgnummer.current) setError(true);
-    }
-  }, []);
-  useEffect(() => {
-    load();
-    // ververs als je terugkomt op het tabblad, en elk kwartier
-    const onVis = () => document.visibilityState === "visible" && load();
-    document.addEventListener("visibilitychange", onVis);
-    const t = window.setInterval(load, 15 * 60 * 1000);
-    const grens = window.setInterval(() => setData((d) => d && verwijderGisteren(d, Date.now())), 1000);
-    return () => {
-      volgnummer.current++;
-      document.removeEventListener("visibilitychange", onVis);
-      window.clearInterval(t);
-      window.clearInterval(grens);
-    };
-  }, [load]);
-  return { data, error, reload: load };
-}
-
-type Theme = "light" | "dark";
-function systemTheme(): Theme {
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-function savedTheme(): Theme | null {
-  try {
-    const t = localStorage.getItem(THEME_KEY);
-    return t === "dark" || t === "light" ? t : null;
-  } catch {
-    return null;
-  }
-}
-function applyTheme(t: Theme) {
-  document.documentElement.dataset.theme = t;
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", t === "dark" ? "#0f0f0f" : "#ffffff"));
-}
-export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme as Theme) || savedTheme() || systemTheme());
-  const handmatig = useRef(false);
-  useLayoutEffect(() => applyTheme(theme), [theme]);
-  useEffect(() => {
-    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    if (!mq) return;
-    const on = () => {
-      if (!handmatig.current && !savedTheme()) setTheme(mq.matches ? "dark" : "light");
-    };
-    mq.addEventListener?.("change", on);
-    return () => mq.removeEventListener?.("change", on);
-  }, []);
-  // Direct wisselen: geen kleurovergang op elk element (dat hapert), één repaint en klaar.
-  const toggle = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    handmatig.current = true;
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch {
-      /* negeer */
-    }
-    applyTheme(next);
-    setTheme(next);
-  };
-  return { theme, toggle };
-}
-
-// ---------------------------------------------------------------- app
-function TopBar({
-  theme,
-  onTheme,
-  bionic,
-  onBionic,
-  onHome,
-  onSources,
-  filtered,
-  zoeken,
-}: {
-  zoeken?: ReactNode;
-  theme: Theme;
-  onTheme: () => void;
-  bionic: boolean;
-  onBionic: (v: boolean) => void;
-  onHome: () => void;
-  onSources: () => void;
-  filtered: number;
-}) {
-  return (
-    <header className="topbar">
-      <div className="bar">
-        <a
-          className="brand"
-          href="#/"
-          aria-label="Nieuws in het kort, naar de voorpagina"
-          onClick={(e) => {
-            e.preventDefault();
-            onHome();
-          }}
-        >
-          <span className="mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          Nieuws in het kort
-        </a>
-        <div className="ctrls">
-          <FocusSwitch value={bionic} onChange={onBionic} />
-          {zoeken}
-          <button
-            type="button"
-            className={`srcbtn ${filtered ? "has" : ""}`}
-            onClick={onSources}
-            aria-haspopup="dialog"
-            aria-label={filtered ? `Bronnen: ${filtered} uit` : "Bronnen"}
-            title="Bronnen kiezen"
-          >
-            <Icon name="sliders" />
-            <span className="srcbtn-l">Bronnen</span>
-            {filtered ? <span className="badge tnum">{filtered}</span> : null}
-          </button>
-          <button type="button" className="iconbtn" aria-label={theme === "dark" ? "Schakel naar lichte modus" : "Schakel naar donkere modus"} onClick={onTheme}>
-            <Icon name={theme === "dark" ? "sun" : "moon"} />
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-// true zodra data.json van de uur-Worker komt (functions/data.json.ts zet "uur")
-let UUR_ACTIEF = false;
-function Footer() {
-  return (
-    <footer className="foot">
-      <div className="foot-brand">
-        <span className="mark" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </span>
-        Nieuws in het kort
-      </div>
-      <p>Samenvattingen op nieuwsinkort worden gemaakt met AI en kunnen fouten bevatten. Lees bij twijfel altijd de bron.</p>
-      <p>Samengevat uit de bronnen die bij elk bericht staan. {UUR_ACTIEF ? "Elk kwartier bijgewerkt (06:00–23:00)" : "Elke dag om 08:00 en 12:00 bijgewerkt"}, met nieuws vanaf middernacht. nieuwsinkort.nl</p>
-      <p><a href="/over">Over deze site</a></p>
-    </footer>
-  );
-}
-
-function Front({ children }: { children: ReactNode }) {
-  const [enter] = useState(() => !introDone && !rustig());
-  return <div className={`front ${enter ? "enter" : ""}`}>{children}</div>;
-}
-
-function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; feed?: boolean }) {
-  return (
-    <div className={`app ${feed ? "app-feed" : ""}`}>
-      <IconSprite />
-      {debug && <div style={{ position: "fixed", right: 4, top: 4, zIndex: 2147483647, background: "black", color: "white", padding: 4, fontSize: 10 }}>Afgewezen berichten: {afgewezenBerichten}</div>}
-      <div className="shell">
-        <a className="skip" href="#top" onClick={(e) => { e.preventDefault(); document.getElementById("top")?.focus(); }}>Naar de inhoud</a>
-        {top}
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const { data: raw, error, reload } = useData();
   // Rustige melding i.p.v. stil falen: bijwerken mislukt, of de AI-dagruimte is (bijna) op.
@@ -1083,7 +737,7 @@ export default function App() {
     error && raw ? "Bijwerken lukt even niet; je ziet het nieuws van de laatste keer." : "",
     raw?.uur?.ai === "op" ? "Samenvatten lukt even niet meer vandaag (dagruimte op). Nieuwe berichten staan er wel, met de tekst van de bron." : "",
   ].filter(Boolean).join(" ");
-  UUR_ACTIEF = Date.now() - Date.parse((raw as any)?.uur?.gegenereerd || "") < 2.5 * 3600e3; // alleen als de uur-run recent draaide
+  UUR_ACTIEF.actief = Date.now() - Date.parse((raw as any)?.uur?.gegenereerd || "") < 2.5 * 3600e3; // alleen als de uur-run recent draaide
   const { theme, toggle } = useTheme();
   const catalog = useCatalog();
   const { off, setMany, reset } = useSourceFilter();
@@ -1198,7 +852,7 @@ export default function App() {
   }, [route.selected]);
 
   useEffect(() => {
-    if (data) introDone = true;
+    if (data) intro.done = true;
   }, [data]);
 
   const setBionicPersist = (v: boolean) => {
@@ -1443,7 +1097,7 @@ export default function App() {
               list={view === "filmpjes" ? vids!.filmpjes : vids!.dumpert}
               bionic={bionic}
               bronFilter={view === "filmpjes"}
-              enter={!introDone && !rustig()}
+              enter={!intro.done && !rustig()}
               video={route.video}
               onOpen={(slug) => openFeed(view, slug)}
               onCloseFeed={() => closeFeed(view)}
@@ -1467,3 +1121,5 @@ export default function App() {
     </Frame>
   );
 }
+
+export { useData };
