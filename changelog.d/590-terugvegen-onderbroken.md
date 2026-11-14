@@ -1,0 +1,1 @@
+- Terugvegen in een artikel (#590): een onderbroken veeg (tweede vinger, selectie, touchcancel) laat geen transform, transition of body-overflow meer achter; timers worden bij een nieuw gebaar of unmount afgebroken, zodat er geen voortijdige reset of onverwachte navigatie volgt.
