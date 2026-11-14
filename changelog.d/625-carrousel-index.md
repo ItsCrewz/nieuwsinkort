@@ -1,0 +1,1 @@
+- Fotocarrousel: valt de actieve of een eerdere foto weg na een laadfout, dan blijft een geldige foto actief en klopt de teller („Foto 2 van 2”); valt de laatste foto weg, dan schuift de selectie naar de vorige.
