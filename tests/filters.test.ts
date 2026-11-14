@@ -47,6 +47,48 @@ t("middernacht gebruikt de offset van middernacht op beide wisseldagen", () => {
   assert.equal(midnight(Date.parse("2026-03-29T10:00:00+02:00")), Date.parse("2026-03-28T23:00:00Z"));
 });
 
+t("lokale berichttijden volgen beide klokwisselingen en de vorige kalenderdag", () => {
+  const gevallen = [
+    ["2026-03-29T01:50:00+01:00", "01:30", "2026-03-29T01:30:00+01:00"],
+    ["2026-03-29T04:00:00+02:00", "01:30", "2026-03-29T01:30:00+01:00"],
+    ["2026-03-29T04:00:00+02:00", "03:30", "2026-03-29T03:30:00+02:00"],
+    ["2026-03-30T00:10:00+02:00", "23:30", "2026-03-29T23:30:00+02:00"],
+    ["2026-10-25T01:50:00+02:00", "01:30", "2026-10-25T01:30:00+02:00"],
+    ["2026-10-25T04:00:00+01:00", "01:30", "2026-10-25T01:30:00+02:00"],
+    ["2026-10-25T04:00:00+01:00", "03:30", "2026-10-25T03:30:00+01:00"],
+    ["2026-10-26T00:10:00+01:00", "23:30", "2026-10-25T23:30:00+01:00"],
+    ["2026-10-30T00:10:00+01:00", "23:30", "2026-10-29T23:30:00+01:00"],
+    ["2026-10-30T10:00:00+01:00", "10:20", "2026-10-30T10:20:00+01:00"],
+    ["2026-10-30T10:00:00+01:00", "10:21", "2026-10-29T10:21:00+01:00"],
+    ["2026-10-25T04:00:00+01:00", "02:30", "2026-10-25T02:30:00+01:00"],
+    ["2026-10-25T02:45:00+02:00", "02:40", "2026-10-25T02:40:00+02:00"],
+    ["2026-10-25T02:45:00+01:00", "02:40", "2026-10-25T02:40:00+01:00"],
+    ["2026-10-25T02:10:00+02:00", "02:30", "2026-10-25T02:30:00+02:00"],
+  ];
+  for (const [gen, klok, verwacht] of gevallen) assert.equal(tijdstip(klok, Date.parse(gen)), Date.parse(verwacht), `${gen} ${klok}`);
+  assert.equal(tijdstip("02:30", Date.parse("2026-03-29T04:00:00+02:00")), null);
+});
+
+t("tweede winteruur blijft binnen het laatste uur", () => {
+  metNu("2026-10-25T02:45:00+01:00", () => {
+    const items = [bericht("vers", "02:40")];
+    assert.deepEqual(filterNieuws(items, { ...STANDAARD, tijd: "1u" }, 0, new Date(Date.now()).toISOString(), true).items.map((it) => it.kop), ["vers"]);
+  });
+});
+
+t("nieuwsfilters en sortering gebruiken de offset van het bericht", () => {
+  for (const [nu, oud, nieuw] of [
+    ["2026-03-29T04:00:00+02:00", "01:50", "03:10"],
+    ["2026-10-25T04:00:00+01:00", "02:50", "03:10"],
+  ]) {
+    metNu(nu, () => {
+      const items = [bericht("oud", oud), bericht("nieuw", nieuw)];
+      assert.deepEqual(filterNieuws(items, { ...STANDAARD, tijd: "alles" }, 0, nu, true).items.map((it) => it.kop), ["nieuw", "oud"]);
+      assert.deepEqual(filterNieuws(items, { ...STANDAARD, tijd: "1u" }, 0, nu, true).items.map((it) => it.kop), ["nieuw"]);
+    });
+  }
+});
+
 t("vijf minuten vooruit blijft nieuwste en valt binnen Laatste uur en Vandaag", () => {
   metNu("2026-10-30T10:00:00+01:00", () => {
     const items = [bericht("ouder", "09:40"), bericht("vooruit", "10:05")];
