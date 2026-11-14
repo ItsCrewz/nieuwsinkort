@@ -1,0 +1,1 @@
+- Loop: een PR die door omvang of gevoelig pad niet automatisch mag mergen (zoals #913, 762 regels) krijgt eenmalig het label `wacht-op-joey` in plaats van backoff-cycli; `local/windows` PENDING blokkeert de merge niet.
