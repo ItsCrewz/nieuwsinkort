@@ -1,5 +1,5 @@
 export type Broncode = "SRC_TIMEOUT" | "SRC_HTTP" | "SRC_PARSE" | "SRC_EMPTY";
-export type Bronfout = { url: string; code: Broncode; ms: number };
+export type Bronfout = { url: string; code: Broncode; ms: number; status?: number };
 
 export function foutcode(e: unknown, status = 0): Broncode {
   const naam = e instanceof Error ? `${e.name} ${e.message}` : String(e);

@@ -1,0 +1,1 @@
+- Vermeld de HTTP-status van mislukte feeds in de runstatus, zodat overgeslagen bronnen herkenbaar blijven (#572).
