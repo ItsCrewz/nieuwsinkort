@@ -34,6 +34,7 @@ import { isBuitenland } from "../../src/regio";
 import { cluster, eenPerUitgever, normLink, sim, toks, type Cand, type Cluster } from "./cluster";
 import { Budget, utcDag, neuronFactor, aiFout, nieuwsNeuronen, zetDagTeller, quotaSleutel } from "./budget";
 import { clusterHash, vindClusterSum } from "./clusterhash";
+import { budgetTier, kiesModel, logLlmFout } from "./llmfout";
 import { zuiverSom } from "./somcheck";
 import { bruikbareInvoer, isWeigering } from "./weigering";
 import { BATCH, bijwerkGezien, bundelBeslis, kortToegestaan } from "./bundel";
@@ -695,7 +696,7 @@ export class Runner extends DurableObject<Env> {
     const leesVid = async () => +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
     let vidN = await leesVid();
     const used = () => st.neurons + vidN + usage.neurons;
-    const tier = () => (used() < 0.7 * BUDGET ? 1 : used() < 0.9 * BUDGET ? 2 : used() < BUDGET ? 3 : 4);
+    const tier = () => budgetTier(used(), BUDGET);
     // aandeel van deze run uit de tijd (interval tussen runs en minuten tot 24:00), niet uit een uuraanname
     const runsLeft = runsOver(now, interval);
     const runBudget = runPlafonds(BUDGET - st.neurons - vidN, runsLeft, interval).runBudget;
@@ -707,6 +708,8 @@ export class Runner extends DurableObject<Env> {
     for (const k of todo.sort((a, b) => b.c.length - a.c.length || Math.max(...b.c.map((c) => c.d)) - Math.max(...a.c.map((c) => c.d)))) (byCat[k.cat] ||= []).push(k);
     const capN = tier0 === 1 ? CAP : tier0 === 2 ? Math.min(CAP, 15) : tier0 === 3 ? 8 : 0;
     const pick = kiesVoorAI(byCat, tier0, capN);
+    // budget op (>=100%): geen AI-aanroep, wel één eenduidige logregel per run (alleen als er werk lag)
+    if (tier0 === 4 && todo.length) logLlmFout("LLM_BUDGET", "budget", "-", 0);
     // quotaOut = alleen echt op: eigen budget bereikt of een echte dagquota-fout (KV-vlag ai-quota:<UTC-dag>). Een tijdelijke fout (429/rate-limit) stopt alleen de rest van deze run.
     const quotaBekend = !!(await env.NIEUWS.get(quotaSleutel(U)).catch(() => null));
     let quotaOut = quotaBekend || st.neurons + vidN >= BUDGET, quotaReden = quotaBekend ? "dagquota" : quotaOut ? "budget" : "", tijdelijk = 0, quotaKvWrites = 0;
@@ -720,7 +723,7 @@ export class Runner extends DurableObject<Env> {
     // Echte Cloudflare-dagquota die Groq opving: toch quotaOut + KV-vlag, en Cloudflare wordt overgeslagen.
     const cfStand = async () => { if (usage.llm!.cloudflareFout) await aiFoutAf(usage.llm!.cloudflareFout); };
     if (quotaOut) usage.llm!.cloudflare = false;
-    const modelNu = () => { const m = tier() === 1 ? model : SMALL; modelsUsed.add(m); return m; };
+    const modelNu = () => { const m = kiesModel(tier(), model, SMALL); modelsUsed.add(m); return m; };
     const toIn = (k: Cluster, id: number): In => {
       const cs = k.c.slice(0, 4);
       return { id, cat: k.cat, bronnen: [...new Set(cs.map((c) => c.site))], titels: [...new Set(cs.map((c) => c.t))].slice(0, 3), tekst: cs.map((c) => invoerBijKop(c.s, c.href)).join(" // ").slice(0, 900) };

@@ -1,6 +1,7 @@
 import { isDagQuota, meetChat, meetFout, type Meting } from "../../src/budget";
 import { controleerSom, vageKop } from "./somcheck";
 import { stripBronvermelding } from "../../src/bronvermelding";
+import { llmCode, logLlmFout } from "./llmfout";
 import { groq, mistral, keten, ruimteVoor, type LlmState, type Verzoek, type Wacht } from "./llm";
 // Workers AI: samenvattingen in eenvoudig Nederlands. Houdt neuronen bij (echte usage, anders geschat uit tokens); de Groq- en Mistral-terugval tellen tokens, geen neuronen.
 export const RATES: Record<string, [number, number]> = { // neuronen per 1M tokens [in, uit]
@@ -62,7 +63,7 @@ export async function chat(ai: Ai, model: string, sys: string, user: string, max
   const cf = async () => {
     if (!ai || u.llm?.cloudflare === false) throw new Error("Cloudflare niet beschikbaar");
     let r: any;
-    const i0 = u.inTok, o0 = u.outTok;
+    const i0 = u.inTok, o0 = u.outTok, start = Date.now();
     const tokensCf = (i: number, o: number) => { const t = (u.aanbieders ||= {}).cloudflare ||= { inTok: 0, outTok: 0 }; t.inTok += u.inTok - i; t.outTok += u.outTok - o; };
     try {
       r = await ai.run(model as any, {
@@ -71,12 +72,12 @@ export async function chat(ai: Ai, model: string, sys: string, user: string, max
       chat_template_kwargs: { enable_thinking: false, thinking: false },
       ...(json ? { response_format: { type: "json_object" } } : {}),
     } as any);
-    } catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); tokensCf(i0, o0); throw e; } // een mislukte aanroep kan toch neuronen kosten
+    } catch (e) { logLlmFout(llmCode(e), "cloudflare", model, Date.now() - start); meetFout(u, tarief, sys + user, maxTokens, e); tokensCf(i0, o0); throw e; } // een mislukte aanroep kan toch neuronen kosten
     u.calls++;
     meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
     tokensCf(i0, o0);
     const txt = typeof r?.response === "string" ? r.response : r?.response ? JSON.stringify(r.response) : r?.choices?.[0]?.message?.content || "";
-    if (!txt) throw new Error(LEEG);
+    if (!txt) { logLlmFout("LLM_PARSE", "cloudflare", model, Date.now() - start); throw new Error(LEEG); }
     u.laatsteBron = "cloudflare";
     return String(txt);
   };
@@ -107,10 +108,13 @@ function jsonFrom(s: string): any {
 // JSON-stap met één terugval (#431): geeft Cloudflare een leeg of onbruikbaar antwoord, dan precies één keer opnieuw via de externe keten
 // (Groq eerst, binnen de bestaande limieten). Geen extra Cloudflare-aanroep en geen lus; blijft het leeg, dan telt dat als fout en gaat de run door.
 async function jsonStap<T>(ai: Ai, model: string, sys: string, user: string, maxTokens: number, u: Usage, json: boolean, lees: (txt: string) => Map<number, T>): Promise<Map<number, T>> {
+  const start = Date.now();
   const txt = await chat(ai, model, sys, user, maxTokens, u, json);
   const out = lees(txt);
   if (out.size) return out;
   const bron = u.laatsteBron;
+  // Een leeg antwoord is al door chat()/cf() gelogd; hier alleen een niet-leeg antwoord met kapotte JSON of zonder items (geen dubbele regel).
+  if (txt) logLlmFout("LLM_PARSE", bron || "onbekend", model, Date.now() - start);
   const reden = !txt ? LEEG : !jsonFrom(txt) ? "Geen geldige JSON" : "Geen bruikbare items";
   const v: Verzoek = { sys, user, maxTokens, json };
   if (bron !== "cloudflare" || !u.llm || !ruimteVoor(externe(u), u.llm.state, v)) { telOutputFout(u, reden, bron); return out; }

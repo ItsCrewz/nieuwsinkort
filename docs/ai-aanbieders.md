@@ -19,3 +19,20 @@ Voorwaarde vóór het instellen van `MISTRAL_API_KEY`: zet training uit via Admi
 Mistral (free tier) begrenst ook per seconde. De keten houdt daarom per aanbieder een minimale tussenpoos tussen verzoeken aan, over alle modellen van die aanbieder; voor Mistral standaard 1100 ms, instelbaar met de optionele var `MISTRAL_TUSSENPOOS_MS` (geheel getal ≥ 0, `0` schakelt uit). Het slot wordt vooraf in het minuutvenster gereserveerd, zodat ook gelijktijdige aanroepen op elkaar wachten. Groq heeft geen tussenpoos.
 
 Bij HTTP 429 probeert de keten hetzelfde model eenmaal opnieuw na `Retry-After` (seconden of HTTP-datum), minstens na de tussenpoos. Is `Retry-After` langer dan 5 seconden, dan volgt geen retry maar het volgende model. Zonder header volgt alleen een retry na de tussenpoos bij een aanbieder die er een heeft. De retry telt als extra verzoek in de limieten en de wachttijd telt mee in de totale wachttijd per run. Beide aanpassingen spreiden alleen verzoeken binnen de gratis limieten en brengen geen kosten mee. Tests: `tests/tussenpoos.test.ts` (fake klok).
+
+## Fallbackketen en foutcodes (#874)
+
+Volgorde per tekstverzoek: hoofdmodel → klein model → externe aanbieder (Groq, dan Mistral; alleen met aanwezige sleutel) → extractief (feedtekst met `ruw: true`). De keuze tussen hoofd- en klein model hoort bij de neurontiers in `worker/src/index.ts`; `chat()` in `worker/src/ai.ts` probeert Workers AI en valt terug op de externe keten (`keten()` in `worker/src/llm.ts`). Zonder sleutel is de keten leeg en volgt direct de extractieve route. Alle LLM-paden (`tabsam.ts`, `filmgroep.ts`, de JSON-stappen in `ai.ts`) gebruiken `chat()`; `functions/samenvatting.ts` heeft een eigen Cloudflare-aanroep en gebruikt voor Groq `keten()`. Whisper (audio) valt buiten de keten. `tests/llm-fallback.test.ts` bewaakt met een zoekopdracht dat er geen directe aanroepen bijkomen.
+
+Foutcodes (`worker/src/llmfout.ts`), gelogd als `LLM-fout <code> <bron> <model> <duur>ms`; nooit prompts, antwoorden, headers of sleutels:
+
+| Code | Betekenis |
+| --- | --- |
+| `LLM_TIMEOUT` | Verzoek afgebroken door time-out (standaard 15 s, `Verzoek.timeoutMs` kan dit overschrijven) |
+| `LLM_HTTP_5XX` | Aanbieder antwoordt met HTTP 5xx |
+| `LLM_RATE_LIMIT` | HTTP 429 of melding over rate limit |
+| `LLM_PARSE` | Leeg antwoord, kapotte JSON of geen bruikbare items |
+| `LLM_BUDGET` | Dagquota (Cloudflare) of eigen limieten laten geen verzoek toe; de keten roept niets aan |
+| `LLM_OVERIG` | Overige 4xx en onbekende fouten, zodat geen fout zonder code blijft |
+
+De bestaande logregel `AI-aanbieder mislukt …` blijft ongewijzigd; de nieuwe regel komt ernaast. Budget, neuronen, `BUDGET` en `CAP` zijn niet aangepast.
