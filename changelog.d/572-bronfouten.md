@@ -1,0 +1,1 @@
+- Toon overgeslagen feeds met foutcode en HTTP-status in de run-meta, zodat bronuitval zichtbaar blijft (#572).
