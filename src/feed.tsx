@@ -12,7 +12,7 @@ import { rustig, scrollGedrag } from "./beweging";
 import { maakSluiter } from "./feedsluiten";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
 import { tabToets } from "./tabs";
-import { isSliderDoel, scrubDoel } from "./scrub";
+import { negeerFeedToets, scrubDoel } from "./scrub";
 import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 
@@ -891,7 +891,7 @@ const fmt = (t: number) => {
 };
 // De bestaande dunne balk onderaan, maar dan aanraakbaar: tikken of slepen = doorspoelen. Een ruim (onzichtbaar)
 // raakvlak met touch-action:none, zodat slepen op de balk de feed niet verticaal laat swipen.
-function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.RefObject<HTMLSpanElement>; seek: SeekRef; enabled: boolean; title: string }) {
+export function Scrub({ bar, barEl, seek, enabled, title }: { bar: Bar; barEl: React.RefObject<HTMLSpanElement>; seek: SeekRef; enabled: boolean; title: string }) {
   const hit = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ p: number; d: number } | null>(null);
   const st = useRef<{ id: number; p: number } | null>(null);
@@ -1404,7 +1404,7 @@ export function Feed({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key;
       // Op een slider (ook een niet-beschikbare) wisselen deze toetsen nooit van video
-      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(k) && isSliderDoel(e.target as HTMLElement | null)) return;
+      if (negeerFeedToets(k, e.target as HTMLElement | null)) return;
       if (k === "Escape") close();
       else if (k === "ArrowDown" || k === "j" || k === "J" || k === "PageDown") go(activeRef.current + 1);
       else if (k === "ArrowUp" || k === "k" || k === "K" || k === "PageUp") go(activeRef.current - 1);

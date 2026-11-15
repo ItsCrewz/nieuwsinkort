@@ -18,3 +18,9 @@ export function scrubDoel(key: string, cur: number, dur: number): number | null 
 export function isSliderDoel(t: Doel): boolean {
   return !!t && !!t.closest("[role=slider]");
 }
+
+const FEED_TOETSEN = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"];
+/** true als de globale feedhandler deze toets moet negeren: op een slider (ook een niet-beschikbare) wisselt hij nooit van video. */
+export function negeerFeedToets(key: string, doel: Doel): boolean {
+  return FEED_TOETSEN.includes(key) && isSliderDoel(doel);
+}
