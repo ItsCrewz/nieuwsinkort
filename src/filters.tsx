@@ -125,9 +125,12 @@ export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   if (!m || +m[1] > 23 || +m[2] > 59) return null; // onmogelijke kloktijd = onbekend
   const t = +m[1] * 60 + +m[2];
   const g = ams(gen);
-  const dag = t > g.h * 60 + g.min + 20 ? midnight(gen) - 1 : gen;
   // Kies bij een dubbele kloktijd de dichtstbijzijnde binnen de toekomstmarge.
-  return amsTijdstip(dag, +m[1], +m[2], gen);
+  const vandaag = amsTijdstip(gen, +m[1], +m[2], gen);
+  if (t > g.h * 60 + g.min + 20 && vandaag === null) {
+    return amsTijdstip(midnight(gen) - 1, +m[1], +m[2], gen);
+  }
+  return vandaag;
 }
 function vanafVoor(t: Exclude<Tijd, "auto">, vorig: number): number {
   const now = Date.now();
