@@ -1,0 +1,1 @@
+- Test voor de randgevallen van `functions/bericht/[[pad]].ts` toegevoegd: dubbele id, sjabloon zonder HTML, verwante links, verlopen en onvolledige data (#1007).
