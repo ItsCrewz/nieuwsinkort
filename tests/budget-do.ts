@@ -4,7 +4,7 @@ import { Budget } from "../worker/src/budget";
 export function budget(kv: Map<string, string> = new Map(), opties: { putFout?: () => boolean } = {}, data: Map<string, unknown> = new Map()) {
   const storage = {
     get: async (k: string) => data.get(k),
-    put: async (k: string, v: unknown) => { data.set(k, v); },
+    put: async (k: string | Record<string, unknown>, v?: unknown) => { if (typeof k === "string") data.set(k, v); else for (const [x, w] of Object.entries(k)) data.set(x, w); }, // object = atomaire multi-put
     delete: async (k: string | string[]) => { for (const x of [k].flat()) data.delete(x); },
     list: async ({ prefix }: { prefix: string }) => new Map([...data].filter(([k]) => k.startsWith(prefix))),
   };
