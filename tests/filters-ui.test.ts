@@ -71,6 +71,10 @@ let gesloten = 0, resets = 0;
 const u = { items: [item], tijd: "vandaag" as const, auto: true, per: { sinds: 1, vandaag: 1, "1u": 1, "3u": 1, alles: 1 }, nieuwSinds: 1 };
 const props = { f: STANDAARD, set: (p: Partial<Filters>) => wijzigingen.push(p), reset: () => resets++, u, bron: [item], catBron: [item], vorig: 123, alles: true, onClose: () => gesloten++ };
 const blad = FilterBlad(props) as any;
+const dubbel = { ...item, bronnen: [item.bronnen[0], item.bronnen[0]] };
+const leeg = { ...item, bronnen: [item.bronnen[0], { site: "", href: "" }] };
+const telBlad = FilterBlad({ ...props, bron: [item, dubbel, leeg, { ...item, bronnen: [] }] }) as any;
+assert.equal(vind(telBlad, (n) => typeof n.type === "function" && n.type.name === "Chip" && tekst(n) === "Uit meerdere bronnen")[0].props.n, 1);
 const chips = vind(blad, (n) => typeof n.type === "function" && n.type.name === "Chip");
 for (const label of ["Laatste uur", "Haarlem", "Met video", "Uit meerdere bronnen", "Oudste eerst"]) {
   const chip = chips.find((n) => tekst(n).includes(label));

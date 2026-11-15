@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import "./tabs.test";
-import { aantalExtra, filterNieuws, filterVideos, tijdstip, STANDAARD, type Filters } from "../src/filters";
+import { aantalExtra, filterNieuws, filterVideos, samengevoegd, sites, tijdstip, STANDAARD, type Filters } from "../src/filters";
 import { midnight } from "../src/tijd";
 import type { Item } from "../src/types";
 
@@ -40,6 +40,23 @@ const metNu = (nu: string, fn: () => void) => {
 };
 const bericht = (kop: string, tijd: string): Item => ({
   kop, tijd, cat: "nl", ai: "", samenvatting: "", punten: [], bronnen: [],
+});
+
+t("meerdere bronnen telt unieke niet-lege uitgevers en behoudt de sortering", () => {
+  const met = (kop: string, tijd: string, namen: string[]): Item => ({ ...bericht(kop, tijd), bronnen: namen.map((site) => ({ site, href: "https://example.nl/" })) });
+  const dubbel = met("dubbel", "11:00", ["NOS", "NOS"]);
+  const leeg = met("leeg", "10:00", ["NOS", "", "   "]);
+  const twee = met("twee", "09:00", ["NOS", "RTL"]);
+  const ontbreekt = { ...bericht("ontbreekt", "08:00"), bronnen: undefined } as unknown as Item;
+  const items = [dubbel, leeg, twee, ontbreekt];
+  assert.deepEqual(items.map(sites), [1, 1, 2, 0]);
+  assert.deepEqual(items.map(samengevoegd), [false, false, true, false]);
+  const filter = (extra: Partial<Filters>) => filterNieuws(items, { ...STANDAARD, tijd: "alles", ...extra }, 0, "2026-10-30T12:00:00+01:00", true);
+  assert.deepEqual(filter({ samen: true }).items, [twee]);
+  assert.equal(filter({ samen: true }).per.alles, 1);
+  assert.deepEqual(filter({}).items, items);
+  assert.deepEqual(filter({ sort: "bronnen" }).items, [twee, dubbel, leeg, ontbreekt]);
+  assert.equal(dubbel.bronnen.length, 2);
 });
 
 t("middernacht gebruikt de offset van middernacht op beide wisseldagen", () => {
