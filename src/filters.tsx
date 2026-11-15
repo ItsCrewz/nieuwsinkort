@@ -156,7 +156,7 @@ export function regioVan(it: Item): Regio {
 }
 const VIDEO_URL = /\/video\/|\/video-|\/videos?\/|youtube\.com|youtu\.be|\.mp4\b|\/kijk\/|\/tv\//i;
 export const heeftVideo = (it: Item) => (it.bronnen || []).some((b) => VIDEO_URL.test(b.href));
-export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => bronSleutel(b.site))).size;
+export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => bronSleutel(b.site || "")).filter(Boolean)).size;
 export const samengevoegd = (it: Item) => sites(it) > 1;
 
 /** Alles behalve tijd (tijd wordt apart bepaald, want "Automatisch" hangt af van wat er overblijft). */
