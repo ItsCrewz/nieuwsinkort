@@ -1013,9 +1013,10 @@ export default function App() {
     </div>
   ) : null;
   const alles = view === "alles";
-  const basisItems = alles ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === view);
+  const rubriekItems = (items: typeof data.items) => alles ? (flt.f.cats.length ? items : items.filter((i) => i.cat !== "politiek")) : items.filter((i) => i.cat === view);
+  const basisItems = rubriekItems(data.items);
   const uitkomst = isVideo ? null : filterNieuws(basisItems, flt.f, flt.vorig, raw.gegenereerd, alles);
-  const filterLeeg = <LeegMelding aantal={basisItems.length} onAanpassen={() => setFsheet(true)} onReset={flt.reset} />;
+  const filterLeeg = <LeegMelding aantal={basisItems.length} ruwAantal={rubriekItems(raw.items).length} onAanpassen={() => setFsheet(true)} onReset={flt.reset} onBronnen={() => setSheet(true)} onBronnenReset={reset} />;
   const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
   const filterBlad = fsheet ? (
     <Foutgrens code="CLIENT_FILTER_SHEET"><Suspense fallback={null}>
