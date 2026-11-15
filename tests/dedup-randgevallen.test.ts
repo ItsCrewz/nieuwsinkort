@@ -99,6 +99,15 @@ t("popNum geeft 0 voor onzin en lege invoer", () => {
 
 const v = (titel: string, href: string, bron = "YouTube"): DVideo => ({ titel, href, bron });
 
+t("miniaturen op hetzelfde pad met een andere id voegen niet samen, tracking wel (#982)", () => {
+  const w = (n: number, q: string): DVideo => ({ titel: `Bericht ${n}`, href: `https://voorbeeld.example/b/${n}`, bron: "Voorbeeld", thumb: `https://img.example/thumb?${q}` });
+  const een = w(1, "id=1"), twee = w(2, "id=2"), eenTrack = w(3, "utm_source=x&id=1&fbclid=q");
+  assert.equal(dedupVideos([een, twee]).list.length, 2);
+  assert.equal(dedupVideos([een], [twee]).list.length, 1);
+  assert.equal(dedupVideos([een, eenTrack]).list.length, 1);
+  assert.equal(dedupVideos([een], [eenTrack]).list.length, 0);
+});
+
 t("dedupVideos met een lege lijst geeft niets terug, ook met against", () => {
   assert.deepEqual(dedupVideos([]), { list: [], removed: 0, groups: [] });
   assert.deepEqual(dedupVideos([], [v("Iets", "https://www.dumpert.nl/item/1_abc", "Dumpert")]), { list: [], removed: 0, groups: [] });
