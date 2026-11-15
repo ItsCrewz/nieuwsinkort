@@ -1,0 +1,1 @@
+- Videovoortgang volledig met toetsen te bedienen: alle vier pijltjes (±5 s), Home en End werken op de slider en wisselen niet meer van video (#984).
