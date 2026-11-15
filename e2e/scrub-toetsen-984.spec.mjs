@@ -38,14 +38,33 @@ test("slidertoetsen wijzigen de voortgang zonder van video te wisselen (#984)", 
     await page.waitForTimeout(100);
     await expect(actief).toHaveAttribute("data-i", "0");
   }
+  // Laat de gebeurtenis ook langs de globale handler lopen, ondanks stopPropagation van Scrub.
+  await page.evaluate(() => {
+    window.sliderToetsen = 0;
+    window.addEventListener("keydown", () => window.sliderToetsen++);
+  });
+  for (const [toets, positie, tekst] of [["ArrowUp", 5, "0:05"], ["ArrowDown", 0, "0:00"], ["PageUp", 0, "0:00"], ["PageDown", 0, "0:00"], ["End", 60, "1:00"], ["Home", 0, "0:00"]]) {
+    const aantal = await page.evaluate(() => window.sliderToetsen);
+    await slider.evaluate((el, key) => {
+      const gebeurtenis = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+      gebeurtenis.stopPropagation = () => {};
+      el.dispatchEvent(gebeurtenis);
+    }, toets);
+    await expect.poll(() => page.evaluate(() => window.sliderToetsen)).toBe(aantal + 1);
+    await expect(actief).toHaveAttribute("data-i", "0");
+    await expect.poll(() => actief.locator("video").evaluate((v) => v.currentTime)).toBe(positie);
+    await expect(slider).toHaveAttribute("aria-valuenow", String(Math.round(positie / 60 * 100)));
+    await expect(slider).toHaveAttribute("aria-valuetext", `${tekst} van 1:00`);
+  }
   // Een toets buiten de slider bewijst dat de globale feedhandler actief is.
   await page.locator(".fslide[aria-current=true]").evaluate((el) => el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
   await expect(actief).toHaveAttribute("data-i", "1");
   const nietBeschikbaar = actief.getByRole("slider");
   await expect(nietBeschikbaar).toHaveAttribute("tabindex", "-1");
   for (const toets of ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"]) {
+    const aantal = await page.evaluate(() => window.sliderToetsen);
     await nietBeschikbaar.dispatchEvent("keydown", { key: toets, bubbles: true });
-    await page.waitForTimeout(100);
+    await expect.poll(() => page.evaluate(() => window.sliderToetsen)).toBe(aantal + 1);
     await expect(actief).toHaveAttribute("data-i", "1");
   }
 });
