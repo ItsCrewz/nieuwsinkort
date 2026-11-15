@@ -1,0 +1,1 @@
+- Geef de groepsbediening in de bronnenlijst een geldige status: aan, uit en gedeeltelijk via `role="checkbox"` met `aria-checked="mixed"`; bronschakelaars blijven aan/uit (#938).

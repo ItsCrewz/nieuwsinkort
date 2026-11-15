@@ -89,4 +89,13 @@ t("ogImage geeft een lege string bij ontbrekende of onbruikbare metadata", () =>
   assert.equal(ogImage("<meta property='og:image' content='/foto.jpg'>", "geen geldige basis"), "");
 });
 
+t("protocol van beeld-URL's is hoofdletterongevoelig (#869)", () => {
+  for (const p of ["https://", "HTTPS://", "HtTpS://"]) assert.equal(goedBeeld(`${p}images.example.org/foto.jpg`), true, p);
+  assert.equal(goedBeeld("HTTP://images.example.org/foto.jpg"), true);
+  for (const u of ["ftp://images.example.org/foto.jpg", "javascript:alert(1)", "HTTPS//images.example.org/foto.jpg", "niet een url"]) assert.equal(goedBeeld(u), false, u);
+  assert.deepEqual(uniekeBeelden(["HTTPS://images.example.org/foto.jpg"]), ["https://images.example.org/foto.jpg"]);
+  assert.deepEqual(uniekeBeelden(["HtTpS://a.example.org/x.jpg", "https://a.example.org/x.jpg"]), ["https://a.example.org/x.jpg"]);
+  assert.deepEqual(uniekeBeelden(["HTTP://a.example.org/x.jpg", "ftp://a.example.org/y.jpg", "javascript:alert(1)", "kapot"]), []);
+});
+
 console.log(`\n${n} tests geslaagd`);

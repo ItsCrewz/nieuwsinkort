@@ -1,3 +1,4 @@
+import { testDelenFocus } from "../tests/regressie/joey-delen-focus-925.mjs";
 import { testDeelactie } from "../tests/regressie/joey-deelactie-680.mjs";
 // Gedeelde pagina /bericht/…: de echte Pages Function (met esbuild gebundeld) levert de app-HTML met eigen kop-tags;
 // de app toont dan dezelfde artikelweergave als bij openen in de app, met de home erachter (#541). Geen netwerk buiten de dev-server, geen AI.
@@ -141,3 +142,5 @@ test.describe("iPhone-emulatie", () => {
 });
 
 testDeelactie(serveer, () => artikelid, item);
+
+testDelenFocus(serveer, () => artikelid, item);

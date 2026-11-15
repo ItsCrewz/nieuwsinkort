@@ -2,14 +2,14 @@
 import { artikelPad, heeftArtikelId, indexeerbaar } from "../src/artikelid";
 import { dagdata } from "../src/dagdata";
 import { ams } from "../src/tijd";
-import { GELDIG_TOT, nogGeldig, overzichtBeleid } from "../src/overzichtcache";
+import { GELDIG_TOT, nogGeldig, overzichtBeleid, cacheHit, datasetVerlopen } from "../src/overzichtcache";
 import { ICOON_TAGS } from "../src/icoontags";
 
 interface Env { NIEUWS?: { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env; waitUntil(p: Promise<unknown>): void }
 type CacheMetDefault = CacheStorage & { default?: Cache };
 type Item = { id?: string; kop: string; ruw?: boolean; cat?: string; bronnen?: { href: string }[] };
-const HDR = { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=86400", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'" };
+const HDR = { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=604800", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'" };
 const RUBRIEKEN: [string, string][] = [["nl", "Nederland"], ["buitenland", "Buitenland"], ["haarlem", "Haarlem"], ["tech", "Tech"], ["sport", "Sport"], ["voetbal", "Voetbal"], ["f1", "Formule 1"], ["auto", "Auto"], ["showbizz", "Showbizz"]];
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 export function vandaagHtml(items: Item[], dag: string): string {
@@ -26,7 +26,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const sleutel = new Request(`${u.origin}${u.pathname}`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   const start = Date.now();
-  if (bestaand && nogGeldig(bestaand, start)) return bestaand;
+  if (bestaand && nogGeldig(bestaand, start)) return cacheHit(bestaand, start);
   const fout = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
   let html: string, gegenereerd: string;
   try {
@@ -35,7 +35,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
     const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
     if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
     gegenereerd = dag.gegenereerd;
-    html = vandaagHtml(dag.items, ams(Date.parse(gegenereerd)).iso);
+    html = vandaagHtml(datasetVerlopen(gegenereerd, Date.now()) ? [] : dag.items, ams(Date.parse(gegenereerd)).iso);
   } catch { console.error("vandaag: data lezen mislukt"); return fout(); }
   const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
   if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });

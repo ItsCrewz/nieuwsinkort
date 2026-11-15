@@ -4,7 +4,7 @@
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { normLink as norm } from "./linknorm";
-import { alleenVandaag } from "./vandaag";
+import { alleenVandaag, publicatieTijd } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams, vorigeDag } from "./tijd";
@@ -65,6 +65,10 @@ export function merge(S: any, H: any) {
     nieuw.length = 150;
   }
   const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
+  const geldigDumpert = (v: any) => {
+    if (typeof v?.href !== "string") return false;
+    try { return ["http:", "https:"].includes(new URL(v.href).protocol); } catch { return false; }
+  };
   // Selecteer de dag vóór de keuze tussen routine en uurdata.
   const nu = Date.now();
   for (const key of ["filmpjes", "dumpert"] as const) {
@@ -73,6 +77,10 @@ export function merge(S: any, H: any) {
       const gekozen = alleenVandaag({ gegenereerd: H.gegenereerd, [key]: bekend }, nu)[key];
       return [...gekozen, ...lijst.filter((v: any) => typeof v?.t !== "number" && !v?.gisteren)];
     };
+    if (key === "dumpert") {
+      base[key] = (base[key] || []).filter(geldigDumpert);
+      H = { ...H, [key]: (H[key] || []).filter(geldigDumpert) };
+    }
     const samen = selectie([...(base[key] || []), ...(H[key] || [])]);
     const vandaagVideo = samen.some((v: any) => !v.gisteren);
     base[key] = selectie(base[key] || []).filter((v: any) => !!v.gisteren !== vandaagVideo);
@@ -82,7 +90,13 @@ export function merge(S: any, H: any) {
   const sTijd = sOk ? new Date(S.gegenereerd).toLocaleTimeString("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" }) : "00:00";
   // Nieuwe filmpjes van het uur (na de routine), plus alle Instagram-reels (die zijn altijd van nieuwsaccounts).
   // Per soort (Shorts/Journaals) apart begrensd, zodat de ene soort de andere niet wegdrukt.
-  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.gisteren || v.bron === "Instagram" || (v.tijd || "") >= sTijd));
+  // Bij een geldige t telt het volledige moment; alleen zonder bruikbare t (oudere data) de klokstring.
+  const sMs = sOk ? Date.parse(S.gegenereerd) : NaN;
+  const naRoutine = (v: any) => {
+    const t = publicatieTijd(v.t, nu);
+    return t != null && Number.isFinite(sMs) ? t >= sMs : (v.tijd || "") >= sTijd;
+  };
+  const extra = (H.filmpjes || []).filter((v: any) => !sV.has(v.href) && (!sOk || v.gisteren || v.bron === "Instagram" || naRoutine(v)));
   const extraF = [...extra.filter((v: any) => v.soort !== "journaal").slice(0, 12), ...extra.filter((v: any) => v.soort === "journaal").slice(0, 10)];
   const { meta, meerKeys, ...h } = H;
   // "Lees verder": ook berichten van de routine krijgen hun extra tekst (sleutel = eerste bron met tekst in KV "meer")
@@ -99,15 +113,25 @@ export function merge(S: any, H: any) {
     if (samenvatting != null) tabSam[rubriek] = samenvatting;
   }
   const routineItems = (base.items || []).map(metMeer);
+  const [weerNieuw, weerOud] = hNieuwer ? [H.weer, base.weer] : [base.weer, H.weer];
+  const bruikbaarWeer = (weer: any) => weer && typeof weer === "object" && !Array.isArray(weer) && (weer.nu || (Array.isArray(weer.dagen) && weer.dagen.length > 0));
+  const weer = bruikbaarWeer(weerNieuw) ? weerNieuw : bruikbaarWeer(weerOud) ? weerOud : undefined;
+  const dumpertGezien = new Set<string>();
+  const dumpert = (hNieuwer ? [...H.dumpert, ...base.dumpert] : [...base.dumpert, ...H.dumpert]).filter((v: any) => {
+    const id = norm(v.href);
+    if (dumpertGezien.has(id) || !toegestaan(v)) return false;
+    dumpertGezien.add(id);
+    return true;
+  }).slice(0, 25);
   return {
     ...base,
     datum: H.datum || base.datum,
     dag_samenvatting: (hNieuwer && H.dag_samenvatting) || base.dag_samenvatting || H.dag_samenvatting || "",
     tab_samenvatting: tabSam,
-    weer: H.weer && (H.weer.nu || H.weer.dagen?.length) ? { ...H.weer, verwachting: H.weer.verwachting || base.weer?.verwachting || "" } : base.weer,
+    weer: weer ? { ...weer, verwachting: weer.verwachting || "" } : undefined,
     items: ontdubbelVerhalen([...nieuw.map(metMeer), ...routineItems], new Set(routineItems)),
     filmpjes: (sOk ? [...extraF, ...(base.filmpjes || [])] : H.filmpjes || []).filter(toegestaan),
-    dumpert: ((H.dumpert || []).length >= 5 || !(base.dumpert || []).length ? H.dumpert || [] : base.dumpert).filter(toegestaan),
+    dumpert,
     bronstats: h.bronstats || base.bronstats,
     gegenereerd: hNieuwer ? H.gegenereerd : S.gegenereerd,
     routine_gegenereerd: sOk ? S.gegenereerd : null,

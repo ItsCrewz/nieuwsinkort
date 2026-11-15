@@ -1,0 +1,1 @@
+- Verleng de HSTS-geldigheid van één naar zeven dagen, zonder subdomeinen of preload (#777).
