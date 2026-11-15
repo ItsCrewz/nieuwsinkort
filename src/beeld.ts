@@ -4,6 +4,7 @@
 // Bijna-gelijke foto's (zelfde persfoto bij twee sites) vangt de routine met een perceptuele hash (scripts/add-beelden.mjs).
 
 const LOGO = /(?:^|[^\p{L}\p{N}])logo(?:s|type|\d+)?(?=$|[^\p{L}\p{N}])|\/(?!catalogo\.)[^/?#]*logo(?=\.[^/?#]+(?:[?#]|$))/iu;
+const MERK = /(?:^|[/_.-])brand[-_]?(?:logo|mark|asset|kit|watermark)(?=$|[/_.?#-])|\/brands?\//i;
 const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|1x1|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
 
 /** Klein plaatje volgens de URL zelf (?w=120, /100x100/, _thumb, s72-c …). */
@@ -21,7 +22,7 @@ function tooSmall(u: string): boolean {
 export function goedBeeld(u?: string | null): u is string {
   if (!u || typeof u !== "string" || !/^https?:\/\//i.test(u) || u.length > 1200) return false;
   if (/youtube\.com\/(v|embed|watch)\b|youtu\.be\//i.test(u)) return false; // video-link, geen foto
-  return !LOGO.test(u) && !SKIP.test(u) && !tooSmall(u);
+  return !LOGO.test(u) && !MERK.test(u) && !SKIP.test(u) && !tooSmall(u);
 }
 
 /** Mapsegment dat alleen een maat/transformatie is ('1200x675', 'w800', '640', 's640-c', 'w_800,h_450,c_fill', 'large'): hoort niet bij de identiteit.
