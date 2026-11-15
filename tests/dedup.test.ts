@@ -164,6 +164,30 @@ t("caption-cache: zelfde uitkomst bij herhaling en na wijziging van titel/ai (#4
   assert.equal(dedupVideos([a, b]).list.length, 1);
 });
 
+t("middernacht: kloktijden zonder datum worden cyclisch vergeleken (#986)", () => {
+  const ai = "Bekijk hier de beelden van het laatste nieuws vandaag. De politie hield een verdachte aan in de binnenstad.";
+  const a: any = { bron: "YouTube", titel: "Eerste opname", href: "https://youtu.be/aaaaaaaaaaa", tijd: "23:55", ai };
+  const b: any = { bron: "TikTok", titel: "Tweede opname", href: "https://youtu.be/bbbbbbbbbbb", tijd: "00:05", ai };
+  assert.equal(dedupVideos([a, b]).list.length, 1);
+  assert.equal(dedupVideos([b, a]).list.length, 1);
+  // Vergelijking met de andere lijst (Dumpert).
+  assert.equal(dedupVideos([a], [b]).list.length, 0);
+  // Grens van 180 minuten.
+  assert.equal(dedupVideos([{ ...a, tijd: "23:00" }, { ...b, tijd: "02:00" }]).list.length, 1);
+  assert.equal(dedupVideos([{ ...a, tijd: "22:00" }, { ...b, tijd: "02:00" }]).list.length, 2);
+  // Ongeldige of ontbrekende tijd: beide blijven.
+  assert.equal(dedupVideos([a, { ...b, tijd: "" }]).list.length, 2);
+  // Zelfde tekst op opeenvolgende dagen (datum bekend): niet samenvoegen op kloktijd alleen.
+  const dag = Date.UTC(2025, 9, 30, 22, 55);
+  assert.equal(dedupVideos([{ ...a, _pub: dag }, { ...b, _pub: dag + 24 * 3600000 + 10 * 60000 }]).list.length, 2);
+  assert.equal(dedupVideos([{ ...a, _pub: dag }], [{ ...b, _pub: dag + 24 * 3600000 + 10 * 60000 }]).list.length, 1);
+  // Uitgever-regel rond middernacht.
+  const u1: any = { bron: "YouTube", _kanaal: "NU.nl", titel: "Nieuw huisdier in China: baksteen met mos", ai: "Trend.", href: "https://www.youtube.com/shorts/ZfTXBuD7OMs", tijd: "23:55" };
+  const u2: any = { bron: "Instagram", _k: "NU.nl", titel: "Nieuw huisdier in China", ai: "Trend.", href: "https://www.instagram.com/reel/DfJsBJUv__8/", tijd: "00:05" };
+  assert.equal(dedupVideos([u1, u2]).list.length, 1);
+  assert.equal(dedupVideos([u2, u1]).list.length, 1);
+});
+
 // #429: zelfde uitgever op YouTube én Instagram, titel verschilt maar caption staat in de beschrijving. Fixture nagebouwd uit Filmpjes van 31-10 (13:00 NL).
 const P = (_: string, h: number, m: number) => Date.UTC(2025, 9, 31, h - 1, m);
 const f429: any[] = [
