@@ -7,7 +7,10 @@ LATIJN.forEach((naam, i) => { ENT[naam] = String.fromCodePoint(0xc0 + i); });
 export function schoneBekendmakingTekst(tekst: string): string {
   let t = tekst;
   for (let i = 0; i < 2; i++) t = t.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/giu, (geheel, code: string) => {
-    if (code[0] !== "#") return ENT[code] ?? ENT[code.toLowerCase()] ?? geheel;
+    if (code[0] !== "#") {
+      const klein = code.toLowerCase();
+      return Object.prototype.hasOwnProperty.call(ENT, code) ? ENT[code] : Object.prototype.hasOwnProperty.call(ENT, klein) ? ENT[klein] : geheel;
+    }
     const n = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
     return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : " ";
   });
