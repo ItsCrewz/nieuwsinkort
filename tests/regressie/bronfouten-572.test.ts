@@ -5,16 +5,19 @@ import { Fetcher, Runner } from "../../worker/src/index";
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 const bleeping = "https://www.bleepingcomputer.com/feed/";
 const cisa = "https://www.cisa.gov/news.xml";
-const goed = "https://www.cisa.gov/cybersecurity-advisories/all.xml";
-const urls = [bleeping, cisa, goed];
-const xml = `<rss><channel><item><title>Beveiligingsadvies</title><link>https://www.cisa.gov/news/advies</link><pubDate>${new Date().toUTCString()}</pubDate></item></channel></rss>`;
+const cisaAdvies = "https://www.cisa.gov/cybersecurity-advisories/all.xml";
+const goed = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
+const urls = [bleeping, cisa, cisaAdvies, goed];
+const opgevraagd: string[] = [];
+const kev = { vulnerabilities: [{ cveID: "CVE-2025-0001", vulnerabilityName: "Beveiligingsadvies", dateAdded: new Date().toISOString(), shortDescription: "Kwetsbaarheid" }] };
 const echteFetch = globalThis.fetch;
 globalThis.fetch = (async (input: RequestInfo | URL) => {
   const url = String(input);
   if (url.includes("/bronnen.json")) return Response.json({ groepen: [{ id: "tech", bronnen: urls.map((feed, i) => ({ id: String(i), naam: `Bron ${i}`, feeds: [{ url: feed }] })) }] });
+  opgevraagd.push(url);
   if (url === bleeping) return new Response("geweigerd", { status: 403 });
   if (url === cisa) return new Response("niet gevonden", { status: 404 });
-  if (url === goed) return new Response(xml);
+  if (url === goed) return Response.json(kev);
   return new Response("", { status: 404 });
 }) as typeof fetch;
 try {
@@ -27,10 +30,13 @@ try {
   const antwoord = await new Runner(ctx, env).fetch(new Request("https://do/run"));
   assert.equal(antwoord.status, 200);
   const data = JSON.parse(kv.get("uur")!);
-  for (const [url, status] of [[bleeping, 403], [cisa, 404]] as const) {
-    assert.deepEqual(data.meta.bronfouten.find((f: any) => f.url === url), { url, code: "SRC_HTTP", status });
-    assert.equal(JSON.parse(kv.get("run-status")!).bronfouten.find((f: any) => f.url === url).status, status);
-  }
-  assert.ok(data.meta.items > 0);
-  console.log("✓ bronfouten met HTTP-status stoppen de run niet");
+  assert.deepEqual(data.meta.overgeslagenFeeds, [
+    { url: bleeping, reden: "HTTP 403" },
+    { url: cisaAdvies, reden: "feedfout" },
+    { url: cisa, reden: "HTTP 404" },
+  ]);
+  for (const url of [bleeping, cisa, cisaAdvies]) assert.ok(!opgevraagd.includes(url));
+  assert.ok(opgevraagd.includes(goed));
+  assert.equal(data.bronstats["tech|3"].vandaag, 1);
+  console.log("✓ defecte feeds worden overgeslagen en de overige CISA-feed blijft actief");
 } finally { globalThis.fetch = echteFetch; }

@@ -1,1 +1,1 @@
-- Mislukte feeds tonen hun foutcode en HTTP-status in de rungegevens, zodat uitval van BleepingComputer en CISA zichtbaar blijft (#572).
+- De gemeld falende feeds van BleepingComputer en CISA worden overgeslagen en vermeld in de rungegevens; de overige CISA-feed blijft actief (#572).
