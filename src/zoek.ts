@@ -8,7 +8,7 @@ const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae"
 const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (teken) => String.fromCharCode(teken.charCodeAt(0) - 0xfee0));
 
 export function normaliseer(tekst: string): string {
-  return gewoneBreedte(tekst).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
+  return gewoneBreedte(tekst).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
     .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
@@ -152,7 +152,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   for (const teken of tekst) {
     const begin = offset;
     offset += teken.length;
-    const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(",", ".");
+    const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".");
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
       vlak += letter;
