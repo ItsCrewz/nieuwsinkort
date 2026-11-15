@@ -2,7 +2,7 @@ import { useData, useTheme } from "./app-data";
 import { intro } from "./app-status";
 import { Footer, Frame, Front, TopBar, UUR_ACTIEF } from "./app-frame";
 import { ArtikelDetail, laadDetail } from "./artikel-detail";
-import { bronLabel, itemKey, NewsList, pickLead, sortItems, useOpen, type OpenFn } from "./nieuws-lijst";
+import { NewsList, useOpen, type OpenFn } from "./nieuws-lijst";
 import { Foutgrens } from "./foutgrens";
 import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
@@ -35,7 +35,7 @@ import { zoekItems, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijf
 import { Zoekbalk, ZoekLeeg, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
-import { amsterdamTime, cap } from "./nieuws-hulp";
+import { amsterdamTime, bronLabel, cap, itemKey, pickLead, sortItems } from "./nieuws-hulp";
 import { WeatherBox } from "./app-weer";
 import { Briefing, Tabs } from "./app-tabs";
 import { feedToetsDoel } from "./toetsdoel";
