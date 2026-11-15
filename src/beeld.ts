@@ -18,6 +18,11 @@ function tooSmall(u: string): boolean {
   return /[_-](thumb|thumbnail|small|mini|tiny)\b/i.test(u);
 }
 
+/** Geladen foto bruikbaar? Iconen (<200×120) en brede banners (b/h > 4) niet; staand tot h/b 3,5 wel (400×1000 is een echte staande foto, #996). */
+export function bruikbareAfmeting(w: number, h: number): boolean {
+  return w >= 200 && h >= 120 && w / h <= 4 && h / w <= 3.5;
+}
+
 export function goedBeeld(u?: string | null): u is string {
   if (!u || typeof u !== "string" || !/^https?:\/\//i.test(u) || u.length > 1200) return false;
   if (/youtube\.com\/(v|embed|watch)\b|youtu\.be\//i.test(u)) return false; // video-link, geen foto

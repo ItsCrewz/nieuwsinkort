@@ -56,7 +56,8 @@ async function mount(n: number) {
   const knoppen = () => alle(container, (x) => x.tagName === "BUTTON");
   const slides = () => alle(container, (x) => klas(x, "bl-slide"));
   const fout = (k: number) => act(async () => props(alle(container, (x) => x.tagName === "IMG")[k]).onError({ currentTarget: { getAttribute: () => "https://x.test/stuk" } }));
-  return { track, knoppen, slides, fout };
+  const laad = (k: number, w: number, h: number) => act(async () => props(alle(container, (x) => x.tagName === "IMG")[k]).onLoad({ currentTarget: { naturalWidth: w, naturalHeight: h, classList: { add() {} } } }));
+  return { track, knoppen, slides, fout, laad };
 }
 
 await t("één beeld: geen tabstop, rol of knoppen", async () => {
@@ -94,5 +95,27 @@ await t("drie beelden: een andere foto die wegvalt springt niet terug naar foto 
   assert.equal(m.slides().length, 2);
   assert.equal(props(m.slides()[1])["aria-hidden"], undefined);
   assert.equal(props(m.slides()[0])["aria-hidden"], true);
+});
+await t("#996: één staande foto van 400×1000 blijft staan, zonder bediening", async () => {
+  const m = await mount(1);
+  await m.laad(0, 400, 1000);
+  assert.equal(m.slides().length, 1);
+  assert.equal(m.knoppen().length, 0);
+});
+
+await t("#996: staande eerste foto en tweede foto blijven beide, met bediening", async () => {
+  const m = await mount(2);
+  await m.laad(0, 400, 1000);
+  await m.laad(1, 800, 600);
+  assert.equal(m.slides().length, 2);
+  assert.equal(m.knoppen().length, 2);
+});
+
+await t("#996: banner als tweede foto valt weg, één slide zonder bediening", async () => {
+  const m = await mount(2);
+  await m.laad(0, 400, 1000);
+  await m.laad(1, 1200, 200);
+  assert.equal(m.slides().length, 1);
+  assert.equal(m.knoppen().length, 0);
 });
 process.exit(0);

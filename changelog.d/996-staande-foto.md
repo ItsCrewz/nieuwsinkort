@@ -1,0 +1,1 @@
+- Behoud bruikbare staande nieuwsfoto's (tot hoogte/breedte 3,5) in de fotocarrousel (#996).
