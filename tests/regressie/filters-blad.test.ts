@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import React from "react";
 import { FilterBlad } from "../../src/filters-blad";
-import { STANDAARD, type Filters, type Uitkomst } from "../../src/filters";
+import { filterNieuws, STANDAARD, type Filters, type Uitkomst } from "../../src/filters";
 import type { Item } from "../../src/types";
 
 // De component wordt rechtstreeks gerenderd (hooks gestubd); geen DOM, netwerk of echte klok.
@@ -89,6 +89,20 @@ assert.equal(n("Haarlem"), "1");
 assert.equal(n("Nederland"), "1");
 assert.equal(n("Wereld"), "1");
 assert.equal(n("Met video"), "1");
+const videoGevallen = [
+  item("nl", "Query", [bron("A", "https://voorbeeld.nl/nieuws?onderwerp=youtube.com")]),
+  item("nl", "Andere host", [bron("A", "https://youtube.com.voorbeeld.nl/nieuws")]),
+  item("nl", "Fragment", [bron("A", "https://voorbeeld.nl/nieuws#/video/123")]),
+  item("nl", "Ongeldig", [bron("A", "geen geldige url/video/123")]),
+  item("nl", "YouTube", [bron("A", "https://www.youtube.com/watch?v=123")]),
+  item("nl", "Korte link", [bron("A", "https://youtu.be/123")]),
+  item("nl", "Videopad", [bron("A", "https://voorbeeld.nl/video/123")]),
+  item("nl", "Bestand", [bron("A", "https://voorbeeld.nl/film.mp4?kwaliteit=hoog")]),
+];
+const videoUitkomst = filterNieuws(videoGevallen, { ...STANDAARD, tijd: "alles", video: true }, 0, undefined, true);
+assert.deepEqual(videoUitkomst.items.map((it) => it.kop), ["YouTube", "Korte link", "Videopad", "Bestand"]);
+assert.equal(chip(maak({ bron: videoGevallen }), "Met video")!.props.n, videoUitkomst.items.length);
+root = maak();
 assert.equal(n("Uit meerdere bronnen"), "1");
 assert.equal(n("Laatste uur"), "3");
 
