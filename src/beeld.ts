@@ -34,9 +34,11 @@ const MAATMAP = new RegExp(`^(\\d{2,4}x\\d{2,4}[a-z]?|w\\d{2,4}|h\\d{2,4}|s\\d{2
 export function beeldKey(u: string): string {
   let x: URL;
   try { x = new URL(u); } catch { return u; }
-  // Proxies/resizers met het echte adres in de query (Next.js, wsrv, imgix-proxy …)
-  const inner = x.searchParams.get("url") || x.searchParams.get("src") || x.searchParams.get("u");
-  if (inner && /^https?:\/\//i.test(inner)) return beeldKey(inner);
+  // Alleen bekende resizers gebruiken een querywaarde als adres van het beeld.
+  if (x.pathname === "/_next/image" || /^(?:wsrv\.nl|images\.weserv\.nl)$/.test(x.hostname) || /(?:^|\.)imgix\.net$/.test(x.hostname)) {
+    const inner = x.searchParams.get("url") || x.searchParams.get("src") || x.searchParams.get("u");
+    if (inner && /^https?:\/\//i.test(inner)) return beeldKey(inner);
+  }
   // WordPress-Jetpack (i0.wp.com/<site>/<pad>): de echte site staat in het pad
   if (/^i\d\.wp\.com$/.test(x.hostname)) { const [h, ...rest] = x.pathname.split("/").filter(Boolean); try { x = new URL(`https://${h}/${rest.join("/")}`); } catch { /* laat staan */ } }
   const segs = x.pathname.split("/").filter(Boolean);
