@@ -1,4 +1,4 @@
-// Middleware voor alle Pages Functions-routes: www.nieuwsinkort.nl en het productie-pages.dev-adres → 301 naar nieuwsinkort.nl (pad + query behouden);
+// Middleware voor alle Pages Functions-routes: www.nieuwsinkort.nl en het productie-pages.dev-adres → nieuwsinkort.nl (pad + query behouden);
 // previews (*.nieuwsinkort.pages.dev) blijven bruikbaar maar krijgen X-Robots-Tag: noindex (geen duplicaat in de index).
 // Via code omdat de Cloudflare-login geen Redirect Rules op de zone mag schrijven; www is custom domain van het Pages-project.
 interface Ctx { request: Request; next: () => Promise<Response> }
@@ -38,5 +38,6 @@ export const onRequest = async ({ request, next }: Ctx): Promise<Response> => {
     h.set("X-Robots-Tag", "noindex");
     return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });
   }
-  return new Response(null, { status: 301, headers: { Location: doel, "X-Content-Type-Options": "nosniff" } });
+  const status = request.method === "GET" || request.method === "HEAD" ? 301 : 308;
+  return new Response(null, { status, headers: { Location: doel, "X-Content-Type-Options": "nosniff" } });
 };

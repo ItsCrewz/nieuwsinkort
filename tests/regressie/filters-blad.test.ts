@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import React from "react";
 import { FilterBlad } from "../../src/filters-blad";
 import { STANDAARD, type Filters, type Uitkomst } from "../../src/filters";
@@ -190,6 +191,53 @@ nodes(root, "button").find((b) => b.props.className === "scrim").props.onClick()
 assert.equal(gesloten, 3);
 opruimen();
 assert.deepEqual(focus.slice(-2), ["sluiten", "vorig"]);
+
+// Regressie #623: bij her-renderen met gewijzigde filters mag het focus-effect niet opnieuw draaien, in nieuws- én videoweergave.
+// Mini-runtime met per-render hookslots en echte deps-vergelijking (Object.is), zoals React ze toepast.
+const vorigeDispatcher = intern.current;
+function speel(onClose: () => void, rondes: Partial<Parameters<typeof FilterBlad>[0]>[]) {
+  const slots: any[] = [];
+  let i = 0;
+  let r = 0;
+  const gelijk = (a?: unknown[], b?: unknown[]) => !!a && !!b && a.length === b.length && a.every((x, k) => Object.is(x, b[k]));
+  const wachtend: (() => void)[] = [];
+  const log: string[] = [];
+  intern.current = {
+    useState: (v: boolean) => { const k = i++; slots[k] ??= { v }; return [slots[k].v, (n: boolean) => { slots[k].v = n; }]; },
+    useRef: (init: unknown) => { const k = i++, n = r++; slots[k] ??= { current: n === 0 ? paneel : n === 1 ? { focus: () => log.push("sluiten") } : init }; return slots[k]; },
+    useCallback: (fn: any, deps: unknown[]) => { const k = i++; if (!slots[k] || !gelijk(slots[k].deps, deps)) slots[k] = { fn, deps }; return slots[k].fn; },
+    useMemo: (fn: () => unknown, deps: unknown[]) => { const k = i++; if (!slots[k] || !gelijk(slots[k].deps, deps)) slots[k] = { w: fn(), deps }; return slots[k].w; },
+    useEffect: (fn: () => () => void, deps: unknown[]) => {
+      const k = i++;
+      if (slots[k] && gelijk(slots[k].deps, deps)) return;
+      wachtend.push(() => { slots[k]?.cleanup?.(); slots[k] = { deps, cleanup: fn() }; });
+    },
+  };
+  g.document.activeElement = { focus: () => log.push("vorig") };
+  for (const o of rondes) {
+    i = 0;
+    r = 0;
+    FilterBlad({ f: STANDAARD, set: () => {}, reset: () => {}, u: uitkomst(2), bron: bronItems, catBron, vorig: 0, alles: false, onClose, ...o });
+    wachtend.splice(0).forEach((fn) => fn());
+  }
+  const resultaat = [...log];
+  slots.forEach((slot) => slot?.cleanup?.());
+  return resultaat;
+}
+const wijzigingen = [{}, { f: { ...STANDAARD, tijd: "1u" as const } }, { f: { ...STANDAARD, video: true } }, { f: { ...STANDAARD, regio: ["haarlem" as const] } }, { u: uitkomst(5) }];
+const stabiel = () => {};
+for (const video of [false, true]) {
+  const log = speel(stabiel, wijzigingen.map((w) => ({ ...w, video })));
+  assert.deepEqual(log, ["sluiten"], `focus mag maar één keer bewegen (video=${video})`); // geen "vorig" terug, geen tweede "sluiten"
+}
+// Het blad leest onClose via een ref (#750): ook een onClose die elke render verandert verplaatst de focus maar één keer.
+const onstabiel = speel(() => {}, wijzigingen.map((w) => ({ ...w, onClose: () => {} })));
+assert.deepEqual(onstabiel, ["sluiten"]);
+intern.current = vorigeDispatcher;
+// App moet dan ook een stabiele onClose doorgeven (useCallback zonder deps).
+const appBron = readFileSync("src/App.tsx", "utf8");
+assert.match(appBron, /const sluitFilters = useCallback\(\(\) => setFsheet\(false\), \[\]\)/);
+assert.match(appBron, /onClose=\{sluitFilters\}/);
 
 // Focusval (#627): Tab/Shift+Tab blijven in het blad, uitgeschakelde knoppen tellen niet, focus keert terug; nieuws, filmpjes, ook met minder beweging.
 const luisteraars: Record<string, (e: any) => void> = {};

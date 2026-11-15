@@ -17,7 +17,9 @@ const THUMBS = 6;
 const KIJK = 3; // zoveel items per tab telt als "eerste"
 const HLS_MAX = 2;
 export const MP4_BYTES = 256 * 1024;
+export const HLS_BYTES = 256 * 1024; // totaal over de voorgeladen segmenten van één stream
 export const GELIJK = 3;
+export const NETWERK_TIMEOUT = 10000;
 
 const uniek = <T,>(l: T[]) => [...new Set(l)];
 const origin = (u: string) => {
@@ -116,10 +118,23 @@ export const segmenten = (txt: string, base: string, max = 2): string[] => segme
 // ------------------------------------------------------------- browser-runner
 const gedaan = new Set<string>(); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
 const bezig = new Set<string>(); // lopend of in de wachtrij: gelijktijdige verzoeken voor dezelfde URL delen die ene taak
+export const POSTER_MAX_MS = 8000; // langste wachttijd per poster-taak
 const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
 export const aantalActievePosters = () => vast.size;
-const POSTER_TIMEOUT = 15000;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
+const wachtrij: (() => Promise<unknown>)[] = [];
+let actief = 0;
+
+function startTaken() {
+  while (actief < GELIJK && wachtrij.length) {
+    const taak = wachtrij.shift()!;
+    actief++;
+    (async () => taak())().catch(() => {}).finally(() => {
+      actief--;
+      startTaken();
+    });
+  }
+}
 
 const mag = (k: string) => !gedaan.has(k) && !bezig.has(k);
 // Registreert pas als de taak slaagt; na een fout komt de sleutel vrij en probeert het volgende voorlaadmoment het opnieuw
@@ -138,52 +153,93 @@ const taak = (k: string, f: () => Promise<unknown>) => {
   };
 };
 
-async function warmHls(master: string) {
+async function warmHls(master: string, signal: AbortSignal) {
   // Basis voor relatieve verwijzingen is de uiteindelijke respons-URL: fetch volgt redirects naar andere mappen.
-  const get = (u: string) => fetch(u, LOW).then(async (r) => (r.ok ? { txt: await r.text(), base: r.url || u } : Promise.reject(new Error("hls"))));
+  const get = (u: string) => fetch(u, { ...LOW, signal }).then(async (r) => (r.ok ? { txt: await r.text(), base: r.url || u } : Promise.reject(new Error("hls"))));
   let { txt, base: b } = await get(master);
   if (!b.includes("://")) b = new URL(b, location.href).href;
+  signal.throwIfAborted();
   if (/#EXT-X-STREAM-INF/.test(txt)) {
     const v = laagsteVariant(txt, b);
     ({ txt, base: b } = v ? await get(v) : { txt: "", base: b });
   }
+  let rest = HLS_BYTES;
   for (const s of segmentenBereik(txt, b)) {
-    if (!s.bereik) await fetch(s.url, LOW).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("hls"))));
-    else await warmBereik(s.url, s.bereik.van, s.bereik.tot);
+    signal.throwIfAborted();
+    if (rest <= 0) break;
+    const van = s.bereik?.van ?? 0;
+    const tot = Math.min(s.bereik?.tot ?? van + rest - 1, van + rest - 1);
+    rest -= await warmBereik(s.url, van, tot, signal, !!s.bereik);
   }
 }
 
 // Bytebereik-segment: alleen dat bereik. Antwoordt de server met 200 (Range genegeerd = heel bestand), dan stoppen we meteen.
-async function warmBereik(url: string, van: number, tot: number) {
-  const r = await fetch(url, { ...LOW, headers: { Range: `bytes=${van}-${tot}` } });
-  if (r.status >= 400) {
+async function warmBereik(url: string, van: number, tot: number, signal: AbortSignal, strikt: boolean): Promise<number> {
+  const r = await fetch(url, { ...LOW, signal, headers: { Range: `bytes=${van}-${tot}` } });
+  signal.throwIfAborted();
+  if (r.status >= 400 || r.ok === false) {
     r.body?.cancel?.().catch(() => {});
     throw new Error("hls");
   }
-  const m = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(r.headers.get("Content-Range") ?? "");
+  const m = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(r.headers?.get("Content-Range") ?? "");
   const geldig = m && Number(m[1]) === van && Number(m[2]) === tot && (m[3] === "*" || Number(m[3]) > tot);
-  const rd = r.status === 206 && geldig ? r.body?.getReader() : undefined;
-  if (!rd) return void r.body?.cancel?.().catch(() => {});
-  for (let got = 0, max = tot - van + 1; got < max; ) {
-    const { done, value } = await rd.read();
-    if (done) return;
-    got += value.length;
+  if (strikt && (r.status !== 206 || !geldig)) {
+    r.body?.cancel?.().catch(() => {});
+    return 0;
   }
-  rd.cancel().catch(() => {});
+  const rd = r.body?.getReader();
+  if (!rd) return 0;
+  const stop = () => { rd.cancel().catch(() => {}); };
+  signal.addEventListener("abort", stop, { once: true });
+  let got = 0;
+  try {
+    while (got < tot - van + 1) {
+      const { done, value } = await rd.read();
+      signal.throwIfAborted();
+      if (done) return got;
+      got += value.length;
+    }
+    return Math.min(got, tot - van + 1);
+  } finally {
+    stop();
+    signal.removeEventListener("abort", stop);
+  }
 }
 
-async function warmMp4(src: string) {
+async function warmMp4(src: string, signal: AbortSignal) {
   // Alleen het begin: een Range-aanvraag (Instagram-CDN: CORS *, Range ok). Geeft de server toch 200, dan stoppen we zelf.
-  const r = await fetch(src, { ...LOW, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+  const r = await fetch(src, { ...LOW, signal, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+  signal.throwIfAborted();
   if (!r.ok) throw new Error("mp4");
   const rd = r.body?.getReader();
   if (!rd) return;
-  for (let got = 0; got < MP4_BYTES; ) {
-    const { done, value } = await rd.read();
-    if (done) return;
-    got += value.length;
+  const stop = () => { rd.cancel().catch(() => {}); };
+  signal.addEventListener("abort", stop, { once: true });
+  try {
+    for (let got = 0; got < MP4_BYTES; ) {
+      const { done, value } = await rd.read();
+      signal.throwIfAborted();
+      if (done) return;
+      got += value.length;
+    }
+    stop();
+  } finally {
+    signal.removeEventListener("abort", stop);
   }
-  rd.cancel().catch(() => {});
+}
+
+// Een vastgelopen fetch of stream mag geen plaats in de wachtrij vasthouden.
+async function netwerktaak(taak: (signal: AbortSignal) => Promise<void>) {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<void>((_, fout) => {
+    timer = setTimeout(() => { controller.abort(); fout(new Error("timeout")); }, NETWERK_TIMEOUT);
+  });
+  try {
+    await Promise.race([taak(controller.signal), timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
 }
 
 export function voerUit(p: Plan) {
@@ -207,6 +263,7 @@ export function voerUit(p: Plan) {
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
+          // Een vastgelopen verbinding mag de wachtrij niet blokkeren.
           const klaar = (fout_?: Error) => {
             clearTimeout(timer);
             im.onload = im.onerror = im.onabort = null;
@@ -214,7 +271,10 @@ export function voerUit(p: Plan) {
             if (fout_) fout(fout_); // mislukt of te traag: de sleutel komt vrij voor een volgend voorlaadmoment (#636)
             else ok();
           };
-          const timer = setTimeout(() => klaar(new Error("img")), POSTER_TIMEOUT);
+          const timer = setTimeout(() => {
+            klaar(new Error("img"));
+            im.src = ""; // breekt de aanvraag af
+          }, POSTER_MAX_MS);
           im.onload = () => klaar();
           im.onerror = im.onabort = () => klaar(new Error("img")); // afgebroken laden mag de sleutel niet vasthouden
           vast.add(im);
@@ -225,14 +285,11 @@ export function voerUit(p: Plan) {
   }
   // zelfde specifier als feed.tsx: Vite deelt de chunk, de eerste speler vindt hem dus al in de cache
   if (p.hlsChunk && mag("hls.js")) taken.push(taak("hls.js", () => import("hls.js")));
-  for (const m of p.hls) if (mag(`hls:${m}`)) taken.push(taak(`hls:${m}`, () => warmHls(m)));
-  if (p.mp4 && mag(`mp4:${p.mp4}`)) taken.push(taak(`mp4:${p.mp4}`, () => warmMp4(p.mp4!)));
-  // kleine pool: hooguit GELIJK taken tegelijk, in volgorde van belang
-  let i = 0;
-  const loop = async () => {
-    while (i < taken.length) await taken[i++]();
-  };
-  for (let k = 0; k < GELIJK; k++) loop();
+  for (const m of p.hls) if (mag(`hls:${m}`)) taken.push(taak(`hls:${m}`, () => netwerktaak((signal) => warmHls(m, signal))));
+  if (p.mp4 && mag(`mp4:${p.mp4}`)) taken.push(taak(`mp4:${p.mp4}`, () => netwerktaak((signal) => warmMp4(p.mp4!, signal))));
+  // Eén pool voor alle aanroepen, in volgorde van binnenkomst.
+  wachtrij.push(...taken);
+  startTaken();
 }
 
 /** Wacht op load + een idle-moment (en op zichtbaarheid); geeft een annuleerfunctie terug. */

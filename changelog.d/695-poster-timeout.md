@@ -1,0 +1,1 @@
+- Voorladen: de bestaande wachttijd voor vastgelopen posters gaat van 15 naar 8 seconden; bij een time-out wordt de aanvraag afgebroken en komt de plaats in de wachtrij vrij (#695).

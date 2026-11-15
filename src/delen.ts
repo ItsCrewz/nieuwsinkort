@@ -1,5 +1,6 @@
 import { artikelPad } from "./artikelid";
-export const artikelUrl = (item: Parameters<typeof artikelPad>[0], dag: string) => `https://nieuwsinkort.nl${artikelPad(item, dag)}`;
+// Lege string = dit bericht heeft geen eigen link (geen id en geen bron); delen is dan uitgeschakeld.
+export const artikelUrl = (item: Parameters<typeof artikelPad>[0], dag: string) => { const pad = artikelPad(item, dag); return pad ? `https://nieuwsinkort.nl${pad}` : ""; };
 type DeelNavigator = { share?: (data: ShareData) => Promise<void>; canShare?: (data: ShareData) => boolean; clipboard?: { writeText: (tekst: string) => Promise<void> } };
 export async function deel(navigator: DeelNavigator, titel: string, url: string): Promise<"gedeeld" | "gekopieerd" | "handmatig" | "geannuleerd"> {
   let kanDelen = false;

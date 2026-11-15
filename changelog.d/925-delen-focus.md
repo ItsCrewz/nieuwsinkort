@@ -1,0 +1,1 @@
+- De link krijgt bij handmatig delen toetsenbordfocus en een kopieerinstructie (#925).

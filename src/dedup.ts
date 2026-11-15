@@ -5,6 +5,8 @@
 // Van elke groep blijft de beste kopie over (in de site afspeelbaar, beste kwaliteit, populairst);
 // de andere bronnen komen in `ook`.
 
+import { videoHost, videoUrl, youtubeId } from "./slug";
+
 export type DVideo = { titel: string; href: string; embed?: string; thumb?: string; bron: string; ai?: string; tijd?: string; _pub?: number; populariteit?: string; duur?: number; _k?: string; _kanaal?: string; ook?: { bron: string; href: string }[] };
 
 const TRACK = /^(utm_\w+|si|igsh|igshid|feature|ref|ref_src|ref_url|s|fbclid|gclid|mc_\w+|share_id|context|pp)$/i;
@@ -38,20 +40,23 @@ export function videoKeys(v: DVideo): string[] {
   const k = new Set<string>();
   for (const u of [v.href || "", v.embed || ""]) {
     if (!u) continue;
-    let m = /(?:youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|live\/|watch\?(?:.*&)?v=)|youtu\.be\/)([\w-]{11})/.exec(u);
-    if (m) k.add(`yt:${m[1]}`);
-    m = /instagram\.com\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/([\w-]{5,})/.exec(u);
-    if (m) k.add(`ig:${m[1]}`);
-    m = /(?:x|twitter)\.com\/[^/]+\/status(?:es)?\/(\d+)/.exec(u);
-    if (m) k.add(`x:${m[1]}`);
-    m = /reddit\.com\/r\/[\w-]+\/comments\/(\w+)/.exec(u);
-    if (m) k.add(`rd:${m[1]}`);
-    m = /v\.redd\.it\/(\w+)/.exec(u);
-    if (m) k.add(`vr:${m[1]}`);
-    m = /dumpert\.nl\/(?:item|mediabase)\/([\w_-]+)/.exec(u);
-    if (m) k.add(`dp:${m[1].replace(/_/g, "-")}`);
-    m = /amplify_video\/(\d+)|ext_tw_video\/(\d+)/.exec(u);
-    if (m) k.add(`xv:${m[1] || m[2]}`);
+    const x = videoUrl(u);
+    const yt = youtubeId(u);
+    if (yt && yt.length === 11) k.add(`yt:${yt}`);
+    if (x) {
+      let m = videoHost(x.hostname, "instagram.com") && /^\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/([\w-]{5,})/.exec(x.pathname);
+      if (m) k.add(`ig:${m[1]}`);
+      m = (videoHost(x.hostname, "x.com") || videoHost(x.hostname, "twitter.com")) && /^\/[^/]+\/status(?:es)?\/(\d+)/.exec(x.pathname);
+      if (m) k.add(`x:${m[1]}`);
+      m = videoHost(x.hostname, "reddit.com") && /^\/r\/[\w-]+\/comments\/(\w+)/.exec(x.pathname);
+      if (m) k.add(`rd:${m[1]}`);
+      m = videoHost(x.hostname, "v.redd.it") && /^\/(\w+)/.exec(x.pathname);
+      if (m) k.add(`vr:${m[1]}`);
+      m = videoHost(x.hostname, "dumpert.nl") && /^\/(?:item|mediabase)\/([\w_-]+)/.exec(x.pathname);
+      if (m) k.add(`dp:${m[1].replace(/_/g, "-")}`);
+      m = videoHost(x.hostname, "twimg.com") && /^\/(?:amplify_video|ext_tw_video)\/(\d+)/.exec(x.pathname);
+      if (m) k.add(`xv:${m[1]}`);
+    }
     if (/\.(mp4|m3u8)(\?|$)/i.test(u)) k.add(`media:${mediaUrl(u)}`);
   }
   if (v.href) k.add(`url:${canonUrl(v.href)}`);

@@ -1,0 +1,1 @@
+- Voorladen: HLS-segmenten worden begrensd tot 256 KB per stream (Range-header, het lezen stopt ook als de server Range negeert), zodat mobiel geen complete segmenten downloadt (#785).

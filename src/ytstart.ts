@@ -22,6 +22,25 @@ export function ytToonHint(s: YtStart): boolean {
   return s.actief && !s.fout && !s.gespeeld && s.status !== 1 && s.status !== 3 && s.nu - s.sinds >= 1500;
 }
 
+// Is dit een onReady van precies dit frame? Andere frames en andere origins tellen niet.
+export function ytIsGereed(e: { origin: string; source: unknown; data: unknown }, frame: { contentWindow: unknown } | null | undefined): boolean {
+  if (e.origin !== "https://www.youtube-nocookie.com" || !frame?.contentWindow || e.source !== frame.contentWindow) return false;
+  try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; return (d as { event?: string } | null)?.event === "onReady"; } catch { return false; }
+}
+
+// Onthoudt per frame-venster dat het gereed meldde, los van welk frame op dat moment actief is:
+// een vooraf geladen buur meldt vaak vóór de wissel, en na terugkeer komt er geen nieuwe onReady.
+export function ytGereedLijst() {
+  const gereed = new WeakSet<object>();
+  return {
+    meld(e: { origin: string; source: unknown; data: unknown }, frames: Iterable<{ contentWindow: unknown }>): boolean {
+      for (const f of frames) if (ytIsGereed(e, f)) { gereed.add(f.contentWindow as object); return true; }
+      return false;
+    },
+    is: (win: unknown) => !!win && gereed.has(win as object),
+  };
+}
+
 // De activatieklok loopt door bij pauze en statuswissels, ook zonder onReady.
 export function ytStartBesluit(s: YtStart): "wacht" | "probeer" | "vangnet" {
   if (!s.actief || s.fout || s.status === 1 || s.status === 3 || s.gespeeld) return "wacht";

@@ -60,18 +60,26 @@ function lees(): Filters {
   }
 }
 
-/** Vorig bezoek: bij de start van een sessie gelezen (en vastgehouden zolang het tabblad open is), daarna "nu" opgeslagen. */
-function vorigBezoek(): number {
-  try {
-    const ref = sessionStorage.getItem(BEZOEK_SESSIE);
-    if (ref != null) return +ref || 0;
-    const prev = +(localStorage.getItem(BEZOEK) || 0) || 0;
-    sessionStorage.setItem(BEZOEK_SESSIE, String(prev));
-    return prev;
-  } catch {
-    return 0;
-  }
+/** Houd de referentie ook zonder sessieopslag vast zolang het document open is. */
+export function maakVorigBezoek() {
+  let vast: number | undefined;
+  return () => {
+    if (vast !== undefined) return vast;
+    try {
+      const ref = sessionStorage.getItem(BEZOEK_SESSIE);
+      if (ref !== null && Number.isFinite(Number(ref)) && Number(ref) >= 0 && ref.trim() !== "") return vast = Number(ref);
+    } catch { /* sessieopslag niet beschikbaar */ }
+    let prev = 0;
+    try {
+      const waarde = Number(localStorage.getItem(BEZOEK));
+      if (Number.isFinite(waarde) && waarde > 0) prev = waarde;
+    } catch { /* lokale opslag niet beschikbaar */ }
+    vast = prev;
+    try { sessionStorage.setItem(BEZOEK_SESSIE, String(prev)); } catch { /* geheugenfallback */ }
+    return vast;
+  };
 }
+const vorigBezoek = maakVorigBezoek();
 function bewaarBezoek() {
   try {
     localStorage.setItem(BEZOEK, String(Date.now()));

@@ -420,4 +420,41 @@ await t("client en server weigeren dezelfde paden: //, %2F, %25 enz. blijven rec
   }
 });
 
+await t("tijdslimiet: hangende respons geeft 504 no-store en breekt upstream af", async () => {
+  let signal: AbortSignal | undefined;
+  globalThis.fetch = ((_u: any, init: any) => { signal = init.signal; return new Promise((_, rej) => init.signal.addEventListener("abort", () => rej(new Error("abort")))); }) as any;
+  const r = await onRequest({ request: new Request("https://nieuwsinkort.nl/media/beeld/images.nu.nl/a.jpg"), timeoutMs: 30 });
+  assert.equal(r.status, 504);
+  assert.equal(r.headers.get("cache-control"), "no-store");
+  assert.equal(signal?.aborted, true);
+});
+
+await t("tijdslimiet: stilvallende stream breekt af en komt niet in de cache", async () => {
+  const opgeslagen: string[] = [];
+  (globalThis as any).caches = { default: { match: async () => undefined, put: async (k: Request, v: Response) => { try { await v.arrayBuffer(); opgeslagen.push(k.url); } catch { /* afgebroken */ } } } };
+  globalThis.fetch = ((_u: any, init: any) => {
+    const body = new ReadableStream({
+      start(c) { c.enqueue(new TextEncoder().encode("half")); init.signal.addEventListener("abort", () => c.error(new Error("abort"))); },
+    });
+    return Promise.resolve(new Response(body, { headers: { "content-type": "image/jpeg" } }));
+  }) as any;
+  try {
+    const r = await onRequest({ request: new Request("https://nieuwsinkort.nl/media/beeld/images.nu.nl/b.jpg"), timeoutMs: 30 });
+    assert.equal(r.status, 200);
+    await assert.rejects(r.arrayBuffer());
+    await new Promise((res) => setTimeout(res, 20));
+    assert.deepEqual(opgeslagen, []);
+  } finally { delete (globalThis as any).caches; }
+});
+
+await t("tijdslimiet: normaal beeld blijft 200 en de timer loopt niet door", async () => {
+  mock(jpg());
+  const r = await onRequest({ request: new Request("https://nieuwsinkort.nl/media/beeld/images.nu.nl/c.jpg"), timeoutMs: 30 });
+  assert.equal(r.status, 200);
+  assert.equal(await r.text(), "jpgbytes");
+  assert.ok(calls[0].init.signal instanceof AbortSignal);
+  await new Promise((res) => setTimeout(res, 60));
+  assert.equal(calls[0].init.signal.aborted, false);
+});
+
 console.log(`\n${n} tests ok`);

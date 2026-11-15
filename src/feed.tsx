@@ -17,10 +17,11 @@ import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
+import { startIndex } from "./feedstatus";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
 import { bronIndexen, gebruiktNativeHls, maakBronvrij, PoolEigenaars, POOL_GROOTTE, slotVan } from "./videopool";
-import { decodeTeller, FrameGezondheid, frameTeller, HerstelBudget } from "./framegezondheid";
+import { decodeTeller, FrameGezondheid, frameTeller, frameTellerBron, HerstelBudget } from "./framegezondheid";
 import { maxBufferSeconden, niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
@@ -487,7 +488,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       const st = frameStand.current;
       const besluit = fg.tik({ now, currentTime: video.currentTime, paused: video.paused, hidden: document.hidden,
         seeking: video.seeking, ended: video.ended, seekRecent: now - seekOp.current < 1500,
-        frames: frameTeller(st), videoWidth: video.videoWidth, readyState: video.readyState });
+        frames: frameTeller(st), bron: frameTellerBron(st), videoWidth: video.videoWidth, readyState: video.readyState });
       if (besluit === "ok") return;
       debugEvent(besluit);
       diag.vast++;
@@ -1127,31 +1128,41 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 function SamenvattingKnop({ v }: { v: Video }) {
   const [open, setOpen] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
   const klaar = (svCache.get(videoSlug(v)) as any)?.ok === true;
   return (
     <>
-      <button type="button" className={`f-btn${klaar ? " sv-klaar" : ""}`} onClick={(e) => { e.stopPropagation(); setOpen(true); }} aria-haspopup="dialog">
+      <button ref={opener} type="button" className={`f-btn${klaar ? " sv-klaar" : ""}`} onClick={(e) => { e.stopPropagation(); setOpen(true); }} aria-haspopup="dialog">
         Samenvatting{klaar ? <span className="sv-dot" aria-label="klaar" title="Staat al klaar" /> : null}
       </button>
-      {open ? createPortal(<SamenvattingBlad v={v} onClose={() => setOpen(false)} />, document.body) : null}
+      {open ? createPortal(<SamenvattingBlad v={v} opener={opener} onClose={() => setOpen(false)} />, document.body) : null}
     </>
   );
 }
-function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
+function SamenvattingBlad({ v, opener, onClose }: { v: Video; opener: React.RefObject<HTMLButtonElement>; onClose: () => void }) {
   const id = videoSlug(v);
   const { res, opnieuw } = useSamenvatting(id);
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
     closeBtn.current?.focus({ preventScroll: true });
     const key = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); onClose(); } };
     window.addEventListener("keydown", key, true);
-    return () => { window.removeEventListener("keydown", key, true); prev?.focus?.({ preventScroll: true }); };
-  }, [onClose]);
+    return () => { window.removeEventListener("keydown", key, true); opener.current?.focus({ preventScroll: true }); };
+  }, [onClose, opener]);
+  const toets = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+    if (e.key !== "Tab") return;
+    const knoppen = Array.from(sheet.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") || []).filter((knop) => knop.getClientRects().length > 0);
+    const eerste = knoppen[0];
+    const laatste = knoppen[knoppen.length - 1];
+    if (e.shiftKey && document.activeElement === eerste) { e.preventDefault(); laatste?.focus(); }
+    else if (!e.shiftKey && document.activeElement === laatste) { e.preventDefault(); eerste?.focus(); }
+  };
   const min = res && res.ok && res.sec ? Math.max(1, Math.round(res.sec / 60)) : 0;
   return (
-    <div className="sv-wrap" onClick={(e) => { e.stopPropagation(); onClose(); }} onPointerDown={stop} onTouchStart={stop} onTouchMove={stop} onWheel={stop} onKeyDown={stop}>
-      <div className="sv-sheet" role="dialog" aria-modal="true" aria-labelledby="sv-kop" onClick={stop}>
+    <div className="sv-wrap" onClick={(e) => { e.stopPropagation(); onClose(); }} onPointerDown={stop} onTouchStart={stop} onTouchMove={stop} onWheel={stop} onKeyDown={toets}>
+      <div ref={sheet} className="sv-sheet" role="dialog" aria-modal="true" aria-labelledby="sv-kop" onClick={stop}>
         <div className="sv-head">
           <h2 id="sv-kop" className="sv-kop">Samenvatting</h2>
           <button ref={closeBtn} type="button" className="sv-x" onClick={onClose} aria-label="Sluit samenvatting">
@@ -1173,7 +1184,7 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
             <>
               <p className="sv-fout">{res.fout}</p>
               {["fout", "net", "bezig", "geblokkeerd"].includes(res.code) ? (
-                <button type="button" className="f-btn" onClick={opnieuw}>Probeer opnieuw</button>
+                <button type="button" className="f-btn" onClick={() => { closeBtn.current?.focus({ preventScroll: true }); opnieuw(); }}>Probeer opnieuw</button>
               ) : null}
             </>
           )}
@@ -1200,22 +1211,23 @@ export function Feed({
   groups?: FeedGroup[];
   onGroup?: (id: string) => void;
 }) {
-  // Lijsten vastzetten zolang de feed open is (de 15-minuten-verversing schuift dan niets onder je duim weg).
-  const [gs] = useState(() => (groups && groups.length > 1 ? groups : null));
+  const gs = groups && groups.length > 1 ? groups : null;
   const [gi, setGi] = useState(() => {
     if (!gs) return 0;
     const k = gs.findIndex((g) => g.list.some((v) => videoSlug(v) === start));
     return k < 0 ? 0 : k;
   });
-  const [items, setItems] = useState(() => (gs ? gs[gi].list : list));
-  const [first] = useState(() => Math.max(0, items.findIndex((v) => videoSlug(v) === start)));
+  const [verwijderd, setVerwijderd] = useState<ReadonlySet<string>>(() => new Set());
+  const bronItems = gs ? (gs[gi]?.list ?? gs[0].list) : list;
+  const items = useMemo(() => bronItems.filter((v) => !verwijderd.has(videoSlug(v))), [bronItems, verwijderd]);
+  const [first] = useState(() => startIndex(items, start));
   const [active, setActive] = useState(first);
+  useEffect(() => { setActive((i) => Math.min(i, Math.max(0, items.length - 1))); }, [items.length]);
   // Wisselen tussen Shorts en Journaals: nieuwe lijst, vanaf de eerste video (de scroller wordt vers opgebouwd).
   const pickGroup = useCallback(
     (k: number) => {
       if (!gs || k === gi) return;
       setGi(k);
-      setItems(gs[k].list);
       setActive(0);
       setPaused(false);
       onGroup?.(gs[k].id);
@@ -1231,7 +1243,7 @@ export function Feed({
   const [ytBlok, setYtBlok] = useState<ReadonlySet<number>>(() => new Set());
   const ytBlokAan = useCallback((i: number) => setYtBlok((s) => (s.has(i) ? s : new Set(s).add(i))), []);
   const ytBlokWis = useCallback(() => setYtBlok((s) => (s.size ? new Set() : s)), []);
-  const activeKind = playerFor(items[active])?.kind ?? "";
+  const activeKind = items[active] ? playerFor(items[active])?.kind ?? "" : "";
   const muted = !geluidVoorSlide(activeKind, want, getikt, nativeBlocked, ytBlok.has(active));
   const unmutedAt = useRef(0);
   const [closing, setClosing] = useState(false);
@@ -1338,11 +1350,11 @@ export function Feed({
     swipeStart.current = null;
     activeRef.current = besluit.actief;
     flushSync(() => {
-      setItems((oud) => oud.filter((_, index) => index !== i));
+      setVerwijderd((oud) => new Set([...oud, videoSlug(items[i])]));
       setActive(besluit.actief);
     });
     if (s) s.scrollTop = nieuwTop;
-  }, [items.length]);
+  }, [items]);
   const ytSpeelt = useCallback(() => {}, []);
 
   // Start op de gekozen video, vóór de eerste paint.
@@ -1455,6 +1467,7 @@ export function Feed({
     if (!r) return;
     const onGesture = (e: Event) => {
       if (!e.isTrusted) return;
+      if (e.type === "keydown" && (e.target as HTMLElement)?.closest?.(".sv-wrap")) return;
       const eerste = !geluidTik();
       onthoudGeluidTik();
       setGetikt(true);

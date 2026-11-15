@@ -29,9 +29,14 @@ function sourceLine(s: SourceRow): string {
 }
 import { Icon } from "./icons";
 import { rustig } from "./beweging";
-import { Switch } from "./ui";
+import { GroupToggle, Switch } from "./ui";
 import { veiligeUrl } from "./url";
 
+/** Groepsregel: een onvolledige telling wordt nooit als volledig dagtotaal getoond. */
+function groupLine(g: SourceGroup): string {
+  if (g.published == null) return `${g.total} in overzicht`;
+  return g.onvolledig ? `minstens ${g.published} berichten vandaag (onvolledig)` : `${g.published} berichten vandaag`;
+}
 
 /** Paneel met alle bronnen; rechts op desktop, onderaan (bottom sheet) op mobiel. */
 export function SourcesSheet({
@@ -69,10 +74,32 @@ export function SourcesSheet({
   useEffect(() => {
     sluiting.current.klaar = false;
     const prevFocus = document.activeElement as HTMLElement | null;
+    // Tab blijft in het venster: alleen zichtbare, ingeschakelde bediening (knoppen, Weer-links) telt mee.
+    const bedien = () =>
+      Array.from(panel.current?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])") ?? []).filter((el) => el.getClientRects().length > 0);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") return close();
+      if (e.key !== "Tab") return;
+      const lijst = bedien();
+      const eerste = lijst[0], laatste = lijst[lijst.length - 1];
+      const nu = document.activeElement as HTMLElement | null;
+      if (!eerste || !nu || !panel.current?.contains(nu)) {
+        e.preventDefault();
+        (eerste ?? closeBtn.current)?.focus({ preventScroll: true });
+      } else if (e.shiftKey && nu === eerste) {
+        e.preventDefault();
+        laatste.focus({ preventScroll: true });
+      } else if (!e.shiftKey && nu === laatste) {
+        e.preventDefault();
+        eerste.focus({ preventScroll: true });
+      }
+    };
+    // Focus die toch buiten het venster belandt (muis, schermlezer) gaat terug naar de sluitknop.
+    const onIn = (e: FocusEvent) => {
+      if (panel.current && e.target instanceof Node && !panel.current.contains(e.target)) closeBtn.current?.focus({ preventScroll: true });
     };
     window.addEventListener("keydown", onKey);
+    document.addEventListener?.("focusin", onIn);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeBtn.current?.focus({ preventScroll: true });
@@ -80,6 +107,7 @@ export function SourcesSheet({
       sluiting.current.klaar = true;
       window.clearTimeout(sluiting.current.timer);
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener?.("focusin", onIn);
       document.body.style.overflow = prev;
       prevFocus?.focus?.({ preventScroll: true });
     };
@@ -130,12 +158,12 @@ export function SourcesSheet({
                       </h3>
                       <span className="sh-gmeta">
                         {g.sources.length} {g.sources.length === 1 ? "bron" : "bronnen"} ·{" "}
-                        {g.published != null ? `${g.published} berichten vandaag` : `${g.total} in overzicht`}
+                        {groupLine(g)}
                       </span>
                     </div>
                     <label className="sh-all">
                       <span>Alles</span>
-                      <Switch checked={state} label={`Alle bronnen in ${g.label}`} onChange={(on) => setMany(keys, on)} />
+                      <GroupToggle checked={state} label={`Alle bronnen in ${g.label}`} onChange={(on) => setMany(keys, on)} />
                     </label>
                   </div>
                   <ul className="sh-list">

@@ -53,9 +53,8 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
 }
 
 export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: { current: (opties?: { geveegd?: boolean }) => void }) {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const annuleer = () => { if (timer !== undefined) { clearTimeout(timer); timer = undefined; } };
-    let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" = "uit";
+    let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" | "sluit" = "uit";
+    let timer: ReturnType<typeof setTimeout> | undefined, overflowVoor: string | null = null;
     const el = () => ref.current;
     const zet = (x: number, anim: boolean, veer = false) => {
       const e = el();
@@ -63,10 +62,20 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       e.style.transition = anim ? `transform var(--dur-2) var(${veer ? "--ease-veer" : "--ease-uit"})` : "none";
       e.style.transform = x ? `translateX(${x}px)` : "";
     };
-    const klaar = () => { const e = el(); if (e) { e.style.transition = ""; e.style.transform = ""; e.classList.remove("veegt"); } document.body.style.overflowX = ""; };
+    const wis = () => { if (timer !== undefined) { clearTimeout(timer); timer = undefined; } };
+    // Herstelt stijl en de body-overflow van vóór het gebaar (niet blind ""), en breekt lopende timers af.
+    const klaar = () => {
+      wis();
+      const e = el();
+      if (e) { e.style.transition = ""; e.style.transform = ""; e.classList.remove("veegt"); }
+      if (overflowVoor !== null) { document.body.style.overflowX = overflowVoor; overflowVoor = null; }
+    };
+    const plan = (fn: () => void, ms: number) => { wis(); timer = setTimeout(() => { timer = undefined; fn(); }, ms); };
+    // Onderbroken veeg: artikel blijft open en veert terug (direct bij reduced motion).
+    const veer = () => { if (rustig()) klaar(); else { zet(0, true, true); plan(klaar, 220); } };
     const start = (ev: TouchEvent) => {
-      annuleer();
-      klaar();
+      if (stand === "veeg") veer(); // tweede vinger tijdens een veeg
+      else if (timer !== undefined) klaar(); // nieuw gebaar tijdens terugveren of sluiten: annuleert (#658) en herstelt eerst
       stand = "uit";
       const t = ev.touches[0];
       if (ev.touches.length !== 1 || !t || !magStarten(t.clientX) || selectie()) return;
@@ -75,15 +84,16 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       x0 = t.clientX; y0 = t.clientY; t0 = ev.timeStamp; dx = 0; stand = "wacht";
     };
     const beweeg = (ev: TouchEvent) => {
-      if (stand === "uit") return;
+      if (stand === "uit" || stand === "sluit") return;
       const t = ev.touches[0];
-      if (!t || ev.touches.length !== 1 || selectie()) { if (stand === "veeg") zet(0, !rustig()); stand = "uit"; return; }
+      if (!t || ev.touches.length !== 1 || selectie()) { if (stand === "veeg") veer(); stand = "uit"; return; }
       dx = t.clientX - x0;
       if (stand === "wacht") {
         const b = besluit(dx, t.clientY - y0);
         if (b === "wacht") return;
         if (b === "nee") { stand = "uit"; return; }
         stand = "veeg";
+        if (overflowVoor === null) overflowVoor = document.body.style.overflowX;
         el()?.classList.add("veegt");
         document.body.style.overflowX = "hidden";
       }
@@ -91,28 +101,27 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       zet(Math.max(0, dx), false);
     };
     const eind = (ev: TouchEvent) => {
-      if (stand !== "uit") annuleer();
       const was = stand;
+      if (was === "sluit") return;
       stand = "uit";
       if (was !== "veeg") return;
       const breed = window.innerWidth;
-      if (ev.type !== "touchcancel" && sluit(dx, breed, ev.timeStamp - t0)) {
+      if (ev.type !== "touchcancel" && !selectie() && sluit(dx, breed, ev.timeStamp - t0)) {
         if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
+        stand = "sluit";
         zet(breed, true);
-        timer = setTimeout(() => { timer = undefined; klaar(); terug.current({ geveegd: true }); }, 180);
-      } else if (rustig()) klaar();
-      else { zet(0, true, true); timer = setTimeout(() => { timer = undefined; klaar(); }, 200); }
+        plan(() => { stand = "uit"; terug.current({ geveegd: true }); klaar(); }, 200);
+      } else veer();
     };
     document.addEventListener("touchstart", start, { passive: true });
     document.addEventListener("touchmove", beweeg, { passive: false });
     document.addEventListener("touchend", eind, { passive: true });
     document.addEventListener("touchcancel", eind, { passive: true });
     return () => {
-      annuleer();
       document.removeEventListener("touchstart", start);
       document.removeEventListener("touchmove", beweeg);
       document.removeEventListener("touchend", eind);
       document.removeEventListener("touchcancel", eind);
-      klaar();
+      klaar(); // wist ook de timer: na unmount geen reset of onBack meer
     };
 }

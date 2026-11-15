@@ -6,7 +6,7 @@ export function neemVroegeData(w: { __vroegData?: Promise<Response> } = window a
   return p ?? null;
 }
 
-// Eén terugval als de normale route geen bruikbare JSON oplevert.
+// Een mislukte vroege aanvraag krijgt eerst één nieuwe kans op actuele data.
 export async function laadData(vroeg: Promise<Response> | null, ophalen: typeof fetch = fetch): Promise<any> {
   try {
     const r = vroeg ? await vroeg : await ophalen("/data.json", { cache: "no-cache" });
@@ -15,6 +15,7 @@ export async function laadData(vroeg: Promise<Response> | null, ophalen: typeof 
     if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Ongeldige data");
     return data;
   } catch {
+    if (vroeg) return laadData(null, ophalen);
     const r = await ophalen("/data.json?statisch=1", { cache: "no-cache" });
     if (!r.ok) throw new Error(String(r.status));
     const data = await r.json();
