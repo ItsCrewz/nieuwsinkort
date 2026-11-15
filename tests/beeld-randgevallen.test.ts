@@ -110,4 +110,20 @@ t("protocol van beeld-URL's is hoofdletterongevoelig (#869)", () => {
   assert.deepEqual(uniekeBeelden(["HTTP://a.example.org/x.jpg", "ftp://a.example.org/y.jpg", "javascript:alert(1)", "kapot"]), []);
 });
 
+t("ogImage: og:image wint van twitter:image in alle attribuut- en tagvolgordes", () => {
+  const b = "https://x.example/a/b";
+  const og = ['<meta property="og:image" content="/og.jpg">', '<meta content="/og.jpg" property="og:image">'];
+  const tw = ['<meta name="twitter:image" content="/tw.jpg">', '<meta content="/tw.jpg" name="twitter:image">'];
+  for (const o of og) for (const w of tw) {
+    assert.equal(ogImage(o + w, b), "https://x.example/og.jpg");
+    assert.equal(ogImage(w + o, b), "https://x.example/og.jpg");
+  }
+});
+
+t("ogImage: twitter:image werkt zonder og en na een lege og", () => {
+  const b = "https://x.example/a/b";
+  assert.equal(ogImage('<meta content="tw.jpg" name="twitter:image:src">', b), "https://x.example/a/tw.jpg");
+  assert.equal(ogImage('<meta property="og:image" content=" "><meta name="twitter:image" content="/tw.jpg">', b), "https://x.example/tw.jpg");
+});
+
 console.log(`\n${n} tests geslaagd`);
