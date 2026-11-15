@@ -27,7 +27,8 @@ export function bruikbareAfmeting(w: number, h: number): boolean {
 export function goedBeeld(u?: string | null): u is string {
   if (!u || typeof u !== "string" || !/^https?:\/\//i.test(u) || u.length > 1200) return false;
   if (/youtube\.com\/(v|embed|watch)\b|youtu\.be\//i.test(u)) return false; // video-link, geen foto
-  return !LOGO.test(u) && !MERK.test(u) && !SKIP.test(u) && !tooSmall(u);
+  const hostEnPad = u.split(/[?#]/, 1)[0];
+  return !LOGO.test(u) && !MERK.test(u) && !SKIP.test(hostEnPad) && !tooSmall(u);
 }
 
 /** Mapsegment dat alleen een maat/transformatie is ('1200x675', 'w800', '640', 's640-c', 'w_800,h_450,c_fill', 'large'): hoort niet bij de identiteit.
