@@ -1,11 +1,13 @@
 // Soortlabels uit publicatiefeeds zijn geen omschrijving van het besluit.
 const LABEL = /^(?:verkeersbesluit(?:\s+of\s+-?mededeling)?|gemeenteblad|provinciaal blad|waterschapsblad|staatscourant|omgevingsvergunning|bekendmaking|vergunning|melding)\s*:?\s*$/iu;
-const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", eacute: "é", euml: "ë" };
+const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", hellip: "…", ndash: "–", mdash: "—", lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", euro: "€", copy: "©", reg: "®" };
+const LATIJN = "Agrave Aacute Acirc Atilde Auml Aring AElig Ccedil Egrave Eacute Ecirc Euml Igrave Iacute Icirc Iuml ETH Ntilde Ograve Oacute Ocirc Otilde Ouml times Oslash Ugrave Uacute Ucirc Uuml Yacute THORN szlig agrave aacute acirc atilde auml aring aelig ccedil egrave eacute ecirc euml igrave iacute icirc iuml eth ntilde ograve oacute ocirc otilde ouml divide oslash ugrave uacute ucirc uuml yacute thorn yuml".split(" ");
+LATIJN.forEach((naam, i) => { ENT[naam] = String.fromCodePoint(0xc0 + i); });
 
 export function schoneBekendmakingTekst(tekst: string): string {
   let t = tekst;
   for (let i = 0; i < 2; i++) t = t.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/giu, (geheel, code: string) => {
-    if (code[0] !== "#") return ENT[code.toLowerCase()] ?? geheel;
+    if (code[0] !== "#") return ENT[code] ?? ENT[code.toLowerCase()] ?? geheel;
     const n = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
     return n > 0 && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : " ";
   });
