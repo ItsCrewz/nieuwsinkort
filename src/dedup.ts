@@ -98,7 +98,9 @@ function captionBereken(v: DVideo): string[] {
 function minutenVerschil(a: DVideo, b: DVideo): number {
   if (Number.isFinite(a._pub) && Number.isFinite(b._pub) && a._pub! > 0 && b._pub! > 0) return Math.abs(a._pub! - b._pub!) / 60000;
   const minuten = (t?: string) => { const m = /^(\d{2}):(\d{2})$/.exec(t || ""); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : NaN; };
-  return Math.abs(minuten(a.tijd) - minuten(b.tijd));
+  // Zonder datum: cyclisch, zodat 23:55 en 00:05 10 minuten uiteen liggen (niet 1430). Kloktijd alleen is nooit genoeg: de tekstregels blijven gelden.
+  const d = Math.abs(minuten(a.tijd) - minuten(b.tijd));
+  return Math.min(d, 1440 - d);
 }
 function sameCaption(a: DVideo, b: DVideo): boolean {
   const verschil = minutenVerschil(a, b);

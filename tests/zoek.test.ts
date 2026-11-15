@@ -2,6 +2,7 @@ import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
 import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen } from "../src/zoek";
 import type { Item } from "../src/types";
+import { filterNieuws, STANDAARD } from "../src/filters";
 
 const item: Item = { cat: "buitenland", kop: "Ajax", ai: "Wedstrijd", samenvatting: "Café bij PSV", punten: ["Supporters"], bronnen: [{ site: "NOS", href: "" }], tijd: "" };
 assert.equal(normaliseer("  CAFÉ,  nieuws! "), "cafe nieuws");
@@ -54,6 +55,19 @@ for (const schrijfwijze of ["Café-terras", "Cafe\u0301-terras"]) {
   const terras = { cat: "nl", kop: schrijfwijze } as Item;
   assert.deepEqual(zoekItems([terras], "cafeterras"), [terras]);
   assert.deepEqual(zoekItems([{ cat: "nl", kop: "cafeterras" } as Item], schrijfwijze).length, 1);
+}
+
+// De zoekrangschikking behoudt de volledige publicatietijd, ook over middernacht.
+{
+  const gisteren = { cat: "nl", kop: "Ajax gisteren", tijd: "23:00", t: Date.parse("2026-01-01T22:00:00Z") } as Item;
+  const vandaag = { cat: "nl", kop: "Ajax vandaag", tijd: "08:00", t: Date.parse("2026-01-02T07:00:00Z") } as Item;
+  const zonderKloktijd = { cat: "nl", kop: "Ajax later", t: Date.parse("2026-01-02T08:00:00Z") } as Item;
+  const tekst = { cat: "nl", kop: "Ander nieuws", ai: "Ajax", t: Date.parse("2026-01-02T09:00:00Z") } as Item;
+  const lijst = [gisteren, tekst, vandaag, zonderKloktijd];
+  for (const [sort, verwacht] of [["nieuw", [zonderKloktijd, vandaag, gisteren, tekst]], ["oud", [gisteren, vandaag, zonderKloktijd, tekst]]] as const) {
+    const gefilterd = filterNieuws(lijst, { ...STANDAARD, tijd: "alles", sort }, 0, "2026-01-02T10:00:00Z", true).items;
+    assert.deepEqual(rangschikKoptreffers(zoekItems(gefilterd, "ajax"), "ajax"), verwacht);
+  }
 }
 for (const leesteken of [",", ";", "/", "(", ")", "."]) {
   assert.deepEqual(zoekItems([corona], `corona-maatregelen${leesteken}kabinet`), [corona]);

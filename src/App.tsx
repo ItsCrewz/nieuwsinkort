@@ -914,7 +914,7 @@ export default function App() {
   const zoekBasis = isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [];
   const zoekFilter = isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null;
   // Koptreffers eerst (#1010); bij sortering "nieuw" eerst op tijd, want NewsFeed sorteert dan niet meer zelf.
-  const zoekUitkomst = zoekFilter ? rangschikKoptreffers((() => { const t = zoekItems(zoekFilter.items, zoekterm); return zoekterm.trim() && flt.f.sort === "nieuw" ? sortItems(t) : t; })(), zoekterm) : [];
+  const zoekUitkomst = zoekFilter ? rangschikKoptreffers(zoekItems(zoekFilter.items, zoekterm), zoekterm) : [];
   // Zonder tijd-, regio-, video- en samengevoegd-filter: wat de filters aan treffers verbergen (#613).
   const zoekBeperkt = !!zoekFilter && (zoekFilter.tijd !== "alles" || flt.f.video || flt.f.samen || flt.f.regio.length > 0);
   const wisZoekFilters = () => flt.set({ tijd: "alles", video: false, samen: false, regio: [] });
