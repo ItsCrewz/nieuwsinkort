@@ -29,6 +29,20 @@ export type Emmer = keyof typeof ACCEPT;
 const fout = (status: number, cache = "no-store") => new Response(status === 405 ? "Method not allowed" : "Not found", { status, headers: { ...HDR, "Cache-Control": cache, ...(status === 405 ? { Allow: "GET, HEAD" } : {}) } });
 const weg = (r: Response) => { try { r.body?.cancel().catch(() => {}); } catch { /* al gelezen of vergrendeld */ } };
 
+const ongewijzigd = (verzoek: Headers, antwoord: Headers): boolean => {
+  const inm = verzoek.get("if-none-match");
+  if (inm !== null) {
+    const etag = antwoord.get("etag");
+    if (inm.trim() === "*") return true;
+    if (!etag || !/^(?:W\/)?"[\x21\x23-\x7e\x80-\xff]*"$/.test(etag)) return false;
+    return (inm.match(/(?:W\/)?"[\x21\x23-\x7e\x80-\xff]*"/g) || []).some((tag) => tag.replace(/^W\//, "") === etag.replace(/^W\//, ""));
+  }
+  const sinds = verzoek.get("if-modified-since"), gewijzigd = antwoord.get("last-modified");
+  if (!sinds || !gewijzigd) return false;
+  const s = Date.parse(sinds), g = Date.parse(gewijzigd);
+  return Number.isFinite(s) && Number.isFinite(g) && g <= s;
+};
+
 /** Accept van de bezoeker → emmer: avif als image/avif erin staat, anders webp, anders basis. */
 // Een formaat telt alleen als het genoemd is met q > 0 (q=0 = uitdrukkelijk uitgesloten).
 const accepteert = (accept: string, type: string): boolean =>
@@ -81,8 +95,13 @@ export const onRequest = async ({ request, waitUntil, timeoutMs }: Ctx): Promise
     let hit: Response | undefined;
     try { hit = await cache.match(sleutel); } catch { /* cachefout: gewoon upstream */ }
     if (hit && uitgesloten(accept, hit.headers.get("content-type") || "")) { weg(hit); hit = undefined; }
-    if (hit && request.method === "HEAD") hit.body?.cancel().catch(() => {});
-    if (hit) return new Response(request.method === "HEAD" ? null : hit.body, { status: 200, headers: metVary(new Headers(hit.headers)) });
+    if (hit) {
+      const headers = metVary(new Headers(hit.headers));
+      const nietGewijzigd = ongewijzigd(request.headers, headers);
+      if (nietGewijzigd || request.method === "HEAD") weg(hit);
+      if (nietGewijzigd) headers.delete("content-length");
+      return new Response(nietGewijzigd || request.method === "HEAD" ? null : hit.body, { status: nietGewijzigd ? 304 : 200, headers });
+    }
   }
 
   // Eén deadline voor redirects en body samen; bij overschrijding wordt elk upstream-verzoek afgebroken.
