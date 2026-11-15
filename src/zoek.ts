@@ -132,6 +132,23 @@ export function zoekItems(items: Item[], query: string): Item[] {
   });
 }
 
+// Alleen-kop-kopie per item, zodat de bestaande matching ook op de kop apart werkt (#1010).
+const kopKopie = new WeakMap<Item, Item>();
+const alleenKop = (item: Item): Item => {
+  let k = kopKopie.get(item);
+  if (!k || k.kop !== item.kop) { k = { kop: item.kop } as Item; kopKopie.set(item, k); }
+  return k;
+};
+
+// Koptreffers vóór treffers alleen in de tekst; binnen elke groep blijft de volgorde van de invoer (stabiel).
+export function rangschikKoptreffers(items: Item[], query: string): Item[] {
+  if (!query.trim() || items.length < 2) return items;
+  const kop = new Set(zoekItems(items.map(alleenKop), query));
+  const voor: Item[] = [], rest: Item[] = [];
+  for (const item of items) (kop.has(alleenKop(item)) ? voor : rest).push(item);
+  return voor.length && rest.length ? [...voor, ...rest] : items;
+}
+
 export function resultaatTekst(aantal: number): string {
   return `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}`;
 }
