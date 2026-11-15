@@ -16,4 +16,4 @@ for (const html of ["<meta property = 'og:image'>", "<meta property = 'og:image'
   assert.equal(ogImage(html, pagina), "");
 }
 assert.deepEqual(uniekeBeelden([ogImage("<meta property = 'og:image' content = '/logo.svg'>", pagina)]), []);
-assert.equal(ogImage('<meta name="twitter:image" content="/eerste.jpg"><meta property="og:image" content="/tweede.jpg">', pagina), "https://nieuws.example/eerste.jpg");
+assert.equal(ogImage('<meta name="twitter:image" content="/eerste.jpg"><meta property="og:image" content="/tweede.jpg">', pagina), "https://nieuws.example/tweede.jpg");

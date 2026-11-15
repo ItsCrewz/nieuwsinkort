@@ -83,11 +83,16 @@ export function uniekeBeelden(urls: (string | null | undefined)[], max = 12): st
   return out;
 }
 
-/** og:image / twitter:image uit (het begin van) een HTML-pagina. */
+/** og:image / twitter:image uit (het begin van) een HTML-pagina. Open Graph gaat voor Twitter, ongeacht de attribuutvolgorde. */
 export function ogImage(html: string, base: string): string {
-  const m =
-    /<meta[^>]+(?:property|name)\s*=\s*["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["'][^>]*content\s*=\s*["']([^"']+)["']/i.exec(html) ||
-    /<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]*(?:property|name)\s*=\s*["'](?:og:image(?::secure_url|:url)?|twitter:image(?::src)?)["']/i.exec(html);
-  if (!m || !m[1].trim()) return "";
-  try { return new URL(m[1].replace(/&amp;/g, "&"), base).toString(); } catch { return ""; }
+  const tags = html.match(/<meta\b[^>]*>/gi) || [];
+  for (const sleutel of [/^og:image(?::secure_url|:url)?$/i, /^twitter:image(?::src)?$/i]) {
+    for (const tag of tags) {
+      const naam = /\b(?:property|name)\s*=\s*["']([^"']+)["']/i.exec(tag);
+      const inhoud = /\bcontent\s*=\s*["']([^"']+)["']/i.exec(tag);
+      if (!naam || !inhoud || !sleutel.test(naam[1].trim()) || !inhoud[1].trim()) continue;
+      try { return new URL(inhoud[1].replace(/&amp;/g, "&"), base).toString(); } catch { return ""; }
+    }
+  }
+  return "";
 }
