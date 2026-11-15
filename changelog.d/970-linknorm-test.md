@@ -1,0 +1,1 @@
+- Voeg een eigen test toe voor `normLink` in `src/linknorm.ts` (#970).
