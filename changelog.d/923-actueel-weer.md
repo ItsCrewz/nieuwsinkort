@@ -1,0 +1,1 @@
+- Behoud de recentste bruikbare weergegevens bij het samenvoegen van routine- en uurdata (#923).

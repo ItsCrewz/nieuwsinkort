@@ -19,7 +19,8 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const gisteren = new Date(Date.UTC(nu.y, nu.m - 1, nu.d - 1)).toISOString().slice(0, 10);
   if (pad.dag < gisteren || (pad.dag === gisteren && nu.h >= 6)) return redirect(301, `/${u.search}`, "public, max-age=86400");
   const cache = (globalThis.caches as CacheMetDefault | undefined)?.default;
-  const sleutel = new Request(`${u.origin}${u.pathname}?versie=2`);
+  // Oude cache-items kunnen een onbeperkte stale-periode bevatten.
+  const sleutel = new Request(`${u.origin}${u.pathname}?versie=3`);
   const bestaand = await cache?.match(sleutel).catch(() => undefined); // cachefout mag de pagina niet breken
   if (bestaand && nogGeldig(bestaand, Date.now())) {
     const hit = cacheHit(bestaand, Date.now());
@@ -58,7 +59,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   for (const [k, v] of Object.entries({ ...basis, "Content-Type": "text/html; charset=utf-8", "Cache-Control": beleid?.cc || "no-store", ETag: tag })) headers.set(k, v);
   if (beleid) headers.set(GELDIG_TOT, beleid.tot);
   else headers.delete(GELDIG_TOT);
-  headers.delete("Content-Length"); headers.delete("Content-Encoding");
+  for (const naam of ["Content-Length", "Content-Encoding", "Expires", "CDN-Cache-Control", "Cloudflare-CDN-Cache-Control"]) headers.delete(naam);
   const response = new Response(html, { headers });
   if (cache && beleid) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));
   if (etagMatch(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers });

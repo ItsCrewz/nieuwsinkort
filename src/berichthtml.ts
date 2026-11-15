@@ -31,7 +31,7 @@ function deelbeeld(item: Bericht): string {
     else if (/^(redactie\.rtl\.nl|webp\.[a-z]{2}\.cdn\.pxr\.nl)$/.test(u.hostname) && /^\d+$/.test(u.searchParams.get("width") || "")) {
       if (Number(u.searchParams.get("width")) > 1200) { u.searchParams.set("width", "1200"); u.searchParams.delete("height"); }
     } else continue;
-    const pad = beeldProxyPad(u.toString());
+    const pad = beeldProxyPad(u.toString(), false); // social cards houden de gekozen 1200 px
     if (pad) return `https://nieuwsinkort.nl${pad}`;
   }
   return "https://nieuwsinkort.nl/og-image.png";

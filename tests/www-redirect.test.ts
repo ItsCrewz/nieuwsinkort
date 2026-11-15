@@ -58,9 +58,9 @@ await t("pages.dev: HEAD op pagina 301, POST op pagina niet", async () => {
   assert.equal((await onRequest({ request: new Request("https://nieuwsinkort.pages.dev/", { method: "POST", body: "x" }), next })).status, 200);
   assert.equal((await draai("https://nieuwsinkort.pages.dev/index.html?a=1")).r.headers.get("location"), "https://nieuwsinkort.nl/index.html?a=1");
 });
-await t("www: POST wordt nog steeds geredirect (ongewijzigd)", async () => {
+await t("www: POST wordt met 308 geredirect", async () => {
   const r = await onRequest({ request: new Request("https://www.nieuwsinkort.nl/samenvatting", { method: "POST", body: "x" }), next: async () => new Response("ok") });
-  assert.equal(r.status, 301);
+  assert.equal(r.status, 308);
 });
 await t("preview-host: geen redirect, wel noindex en overige headers behouden", async () => {
   const next = async () => new Response("ok", { status: 200, headers: { "Strict-Transport-Security": "max-age=1", "X-Test": "a" } });

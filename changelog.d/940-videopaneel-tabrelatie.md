@@ -1,0 +1,1 @@
+- Verbind het filmpjespaneel met het gekozen tabblad en geef Dumpert geen los tabpanel (#940).

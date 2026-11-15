@@ -1,6 +1,6 @@
 import { Foutgrens } from "./foutgrens";
 // Detailscherm van één bericht (#/bericht/...); lui geladen, het hoofdscherm toont alleen de lijst.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bron, Item } from "./types";
 import { BionicText, host } from "./ui";
 import { createPortal } from "react-dom";
@@ -105,9 +105,12 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
   );
 }
 
-function DeelBlok({ item, url }: { item: Item; url: string }) {
+export function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
   const actie = useRef(0);
+  const focusInvoer = useCallback((el: HTMLInputElement | null) => {
+    if (el) { el.focus(); el.select(); }
+  }, []);
   useEffect(() => {
     return () => { actie.current++; };
   }, []);
@@ -116,7 +119,7 @@ function DeelBlok({ item, url }: { item: Item; url: string }) {
     const t = setTimeout(() => setDeelStatus(""), 2000);
     return () => clearTimeout(t);
   }, [deelStatus]);
-  const melding = deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig" : !url ? "Dit bericht heeft geen eigen link om te delen" : "";
+  const melding = deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : "";
   const laatsteMelding = useRef(""); // alleen voor de zichtbare toast tijdens het uitfaden; de aria-live-regio wordt wel leeg
   if (melding) laatsteMelding.current = melding;
   return (
@@ -131,9 +134,9 @@ function DeelBlok({ item, url }: { item: Item; url: string }) {
         <Icon name="share" className="ic-deel" />
         <Icon name="check" className="ic-ok" />
       </button>
+      <span id="deel-instructie" className="sr-only deel-status" role="status" aria-live="polite">{melding}</span>
+      {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" aria-describedby="deel-instructie" readOnly value={url} ref={focusInvoer} /> : null}
       <span className={`deel-melding${melding ? " toon" : ""}`} aria-hidden="true">{melding || laatsteMelding.current}</span>
-      <span className="sr-only deel-status" role="status" aria-live="polite">{melding}</span>
-      {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" readOnly value={url} ref={(el) => el?.select()} /> : null}
     </>
   );
 }
