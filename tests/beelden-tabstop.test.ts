@@ -2,7 +2,7 @@
 // Nagebootste DOM-elementen (zoals foutgrens.test.ts); de echte toetsenbordvolgorde staat in e2e/beelden-639.spec.mjs.
 import assert from "node:assert/strict";
 import { act, createElement } from "react";
-import { Beelden } from "../src/beelden";
+import { Beelden, Thumb } from "../src/beelden";
 
 const g = globalThis as any;
 g.IS_REACT_ACT_ENVIRONMENT = true;
@@ -56,8 +56,9 @@ async function mount(n: number) {
   const knoppen = () => alle(container, (x) => x.tagName === "BUTTON");
   const slides = () => alle(container, (x) => klas(x, "bl-slide"));
   const fout = (k: number) => act(async () => props(alle(container, (x) => x.tagName === "IMG")[k]).onError({ currentTarget: { getAttribute: () => "https://x.test/stuk" } }));
-  const laad = (k: number, w: number, h: number) => act(async () => props(alle(container, (x) => x.tagName === "IMG")[k]).onLoad({ currentTarget: { naturalWidth: w, naturalHeight: h, classList: { add() {} } } }));
-  return { track, knoppen, slides, fout, laad };
+  const klassen: string[][] = [];
+  const laad = (k: number, w: number, h: number) => { const lijst: string[] = (klassen[k] = []); return act(async () => props(alle(container, (x) => x.tagName === "IMG")[k]).onLoad({ currentTarget: { naturalWidth: w, naturalHeight: h, classList: { add: (c: string) => lijst.push(c) } } })); };
+  return { track, knoppen, slides, fout, laad, klassen, container };
 }
 
 await t("één beeld: geen tabstop, rol of knoppen", async () => {
@@ -96,19 +97,52 @@ await t("drie beelden: een andere foto die wegvalt springt niet terug naar foto 
   assert.equal(props(m.slides()[1])["aria-hidden"], undefined);
   assert.equal(props(m.slides()[0])["aria-hidden"], true);
 });
-await t("#996: één staande foto van 400×1000 blijft staan, zonder bediening", async () => {
+await t("#996: één staande foto van 400×1000 blijft staan, wordt zichtbaar (klasse in), zonder bediening", async () => {
   const m = await mount(1);
   await m.laad(0, 400, 1000);
   assert.equal(m.slides().length, 1);
   assert.equal(m.knoppen().length, 0);
+  assert.deepEqual(m.klassen[0], ["in"]);
 });
 
-await t("#996: staande eerste foto en tweede foto blijven beide, met bediening", async () => {
+await t("#996: staande eerste foto en tweede foto blijven beide; navigatie wisselt de actieve slide", async () => {
   const m = await mount(2);
   await m.laad(0, 400, 1000);
   await m.laad(1, 800, 600);
+  assert.deepEqual(m.klassen[0], ["in"]);
   assert.equal(m.slides().length, 2);
   assert.equal(m.knoppen().length, 2);
+  const tr = m.track() as any;
+  const sprongen: any[] = [];
+  Object.assign(tr, { clientWidth: 100, scrollLeft: 0, scrollTo: (o: any) => sprongen.push(o) });
+  const knop = (naam: string) => m.knoppen().find((b) => props(b)["aria-label"] === naam)!;
+  const klik = (naam: string) => act(async () => props(knop(naam)).onClick({ stopPropagation() {}, preventDefault() {} }));
+  const tekst = () => alle(m.container, (x) => props(x)?.["aria-live"] === "polite")[0].children.map((c: any) => c.nodeValue ?? c.textContent).join(""); // React zet tekstknopen via nodeValue
+  assert.equal(tekst(), "Foto 1 van 2");
+  await klik("Volgende foto");
+  assert.equal(sprongen.at(-1).left, 100);
+  Object.assign(tr, { scrollLeft: 100 });
+  await act(async () => { props(tr).onScroll(); await new Promise((r) => setTimeout(r, 5)); });
+  assert.equal(props(m.slides()[1])["aria-hidden"], undefined);
+  assert.equal(props(m.slides()[0])["aria-hidden"], true);
+  assert.equal(tekst(), "Foto 2 van 2");
+  await klik("Vorige foto");
+  assert.equal(sprongen.at(-1).left, 0);
+  Object.assign(tr, { scrollLeft: 0 });
+  await act(async () => { props(tr).onScroll(); await new Promise((r) => setTimeout(r, 5)); });
+  assert.equal(props(m.slides()[0])["aria-hidden"], undefined);
+  assert.equal(props(m.slides()[1])["aria-hidden"], true);
+});
+
+await t("#996: kaartweergave (Thumb) houdt een staande foto en maakt hem zichtbaar", async () => {
+  const container = new NodeMock("div", doc);
+  const root = createRoot(container as unknown as Element);
+  await act(async () => root.render(createElement(Thumb, { urls: urls(2) })));
+  const lijst: string[] = [];
+  const img = () => alle(container, (x) => x.tagName === "IMG")[0];
+  await act(async () => props(img()).onLoad({ currentTarget: { naturalWidth: 400, naturalHeight: 1000, classList: { add: (c: string) => lijst.push(c) } } }));
+  assert.deepEqual(lijst, ["in"]);
+  assert.equal(props(img()).src.endsWith("f0.jpg") || String(props(img()).src).includes("f0.jpg"), true);
 });
 
 await t("#996: banner als tweede foto valt weg, één slide zonder bediening", async () => {
