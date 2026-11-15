@@ -1,0 +1,1 @@
+- Filters: regio Haarlem herkent alleen plaatsnamen aan het begin van een woord; "Haarlemmerolie" valt niet meer onder Haarlem (#972).
