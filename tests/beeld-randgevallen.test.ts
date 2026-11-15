@@ -39,8 +39,20 @@ t("beeldKey negeert CDN-maten en queryparameters maar niet de foto-identiteit", 
 
 t("beeldKey herkent de oorspronkelijke foto achter een CDN-proxy", () => {
   const origineel = "https://nieuws.nl/fotos/stadsbeeld.jpg";
-  const proxy = `https://cdn.voorbeeld.nl/image?url=${encodeURIComponent(origineel)}&w=800`;
-  assert.equal(beeldKey(proxy), beeldKey(origineel));
+  for (const proxy of [
+    `https://nieuws.nl/_next/image?url=${encodeURIComponent(origineel)}&w=800`,
+    `https://wsrv.nl/?url=${encodeURIComponent(origineel)}&w=800`,
+    `https://images.weserv.nl/?src=${encodeURIComponent(origineel)}&w=800`,
+    `https://voorbeeld.imgix.net/?u=${encodeURIComponent(origineel)}&w=800`,
+  ]) assert.deepEqual(uniekeBeelden([proxy, origineel]), [proxy]);
+});
+
+t("verwijzingsparameters op gewone beeldpaden voegen foto's niet samen (#954)", () => {
+  for (const parameter of ["url", "src", "u"]) {
+    const verwijzing = encodeURIComponent("https://nieuws.nl/artikel/123");
+    const fotos = ["eerste", "tweede"].map((naam) => `https://nieuws.nl/fotos/${naam}.jpg?${parameter}=${verwijzing}`);
+    assert.deepEqual(uniekeBeelden(fotos), fotos);
+  }
 });
 
 t("beterBeeld decodeert CDN-parameters zonder de maat te wijzigen", () => {
