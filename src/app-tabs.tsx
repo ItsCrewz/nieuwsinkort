@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { rustig } from "./beweging";
 import { Icon } from "./icons";
 import { bronnenTekst } from "./leesverder";
-import { tabOpties, tabToets, type TabOpt } from "./tabs";
+import { rubriekTabId, tabOpties, tabToets, type TabOpt } from "./tabs";
 import type { Data, View } from "./types";
 import { BionicText } from "./ui";
 
@@ -138,6 +138,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
               type="button"
               className={`tab cat-${o.id}`}
               role="tab"
+              id={rubriekTabId(o.value)}
               data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
               aria-controls="rubriek-paneel"
               aria-selected={view === o.value}

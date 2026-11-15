@@ -27,7 +27,7 @@ import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
 import { laadData, neemVroegeData } from "./vroeg";
-import { CAT_LABEL, wisselRichting } from "./tabs";
+import { CAT_LABEL, rubriekTabId, wisselRichting } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
@@ -1035,7 +1035,7 @@ export default function App() {
             </div>
           </div>
           {filterBlad}
-          <div id="rubriek-paneel" className="nf-panel" role="tabpanel">
+          <div id="rubriek-paneel" className="nf-panel" role="tabpanel" aria-labelledby={rubriekTabId(view)}>
           <Foutgrens key={view} code="CLIENT_FEED"><NewsFeed
             key={view}
             tab={view}
@@ -1087,7 +1087,7 @@ export default function App() {
             </button>
           </div>
         ) : null}
-        <div id="rubriek-paneel" role="tabpanel">
+        <div id="rubriek-paneel" role="tabpanel" aria-labelledby={rubriekTabId(view)}>
         {isVideo ? (
           <Foutgrens key={view} code="CLIENT_VIDEO"><Suspense fallback={null}>
             <VideoGrid
