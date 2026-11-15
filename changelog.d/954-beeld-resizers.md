@@ -1,0 +1,1 @@
+- Voorkom dat verschillende foto's door een verwijzingsparameter als één beeld worden gezien (#954).

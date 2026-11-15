@@ -149,7 +149,7 @@ const genVan = (gen?: string) => Date.parse(gen || "") || Date.now();
 const BUITEN_SITE = /techcrunch|the verge|ars technica|wired|mit technology|hacker news|engadget|bleeping|reuters|bbc|guardian/i;
 const BUITEN_URL = /\/(buitenland|world|wereld|internationaal|international)\//i;
 // Plaatsnaam moet aan het begin van een woord staan; "Haarlemmerolie" is geen Haarlem (Haarlemmermeer wel, zoals eerder).
-const HAARLEM = /(?<!\p{L})(?:haarlem(?!mer(?!meer))|bloemendaal|heemstede|zandvoort|velsen|ijmuiden|kennemerland|spaarndam|schalkwijk)/iu;
+const HAARLEM = /(?<!\p{L})(?:haarlem(?!mer(?!meer|s?(?!\p{L})))|bloemendaal|heemstede|zandvoort|velsen|ijmuiden|kennemerland|spaarndam|schalkwijk)/iu;
 export function regioVan(it: Item): Regio {
   const tekst = `${it.kop} ${it.ai || ""} ${it.samenvatting || ""}`;
   if (it.cat === "haarlem" || HAARLEM.test(tekst)) return "haarlem";

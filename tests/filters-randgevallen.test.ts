@@ -55,6 +55,8 @@ t("regioVan: haarlem wint van buitenland en komt ook uit de tekst", () => {
 t("regioVan: Haarlem als plaatsnaam, niet als deel van een woord (#972)", () => {
   assert.equal(regioVan(item("Haarlem wint", "")), "haarlem");
   assert.equal(regioVan(item("Haarlemse bewoners boos", "")), "haarlem");
+  assert.equal(regioVan(item("Haarlemmer stemt", "")), "haarlem");
+  assert.equal(regioVan(item("Haarlemmers stemmen", "")), "haarlem");
   assert.equal(regioVan(item("Brand in Velsen-Noord", "")), "haarlem");
   assert.equal(regioVan(item("Haarlemmermeer breidt uit", "")), "haarlem");
   assert.equal(regioVan(item("Haarlemmerolie weer populair", "")), "nl");

@@ -189,7 +189,7 @@ await t("spiegel: markering staat al vóór de spiegelaanroep en overleeft een e
   let gooi = true;
   const buiten: Buiten = { async spiegel(_d, x) { gezien.push(s.data.get("videovuil:2026-10-30")); if (gooi) throw new Error("time-out"); kv.push(x); return true; }, async zaad() { return 0; } };
   const l1 = new BudgetLogica(s, buiten, () => T0);
-  await assert.rejects(l1.reserveer(res({ schatting: 100 })));
+  assert.deepEqual(await l1.reserveer(res({ schatting: 100 })), { ok: true, video: 100 }); // spiegelfout maakt een geboekte reservering niet mislukt (#958)
   assert.deepEqual(gezien, [true], "markering al aanwezig tijdens de spiegel");
   assert.equal(s.data.get("video:2026-10-30"), 100);
   assert.equal(s.data.get("videovuil:2026-10-30"), true);
