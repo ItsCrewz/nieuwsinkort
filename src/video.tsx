@@ -197,6 +197,7 @@ export function VideoGrid({
             <button
               key={s.id}
               type="button"
+              id={`video-tab-${s.id}`}
               role="tab"
               aria-selected={soort === s.id}
               aria-controls="video-paneel"
@@ -215,7 +216,7 @@ export function VideoGrid({
           ))}
         </div>
       ) : null}
-      <div id="video-paneel" role="tabpanel">
+      <div id="video-paneel" {...(split ? { role: "tabpanel", "aria-labelledby": `video-tab-${soort}` } : {})}>
       {bronFilter && bronnen.length > 1 ? (
         <div className="chips" role="group" aria-label="Filter op bron">
           {["alle", ...bronnen].map((b) => (

@@ -13,15 +13,16 @@
 import { Buffer } from "node:buffer";
 import { svSleutel, youtubeId } from "../src/slug";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
+import { llmTimeoutMs, metRetry, metTimeout, WHISPER_TIMEOUT } from "../src/llm-aanroep";
 import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState } from "../worker/src/llm";
 
 type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
-async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage): Promise<string> {
+export async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage, timeoutMs = llmTimeoutMs(), magRetry?: () => boolean): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
   let r: any;
-  try { r = await ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }); }
-  catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } // een mislukte aanroep kan toch neuronen kosten
+  // timeout + hooguit één retry (#873); elke mislukte poging apart gemeten (een niet-afgebroken call kan toch neuronen kosten)
+  r = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry });
   u.calls++;
   meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
   const txt = typeof r?.response === "string" ? r.response : r?.choices?.[0]?.message?.content || "";
@@ -30,7 +31,7 @@ async function chat(ai: any, model: string, sys: string, user: string, maxTokens
 
 interface KV { get(key: string, type?: "json" | "text"): Promise<any>; put(key: string, v: string, o?: { expirationTtl?: number }): Promise<void>; delete(key: string): Promise<void> }
 interface DO { idFromName(n: string): unknown; get(id: unknown): { fetch(url: string, init?: RequestInit): Promise<Response> } }
-interface Env { NIEUWS: KV; AI: any; GROQ_API_KEY?: string; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string }
+interface Env { NIEUWS: KV; AI: any; GROQ_API_KEY?: string; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string; LLM_TIMEOUT_MS?: string }
 interface Ctx { request: Request; env: Env }
 
 const BUDGET_DEF = 9000;
@@ -238,7 +239,7 @@ async function groqAudio(env: Env, bytes: Uint8Array, schatting: number): Promis
 
 // ---------------- samenvatten
 const STIJL = "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf in heel simpel, informeel Nederlands: korte zinnen, gewone woorden, geen jargon. Gebruik ALLEEN wat in de tekst staat; verzin niets, geen eigen mening. Is de tekst Engels, schrijf toch in het Nederlands.";
-async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null): Promise<{ punten: string[]; model: string }> {
+async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null, ruimteOver: () => number): Promise<{ punten: string[]; model: string }> {
   const user = `Dit is wat er gezegd wordt in een filmpje van ${bron} met de titel "${titel}".\nVat het samen in 3 tot 5 korte punten (elk max 15 woorden). Zet elk punt op een nieuwe regel en begin met "- ". Geen inleiding, geen kopje.\n\nTekst:\n${tekst}`;
   let t = "", gebruikt = model;
   const aanbieder = groq(env.GROQ_API_KEY);
@@ -256,7 +257,7 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
   if (!t) {
     const fout = cloudToegestaan();
     if (fout) throw new CloudBudgetFout(fout);
-    t = await chat(env.AI, model, STIJL, user, 320, u);
+    t = await chat(env.AI, model, STIJL, user, 320, u, llmTimeoutMs(env.LLM_TIMEOUT_MS), () => ruimteOver() - u.neurons >= 60); // retry na timeout alleen met nog ruim 60 neuronen over, na aftrek van de eerste poging
   }
   return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5) };
 }
@@ -445,7 +446,8 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
         if (res === "budget") return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
         if (res === "druk") return json({ ok: false, code: pre ? "budget-pre" : "druk", fout: MSG.druk });
         reserved = schat;
-        const r: any = await env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false });
+        // wel een timeout, geen retry: de gereserveerde neuronen (`reserved`) blijven staan, dus er komt nooit een tweede Whisper-kost bij
+        const r: any = await metTimeout(() => env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false }), WHISPER_TIMEOUT);
         const dur = +r?.transcription_info?.duration || estMin * 60;
         if (!(+r?.transcription_info?.duration > 0)) u.geschat = (u.geschat || 0) + 1; // Whisper meldt geen neuronen, duur is de enige meting
         u.neurons += (dur / 60) * WHISPER_PER_MIN; u.calls++;
@@ -464,7 +466,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
       await verreken(u.neurons - reserved);
       return uit({ ...out, neuronen: Math.round(u.neurons * 10) / 10 });
     }
-    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan);
+    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan, () => ruimte);
     const p = resultaat.punten;
     await verreken(u.neurons - reserved);
     if (p.length < 2) {
