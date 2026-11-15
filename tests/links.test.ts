@@ -47,4 +47,25 @@ t("schoon: bronnen met niet-http(s) href vallen weg", () => {
   assert.deepEqual(r.items[0].bronnen.map((b: any) => b.naam), ["b"]);
 });
 
+// #702: bronloze berichten zonder id delen geen gedeelde artikellink
+import { artikelId, artikelPad, heeftArtikelId } from "../src/artikelid";
+import { artikelUrl } from "../src/delen";
+import { nieuwsSitemap } from "../functions/sitemap-nieuws.xml";
+import { sitemap } from "../functions/sitemap.xml";
+import { vandaagHtml } from "../functions/vandaag";
+t("bronloze berichten zonder id: geen artikellink, delen en indexen slaan ze over", () => {
+  const a = { kop: "Bericht A", cat: "nl", t: "2026-01-01T10:00:00Z" }, b = { kop: "Bericht B", cat: "nl", t: "2026-01-01T11:00:00Z", bronnen: [] as { href: string }[] };
+  const metId = { id: "abcd1234", kop: "Met id", cat: "nl", t: "2026-01-01T12:00:00Z" }, metBron = { kop: "Met bron", cat: "nl", t: "2026-01-01T13:00:00Z", bronnen: [{ href: "https://x.nl/a" }] };
+  assert.equal(artikelId(a), ""); assert.equal(artikelPad(a, "2026-01-01"), ""); assert.equal(artikelUrl(b, "2026-01-01"), "");
+  assert.equal(heeftArtikelId(a), false);
+  assert.equal(artikelPad(metId, "2026-01-01"), "/bericht/2026-01-01/abcd1234-met-id");
+  assert.match(artikelPad(metBron, "2026-01-01"), /^\/bericht\/2026-01-01\/[a-z0-9]{8}-met-bron$/);
+  assert.match(artikelUrl(metBron, "2026-01-01"), /^https:\/\/nieuwsinkort\.nl\/bericht\//);
+  const items = [a, b, metId, metBron];
+  for (const x of [nieuwsSitemap(items, "2026-01-01"), sitemap(items, "2026-01-01", "2026-01-01T14:00:00Z"), vandaagHtml(items, "2026-01-01")]) {
+    assert.ok(!x.includes("Bericht A") && !x.includes("Bericht B") && !x.includes("/bericht/2026-01-01/-"));
+    assert.ok(x.includes("abcd1234-met-id"));
+  }
+});
+
 console.log(`\n${n} tests geslaagd`);

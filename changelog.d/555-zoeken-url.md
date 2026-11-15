@@ -1,0 +1,1 @@
+- Zoekopdrachten blijven in de URL bewaard en zijn na teruggaan of herladen weer beschikbaar (#555).

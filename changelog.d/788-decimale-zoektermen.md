@@ -1,0 +1,1 @@
+- Zoeken onderscheidt decimale getallen van losse cijfers en herkent komma en punt als decimaalteken (#788).

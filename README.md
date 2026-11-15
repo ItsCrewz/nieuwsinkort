@@ -97,13 +97,18 @@ Artikel- en og-fetches en de Jina-terugval accepteren alleen HTTP(S)-links op po
 
 Elke PR voegt een fragment `changelog.d/<issue>-<slug>.md` toe (onderdeel van "klaar"); `CHANGELOG.md` niet direct bewerken. De coördinator voegt de fragmenten vóór een release samen met `npm run changelog` (`-- --dry` toont een voorbeeld). Zie `changelog.d/README.md`.
 
+## Werkafspraak: documentatie bijwerken
+
+- Bij elke issue of PR wordt in dezelfde PR de toepasselijke documentatie bijgewerkt: README, AGENTS.md/CLAUDE.md, docs/, het securityregister en een changelog, voor zover die bestaan.
+- De PR-beschrijving noemt welke documentatie is bijgewerkt, of waarom geen documentatie van toepassing was.
+
 ## Laadprestaties
 
 `/data.json` wordt vanuit `index.html` al tijdens het parsen opgehaald, het lettertype Inter wordt zelf geserveerd (`public/fonts/`, OFL) en de feed mount kaartinhoud pas rond de huidige kaart. Details en meetresultaten: [architectuur](docs/architectuur.md#laadprestaties-35).
 
 ## Beveiligingsheaders
 
-Statische bestanden krijgen via `public/_headers` HSTS met `max-age=86400`, een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De HTML verwijdert de CORS-header; `/data.json` gebruikt dezelfde origin en de Function behoudt haar eigen CORS-header. Pages Functions krijgen de headers uit `_headers` niet automatisch; de vier Functions zetten zelf `X-Content-Type-Options: nosniff`. Cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, browserhervalidatie en een gedeelde cache van 60 seconden met 240 seconden stale-while-revalidate); gehashte `/assets/*` zijn immutable, fonts en iconen zonder hash krijgen minstens één dag cache en `/bronnen.json` heeft een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
+Statische bestanden krijgen via `public/_headers` HSTS met `max-age=604800` (zeven dagen, zonder `includeSubDomains` en `preload`), een CSP (fonts alleen van eigen origin), frameblokkering en Permissions-Policy. De HTML verwijdert de CORS-header; `/data.json` gebruikt dezelfde origin en de Function behoudt haar eigen CORS-header. Pages Functions krijgen de headers uit `_headers` niet automatisch; de vier Functions zetten zelf `X-Content-Type-Options: nosniff`. Cacheheaders voor `/data.json` worden door de Function bepaald (ETag/304, browserhervalidatie en een gedeelde cache van 60 seconden met 240 seconden stale-while-revalidate); gehashte `/assets/*` zijn immutable, fonts en iconen zonder hash krijgen minstens één dag cache en `/bronnen.json` heeft een korte cache met stale-while-revalidate. Zie [architectuur](docs/architectuur.md#beveiligingsheaders) voor onderhoud en lokale controle.
 
 De CSP staat het Cloudflare Web Analytics-script van `static.cloudflareinsights.com` toe, zodat de beacon kan werken. `cloudflareinsights.com` staat expliciet bij `connect-src`; HTTPS-verbindingen waren daar al toegestaan. De app laadt de beacon afhankelijk van de opt-out (zie [Bezoekersstatistieken](#bezoekersstatistieken-cloudflare-web-analytics)).
 

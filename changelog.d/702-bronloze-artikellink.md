@@ -1,0 +1,1 @@
+- Berichten zonder id en zonder bronlink krijgen geen gedeelde artikellink meer: delen is dan uitgeschakeld met uitleg en ze komen niet in `/vandaag` en de sitemaps (#702).

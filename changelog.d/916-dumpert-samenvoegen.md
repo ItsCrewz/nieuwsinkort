@@ -1,0 +1,1 @@
+- Nieuwe Dumpert-filmpjes blijven zichtbaar bij het samenvoegen van dag- en uurdata (#916).

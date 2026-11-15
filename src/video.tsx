@@ -143,10 +143,8 @@ export function VideoGrid({
     return () => window.removeEventListener("message", onReady);
   }, [video, touch]);
   const opgeslagen = useRef(leesFeed());
-  const vast = useRef<Video[] | null>(null);
-  if (!video) { vast.current = null; opgeslagen.current = null; }
-  else if (!vast.current) vast.current = herstelFeed(opgeslagen.current, cat, video, list).lijst;
-  const feedVideos = vast.current ?? list;
+  if (!video) opgeslagen.current = null;
+  const feedVideos = list;
   const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
   // Dubbelzinnige oude titelroute: geen video openen, terug naar het overzicht.
   const dubbelzinnig = !!video && start === null;
@@ -199,6 +197,7 @@ export function VideoGrid({
             <button
               key={s.id}
               type="button"
+              id={`video-tab-${s.id}`}
               role="tab"
               aria-selected={soort === s.id}
               aria-controls="video-paneel"
@@ -217,7 +216,7 @@ export function VideoGrid({
           ))}
         </div>
       ) : null}
-      <div id="video-paneel" role="tabpanel">
+      <div id="video-paneel" {...(split ? { role: "tabpanel", "aria-labelledby": `video-tab-${soort}` } : {})}>
       {bronFilter && bronnen.length > 1 ? (
         <div className="chips" role="group" aria-label="Filter op bron">
           {["alle", ...bronnen].map((b) => (

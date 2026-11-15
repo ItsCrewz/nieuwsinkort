@@ -1,0 +1,1 @@
+- Zoeken: een woordgroep tussen dubbele aanhalingstekens (bijv. "max verstappen") moet aaneengesloten in één veld voorkomen; losse woorden blijven onafhankelijk matchen (#634).

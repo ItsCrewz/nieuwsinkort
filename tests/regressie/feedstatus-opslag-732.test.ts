@@ -12,12 +12,12 @@ for (const getItem of [() => { throw new Error("opslag geblokkeerd"); }, () => "
   Object.assign(globalThis, { sessionStorage: { getItem } });
   const opgeslagen = leesFeed();
   assert.deepEqual(opgeslagen, status);
-  assert.equal(herstelFeed(opgeslagen, "dumpert", status.slug, []).slug, status.slug);
+  assert.equal(herstelFeed(opgeslagen, "dumpert", status.slug, null).slug, status.slug);
   assert.equal(opgeslagen?.positie, 42);
 }
 Object.assign(globalThis, { sessionStorage: { getItem: () => JSON.stringify(sessie) } });
 assert.deepEqual(leesFeed(), sessie);
 Object.assign(globalThis, { sessionStorage: { getItem: () => "{" }, history: { state: null } });
 assert.equal(leesFeed(), null);
-assert.deepEqual(herstelFeed(null, "dumpert", status.slug, []), { lijst: [], slug: status.slug });
+assert.deepEqual(herstelFeed(null, "dumpert", status.slug, null), { lijst: [], slug: status.slug });
 console.log("✓ videostatus valt bij opslagfouten terug op de geschiedenis (#732)");

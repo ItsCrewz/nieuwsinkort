@@ -1,18 +1,13 @@
 // Pure videohelpers (speler kiezen, soort Short/Journaal, proxy-URL); apart van video.tsx zodat het hoofdscherm en het voorladen niet de hele videogrid laden.
 import type { Soort, Video } from "./types";
+import { youtubeId } from "./slug";
+export { youtubeId } from "./slug";
 
 export type Player =
   | { kind: "youtube"; src: string }
   | { kind: "hls"; src: string }
   | { kind: "mp4"; src: string }
   | null;
-
-export function youtubeId(url: string): string | null {
-  const m =
-    /youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|live\/|watch\?(?:.*&)?v=)([\w-]{6,})/.exec(url) ||
-    /youtu\.be\/([\w-]{6,})/.exec(url);
-  return m ? m[1] : null;
-}
 
 export function playerFor(v: Video): Player {
   const e = v.embed || "";

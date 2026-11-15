@@ -3,20 +3,24 @@ import { Fragment, type ReactNode } from "react";
 // Focus-lezen (Bionic Reading): eerste ~45% van elk woord vet.
 // Uitkomst per tekst gecachet: bij tab-wissels en herladen hoeft React niet opnieuw te splitsen.
 const bionicCache = new Map<string, ReactNode>();
+const segmenter = typeof Intl.Segmenter === "function" ? new Intl.Segmenter("nl", { granularity: "grapheme" }) : null;
 function bionic(text: string): ReactNode {
+  if (!segmenter) return text;
   const hit = bionicCache.get(text);
   if (hit) return hit;
   const out = text.split(/(\s+)/).map((part, i) => {
     if (!part || /^\s+$/.test(part)) return <Fragment key={i}>{part}</Fragment>;
-    const m = /^([^\p{L}\p{N}]*)([\p{L}\p{N}]+)(.*)$/u.exec(part);
+    const m = /^([^\p{L}\p{N}]*)([\p{L}\p{N}\p{M}]+)(.*)$/u.exec(part);
     if (!m || !/\p{L}/u.test(m[2])) return <Fragment key={i}>{part}</Fragment>;
     const core = m[2];
-    const n = core.length <= 3 ? 1 : Math.ceil(core.length * 0.45);
+    const tekens = [...segmenter.segment(core)];
+    const n = tekens.length <= 3 ? 1 : Math.ceil(tekens.length * 0.45);
+    const grens = tekens[n]?.index ?? core.length;
     return (
       <Fragment key={i}>
         {m[1]}
-        <b>{core.slice(0, n)}</b>
-        {core.slice(n)}
+        <b>{core.slice(0, grens)}</b>
+        {core.slice(grens)}
         {m[3]}
       </Fragment>
     );
@@ -38,17 +42,19 @@ export function host(href: string) {
   }
 }
 
-/** Schakelaar; alleen transform/opacity bewegen. checked="mixed" voor een groep die deels aan staat. */
-export function Switch({ checked, onChange, label }: { checked: boolean | "mixed"; onChange: (v: boolean) => void; label: string }) {
+/** Schakelaar (aan/uit); alleen transform/opacity bewegen. */
+export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked === "mixed" ? "mixed" : checked}
-      aria-label={label}
-      className={`sw ${checked === true ? "on" : checked === "mixed" ? "mixed" : ""}`}
-      onClick={() => onChange(checked !== true)}
-    >
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} className={`sw ${checked ? "on" : ""}`} onClick={() => onChange(!checked)}>
+      <span className="sw-k" />
+    </button>
+  );
+}
+
+/** Groepsbediening: "mixed" bestaat alleen op role="checkbox" (niet op switch). Uit of deels aan zet de hele groep aan. */
+export function GroupToggle({ checked, onChange, label }: { checked: boolean | "mixed"; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={checked} aria-label={label} className={`sw ${checked === true ? "on" : checked === "mixed" ? "mixed" : ""}`} onClick={() => onChange(checked !== true)}>
       <span className="sw-k" />
     </button>
   );

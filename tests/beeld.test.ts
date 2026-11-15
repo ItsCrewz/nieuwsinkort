@@ -36,8 +36,8 @@ t("uniekeBeelden behoudt de eerste bron, verwijdert dubbelen en respecteert max"
     "https://nieuws.nl/logo.png",
     "https://nieuws.nl/andere-foto.jpg",
   ];
-  assert.deepEqual(uniekeBeelden(urls), ["https://nieuws.nl/foto-1200x675.jpg", "https://nieuws.nl/andere-foto.jpg"]);
-  assert.deepEqual(uniekeBeelden(urls, 1), ["https://nieuws.nl/foto-1200x675.jpg"]);
+  assert.deepEqual(uniekeBeelden(urls), ["https://cdn.nieuws.nl/foto-600x338.jpg", "https://nieuws.nl/andere-foto.jpg"]);
+  assert.deepEqual(uniekeBeelden(urls, 1), ["https://cdn.nieuws.nl/foto-600x338.jpg"]);
 });
 
 t("ogImage leest een relatieve og:image ten opzichte van de basis-URL", () => {

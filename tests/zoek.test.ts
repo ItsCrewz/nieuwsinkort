@@ -140,3 +140,24 @@ console.log("zoek: tests geslaagd");
 for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 resultaten"]] as const) {
   assert.equal(resultaatTekst(aantal), tekst);
 }
+
+// Woordgroepen tussen aanhalingstekens (#634)
+{
+  const naast = { cat: "nl", kop: "Max Verstappen wint opnieuw" } as Item;
+  const ver = { cat: "nl", kop: "Max wint, Verstappen kijkt toe" } as Item;
+  const velden = { cat: "nl", kop: "Max", ai: "Verstappen wint" } as Item;
+  const café = { cat: "nl", kop: "Het Café Zoë opent" } as Item;
+  assert.deepEqual(zoekItems([naast, ver, velden], "max verstappen"), [naast, ver, velden]);
+  assert.deepEqual(zoekItems([naast, ver, velden], '"max verstappen"'), [naast]);
+  assert.deepEqual(zoekItems([naast, ver, velden], '"MAX Verstappen"'), [naast]);
+  assert.deepEqual(zoekItems([café], '"cafe zoe"'), [café]);
+  assert.deepEqual(zoekItems([café], "“café zoë”"), [café]);
+  assert.deepEqual(zoekItems([naast, ver], '"max verstappen" wint'), [naast]);
+  assert.deepEqual(zoekItems([naast, ver], '"max verstappen" kijkt'), []);
+  assert.deepEqual(zoekItems([naast], '"max verstappen" "wint opnieuw"'), [naast]);
+  assert.deepEqual(zoekItems([naast], '"max verstappen" "opnieuw wint"'), []);
+  assert.deepEqual(zoekItems([naast, ver], 'max "verstappen'), [naast, ver]);
+  assert.deepEqual(zoekItems([naast], 'max verstappen"'), [naast]);
+  assert.deepEqual(zoekItems([naast], '""'), []);
+  assert.deepEqual(zoekItems([naast], '"" max'), [naast]);
+}

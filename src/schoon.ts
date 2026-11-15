@@ -11,7 +11,7 @@ export function schoon(D: any) {
   const f = dedupVideos(films, films.some((v: any) => !v.gisteren) ? d.list.filter((v: any) => !v.gisteren) : d.list);
   const items = Array.isArray(D.items) ? D.items.map((i: any) => {
     const b = uniekeBeelden([...(Array.isArray(i.beelden) ? i.beelden : []), i.beeld]);
-    const { beeld, ...rest } = i;
+    const { beeld, beelden, ...rest } = i;
     if (Array.isArray(rest.bronnen)) rest.bronnen = rest.bronnen.filter((x: any) => veiligeUrl(x?.href));
     return b.length ? { ...rest, beelden: b } : rest;
   }) : D.items;

@@ -135,8 +135,12 @@ export class BudgetLogica {
     const nieuw = rond(video + r.schatting);
     await this.s.put(`uur:${r.uur}`, n + 1);
     await this.bewaar(r.datum, nieuw);
-    // oude dagen en uren opruimen
-    const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "uur:" })).keys(), ...(await this.s.list({ prefix: "videovuil:" })).keys()].filter((k) => k !== `video:${r.datum}` && k !== `videovuil:${r.datum}` && k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`));
+    // Oude dagen en uren opruimen. De vorige dag blijft staan: een aanvraag van vóór UTC-middernacht kan nog verrekenen,
+    // en zonder die stand zou verreken() hem uit een achterlopende KV-spiegel zaaien. Nieuwere dagen blijven ook staan.
+    const vorige = utcDag(Date.parse(r.datum) - 864e5);
+    const dagOud = (k: string) => k.slice(k.indexOf(":") + 1) < vorige;
+    const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "videovuil:" })).keys()].filter(dagOud)
+      .concat([...(await this.s.list({ prefix: "uur:" })).keys()].filter((k) => k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`)));
     if (oud.length) await this.s.delete(oud);
     await this.spiegel(r.datum, nieuw);
     return { ok: true, video: nieuw };

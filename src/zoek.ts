@@ -4,9 +4,12 @@ import type { Item } from "./types";
 // Letters die NFD niet ontleedt: beperkte transliteratie zodat "Soren" ook "Søren" vindt (#735).
 const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "ß": "ss" };
 
+// Alleen letters en cijfers omzetten; andere betekenisvolle tekens behouden hun vorm.
+const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (teken) => String.fromCharCode(teken.charCodeAt(0) - 0xfee0));
+
 export function normaliseer(tekst: string): string {
-  return tekst.normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
-    .replace(/(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => deel === "c++" || deel === "c#" ? deel : " ").trim();
+  return gewoneBreedte(tekst).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
+    .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
 // Koppelteken tussen twee letters/cijfers, behalve tussen twee losse tekens ("V-S" blijft geen "VS"): "corona-maatregelen" is dezelfde samenstelling als "coronamaatregelen".
@@ -33,6 +36,8 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
       for (const d of delen) { woorden.push(d); lijm.push(false); }
       vorige = true;
     }
+    // Een iOS-versie is ook op het hoofdversienummer vindbaar.
+    for (const match of veld.matchAll(/\bios\s+(\p{N}+)\.\p{N}+(?![\p{N}.])/giu)) { woorden.push(match[1]); lijm.push(false); }
     woorden.push(""); lijm.push(false);
   }
   return { woorden, lijm };
@@ -51,7 +56,7 @@ function zoektekst(item: Item): Zoektekst {
 }
 
 // Exact i.p.v. woordbegin: c++/c# en volledig numerieke termen (2024 vindt geen 20240, 20 geen 2026).
-const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+$/u.test(term);
+const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+(?:\.\p{N}+)?$/u.test(term);
 const past = (term: string, woord: string) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : woord.startsWith(term);
 
 // Reeksen [begin, eind] waarop een term past. Aaneengeschreven vorm: één woord, of woorden met koppelteken ("coronamaatregelen" = "corona-maatregelen").
@@ -106,9 +111,15 @@ function alleTermenPassen(kand: [number, number][][], aantal: number): boolean {
 export function zoekItems(items: Item[], query: string): Item[] {
   // Alleen gekoppelde woorddelen vormen een reeks; andere leestekens scheiden zoekwoorden.
   const termen: string[][] = [];
+  // Woordgroepen tussen aanhalingstekens (#634): één term met meerdere delen, dus aaneengesloten in één veld. Een ongesloten teken blijft scheidingsteken.
+  const rest = query.replace(/"([^"]*)"|“([^”]*)”|„([^“”"]*)[“”"]/gu, (_, a, b, c) => {
+    const delen = normaliseer(a ?? b ?? c).split(" ").filter(Boolean);
+    if (delen.length) termen.push(delen);
+    return " ";
+  });
   // Het stuurteken \u0001 is bewust de markering voor termkoppeltekens (#811).
   // eslint-disable-next-line no-control-regex
-  for (const token of afkortingen(query).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001]+/u)) {
+  for (const token of afkortingen(rest).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
     const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
   }
@@ -125,6 +136,14 @@ export function resultaatTekst(aantal: number): string {
   return `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}`;
 }
 
+// Zoekscope (#613): binnen welke rubriek en filters wordt gezocht, en hoeveel treffers de filters verbergen.
+export function scopeTekst(s: { rubriek: string; zonderPolitiek: boolean; tijd: string; bronnenUit: number }): string {
+  return ["Zoekt in " + s.rubriek + (s.zonderPolitiek ? " (zonder Politiek)" : ""), s.tijd, ...(s.bronnenUit ? [`${s.bronnenUit} ${s.bronnenUit === 1 ? "bron" : "bronnen"} uit`] : [])].join(" · ");
+}
+export function verborgenTekst(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? "treffer" : "treffers"} verborgen door filters`;
+}
+
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
 export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
   const woorden = normaliseer(query).split(" ").filter(Boolean);
@@ -133,7 +152,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   for (const teken of tekst) {
     const begin = offset;
     offset += teken.length;
-    const genormaliseerd = teken.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(",", ".");
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
       vlak += letter;
@@ -144,7 +163,9 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   for (const woord of woorden) {
     let vanaf = 0, index: number;
     while ((index = vlak.indexOf(woord, vanaf)) !== -1) {
-      if (index === 0 || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) {
+      const numeriek = /^\p{N}+(?:\.\p{N}+)?$/u.test(woord);
+      const getal = numeriek ? vlak.slice(0, index).match(/[\p{N}.,]*$/u)![0] + vlak.slice(index).match(/^[\p{N}.,]*/u)![0] : "";
+      if ((index === 0 || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
         bereiken.push({ begin: posities[index].begin, eind: posities[index + woord.length - 1].eind });
       }
       vanaf = index + 1;
@@ -162,4 +183,15 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   }
   if (eind < tekst.length) delen.push({ tekst: tekst.slice(eind), markeer: false });
   return delen;
+}
+
+export function leesZoekterm(zoek: string): string {
+  return new URLSearchParams(zoek).get("q") ?? "";
+}
+
+export function schrijfZoekterm(url: string, term: string): string {
+  const u = new URL(url);
+  if (term) u.searchParams.set("q", term);
+  else u.searchParams.delete("q");
+  return u.pathname + u.search + u.hash;
 }

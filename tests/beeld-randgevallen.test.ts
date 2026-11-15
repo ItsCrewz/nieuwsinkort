@@ -66,10 +66,10 @@ t("uniekeBeelden geeft precies max unieke beelden in bronvolgorde", () => {
   assert.deepEqual(uniekeBeelden([null, eerste, eerste, tweede, derde], 2), [eerste, tweede]);
 });
 
-t("uniekeBeelden begrenst standaard tot zes unieke beelden", () => {
-  const urls = Array.from({ length: 7 }, (_, i) => `https://nieuws.nl/stadsbeeld${i}.jpg`);
+t("uniekeBeelden begrenst standaard tot twaalf unieke beelden", () => {
+  const urls = Array.from({ length: 14 }, (_, i) => `https://nieuws.nl/stadsbeeld${i}.jpg`);
   assert.deepEqual(uniekeBeelden(urls.slice(0, 6)), urls.slice(0, 6));
-  assert.deepEqual(uniekeBeelden(urls), urls.slice(0, 6));
+  assert.deepEqual(uniekeBeelden(urls), urls.slice(0, 12));
 });
 
 t("ogImage lost een relatief pad met enkele aanhalingstekens en entities op", () => {
@@ -87,6 +87,15 @@ t("ogImage geeft een lege string bij ontbrekende of onbruikbare metadata", () =>
   assert.equal(ogImage("<title>Nieuws</title><meta name='description' content='tekst'>", "https://nieuws.nl/"), "");
   assert.equal(ogImage("<meta property='og:image' content=''>", "https://nieuws.nl/"), "");
   assert.equal(ogImage("<meta property='og:image' content='/foto.jpg'>", "geen geldige basis"), "");
+});
+
+t("protocol van beeld-URL's is hoofdletterongevoelig (#869)", () => {
+  for (const p of ["https://", "HTTPS://", "HtTpS://"]) assert.equal(goedBeeld(`${p}images.example.org/foto.jpg`), true, p);
+  assert.equal(goedBeeld("HTTP://images.example.org/foto.jpg"), true);
+  for (const u of ["ftp://images.example.org/foto.jpg", "javascript:alert(1)", "HTTPS//images.example.org/foto.jpg", "niet een url"]) assert.equal(goedBeeld(u), false, u);
+  assert.deepEqual(uniekeBeelden(["HTTPS://images.example.org/foto.jpg"]), ["https://images.example.org/foto.jpg"]);
+  assert.deepEqual(uniekeBeelden(["HtTpS://a.example.org/x.jpg", "https://a.example.org/x.jpg"]), ["https://a.example.org/x.jpg"]);
+  assert.deepEqual(uniekeBeelden(["HTTP://a.example.org/x.jpg", "ftp://a.example.org/y.jpg", "javascript:alert(1)", "kapot"]), []);
 });
 
 console.log(`\n${n} tests geslaagd`);

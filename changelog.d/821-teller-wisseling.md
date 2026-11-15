@@ -1,0 +1,1 @@
+- Videofeed: de frame-waakhond meldt na een wisseling van tellerbron (decode naar presentatie) niet meer ten onrechte `frame-vast` bij toevallig gelijke tellerwaarden; de stilstand-timer herstart bij de wisseling, een echte stilstand wordt exact 2,5 s daarna gemeld, en de tellerkeuze staat op één plek (#821).

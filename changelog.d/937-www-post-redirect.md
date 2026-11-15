@@ -1,0 +1,1 @@
+- Behoud methode en inhoud bij het doorverwijzen van POST-verzoeken vanaf www (#937).

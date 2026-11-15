@@ -9,7 +9,7 @@ export const LLM_TIMEOUT_MS = 15000;
 /** Deelt een fout in op code. Kijkt alleen naar naam en korte melding; LLM_OVERIG vangt de rest (o.a. overige 4xx), zodat geen fout zonder code blijft. */
 export function llmCode(e: unknown): LlmCode {
   const naam = e instanceof Error ? e.name : "", m = e instanceof Error ? e.message : String(e ?? "");
-  if (naam === "TimeoutError" || naam === "AbortError" || /time.?out|timed out/i.test(m)) return "LLM_TIMEOUT";
+  if (naam === "TimeoutError" || naam === "LlmTimeout" || naam === "AbortError" || /time.?out|timed out/i.test(m)) return "LLM_TIMEOUT";
   if (isDagQuota(m) || /^AI-keten uitgeput/.test(m) || m === "Cloudflare niet beschikbaar") return "LLM_BUDGET";
   const http = /\bHTTP (\d{3})\b/.exec(m);
   if (http?.[1] === "429" || /rate.?limit|too many requests/i.test(m)) return "LLM_RATE_LIMIT";
