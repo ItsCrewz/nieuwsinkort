@@ -1,0 +1,1 @@
+- Zoeken herkent volledige-breedteletters en -cijfers als hun gewone equivalent (#867).

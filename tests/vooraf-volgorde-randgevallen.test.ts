@@ -29,12 +29,11 @@ t("zonder expliciete slug wordt de titel gebruikt en blijven unieke titels staan
   assert.deepEqual(volgorde({ dumpert: [een, twee] }), [een, twee]);
 });
 
-t("dubbele afgeleide titels en lege titels behouden de eerste", () => {
+t("zelfde titel met andere link blijft staan; zelfde link wordt ontdubbeld", () => {
   const een = { titel: "Café nieuws!", href: "https://voorbeeld.nl/1" };
-  const dubbel = { titel: "Cafe nieuws", href: "https://voorbeeld.nl/2" };
-  const leeg = { titel: "", href: "https://voorbeeld.nl/3" };
-  const ookLeeg = { titel: "!!!", href: "https://voorbeeld.nl/4" };
-  assert.deepEqual(volgorde({ dumpert: [een, dubbel, leeg, ookLeeg] }), [een, leeg]);
+  const anders = { titel: "Cafe nieuws", href: "https://voorbeeld.nl/2" };
+  const zelfde = { titel: "Andere titel", href: "https://voorbeeld.nl/1" };
+  assert.deepEqual(volgorde({ dumpert: [een, anders, zelfde] }), [een, anders]);
 });
 
 t("dezelfde YouTube-slug in verschillende feeds behoudt de eerst bezochte versie", () => {

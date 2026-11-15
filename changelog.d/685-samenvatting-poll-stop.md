@@ -1,0 +1,1 @@
+- Stop het pollen van een videosamenvatting zodra het blad sluit: aanvraag én wachttimer van 4 s worden geannuleerd (#685).

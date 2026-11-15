@@ -1,0 +1,1 @@
+- Vooraf laden: een mislukte of afgebroken taak (poster, playlist, mp4, hls.js) wordt bij een volgend voorlaadmoment opnieuw geprobeerd (ook na herstel van de verbinding; geen automatische retry-lus), geslaagde taken blijven ontdubbeld en gelijktijdige verzoeken delen één taak (#636).

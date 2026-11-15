@@ -1,5 +1,5 @@
 // Publicatietijden en de Amsterdamse dag voor Worker en Pages.
-import { ams, midnight } from "./tijd";
+import { ams, amsTijdstip, midnight } from "./tijd";
 
 export const TOEKOMST_MARGE = 15 * 60e3;
 export const TZ_MARGE = 2 * 3600e3 + TOEKOMST_MARGE;
@@ -22,6 +22,13 @@ export function selecteerVideodag<T extends object>(lijst: T[], now: number, tij
   if (ams(now).h >= 10) return [];
   const begin = midnight(now), vorig = videoVanaf(now);
   return lijst.filter((v) => { const t = publicatieTijd(tijd(v), now); return t != null && t >= vorig && t < begin; }).map((v) => ({ ...v, gisteren: true }));
+}
+// Ontbreekt een numerieke t, dan volgt die uit de dag van de dataset en een geldige HH:MM (anders null).
+export function afgeleideTijd(x: any, gen: number): number | null {
+  if (typeof x?.t === "number") return x.t;
+  if (x?.t != null || !Number.isFinite(gen)) return null;
+  const m = /^(\d{2}):(\d{2})$/.exec(x?.tijd || "");
+  return m && +m[1] < 24 && +m[2] < 60 ? amsTijdstip(gen, +m[1], +m[2]) : null;
 }
 export const nieuwsteTijd = (leden: { d: number }[]) => Math.max(...leden.map((lid) => lid.d));
 
@@ -49,7 +56,8 @@ export function alleenVandaag(data: any, now: number) {
     if (key === "items") out[key] = gefilterd;
     else {
       const genGisteren = Number.isFinite(gen) && ams(gen).iso === ams(midnight(now) - 1).iso;
-      const video = vandaag ? selecteerVideodag(lijst, now, (x: any) => x?.t) : genGisteren ? selecteerVideodag(lijst.filter((x: any) => !vanVandaag(x?.t, now)), now, (x: any) => x?.t) : [];
+      const tijd = (x: any) => afgeleideTijd(x, gen);
+      const video = vandaag ? selecteerVideodag(lijst, now, tijd) : genGisteren ? selecteerVideodag(lijst.filter((x: any) => !vanVandaag(tijd(x), now)), now, tijd) : [];
       out[key] = gefilterd.length ? gefilterd.filter((x: any) => !x.gisteren) : video;
       oud[key] = lijst.length - out[key].length;
     }

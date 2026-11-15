@@ -1,0 +1,1 @@
+- Voorkom dat bij verversing van een geopend bericht extra tekst van een eerdere sleutel verschijnt (#677).

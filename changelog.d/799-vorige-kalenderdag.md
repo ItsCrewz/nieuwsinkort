@@ -1,0 +1,1 @@
+- Behoud vooraf-data van de vorige Amsterdamse kalenderdag tot 06:00, ook na de zomertijdwisseling (#799).

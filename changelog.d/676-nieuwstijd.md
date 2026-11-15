@@ -1,0 +1,1 @@
+- Nieuwsfilters en sortering gebruiken de absolute publicatietijd, ook bij dubbele klokuren (#676).

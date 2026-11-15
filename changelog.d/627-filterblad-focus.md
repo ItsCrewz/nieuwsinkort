@@ -1,0 +1,1 @@
+- Filterblad: Tab en Shift+Tab blijven binnen het geopende blad, ook met uitgeschakelde knoppen; focus keert terug naar de opener bij sluiten (#627).

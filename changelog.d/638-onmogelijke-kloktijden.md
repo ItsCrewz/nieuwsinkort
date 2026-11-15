@@ -1,0 +1,1 @@
+- Negeer onmogelijke kloktijden (zoals 25:99) in nieuws- en videofilters: zo'n tijd geldt als onbekend, blijft zichtbaar en staat bij tijdsortering onderaan (#638).

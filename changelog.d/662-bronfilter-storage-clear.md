@@ -1,0 +1,1 @@
+- Bronnenfilter: een algemene opslagwissing (`localStorage.clear()`) in een ander tabblad wordt nu ook opgepakt; het filter, de berichten en de filtertelling volgen de actuele opslag (#662).

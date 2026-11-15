@@ -1,0 +1,1 @@
+- Foto's met dezelfde bestandsnaam in verschillende artikelmappen blijven los; maatvarianten van dezelfde foto worden nog samengevoegd (#649).

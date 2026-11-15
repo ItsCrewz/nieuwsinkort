@@ -2,7 +2,7 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
 
@@ -30,25 +30,39 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
   if (!u || klaar.has(u)) return Promise.resolve();
   const p0 = bezig.get(u);
   if (p0) return p0;
-  const laad = (src: string): Promise<void> => {
-    const im = new Image();
-    im.referrerPolicy = "no-referrer";
-    im.decoding = "async";
-    if (im.decode) { im.src = src; return im.decode(); }
-    // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
-    // voltooide afbeelding direct afhandelen; handlers daarna opruimen.
-    return new Promise<void>((ok, nok) => {
-      const af = (goed: boolean) => { im.onload = im.onerror = null; if (goed) ok(); else nok(new Error("laden mislukt")); };
-      im.onload = () => af(true);
-      im.onerror = () => af(false);
+  let afgerond = false;
+  let im: HTMLImageElement | undefined;
+  let timer: ReturnType<typeof setTimeout>;
+  const p = new Promise<void>((resolve) => {
+    const stop = (gelukt: boolean) => {
+      if (afgerond) return;
+      afgerond = true;
+      clearTimeout(timer);
+      if (im) { im.onload = null; im.onerror = null; }
+      if (gelukt) klaar.add(u);
+      resolve();
+    };
+    const laad = (src: string) => {
+      im = new Image();
+      im.referrerPolicy = "no-referrer";
+      im.decoding = "async";
+      const fout = () => {
+        if (afgerond) return;
+        if (im) { im.onload = null; im.onerror = null; }
+        if (naarRechtstreeks(u)) laad(u);
+        else stop(false);
+      };
+      if (im.decode) { im.src = src; im.decode().then(() => stop(true), fout); return; }
+      // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
+      // voltooide afbeelding direct afhandelen.
+      im.onload = () => stop(true);
+      im.onerror = fout;
       im.src = src;
-      if (im.complete) af(im.naturalWidth > 0);
-    });
-  };
-  const p = laad(bronUrl(u)) // zelfde URL als de <img src>, anders dubbele downloads
-    .catch(() => (naarRechtstreeks(u) ? laad(u) : Promise.reject()))
-    .then(() => { klaar.add(u); }, () => {})
-    .finally(() => bezig.delete(u));
+      if (im.complete) { if (im.naturalWidth > 0) stop(true); else fout(); }
+    };
+    timer = setTimeout(() => stop(false), 10000);
+    laad(bronUrl(u)); // zelfde URL als de <img src>, anders dubbele downloads
+  }).finally(() => { if (bezig.get(u) === p) bezig.delete(u); });
   bezig.set(u, p);
   return p;
 }
@@ -107,6 +121,8 @@ function register(r: Reg) {
 export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = eager, className = "", onChange }: { urls: string[]; eager?: boolean; voorrang?: boolean; className?: string; onChange?: () => void }) {
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
+  const zichtbare = list.slice(0, 6);
+  const instructieId = useId();
   const track = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
   // Pas foto's plaatsen als het bericht (bijna) in beeld is, of als de vooruitlader hem al heeft binnengehaald
@@ -128,7 +144,17 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, []);
   const [, herlaad] = useState(0);
   const raf = useRef(0);
-  useEffect(() => { setList(urls); setI(0); }, [urls]);
+  useLayoutEffect(() => {
+    const huidig = listRef.current[iRef.current];
+    const nieuw = Math.max(0, Math.min(5, urls.indexOf(huidig)));
+    cancelAnimationFrame(raf.current);
+    setList(urls);
+    setI(nieuw);
+  }, [urls]);
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (el) el.scrollLeft = i * el.clientWidth;
+  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
   listRef.current = list;
   iRef.current = i;
   useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
@@ -142,17 +168,17 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
       const el = track.current;
-      if (el && el.clientWidth) setI(Math.max(0, Math.min(list.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
+      if (el && el.clientWidth) setI(Math.max(0, Math.min(zichtbare.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
     });
-  }, [list.length]);
+  }, [zichtbare.length]);
   const go = (k: number) => {
     const el = track.current;
     if (!el) return;
-    const n = (k + list.length) % list.length;
+    const n = (k + zichtbare.length) % zichtbare.length;
     el.scrollTo({ left: n * el.clientWidth, behavior: scrollGedrag() });
   };
   if (!list.length) return null;
-  const multi = list.length > 1;
+  const multi = zichtbare.length > 1;
   return (
     <div ref={box} className={`bl ${multi ? "multi" : ""} ${className}`} aria-roledescription={multi ? "fotocarrousel" : undefined}>
       <div
@@ -161,6 +187,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
         tabIndex={multi ? 0 : -1}
         role={multi ? "group" : undefined}
         aria-label={multi ? "Foto's" : undefined}
+        aria-describedby={multi ? instructieId : undefined}
         onKeyDown={multi ? (e) => {
           if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
             e.preventDefault();
@@ -175,9 +202,9 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
           go(e.clientX - r.left > r.width * 0.35 ? i + 1 : i - 1);
         } : undefined}
       >
-        {list.map((u, k) => (
+        {zichtbare.map((u, k) => (
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
-            {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
+            {near && (k <= i + 1 || k === zichtbare.length - 1 && i === 0) ? (
               <img
                 src={bronUrl(u)}
                 alt=""
@@ -202,12 +229,13 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       </div>
       {multi ? (
         <>
+          <span id={instructieId} className="sr-only">Gebruik de pijltjestoetsen links en rechts om van foto te wisselen.</span>
           <div className="bl-dots" aria-hidden="true">
-            {list.map((u, k) => <span key={u} className={k === i ? "on" : ""} />)}
+            {zichtbare.map((u, k) => <span key={u} className={k === i ? "on" : ""} />)}
           </div>
           <button type="button" className="bl-nav prev" aria-label="Vorige foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(i - 1); }}>‹</button>
           <button type="button" className="bl-nav next" aria-label="Volgende foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(i + 1); }}>›</button>
-          <span className="sr-only" aria-live="polite">Foto {i + 1} van {list.length}</span>
+          <span className="sr-only" aria-live="polite">Foto {i + 1} van {zichtbare.length}</span>
         </>
       ) : null}
     </div>
@@ -218,10 +246,10 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
 /** Index van de foto die Thumb probeert. Verandert de inhoud van de lijst (ververst bericht), dan terug naar de eerste;
  *  een rerender met dezelfde lijst (nieuwe array, zelfde urls) laat de index staan. */
 export function useThumbIndex(urls: string[]): [number, (k: number) => void] {
-  const sleutel = urls.join("\n");
+  const sleutel = JSON.stringify(urls);
   const [st, setSt] = useState({ sleutel, k: 0 });
-  if (st.sleutel !== sleutel) { setSt({ sleutel, k: 0 }); return [0, (k) => setSt({ sleutel, k })]; }
-  return [st.k, (k) => setSt({ sleutel, k })];
+  if (st.sleutel !== sleutel) setSt({ sleutel, k: 0 });
+  return [st.sleutel === sleutel ? st.k : 0, (k) => setSt((huidig) => huidig.sleutel === sleutel ? { sleutel, k } : huidig)];
 }
 
 export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {

@@ -32,15 +32,22 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
   const e = meerCache.get(k);
   if (e && (e.bezig || Date.now() - e.at < VERS)) return e.p;
   const nieuw: Ingang = { p: Promise.resolve(null), at: e?.at ?? 0, data: e?.data ?? null, bezig: true };
-  nieuw.p = fetch(`/meer?k=${encodeURIComponent(k)}`, { cache: "no-cache" })
+  // Een vastgelopen aanvraag stopt na 10 s (#742), zodat een volgende poging kan herstellen.
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => { controller.abort(); resolve(null); }, 10000);
+  });
+  const aanvraag = fetch(`/meer?k=${encodeURIComponent(k)}`, { cache: "no-cache", signal: controller.signal })
     .then((r) => (r.ok ? r.json() as Promise<unknown> : null))
     .then((data) => geldigMeer(data) ? data : null)
-    .catch(() => null)
-    .then((m) => {
-      nieuw.bezig = false;
-      if (m) { nieuw.data = m; nieuw.at = Date.now(); } else if (!nieuw.data && meerCache.get(k) === nieuw) meerCache.delete(k);
-      return m ?? nieuw.data;
-    });
+    .catch(() => null);
+  nieuw.p = Promise.race([aanvraag, timeout]).then((m) => {
+    clearTimeout(timer);
+    nieuw.bezig = false;
+    if (m) { nieuw.data = m; nieuw.at = Date.now(); } else if (!nieuw.data && meerCache.get(k) === nieuw) meerCache.delete(k);
+    return m ?? nieuw.data;
+  });
   meerCache.set(k, nieuw);
   return nieuw.p;
 }

@@ -1,0 +1,1 @@
+- Filterblad: een filterwijziging verplaatst de focus niet meer naar de sluitknop; `onClose` is stabiel zodat het focus-effect alleen bij openen en sluiten draait (#623).

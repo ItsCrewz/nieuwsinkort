@@ -1,0 +1,1 @@
+- Zoeken behoudt de focus op desktop in het zoekveld na Enter (#820).

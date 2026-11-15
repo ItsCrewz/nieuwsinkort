@@ -1,5 +1,36 @@
 import { test, expect } from "@playwright/test";
 
+test("Enter tijdens compositie behoudt focus en daarna werkt zoeken en sluiten", async ({ page, isMobile }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  await knop.click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill("東京");
+  await invoer.dispatchEvent("compositionstart", { data: "東京" });
+  await invoer.press("Enter");
+  await expect(invoer).toBeFocused();
+  await expect(invoer).toHaveValue("東京");
+  await invoer.dispatchEvent("compositionend", { data: "東京" });
+  // Safari kan compositionend vóór de bevestigende Enter afvuren.
+  const verhinderd = await invoer.evaluate((el) => !el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 229, bubbles: true, cancelable: true })));
+  expect(verhinderd).toBe(true);
+  await expect(invoer).toBeFocused();
+  await invoer.press("Enter");
+  if (isMobile) await expect(invoer).not.toBeFocused();
+  else await expect(invoer).toBeFocused();
+  await expect(invoer).toHaveValue("東京");
+  await invoer.focus();
+  await invoer.press("Escape");
+  await expect(invoer).toBeHidden();
+  await expect(knop).toBeFocused();
+  await knop.click();
+  await invoer.fill("nieuws");
+  await page.getByRole("button", { name: "Sluiten", exact: true }).click();
+  await expect(invoer).toBeHidden();
+  await expect(knop).toBeFocused();
+});
+
 for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 800]]) test(`zoekknop is vast, groot genoeg en botst niet met de deelknop (${naam})`, async ({ page }) => {
   await page.setViewportSize({ width: breedte, height: hoogte });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
@@ -39,13 +70,16 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   expect(await invoer.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
   await invoer.fill("onvindbarezoekterm506");
   await expect(page.locator("[aria-live=polite]").filter({ hasText: "0 resultaten" })).toBeAttached();
-  await expect(page.getByText("Geen berichten gevonden voor", { exact: false })).toBeAttached();
+  await expect(page.getByText("Niets gevonden voor “onvindbarezoekterm506”")).toBeVisible();
   for (const term of ["!!!", "😀"]) {
     await invoer.fill(term);
     await expect(page.locator(".zoek-leeg")).toContainText("Voer letters of cijfers in om te zoeken.");
     await expect(page.locator(".zoek-status")).toHaveText("Voer letters of cijfers in om te zoeken.");
   }
-  await invoer.fill("");
+  await invoer.fill("onvindbarezoekterm506");
+  await page.getByRole("button", { name: "Wis zoekopdracht" }).click();
+  await expect(invoer).toHaveValue("");
+  await expect(invoer).toBeFocused();
   await expect(page.locator(".nc-title a").first()).toBeVisible();
   await expect(page.locator(".zoek-status")).toBeEmpty();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -54,6 +88,51 @@ test("zoeken op een smal scherm zonder extra verzoeken of opslag", async ({ page
   await expect(knop).toBeFocused();
   expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(opslag);
   expect(verzoeken).toEqual([]);
+});
+
+test("sneltoets opent zoeken en Escape brengt focus terug", async ({ page, isMobile }) => {
+  test.skip(isMobile, "De sneltoets is voor desktop.");
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await expect(knop).toBeVisible();
+  await page.keyboard.press("/");
+  await expect(invoer).toBeFocused();
+  await page.keyboard.type("nieuws/");
+  await expect(invoer).toHaveValue("nieuws/");
+  await page.getByRole("button", { name: "Sluiten" }).focus();
+  await page.keyboard.press("Escape");
+  await expect(invoer).toBeHidden();
+  await expect(knop).toBeFocused();
+});
+
+test("modaal bronnenvenster krijgt voorrang op zoeksneltoetsen", async ({ page, isMobile }) => {
+  test.skip(isMobile, "De sneltoets is voor desktop.");
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const zoekknop = page.getByRole("button", { name: "Zoeken", exact: true });
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  const bronnen = page.getByRole("button", { name: "Bronnen", exact: true });
+  await bronnen.click();
+  const venster = page.getByRole("dialog", { name: "Bronnen" });
+  await expect(venster).toBeVisible();
+  await page.keyboard.press("/");
+  await expect(invoer).toHaveCount(0);
+  await expect(venster.getByRole("button", { name: "Sluit bronnen" }).last()).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(venster).toHaveCount(0);
+  await page.keyboard.press("/");
+  await expect(invoer).toBeFocused();
+  await bronnen.click();
+  await expect(venster).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(venster).toHaveCount(0);
+  await expect(invoer).toBeVisible();
+  await expect(bronnen).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(invoer).toHaveCount(0);
+  await expect(zoekknop).toBeFocused();
 });
 
 for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["mobiel klein", 360, 740], ["desktop", 1280, 800]]) test(`zoekknop dekt geen kaartactie of open-knop af, ook niet bij de laatste kaart (${naam})`, async ({ page }) => {
@@ -122,4 +201,81 @@ test("spatie bladert nog door de feed als de focus niet op een bedienbaar elemen
   const na = await top();
   await page.keyboard.press("Shift+Space");
   await expect.poll(top).toBeLessThan(na);
+});
+
+for (const [naam, breedte, hoogte] of [["mobiel", 390, 844], ["desktop", 1280, 800]]) {
+  test(`zoeken behoudt toetsenbordfocus na Enter (${naam})`, async ({ page, isMobile }) => {
+    await page.setViewportSize({ width: breedte, height: hoogte });
+    await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+    await page.goto("#/");
+    const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+    await knop.click();
+    const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+    await invoer.fill("onvindbarezoekterm506");
+    await expect(page.getByText("Niets gevonden voor “onvindbarezoekterm506”")).toBeVisible();
+    const url = page.url();
+    await invoer.press("Enter");
+    if (isMobile) {
+      await expect(invoer).not.toBeFocused();
+      await invoer.focus();
+    } else await expect(invoer).toBeFocused();
+    expect(page.url()).toBe(url);
+    await page.keyboard.type("x");
+    await expect(invoer).toHaveValue("onvindbarezoekterm506x");
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Sluiten", exact: true })).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await invoer.press("Escape");
+    await expect(knop).toBeFocused();
+    await expect(invoer).toBeHidden();
+  });
+}
+
+test("zoekopdracht blijft bij terug en herladen behouden", async ({ page }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("/?nietmeten=1#/alles");
+  const eerste = page.locator(".nc-title a").first();
+  await expect(eerste).toBeVisible();
+  const woord = (await eerste.textContent()).trim().split(/\s+/).map((w) => w.replace(/[^\p{L}\p{N}]/gu, "")).find((w) => w.length >= 5);
+  expect(woord, "De eerste titel moet een zoekbaar woord van minstens vijf tekens bevatten.").toBeTruthy();
+  await page.getByRole("button", { name: "Zoeken", exact: true }).click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill(woord);
+  await expect(eerste).toBeVisible();
+  const titel = await eerste.textContent();
+  await eerste.click();
+  await expect(page).toHaveURL(/#\/bericht\//);
+  await page.goBack();
+  await expect(invoer).toHaveValue(woord);
+  await expect(page.locator(".nc-title a").first()).toHaveText(titel);
+  await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(woord);
+  expect(new URL(page.url()).searchParams.get("nietmeten")).toBe("1");
+  await page.reload();
+  await expect(invoer).toHaveValue(woord);
+  await expect(page.locator(".nc-title a").first()).toHaveText(titel);
+  await invoer.press("Escape");
+  await expect.poll(() => new URL(page.url()).searchParams.has("q")).toBe(false);
+});
+
+test("terug uit een zoekresultaat herstelt de scrollpositie", async ({ page }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("/#/alles");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await page.getByRole("button", { name: "Zoeken", exact: true }).click();
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await invoer.fill("de");
+  const resultaten = page.locator(".nc-title a");
+  await expect.poll(() => resultaten.count()).toBeGreaterThan(3);
+  const doel = resultaten.nth(2);
+  await doel.scrollIntoViewIfNeeded();
+  const titel = await doel.textContent();
+  const scroll = () => page.locator(".nf").evaluate((el) => el.scrollTop);
+  const voor = await scroll();
+  expect(voor).toBeGreaterThan(0);
+  await doel.click();
+  await expect(page).toHaveURL(/#\/bericht\//);
+  await page.goBack();
+  await expect(invoer).toHaveValue("de");
+  await expect(resultaten.nth(2)).toHaveText(titel);
+  await expect.poll(async () => Math.abs((await scroll()) - voor)).toBeLessThan(5);
 });

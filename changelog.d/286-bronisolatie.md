@@ -1,0 +1,1 @@
+- Een falende nieuwsbron of fetcherbatch stopt de uurrun niet; bij volledige uitval blijft de vorige feed behouden en registreert de run bronfouten (#286).

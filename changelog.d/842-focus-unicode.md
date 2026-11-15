@@ -1,0 +1,1 @@
+- Focus-lezen houdt aanvullende Unicode-letters en combinatietekens intact (#842).

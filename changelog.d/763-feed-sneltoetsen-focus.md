@@ -1,0 +1,1 @@
+- Feed-sneltoetsen (pijltjes, Home, End, j/k) kapen geen toetsenbordbediening meer als de focus op een link of knop buiten de feed staat (#763).

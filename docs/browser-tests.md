@@ -1,8 +1,14 @@
 # Browserrookproef
 
+Filterblad-focus (#623): `PW_CHROME=/usr/bin/google-chrome npx playwright test e2e/filterblad-focus.spec.mjs --project=chromium` (nieuws en video; alleen Chromium).
+
 Installeer na `npm ci` de browsers met `npx playwright install chromium firefox webkit` en draai `npm run e2e`. Playwright start lokaal Vite; externe verzoeken worden geblokkeerd. De proef gebruikt `public/data.json` en controleert vijf views op inhoud, browserfouten en axe-overtredingen met impact serious of critical. Standaard draaien Chromium, Firefox en Pixel 7 (Chromium). Met `PW_WEBKIT=1 npm run e2e` draaien ook WebKit en iPhone 15 (WebKit). Linux-hosts zonder de benodigde WebKit-systeembibliotheken slaan deze twee projecten standaard over; installeer de afhankelijkheden voordat je ze inschakelt. Emulatie vervangt geen test op echte telefoons.
 
 De console-allowlist staat in `e2e/rookproef.spec.mjs` (geblokkeerde externe verzoeken, de dev-waarschuwing over de `fetchPriority`-prop en de Firefox-CORS-melding voor `video.twimg.com`). Axe rapporteert aantallen per view en project en faalt boven de baseline. Op 30 oktober zijn op Chromium, Firefox en Pixel maximaal 4 overtredingen op home, 3 op tech, 4 op filmpjes, 4 op dumpert en 1 op artikel gemeten. WebKit en iPhone konden op die Linux-host niet starten door ontbrekende systeembibliotheken en zijn dus niet meegenomen in deze meting. Beoordeel veranderingen voordat de baseline wordt verhoogd. De proef maakt geen deel uit van `npm run check`.
+
+`e2e/fotocarrousel.spec.mjs` controleert de toegankelijke naam, gekoppelde toetsenbordinstructie en positie bij meerdere foto's, en het ontbreken van de instructie bij één foto. De test bedient de carrousel met beide pijltjestoetsen.
+
+Zoeken heeft op desktop de sneltoets `/`, behalve tijdens invoer in een invoerveld, tekstvak of bewerkbare inhoud. Escape sluit het zoekveld en zet de focus terug op de zoekknop. De browserproef controleert dit naast de mobiele zoekweergave.
 
 De beeldtest `e2e/beelden-639.spec.mjs` controleert de toetsenbordvolgorde en toegankelijke rollen bij één en meerdere foto's en na een laadfout, ook wanneer een verdwijnende knop focus heeft. Lokaal: `PW_CHROME=/usr/bin/google-chrome npx playwright test e2e/beelden-639.spec.mjs --project=chromium`. `tests/beelden-tabstop.test.ts` bewaakt dezelfde regels in `npm test` (en dus `npm run check`).
 
