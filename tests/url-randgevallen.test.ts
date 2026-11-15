@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { berichtHtml } from "../src/berichthtml";
 import { veiligeUrl } from "../src/url";
 import { externeUrl } from "../worker/src/url";
 
@@ -26,9 +28,13 @@ t("veilige URL weigert onvolledige of ongeldige http(s)-URL's", () => {
   }
 });
 
-t("bronnenfilter in berichthtml laat bron met kale https:// vallen", () => {
-  const bronnen = [{ href: "https://" }, { href: "https://voorbeeld.nl/a?b=1#c" }];
-  assert.deepEqual(bronnen.filter((b) => veiligeUrl(b.href)).map((b) => b.href), ["https://voorbeeld.nl/a?b=1#c"]);
+t("berichtHtml rendert geen link voor ongeldige bronnen", () => {
+  const goed = "https://voorbeeld.nl/a?b=1#c";
+  const item = { kop: "Nieuws", ai: "Een samenvatting", t: Date.parse("2026-11-04T12:00:00Z"), bronnen: [{ site: "a", href: "https://" }, { site: "b", href: "https:///pad" }, { site: "c", href: "https://:80" }, { site: "d", href: goed }] };
+  const html = berichtHtml(readFileSync("index.html", "utf8"), item, "2026-11-04");
+  assert.deepEqual([...html.matchAll(/<li><a href="([^"]*)" rel="noopener nofollow">/g)].map((m) => m[1]), [goed]);
+  const json = JSON.parse([...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)][0][1]);
+  assert.deepEqual(json.isBasedOn, [goed]);
 });
 
 t("veilige URL weigert ontbrekende invoer en andere schema's", () => {
