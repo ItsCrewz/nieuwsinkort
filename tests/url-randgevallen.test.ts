@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { berichtHtml } from "../src/berichthtml";
 import { veiligeUrl } from "../src/url";
 import { externeUrl } from "../worker/src/url";
 
@@ -9,10 +11,30 @@ const t = (naam: string, fn: () => void) => {
   console.log("✓", naam);
 };
 
-t("veilige URL behoudt spaties en hoofdletters in het schema", () => {
-  for (const url of [" https://voorbeeld.nl/pad ", "\tHTTP://voorbeeld.nl\n", "HtTpS://voorbeeld.nl/"]) {
-    assert.equal(veiligeUrl(url), url);
+t("veilige URL geeft de opgeschoonde URL terug", () => {
+  for (const [url, verwacht] of [
+    [" https://voorbeeld.nl/pad ", "https://voorbeeld.nl/pad"],
+    ["\tHTTP://voorbeeld.nl\n", "http://voorbeeld.nl/"],
+    ["HtTpS://voorbeeld.nl/", "https://voorbeeld.nl/"],
+    ["https://voorbeeld.nl/a?x=1&y=2#deel", "https://voorbeeld.nl/a?x=1&y=2#deel"],
+    ["https://bücher.example/pad", "https://xn--bcher-kva.example/pad"],
+    ["http://voorbeeld.nl:8080/x", "http://voorbeeld.nl:8080/x"],
+  ]) assert.equal(veiligeUrl(url), verwacht, url);
+});
+
+t("veilige URL weigert onvolledige of ongeldige http(s)-URL's", () => {
+  for (const url of ["https://", "http://", "https:///pad", "https://:80", "https://voor beeld.nl", "https://?x=1", "https://#a"]) {
+    assert.equal(veiligeUrl(url), undefined, url);
   }
+});
+
+t("berichtHtml rendert geen link voor ongeldige bronnen", () => {
+  const goed = "https://voorbeeld.nl/a?b=1#c";
+  const item = { kop: "Nieuws", ai: "Een samenvatting", t: Date.parse("2026-11-04T12:00:00Z"), bronnen: [{ site: "a", href: "https://" }, { site: "b", href: "https:///pad" }, { site: "c", href: "https://:80" }, { site: "d", href: goed }] };
+  const html = berichtHtml(readFileSync("index.html", "utf8"), item, "2026-11-04");
+  assert.deepEqual([...html.matchAll(/<li><a href="([^"]*)" rel="noopener nofollow">/g)].map((m) => m[1]), [goed]);
+  const json = JSON.parse([...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)][0][1]);
+  assert.deepEqual(json.isBasedOn, [goed]);
 });
 
 t("veilige URL weigert ontbrekende invoer en andere schema's", () => {
