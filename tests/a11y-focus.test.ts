@@ -2,21 +2,22 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const feed = readFileSync("src/feed.tsx", "utf8");
+const balk = readFileSync("src/feed-balk.tsx", "utf8");
+const youtube = readFileSync("src/feed-youtube.tsx", "utf8");
 const app = readFileSync("src/App.tsx", "utf8");
 const detail = readFileSync("src/detail.tsx", "utf8");
 const t = (name: string, fn: () => void) => { fn(); console.log("✓", name); };
 
 t("scrubber heeft altijd aria-valuenow en aria-valuetext", () => {
-  const slider = feed.slice(feed.indexOf('role="slider"'), feed.indexOf("onPointerDown={enabled"));
+  const slider = balk.slice(balk.indexOf('role="slider"'), balk.indexOf("onPointerDown={enabled"));
   assert.match(slider, /aria-valuenow=\{[^}]*: 0\}/);
   assert.doesNotMatch(slider, /aria-valuenow=\{[^}]*undefined/);
   assert.match(slider, /aria-valuetext=/);
-  assert.match(feed, /ArrowRight[\s\S]{0,200}\? 5 : -5/);
+  assert.match(balk, /ArrowRight[\s\S]{0,200}\? 5 : -5/);
 });
 
 t("YouTube-iframe is niet uit de tabvolgorde gehaald", () => {
-  const iframe = feed.slice(feed.indexOf("<iframe"), feed.indexOf("/>", feed.indexOf("<iframe")));
+  const iframe = youtube.slice(youtube.indexOf("<iframe"), youtube.indexOf("/>", youtube.indexOf("<iframe")));
   assert.doesNotMatch(iframe, /tabIndex/);
 });
 

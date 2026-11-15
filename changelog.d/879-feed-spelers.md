@@ -1,0 +1,1 @@
+- Spelerbasis, voortgangsbalk en YouTube-speler uit de videofeed naar eigen modules verplaatst (#879).
