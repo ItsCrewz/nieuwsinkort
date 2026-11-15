@@ -154,8 +154,16 @@ export function regioVan(it: Item): Regio {
   if (b.some((x) => BUITEN_SITE.test(x.site) || BUITEN_URL.test(x.href)) || BUITEN_WOORD.test(`${it.kop} ${it.ai || ""}`)) return "wereld";
   return "nl";
 }
-const VIDEO_URL = /\/video\/|\/video-|\/videos?\/|youtube\.com|youtu\.be|\.mp4\b|\/kijk\/|\/tv\//i;
-export const heeftVideo = (it: Item) => (it.bronnen || []).some((b) => VIDEO_URL.test(b.href));
+const VIDEO_PAD = /\/videos?\/|\/video-|\.mp4\b|\/kijk\/|\/tv\//i;
+export const heeftVideo = (it: Item) => (it.bronnen || []).some((b) => {
+  try {
+    const url = new URL(b.href);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    return /(^|\.)(youtube\.com|youtu\.be)$/i.test(url.hostname) || VIDEO_PAD.test(url.pathname);
+  } catch {
+    return false;
+  }
+});
 export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => bronSleutel(b.site || "")).filter(Boolean)).size;
 export const samengevoegd = (it: Item) => sites(it) > 1;
 

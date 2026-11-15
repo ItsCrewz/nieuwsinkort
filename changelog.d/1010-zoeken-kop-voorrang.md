@@ -1,0 +1,1 @@
+- Zoeken: treffers in de kop staan boven treffers alleen in de tekst; gelijke relevantie volgt de gekozen sortering (#1010).
