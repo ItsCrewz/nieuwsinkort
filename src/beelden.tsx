@@ -3,6 +3,7 @@
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { bruikbareAfmeting } from "./beeld";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
 
@@ -234,7 +235,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
                 onLoad={(e) => {
                   const im = e.currentTarget;
                   const w = im.naturalWidth, h = im.naturalHeight;
-                  if (w < 200 || h < 120 || w / h > 4 || h / w > 2.2) drop(u); // logo/icoon/banner
+                  if (!bruikbareAfmeting(w, h)) drop(u); // logo/icoon/banner
                   else im.classList.add("in");
                 }}
               />
