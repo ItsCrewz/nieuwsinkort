@@ -9,10 +9,26 @@ const t = (naam: string, fn: () => void) => {
   console.log("✓", naam);
 };
 
-t("veilige URL behoudt spaties en hoofdletters in het schema", () => {
-  for (const url of [" https://voorbeeld.nl/pad ", "\tHTTP://voorbeeld.nl\n", "HtTpS://voorbeeld.nl/"]) {
-    assert.equal(veiligeUrl(url), url);
+t("veilige URL geeft de opgeschoonde URL terug", () => {
+  for (const [url, verwacht] of [
+    [" https://voorbeeld.nl/pad ", "https://voorbeeld.nl/pad"],
+    ["\tHTTP://voorbeeld.nl\n", "http://voorbeeld.nl/"],
+    ["HtTpS://voorbeeld.nl/", "https://voorbeeld.nl/"],
+    ["https://voorbeeld.nl/a?x=1&y=2#deel", "https://voorbeeld.nl/a?x=1&y=2#deel"],
+    ["https://bücher.example/pad", "https://xn--bcher-kva.example/pad"],
+    ["http://voorbeeld.nl:8080/x", "http://voorbeeld.nl:8080/x"],
+  ]) assert.equal(veiligeUrl(url), verwacht, url);
+});
+
+t("veilige URL weigert onvolledige of ongeldige http(s)-URL's", () => {
+  for (const url of ["https://", "http://", "https:///pad", "https://:80", "https://voor beeld.nl", "https://?x=1", "https://#a"]) {
+    assert.equal(veiligeUrl(url), undefined, url);
   }
+});
+
+t("bronnenfilter in berichthtml laat bron met kale https:// vallen", () => {
+  const bronnen = [{ href: "https://" }, { href: "https://voorbeeld.nl/a?b=1#c" }];
+  assert.deepEqual(bronnen.filter((b) => veiligeUrl(b.href)).map((b) => b.href), ["https://voorbeeld.nl/a?b=1#c"]);
 });
 
 t("veilige URL weigert ontbrekende invoer en andere schema's", () => {
