@@ -1,6 +1,6 @@
 import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
-import { normaliseer, zoekItems, markeerDelen } from "../src/zoek";
+import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen } from "../src/zoek";
 import type { Item } from "../src/types";
 
 const item: Item = { cat: "buitenland", kop: "Ajax", ai: "Wedstrijd", samenvatting: "Café bij PSV", punten: ["Supporters"], bronnen: [{ site: "NOS", href: "" }], tijd: "" };
@@ -160,4 +160,18 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.deepEqual(zoekItems([naast], 'max verstappen"'), [naast]);
   assert.deepEqual(zoekItems([naast], '""'), []);
   assert.deepEqual(zoekItems([naast], '"" max'), [naast]);
+}
+
+// Koptreffers voor teksttreffers (#1010); binnen een groep blijft de invoervolgorde.
+{
+  const tekst1 = { cat: "nl", kop: "Iets anders", samenvatting: "Over Ajax" } as Item;
+  const kop1 = { cat: "nl", kop: "Ajax wint" } as Item;
+  const tekst2 = { cat: "nl", kop: "Nog iets", ai: "ajax weer" } as Item;
+  const kop2 = { cat: "nl", kop: "Ajax verliest" } as Item;
+  const lijst = [tekst1, kop1, tekst2, kop2];
+  assert.deepEqual(rangschikKoptreffers(zoekItems(lijst, "ajax"), "ajax"), [kop1, kop2, tekst1, tekst2]);
+  assert.equal(rangschikKoptreffers(lijst, ""), lijst);
+  assert.equal(rangschikKoptreffers(lijst, "  "), lijst);
+  assert.deepEqual(rangschikKoptreffers([tekst1, tekst2], "ajax"), [tekst1, tekst2]);
+  assert.deepEqual(rangschikKoptreffers([tekst1, kop1], "ajax"), [kop1, tekst1]);
 }
