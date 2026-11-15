@@ -15,6 +15,9 @@ export const CATS: { id: Cat; label: string; slug: string }[] = [
 ];
 export const CAT_LABEL = Object.fromEntries(CATS.map((c) => [c.id, c.label])) as Record<Cat, string>;
 
+/** Stabiele id van een rubriektab; het tabpaneel verwijst ernaar via aria-labelledby. */
+export const rubriekTabId = (v: View) => `rubriek-tab-${v}`;
+
 export type TabOpt = { value: View; id: string; label: string; short: string };
 
 /** Tabbalk: nieuws-tabs zonder items verdwijnen, behalve de actieve (deeplink); Home, Filmpjes en Dumpert blijven altijd. */
