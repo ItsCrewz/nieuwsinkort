@@ -1,0 +1,1 @@
+- Bewaak dat onleesbare nieuwsdata een tijdelijke sitemapfout geeft en herstel niet door de cache wordt verhinderd (#912).

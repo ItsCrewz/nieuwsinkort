@@ -39,8 +39,20 @@ t("beeldKey negeert CDN-maten en queryparameters maar niet de foto-identiteit", 
 
 t("beeldKey herkent de oorspronkelijke foto achter een CDN-proxy", () => {
   const origineel = "https://nieuws.nl/fotos/stadsbeeld.jpg";
-  const proxy = `https://cdn.voorbeeld.nl/image?url=${encodeURIComponent(origineel)}&w=800`;
-  assert.equal(beeldKey(proxy), beeldKey(origineel));
+  for (const proxy of [
+    `https://nieuws.nl/_next/image?url=${encodeURIComponent(origineel)}&w=800`,
+    `https://wsrv.nl/?url=${encodeURIComponent(origineel)}&w=800`,
+    `https://images.weserv.nl/?src=${encodeURIComponent(origineel)}&w=800`,
+    `https://voorbeeld.imgix.net/?u=${encodeURIComponent(origineel)}&w=800`,
+  ]) assert.deepEqual(uniekeBeelden([proxy, origineel]), [proxy]);
+});
+
+t("verwijzingsparameters op gewone beeldpaden voegen foto's niet samen (#954)", () => {
+  for (const parameter of ["url", "src", "u"]) {
+    const verwijzing = encodeURIComponent("https://nieuws.nl/artikel/123");
+    const fotos = ["eerste", "tweede"].map((naam) => `https://nieuws.nl/fotos/${naam}.jpg?${parameter}=${verwijzing}`);
+    assert.deepEqual(uniekeBeelden(fotos), fotos);
+  }
 });
 
 t("beterBeeld decodeert CDN-parameters zonder de maat te wijzigen", () => {
@@ -87,6 +99,15 @@ t("ogImage geeft een lege string bij ontbrekende of onbruikbare metadata", () =>
   assert.equal(ogImage("<title>Nieuws</title><meta name='description' content='tekst'>", "https://nieuws.nl/"), "");
   assert.equal(ogImage("<meta property='og:image' content=''>", "https://nieuws.nl/"), "");
   assert.equal(ogImage("<meta property='og:image' content='/foto.jpg'>", "geen geldige basis"), "");
+});
+
+t("protocol van beeld-URL's is hoofdletterongevoelig (#869)", () => {
+  for (const p of ["https://", "HTTPS://", "HtTpS://"]) assert.equal(goedBeeld(`${p}images.example.org/foto.jpg`), true, p);
+  assert.equal(goedBeeld("HTTP://images.example.org/foto.jpg"), true);
+  for (const u of ["ftp://images.example.org/foto.jpg", "javascript:alert(1)", "HTTPS//images.example.org/foto.jpg", "niet een url"]) assert.equal(goedBeeld(u), false, u);
+  assert.deepEqual(uniekeBeelden(["HTTPS://images.example.org/foto.jpg"]), ["https://images.example.org/foto.jpg"]);
+  assert.deepEqual(uniekeBeelden(["HtTpS://a.example.org/x.jpg", "https://a.example.org/x.jpg"]), ["https://a.example.org/x.jpg"]);
+  assert.deepEqual(uniekeBeelden(["HTTP://a.example.org/x.jpg", "ftp://a.example.org/y.jpg", "javascript:alert(1)", "kapot"]), []);
 });
 
 console.log(`\n${n} tests geslaagd`);

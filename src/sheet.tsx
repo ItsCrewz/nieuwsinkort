@@ -29,7 +29,7 @@ function sourceLine(s: SourceRow): string {
 }
 import { Icon } from "./icons";
 import { rustig } from "./beweging";
-import { Switch } from "./ui";
+import { GroupToggle, Switch } from "./ui";
 import { veiligeUrl } from "./url";
 
 /** Groepsregel: een onvolledige telling wordt nooit als volledig dagtotaal getoond. */
@@ -163,7 +163,7 @@ export function SourcesSheet({
                     </div>
                     <label className="sh-all">
                       <span>Alles</span>
-                      <Switch checked={state} label={`Alle bronnen in ${g.label}`} onChange={(on) => setMany(keys, on)} />
+                      <GroupToggle checked={state} label={`Alle bronnen in ${g.label}`} onChange={(on) => setMany(keys, on)} />
                     </label>
                   </div>
                   <ul className="sh-list">

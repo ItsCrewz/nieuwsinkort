@@ -78,7 +78,7 @@ t("maatmappen: ruime herkenning, maar geen echte mappen (#649)", () => {
   assert.notEqual(k("https://x.nl/a/image.jpg"), k("https://x.nl/b/image.jpg"));
   assert.notEqual(k("https://x.nl/a/1.jpg"), k("https://x.nl/b/1.jpg"));
   // proxy en wp.com
-  assert.equal(k("https://proxy.nl/img?url=" + encodeURIComponent("https://x.nl/a/640/foto.jpg")), k("https://x.nl/a/foto.jpg"));
+  assert.equal(k("https://wsrv.nl/?url=" + encodeURIComponent("https://x.nl/a/640/foto.jpg")), k("https://x.nl/a/foto.jpg"));
   assert.equal(k("https://i1.wp.com/x.nl/wp-content/uploads/2026/10/foto.jpg?w=300"), k("https://x.nl/wp-content/uploads/2026/10/foto-300x200.jpg"));
   // geen backtracking-explosie
   const t0 = Date.now(); k("https://x.nl/" + "a_".repeat(40) + ",,/foto.jpg"); assert.ok(Date.now() - t0 < 200);

@@ -1,0 +1,1 @@
+- Zoeken herkent beide vormen van de Griekse sigma als dezelfde letter (#952).

@@ -127,11 +127,32 @@ await t("reserveer: uurrem bij MAX_WHISPER_UUR, volgend uur wel", async () => {
   assert.equal((await l.reserveer(res({ uur: "2026-10-30T11" }))).ok, true);
 });
 
-await t("reserveer: nieuwe UTC-dag ruimt oude video- en uursleutels op", async () => {
+await t("reserveer: nieuwe UTC-dag bewaart gisteren en ruimt de dag daarvoor en oude uren op", async () => {
   const { l, s } = maak(0);
+  await l.reserveer(res({ datum: "2026-10-29", uur: "2026-10-29T10" }));
   await l.reserveer(res());
+  assert.deepEqual([...s.data.keys()].sort(), ["uur:2026-10-30T10", "video:2026-10-29", "video:2026-10-30"]);
   await l.reserveer(res({ datum: "2026-10-31", uur: "2026-10-31T00" }));
-  assert.deepEqual([...s.data.keys()].sort(), ["uur:2026-10-31T00", "video:2026-10-31"]);
+  assert.deepEqual([...s.data.keys()].sort(), ["uur:2026-10-31T00", "video:2026-10-30", "video:2026-10-31"]);
+});
+
+await t("reserveer/verreken over UTC-middernacht: oude en nieuwe stand en spiegels blijven correct, ook met achterlopende spiegel", async () => {
+  const { l, s, spiegel } = maak(0); // zaad 0 = achterlopende KV-spiegel
+  await l.reserveer(res({ schatting: 100 }));
+  await l.reserveer(res({ datum: "2026-10-31", uur: "2026-10-31T00", schatting: 50 }));
+  assert.equal(await l.verreken("2026-10-30", -40), 60, "gisteren niet opnieuw uit zaad 0 gezaaid");
+  assert.equal(s.data.get("video:2026-10-30"), 60);
+  assert.equal(s.data.get("video:2026-10-31"), 50);
+  assert.deepEqual(spiegel.filter(([d]) => d === "2026-10-30").pop(), ["2026-10-30", 60]);
+  assert.deepEqual(spiegel.filter(([d]) => d === "2026-10-31").pop(), ["2026-10-31", 50]);
+});
+
+await t("reserveer: late reservering voor een oudere dag verwijdert nieuwere dagen niet", async () => {
+  const { l, s } = maak(0);
+  await l.reserveer(res({ datum: "2026-10-31", uur: "2026-10-31T00" }));
+  await l.reserveer(res());
+  assert.equal(s.data.has("video:2026-10-31"), true);
+  assert.equal(s.data.has("video:2026-10-30"), true);
 });
 
 await t("verreken: negatieve delta begrenst op 0, delta 0 schrijft niets", async () => {
@@ -168,7 +189,7 @@ await t("spiegel: markering staat al vóór de spiegelaanroep en overleeft een e
   let gooi = true;
   const buiten: Buiten = { async spiegel(_d, x) { gezien.push(s.data.get("videovuil:2026-10-30")); if (gooi) throw new Error("time-out"); kv.push(x); return true; }, async zaad() { return 0; } };
   const l1 = new BudgetLogica(s, buiten, () => T0);
-  await assert.rejects(l1.reserveer(res({ schatting: 100 })));
+  assert.deepEqual(await l1.reserveer(res({ schatting: 100 })), { ok: true, video: 100 }); // spiegelfout maakt een geboekte reservering niet mislukt (#958)
   assert.deepEqual(gezien, [true], "markering al aanwezig tijdens de spiegel");
   assert.equal(s.data.get("video:2026-10-30"), 100);
   assert.equal(s.data.get("videovuil:2026-10-30"), true);

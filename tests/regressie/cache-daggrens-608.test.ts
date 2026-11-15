@@ -15,7 +15,7 @@ Object.defineProperty(globalThis, "caches", { configurable: true, value: { defau
   match: async (r: Request) => opslag.get(r.url)?.clone(),
   put: async (r: Request, response: Response) => { opslag.set(r.url, response.clone()); },
 } } });
-const env = { ASSETS: { fetch: async (r: Request | string) => String((r as Request).url ?? r).endsWith("/data.json") ? Response.json({ gegenereerd: `${dag}T09:00:00Z`, items: [item] }) : new Response(readFileSync("index.html", "utf8"), { headers: { "Content-Type": "text/html" } }) }, NIEUWS: { get: async (key: string) => { reads++; return key === "data-vooraf" ? `${dag}\ntag\n${JSON.stringify({ gegenereerd: `${dag}T09:00:00Z`, items: [item] })}` : null; }, put: async () => { writes++; } } };
+const env = { ASSETS: { fetch: async (r: Request | string) => String((r as Request).url ?? r).endsWith("/data.json") ? Response.json({ gegenereerd: `${dag}T09:00:00Z`, items: [item] }) : new Response(readFileSync("index.html", "utf8"), { headers: { "Content-Type": "text/html", "CDN-Cache-Control": "max-age=3600", "Cloudflare-CDN-Cache-Control": "max-age=3600", Expires: "Wed, 01 Apr 2026 00:00:00 GMT" } }) }, NIEUWS: { get: async (key: string) => { reads++; return key === "data-vooraf" ? `${dag}\ntag\n${JSON.stringify({ gegenereerd: `${dag}T09:00:00Z`, items: [item] })}` : null; }, put: async () => { writes++; } } };
 const vraag = async (route: typeof vandaag, url: string, headers?: Record<string, string>) => {
   const pending: Promise<unknown>[] = [];
   const r = await route({ request: new Request(`https://nieuwsinkort.nl${url}`, { headers }), env, waitUntil: (p) => { pending.push(p); } });
@@ -63,9 +63,12 @@ try {
   middernacht = await vraag(bericht, pad);
   assert.equal(middernacht.status, 200);
   nu = Date.parse("2026-03-29T03:59:30Z");
+  opslag.set(`https://nieuwsinkort.nl${pad}?versie=2`, new Response("oude cache", { headers: { "X-Geldig-Tot": String(nu + 300000), "Cache-Control": "public, max-age=300, stale-while-revalidate=600" } }));
   let r = await vraag(bericht, pad);
   assert.equal(r.status, 200);
+  assert.match(await r.text(), /Verdachten aangehouden/);
   assert.equal(r.headers.get("cache-control"), "public, max-age=30");
+  for (const naam of ["Expires", "CDN-Cache-Control", "Cloudflare-CDN-Cache-Control"]) assert.equal(r.headers.get(naam), null);
   const tag = r.headers.get("etag")!;
   nu += 20000;
   r = await vraag(bericht, pad, { "If-None-Match": tag });

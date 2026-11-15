@@ -19,7 +19,7 @@ function tooSmall(u: string): boolean {
 }
 
 export function goedBeeld(u?: string | null): u is string {
-  if (!u || typeof u !== "string" || !/^https?:\/\//.test(u) || u.length > 1200) return false;
+  if (!u || typeof u !== "string" || !/^https?:\/\//i.test(u) || u.length > 1200) return false;
   if (/youtube\.com\/(v|embed|watch)\b|youtu\.be\//i.test(u)) return false; // video-link, geen foto
   return !LOGO.test(u) && !SKIP.test(u) && !tooSmall(u);
 }
@@ -34,9 +34,11 @@ const MAATMAP = new RegExp(`^(\\d{2,4}x\\d{2,4}[a-z]?|w\\d{2,4}|h\\d{2,4}|s\\d{2
 export function beeldKey(u: string): string {
   let x: URL;
   try { x = new URL(u); } catch { return u; }
-  // Proxies/resizers met het echte adres in de query (Next.js, wsrv, imgix-proxy …)
-  const inner = x.searchParams.get("url") || x.searchParams.get("src") || x.searchParams.get("u");
-  if (inner && /^https?:\/\//.test(inner)) return beeldKey(inner);
+  // Alleen bekende resizers gebruiken een querywaarde als adres van het beeld.
+  if (x.pathname === "/_next/image" || /^(?:wsrv\.nl|images\.weserv\.nl)$/.test(x.hostname) || /(?:^|\.)imgix\.net$/.test(x.hostname)) {
+    const inner = x.searchParams.get("url") || x.searchParams.get("src") || x.searchParams.get("u");
+    if (inner && /^https?:\/\//i.test(inner)) return beeldKey(inner);
+  }
   // WordPress-Jetpack (i0.wp.com/<site>/<pad>): de echte site staat in het pad
   if (/^i\d\.wp\.com$/.test(x.hostname)) { const [h, ...rest] = x.pathname.split("/").filter(Boolean); try { x = new URL(`https://${h}/${rest.join("/")}`); } catch { /* laat staan */ } }
   const segs = x.pathname.split("/").filter(Boolean);
@@ -71,11 +73,11 @@ export function uniekeBeelden(urls: (string | null | undefined)[], max = 12): st
   for (const raw of urls) {
     const u = typeof raw === "string" ? beterBeeld(raw) : "";
     // De beeldproxy haalt alleen HTTPS op; HTTP kan de browser niet veilig laden.
-    if (!goedBeeld(u) || !u.startsWith("https://")) continue;
+    if (!goedBeeld(u) || !/^https:\/\//i.test(u)) continue;
     const k = beeldKey(u);
     if (seen.has(k)) continue;
     seen.add(k);
-    out.push(u);
+    out.push(u.replace(/^https:/i, "https:")); // protocol naar kleine letters
     if (out.length >= max) break;
   }
   return out;

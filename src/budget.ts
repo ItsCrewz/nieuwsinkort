@@ -58,6 +58,7 @@ export const quotaSleutel = (utc: string) => `ai-quota:${utc}`;
 export interface Opslag {
   get<T = unknown>(k: string): Promise<T | undefined>;
   put(k: string, v: unknown): Promise<void>;
+  putMany?(o: Record<string, unknown>): Promise<void>; // atomair (DO-opslag: storage.put({...})); zonder valt reserveer() terug op herstelbaar schrijven
   delete(k: string | string[]): Promise<unknown>;
   list<T = unknown>(o: { prefix: string }): Promise<Map<string, T>>;
 }
@@ -81,6 +82,23 @@ export class BudgetLogica {
   private async bewaar(datum: string, n: number) {
     await this.s.put(`videovuil:${datum}`, true);
     await this.s.put(`video:${datum}`, n);
+  }
+
+  // Uurplaats + markering + dagtotaal als één geheel: atomair via putMany, anders één voor één met `uur:` als laatste
+  // en bij een fout de al geschreven sleutels terugzetten, zodat een mislukte reservering niets blijvend verbruikt.
+  private async boek(r: Reservering, uurN: number, oudVideo: number, nieuw: number) {
+    const uur = `uur:${r.uur}`, vuil = `videovuil:${r.datum}`, vid = `video:${r.datum}`;
+    if (this.s.putMany) { await this.s.putMany({ [vuil]: true, [vid]: nieuw, [uur]: uurN + 1 }); return; }
+    const oudVuil = await this.s.get<boolean>(vuil);
+    const gedaan: Array<() => Promise<unknown>> = [];
+    try {
+      await this.s.put(vuil, true); gedaan.push(() => (oudVuil === undefined ? this.s.delete(vuil) : this.s.put(vuil, oudVuil)));
+      await this.s.put(vid, nieuw); gedaan.push(() => this.s.put(vid, oudVideo));
+      await this.s.put(uur, uurN + 1);
+    } catch (e) {
+      for (const terug of gedaan.reverse()) { try { await terug(); } catch { console.error("budget: terugzetten mislukt"); } }
+      throw e;
+    }
   }
 
   // Eén opslagwaarde bewaart ook of een mislukte KV-spiegel nog moet worden hersteld.
@@ -133,12 +151,19 @@ export class BudgetLogica {
     const n = (await this.s.get<number>(`uur:${r.uur}`)) || 0;
     if (n >= MAX_WHISPER_UUR) return { ok: false, reden: "druk", video };
     const nieuw = rond(video + r.schatting);
-    await this.s.put(`uur:${r.uur}`, n + 1);
-    await this.bewaar(r.datum, nieuw);
-    // oude dagen en uren opruimen
-    const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "uur:" })).keys(), ...(await this.s.list({ prefix: "videovuil:" })).keys()].filter((k) => k !== `video:${r.datum}` && k !== `videovuil:${r.datum}` && k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`));
-    if (oud.length) await this.s.delete(oud);
-    await this.spiegel(r.datum, nieuw);
+    await this.boek(r, n, video, nieuw);
+    // Oude dagen en uren opruimen. De vorige dag blijft staan: een aanvraag van vóór UTC-middernacht kan nog verrekenen,
+    // en zonder die stand zou verreken() hem uit een achterlopende KV-spiegel zaaien. Nieuwere dagen blijven ook staan.
+    // Pas na de boeking en afzonderlijk afgevangen: een fout hier mag een geboekte reservering niet alsnog laten mislukken (dan boekt een nieuwe poging dubbel).
+    try {
+      const vorige = utcDag(Date.parse(r.datum) - 864e5);
+      const dagOud = (k: string) => k.slice(k.indexOf(":") + 1) < vorige;
+      const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "videovuil:" })).keys()].filter(dagOud)
+        .concat([...(await this.s.list({ prefix: "uur:" })).keys()].filter((k) => k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`)));
+      if (oud.length) await this.s.delete(oud);
+    } catch { console.error("budget: opruimen mislukt"); }
+    // Spiegelfout apart: de `videovuil`-markering staat er al, `stand` herstelt de spiegel bij de volgende aanroep.
+    try { await this.spiegel(r.datum, nieuw); } catch { console.error("budget: KV-spiegel mislukt"); }
     return { ok: true, video: nieuw };
   }
 

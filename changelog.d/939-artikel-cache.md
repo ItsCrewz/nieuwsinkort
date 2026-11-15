@@ -1,0 +1,1 @@
+- Begrens ook oude cache-items en overgenomen cacheheaders bij het verlopen van artikellinks om 06:00 (#939).

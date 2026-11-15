@@ -384,7 +384,24 @@ await t("Pubble: alleen Rodi-beeldpaden zonder query, ook bij redirects", async 
   const pad = "images.pubble.cloud/worker/jpg/quick/1920/2229725/648e3015/content/2026/11/1d8096c1-467a-4ef5-917b-d970306e659c";
   const url = `https://${pad}`;
   mock(jpg());
-  assert.equal(beeldProxyPad(url), `/media/beeld/${pad}`);
+  // #563: 1920 px-bron wordt 840 px; kleinere breedte blijft, en het resultaat blijft door het padpatroon komen
+  assert.equal(beeldProxyPad(url), `/media/beeld/${pad.replace("/1920/", "/840/")}`);
+  assert.equal(beeldProxyPad(url.replace("/1920/", "/640/")), `/media/beeld/${pad.replace("/1920/", "/640/")}`);
+  assert.equal(beeldProxyPad(url.replace("/1920/", "/840/")), `/media/beeld/${pad.replace("/1920/", "/840/")}`);
+  assert.ok(upstreamUrl(pad.replace("/1920/", "/840/"), ""));
+  assert.equal(beeldProxyPad("https://images.nu.nl/a.jpg?width=2400&x=1"), "/media/beeld/images.nu.nl/a.jpg?width=1200&x=1");
+  assert.equal(beeldProxyPad("https://images.nu.nl/a.jpg?w=800"), "/media/beeld/images.nu.nl/a.jpg?w=800");
+  // zonder breedte-parameter of met andere bronconventie (RTL `width=` na andere params, NRC/NOS in pad) blijft de URL ongemoeid
+  assert.equal(beeldProxyPad("https://images.nu.nl/m/abc_wd.jpg"), "/media/beeld/images.nu.nl/m/abc_wd.jpg");
+  assert.equal(beeldProxyPad("https://redactie.rtl.nl/sites/default/files/content/a.jpg?itok=x&width=1900&height=900"), "/media/beeld/redactie.rtl.nl/sites/default/files/content/a.jpg?itok=x&width=1200&height=900");
+  assert.equal(beeldProxyPad(url, false), `/media/beeld/${pad}`); // delen/og:image: geen vangrail
+  // per host: bronvoorbeeld uit de fixtures -> proxy-uitkomst (NOS/NRC/AD/Volkskrant: breedte in pad, ongemoeid)
+  for (const [bron, uit] of [
+    ["https://images.cdn.nos.nl/image/2026/11/01/1/a_1280.jpg", "/media/beeld/images.cdn.nos.nl/image/2026/11/01/1/a_1280.jpg"],
+    ["https://images.nrc.nl/abc/width/1280/a.jpg", "/media/beeld/images.nrc.nl/abc/width/1280/a.jpg"],
+    ["https://images.nu.nl/m/abc_wd1280.jpg", "/media/beeld/images.nu.nl/m/abc_wd1280.jpg"],
+    ["https://images.pubble.cloud/worker/webp/quick/2400/2229725/648e3015/content/2026/11/abc", "/media/beeld/images.pubble.cloud/worker/webp/quick/840/2229725/648e3015/content/2026/11/abc"],
+  ] as const) assert.equal(beeldProxyPad(bron), uit, bron);
   const r = await vraag(pad);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-type"), "image/jpeg");
@@ -418,6 +435,43 @@ await t("client en server weigeren dezelfde paden: //, %2F, %25 enz. blijven rec
     const [pp, q] = [pad.slice("/media/beeld/".length).split("?")[0], pad.includes("?") ? "?" + pad.split("?").slice(1).join("?") : ""];
     assert.ok(upstreamUrl(pp, q), u);
   }
+});
+
+await t("tijdslimiet: hangende respons geeft 504 no-store en breekt upstream af", async () => {
+  let signal: AbortSignal | undefined;
+  globalThis.fetch = ((_u: any, init: any) => { signal = init.signal; return new Promise((_, rej) => init.signal.addEventListener("abort", () => rej(new Error("abort")))); }) as any;
+  const r = await onRequest({ request: new Request("https://nieuwsinkort.nl/media/beeld/images.nu.nl/a.jpg"), timeoutMs: 30 });
+  assert.equal(r.status, 504);
+  assert.equal(r.headers.get("cache-control"), "no-store");
+  assert.equal(signal?.aborted, true);
+});
+
+await t("tijdslimiet: stilvallende stream breekt af en komt niet in de cache", async () => {
+  const opgeslagen: string[] = [];
+  (globalThis as any).caches = { default: { match: async () => undefined, put: async (k: Request, v: Response) => { try { await v.arrayBuffer(); opgeslagen.push(k.url); } catch { /* afgebroken */ } } } };
+  globalThis.fetch = ((_u: any, init: any) => {
+    const body = new ReadableStream({
+      start(c) { c.enqueue(new TextEncoder().encode("half")); init.signal.addEventListener("abort", () => c.error(new Error("abort"))); },
+    });
+    return Promise.resolve(new Response(body, { headers: { "content-type": "image/jpeg" } }));
+  }) as any;
+  try {
+    const r = await onRequest({ request: new Request("https://nieuwsinkort.nl/media/beeld/images.nu.nl/b.jpg"), timeoutMs: 30 });
+    assert.equal(r.status, 200);
+    await assert.rejects(r.arrayBuffer());
+    await new Promise((res) => setTimeout(res, 20));
+    assert.deepEqual(opgeslagen, []);
+  } finally { delete (globalThis as any).caches; }
+});
+
+await t("tijdslimiet: normaal beeld blijft 200 en de timer loopt niet door", async () => {
+  mock(jpg());
+  const r = await onRequest({ request: new Request("https://nieuwsinkort.nl/media/beeld/images.nu.nl/c.jpg"), timeoutMs: 30 });
+  assert.equal(r.status, 200);
+  assert.equal(await r.text(), "jpgbytes");
+  assert.ok(calls[0].init.signal instanceof AbortSignal);
+  await new Promise((res) => setTimeout(res, 60));
+  assert.equal(calls[0].init.signal.aborted, false);
 });
 
 console.log(`\n${n} tests ok`);
