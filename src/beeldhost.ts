@@ -28,20 +28,21 @@ export function beeldPadToegestaan(host: string, pad: string, search: string): b
 }
 
 /** Proxy-pad voor een https-beeld-URL op de allowlist; anders null (dan blijft de URL ongewijzigd). */
-export function beeldProxyPad(src: string): string | null {
+export function beeldProxyPad(src: string, begrens = true): string | null {
   let u: URL;
   try { u = new URL(src); } catch { return null; }
   if (u.protocol !== "https:" || u.port || u.username || u.password || !beeldHostToegestaan(u.hostname) || !beeldPadToegestaan(u.hostname, u.pathname, u.search)) return null;
-  return `/media/beeld/${u.hostname}${kleinerPad(u)}${kleinerQuery(u)}`;
+  return begrens ? `/media/beeld/${u.hostname}${kleinerPad(u)}${kleinerQuery(u)}` : `/media/beeld/${u.hostname}${u.pathname}${u.search}`;
 }
 
-// Vangrail (#563): kaarten zijn hooguit ~600 css-px breed, dus een 1920 px-bron is verspilde transfer.
+// Vangrail (#563; alleen voor de UI, share-/og-beelden gebruiken begrens=false): kaarten zijn hooguit ~600 css-px breed, dus een 1920 px-bron is verspilde transfer.
 const MAX_BREEDTE = 840;
 /** Pubble: breedte in het pad (`/worker/jpg/quick/1920/<id>/…`) terug naar MAX_BREEDTE; kleinere blijft staan. */
 function kleinerPad(u: URL): string {
   if (u.hostname !== "images.pubble.cloud") return u.pathname;
   return u.pathname.replace(/^(\/worker\/[a-z]+\/[a-z]+\/)(\d+)(?=\/)/, (m, v, b) => (+b > MAX_BREEDTE ? v + MAX_BREEDTE : m));
 }
+// NOS/NU/NRC/AD/Volkskrant hebben de breedte al in het pad (320-1280 px) en worden bewust niet herschreven: we kennen hun andere maten niet.
 /** Hosts met een breedte-parameter in de query: boven 1200 terug naar 1200 (bestaande waarden eronder blijven). */
 function kleinerQuery(u: URL): string {
   return u.search.replace(/([?&](?:width|w)=)(\d+)(?=&|$)/, (m, v, b) => (+b > 1200 ? v + 1200 : m));

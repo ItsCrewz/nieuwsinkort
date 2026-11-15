@@ -1,1 +1,2 @@
 - Home-gewicht: beelden van images.pubble.cloud gaan van 1920 naar 840 px breed en `width`/`w`-queryparameters boven 1200 worden 1200 (vangrail in `beeldProxyPad`, #563).
+- Delen en og:image blijven op 1200 px (`beeldProxyPad(src, false)`); de vangrail geldt alleen voor de UI. NOS, NU, NRC, AD en Volkskrant hebben de breedte al in het pad en blijven ongewijzigd. Lighthouse-metingen (3× vóór/na) en een live check van `quick/840` bij Pubble staan nog open; de client valt bij weigering terug op de rechtstreekse bron.
