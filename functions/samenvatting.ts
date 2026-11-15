@@ -20,9 +20,8 @@ type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
 export async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage, timeoutMs = llmTimeoutMs(), magRetry?: () => boolean): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
-  let r: any;
   // timeout + hooguit één retry (#873); elke mislukte poging apart gemeten (een niet-afgebroken call kan toch neuronen kosten)
-  r = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry });
+  const r: any = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry });
   u.calls++;
   meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
   const txt = typeof r?.response === "string" ? r.response : r?.choices?.[0]?.message?.content || "";
