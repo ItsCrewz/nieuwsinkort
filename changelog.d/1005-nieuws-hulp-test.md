@@ -1,0 +1,1 @@
+- Tests: `src/nieuws-hulp.tsx` heeft nu een eigen regressietest voor de hulpfuncties (#1005).
