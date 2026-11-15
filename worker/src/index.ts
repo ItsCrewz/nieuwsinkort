@@ -476,7 +476,9 @@ export class Runner extends DurableObject<Env> {
     st.hashes ||= {};
     st.runs++;
 
-    // Deze feeds geven volgens melding 403 of een fout; heractiveer ze na controle.
+    // Gemelde fouten, geen meting van deze run: BleepingComputer 403, CISA nieuws 404,
+    // CISA advisories feedfout. De achterliggende oorzaken zijn zonder netwerk niet vast te stellen.
+    // Controleer de feeds en verwijder ze uit deze lijst zodra ze weer bruikbaar zijn.
     const overgeslagenFeeds = [
       { url: "https://www.bleepingcomputer.com/feed/", reden: "HTTP 403" },
       { url: "https://www.cisa.gov/cybersecurity-advisories/all.xml", reden: "feedfout" },
