@@ -161,7 +161,7 @@ export function VideoGrid({
   const split = cat === "filmpjes";
   // Filmpjes: Shorts en Journaals apart. Een deep link naar een journaal opent meteen het tabje Journaals.
   const [soort, setSoort] = useState<Soort>(() => {
-    const hit = video ? list.find((v) => videoSlug(v) === video) : null;
+    const hit = start ? list.find((v) => videoSlug(v) === start) : null;
     return hit ? soortVan(hit) : startSoort(list);
   });
   const [bron, setBron] = useState("alle");
