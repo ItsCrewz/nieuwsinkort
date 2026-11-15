@@ -763,6 +763,7 @@ export default function App() {
   const [fsheet, setFsheet] = useState(false);
   const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
   const [zoekterm, setZoekterm] = useState(() => leesZoekterm(window.location.search));
+  const [zoekAlles, setZoekAlles] = useState(false);
   const zoekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const schrijfZoekUrl = useCallback((term: string) => {
     clearTimeout(zoekTimer.current);
@@ -770,6 +771,7 @@ export default function App() {
   }, []);
   const wijzigZoekterm = useCallback((term: string) => {
     setZoekterm(term);
+    if (!term) setZoekAlles(false);
     clearTimeout(zoekTimer.current);
     if (!term) schrijfZoekUrl(term);
     else zoekTimer.current = setTimeout(() => schrijfZoekUrl(term), 300);
@@ -913,15 +915,16 @@ export default function App() {
   const isFeedView = !!data && !route.selected && route.view !== "filmpjes" && route.view !== "dumpert";
   const zoekBasis = isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [];
   const zoekFilter = isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null;
-  const zoekUitkomst = zoekFilter ? zoekItems(zoekFilter.items, zoekterm) : [];
+  const zoekUitkomst = zoekFilter ? zoekItems(zoekAlles && raw ? raw.items : zoekFilter.items, zoekterm) : [];
   // Zonder tijd-, regio-, video- en samengevoegd-filter: wat de filters aan treffers verbergen (#613).
   const zoekBeperkt = !!zoekFilter && (zoekFilter.tijd !== "alles" || flt.f.video || flt.f.samen || flt.f.regio.length > 0);
   const wisZoekFilters = () => flt.set({ tijd: "alles", video: false, samen: false, regio: [] });
   const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm).length - zoekUitkomst.length) : 0;
   const zoekScope: ZoekScope | undefined = zoekFilter ? {
-    tekst: scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
+    tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video-, samenvoeg- en bronfilters zijn verruimd." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
     verborgen: zoekVerborgen,
-    wisFilters: zoekBeperkt ? wisZoekFilters : undefined,
+    wisFilters: !zoekAlles && zoekBeperkt ? wisZoekFilters : undefined,
+    herstel: zoekAlles ? () => { setZoekAlles(false); zoekInvoer.current?.focus(); } : undefined,
   } : undefined;
   const top = (
     <>
@@ -1044,7 +1047,7 @@ export default function App() {
             zoekterm={zoekterm}
             nieuwsdata={raw}
             keepOrder={flt.f.sort !== "nieuw"}
-            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={wisZoekFilters} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={zoekAlles ? undefined : wisZoekFilters} onZoekAlles={!zoekAlles ? () => { setZoekAlles(true); zoekInvoer.current?.focus(); } : undefined} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}
