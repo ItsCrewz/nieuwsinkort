@@ -116,7 +116,7 @@ export const onRequest = async ({ request, waitUntil, timeoutMs }: Ctx): Promise
     r = null;
   }
   if (!r) { klaar(); return fout(502); }
-  if (!r.ok) { klaar(); weg(r); return fout(r.status === 404 ? 404 : 502, r.status === 404 ? "public, max-age=30" : "no-store"); }
+  if (r.status !== 200) { klaar(); weg(r); return fout(r.status === 404 ? 404 : 502, r.status === 404 ? "public, max-age=30" : "no-store"); }
 
   const type = r.headers.get("content-type") || "";
   if (!TYPE.test(type) || uitgesloten(accept, type)) { klaar(); weg(r); return fout(415); }
