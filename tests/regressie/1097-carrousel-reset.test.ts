@@ -24,7 +24,10 @@ class Knoop {
   nodeName: string;
   tagName: string;
   clientWidth = 0;
-  scrollLeft = 0;
+  private positie = 0;
+  private animatie: ReturnType<typeof setTimeout> | undefined;
+  get scrollLeft() { return this.positie; }
+  set scrollLeft(v: number) { clearTimeout(this.animatie); this.positie = v; }
   scrolls: number[] = [];
   style = {};
   constructor(naam: string, public ownerDocument: any, public nodeType = 1) { this.nodeName = this.tagName = naam.toUpperCase(); }
@@ -38,7 +41,11 @@ class Knoop {
   removeEventListener() {}
   contains(n: Knoop | null): boolean { return !!n && (n === this || this.children.some((c) => c.contains(n))); }
   focus() {}
-  scrollTo(o: { left: number }) { this.scrolls.push(o.left); }
+  scrollTo(o: { left: number }) {
+    this.scrolls.push(o.left);
+    clearTimeout(this.animatie);
+    this.animatie = setTimeout(() => { this.positie = o.left; props(this)?.onScroll?.(); }, 10);
+  }
   getBoundingClientRect() { return { left: 0, width: 100 }; }
   get nodeValue() { return this.textContent; } // React werkt tekstknopen zo bij
   set nodeValue(v: string) { this.textContent = v; }
@@ -103,6 +110,25 @@ for (const wacht of [true, false]) {
   assert.equal(c.track().scrollLeft, 0);
   assert.equal(c.teller(), undefined);
   assert.deepEqual(c.zichtbaar(), [een[0]]);
+  await act(async () => c.root.unmount());
+}
+
+// Een gelijke lijst behoudt de selectie; een gewijzigde lijst met dezelfde actieve foto begint opnieuw.
+{
+  const c = await toon(urls);
+  await c.scrollNaar(1);
+  await c.render([...urls]);
+  assert.equal(c.track().scrollLeft, 100);
+  assert.equal(c.teller(), "Foto 2 van 3");
+  // Een lopende scroll mag de nieuwe lijst niet alsnog naar een latere foto brengen.
+  await act(async () => props(c.knop("Volgende foto")).onClick({ stopPropagation() {}, preventDefault() {} }));
+  const overlap = [nieuwe[0], urls[1], nieuwe[2]];
+  await c.render(overlap);
+  await act(async () => { await new Promise((r) => setTimeout(r, 25)); });
+  assert.equal(c.track().scrollLeft, 0);
+  assert.equal(c.teller(), "Foto 1 van 3");
+  assert.deepEqual(c.stippen(), ["on", "", ""]);
+  assert.deepEqual(c.zichtbaar(), [overlap[0]]);
   await act(async () => c.root.unmount());
 }
 
