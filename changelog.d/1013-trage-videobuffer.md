@@ -1,1 +1,1 @@
-- Voorkom onnodig herladen van video's zolang de buffer bij een trage verbinding groeit (#1013).
+- Stel herladen bij een groeiende videobuffer uit, maar herstel een blijvende stilstand binnen begrensde tijd (#1013).
