@@ -73,8 +73,20 @@ export function beeldKey(u: string): string {
 export function beterBeeld(raw: string): string {
   let u = raw.trim().replace(/&amp;/g, "&").replace(/&#x3[dD];/g, "=").replace(/&#61;/g, "=").replace(/&#x26;|&#38;/g, "&");
   const nu = u.match(/^(https:\/\/images\.nu\.nl\/m\/[a-z0-9]+)_sqr\d+\//i);
-  if (nu) u = `${nu[1]}_wd1280.jpg`;
+  // alleen vergroten als er geen toegangs-/onbekende parameters overblijven: een sig of token kan aan het oorspronkelijke pad gebonden zijn
+  if (nu && nuQuerySchoon(u)) u = `${nu[1]}_wd1280.jpg`;
   return u;
+}
+
+/** Na weghalen van maat- en trackingparameters blijft er niets over (en parsen lukt): dan is vergroten veilig. */
+const MAAT_TRACK = /^(?:w|h|width|height|resize|imwidth|im_w|q|quality|fit|crop|dpr|fm|format|utm_.*|fbclid|gclid|msclkid|mc_[a-z]+|ref|source)$/i;
+function nuQuerySchoon(u: string): boolean {
+  const i = u.indexOf("?");
+  if (i < 0) return true;
+  try {
+    const p = new URLSearchParams(u.slice(i + 1).split("#", 1)[0]);
+    return [...p.keys()].every((k) => MAAT_TRACK.test(k));
+  } catch { return false; }
 }
 
 export function uniekeBeelden(urls: (string | null | undefined)[], max = 12): string[] {

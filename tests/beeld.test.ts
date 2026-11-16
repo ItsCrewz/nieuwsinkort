@@ -24,7 +24,7 @@ t("beeldKey herkent varianten van hetzelfde beeld", () => {
 t("beterBeeld normaliseert gecodeerde Nu.nl-thumbnails", () => {
   assert.equal(
     beterBeeld(" https://images.nu.nl/m/abc123_sqr256/foto.jpg?x&#x3D;1&amp;y&#61;2 "),
-    "https://images.nu.nl/m/abc123_wd1280.jpg",
+    "https://images.nu.nl/m/abc123_sqr256/foto.jpg?x=1&y=2",
   );
   assert.equal(beterBeeld(" https://nieuws.nl/foto.jpg?x&#x3D;1&amp;y&#61;2 "), "https://nieuws.nl/foto.jpg?x=1&y=2");
 });
