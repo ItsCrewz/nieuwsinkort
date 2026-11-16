@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MAX_PRECONNECT, aantalPreconnects,HLS_BYTES, PLAYLIST_BYTES, MP4_BYTES, POSTER_MAX_MS, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MAX_PRECONNECT, aantalActievePosters, aantalPreconnects,HLS_BYTES, PLAYLIST_BYTES, MP4_BYTES, POSTER_MAX_MS, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -357,6 +357,49 @@ try {
     } finally {
       installeer("setTimeout", echt);
       herstel(["clearTimeout"]);
+    }
+  });
+
+  await test("drie niet-aflopende posters blokkeren de volgende taken niet blijvend (#1089)", async () => {
+    const echt = globalThis.setTimeout;
+    const timers: { fn: () => void; ms: number; weg: boolean }[] = [];
+    installeer("setTimeout", (fn: () => void, ms: number) => { timers.push({ fn, ms, weg: false }); return timers.length - 1; });
+    installeer("clearTimeout", (id: number) => { if (timers[id]) timers[id].weg = true; });
+    const urls: string[] = [];
+    installeer("fetch", async (url: string) => { urls.push(url); return { ok: true, body: null }; });
+    const pauze = () => new Promise<void>((r) => echt(r, 0));
+    try {
+      await pauze(); // vorige test laat zijn laatste taak nog afronden
+      const begin = afbeeldingen.length;
+      const basis = aantalActievePosters();
+      const plan = { ...leeg(), thumbs: Array.from({ length: GELIJK + 1 }, (_, i) => `https://stil.example/${i}.jpg`), mp4: "https://media.example/stil.mp4" };
+      voerUit(plan);
+      // alleen de drie vastlopers lopen; poster 4 en de mp4-taak wachten
+      assert.equal(afbeeldingen.length - begin, GELIJK);
+      assert.equal(aantalActievePosters() - basis, GELIJK);
+      assert.equal(urls.length, 0);
+      timers.forEach((t) => t.fn()); // alle drie lopen af, zonder onload/onerror
+      await pauze();
+      assert.equal(afbeeldingen.length - begin, GELIJK + 1);
+      afbeeldingen[begin + GELIJK].onload!();
+      await pauze();
+      assert.ok(urls.some((u) => u.includes("stil.mp4")), "mp4-taak start na de time-outs");
+      for (let i = 0; i < GELIJK; i++) {
+        assert.equal(afbeeldingen[begin + i].src, "");
+        assert.equal(afbeeldingen[begin + i].onload, null);
+        assert.equal(afbeeldingen[begin + i].onerror, null);
+        assert.equal(afbeeldingen[begin + i].onabort, null);
+      }
+      assert.ok(timers.slice(0, GELIJK).every((t) => t.weg));
+      assert.equal(aantalActievePosters(), basis);
+      // de mislukte poster mag later gewoon opnieuw laden
+      const n = afbeeldingen.length;
+      voerUit({ ...leeg(), thumbs: [plan.thumbs[0]] });
+      assert.equal(afbeeldingen.length, n + 1);
+      afbeeldingen[n].onload!();
+    } finally {
+      installeer("setTimeout", echt);
+      herstel(["clearTimeout", "fetch"]);
     }
   });
 

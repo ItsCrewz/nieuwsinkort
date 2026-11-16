@@ -1,0 +1,1 @@
+- Voorladen: test dat drie vastgelopen afbeeldingen de volgende voorlaadtaken na de time-out niet blijvend blokkeren (#1089).
