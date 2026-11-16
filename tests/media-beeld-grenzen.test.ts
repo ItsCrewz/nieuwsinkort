@@ -20,7 +20,7 @@ await t("accept-onderhandeling respecteert expliciete uitsluitingen en formaten 
   assert.equal(upstreamAccept("webp", accept), "image/webp,image/jpeg,image/gif");
   assert.equal(acceptEmmer(null), "basis");
   const url = new URL("https://images.nu.nl/a.jpg?w=400");
-  assert.equal(cacheSleutel("webp", url), "https://nieuwsinkort.nl/__beeldcache/webp/images.nu.nl/a.jpg?w=400");
+  assert.equal(cacheSleutel("webp", url), "https://nieuwsinkort.nl/__beeldcache/v2/webp/images.nu.nl/a.jpg?w=400");
   assert.notEqual(cacheSleutel("webp", url), cacheSleutel("basis", url));
 });
 

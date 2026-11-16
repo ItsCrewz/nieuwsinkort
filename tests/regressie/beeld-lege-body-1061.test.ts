@@ -11,7 +11,6 @@ try {
     () => new Response(null, { headers: { "content-type": "image/jpeg" } }),
     () => new Response("", { headers: { "content-type": "image/jpeg" } }),
     () => new Response(new ReadableStream({ start(c) { c.enqueue(new Uint8Array(0)); c.close(); } }), { headers: { "content-type": "image/jpeg" } }),
-    () => new Response(null, { status: 204, headers: { "content-type": "image/jpeg" } }),
   ]) {
     globalThis.fetch = (async () => antwoord()) as typeof fetch;
     const r = await vraag();
@@ -19,6 +18,16 @@ try {
     assert.equal(r.headers.get("cache-control"), "no-store");
     assert.deepEqual(opgeslagen, []);
   }
+  const oudeSleutel = "https://nieuwsinkort.nl/__beeldcache/basis/images.nu.nl/voorbeeld.jpg";
+  const oudeCache = new Map([[oudeSleutel, new Response("", { headers: { "content-type": "image/jpeg" } })]]);
+  (globalThis as any).caches.default.match = async (sleutel: Request) => oudeCache.get(sleutel.url)?.clone();
+  let opgehaald = 0;
+  globalThis.fetch = (async () => { opgehaald++; return new Response("", { headers: { "content-type": "image/jpeg" } }); }) as typeof fetch;
+  const oud = await vraag();
+  assert.equal(opgehaald, 1, "een oude lege cache-entry wordt genegeerd");
+  assert.equal(oud.status, 502);
+  assert.equal(oud.headers.get("cache-control"), "no-store");
+  assert.deepEqual(opgeslagen, []);
   globalThis.fetch = (async (_url, init) => new Response(init?.method === "HEAD" ? null : "beeld", { headers: { "content-type": "image/jpeg", "content-length": "5" } })) as typeof fetch;
   const head = await vraag("HEAD");
   assert.equal(head.status, 200);

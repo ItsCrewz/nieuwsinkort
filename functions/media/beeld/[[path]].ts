@@ -62,7 +62,7 @@ export const acceptEmmer = (accept: string | null): Emmer => (accepteert(accept 
 // Upstream-Accept van de emmer zonder formaten die de bezoeker uitsloot (q=0); anders levert de uitgever een formaat dat we daarna afwijzen.
 export const upstreamAccept = (emmer: Emmer, accept: string | null): string => ACCEPT[emmer].split(",").filter((t) => !uitgesloten(accept, t)).join(",");
 /** Synthetische Cache API-sleutel; de emmer zit erin, dus nooit vermenging tussen formaten. */
-export const cacheSleutel = (emmer: Emmer, u: URL): string => `https://nieuwsinkort.nl/__beeldcache/${emmer}/${u.host}${u.pathname}${u.search}`;
+export const cacheSleutel = (emmer: Emmer, u: URL): string => `https://nieuwsinkort.nl/__beeldcache/v2/${emmer}/${u.host}${u.pathname}${u.search}`;
 
 // Upstream-URL uit het pad; null bij alles wat niet strikt een schone https-URL op de allowlist is.
 export function upstreamUrl(path: string, search: string): URL | null {
