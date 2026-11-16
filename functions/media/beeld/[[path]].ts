@@ -150,7 +150,27 @@ export const onRequest = async ({ request, waitUntil, timeoutMs }: Ctx): Promise
     if (v) out.set(h, v);
   }
   out.set("Cache-Control", `public, max-age=${TTL}`);
-  if (request.method === "HEAD" || !r.body) { klaar(); weg(r); return new Response(null, { status: 200, headers: metVary(out) }); }
+  if (request.method === "HEAD") { klaar(); weg(r); return new Response(null, { status: 200, headers: metVary(out) }); }
+  if (!r.body) { klaar(); return fout(502); }
+
+  // Wacht op de eerste byte voordat een 200 of cache-entry wordt verstuurd.
+  const lezer = r.body.getReader();
+  let eerste: ReadableStreamReadResult<Uint8Array>;
+  try {
+    do { eerste = await lezer.read(); } while (!eerste.done && eerste.value.byteLength === 0);
+  } catch {
+    klaar();
+    return ac.signal.aborted ? fout(504) : fout(502);
+  }
+  if (eerste.done) { klaar(); return fout(502); }
+  const bron = new ReadableStream<Uint8Array>({
+    start(ctl) { ctl.enqueue(eerste.value); },
+    async pull(ctl) {
+      try { const deel = await lezer.read(); if (deel.done) ctl.close(); else ctl.enqueue(deel.value); }
+      catch (e) { ctl.error(e); }
+    },
+    cancel(reden) { return lezer.cancel(reden); },
+  });
 
   // Zonder (of met een liegende) content-length: tellen en afbreken zodra de grens overschreden wordt.
   let tel = 0;
@@ -162,7 +182,7 @@ export const onRequest = async ({ request, waitUntil, timeoutMs }: Ctx): Promise
     },
     flush: klaar,
   });
-  const body = r.body.pipeThrough(begrens);
+  const body = bron.pipeThrough(begrens);
   if (!cache) return new Response(body, { status: 200, headers: metVary(out) });
   // Alleen dit geslaagde antwoord in de Cache API (24 u); een afgebroken (te grote) stream wordt niet opgeslagen.
   const [naarBezoeker, naarCache] = body.tee();

@@ -1,0 +1,1 @@
+- De beeldproxy geeft een niet-cachebare fout bij een leeg upstream-antwoord (#1061).
