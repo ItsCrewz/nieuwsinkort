@@ -10,6 +10,7 @@ const verzoeken: { url: string; signal: AbortSignal }[] = [];
 let annuleerLezer = 0;
 const nooit = new Promise<never>(() => {});
 const master = readFileSync("tests/regressie/fixtures/voorladen-723/master.m3u8", "utf8");
+const playlist = (tekst: string) => ({ ok: true, headers: new Headers(), body: new Response(tekst).body });
 const leeg: Plan = { thumbs: [], preconnect: [], hlsChunk: false, hls: [], mp4: null };
 const doorspoelen = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 
@@ -20,12 +21,12 @@ try {
   zet("fetch", async (url: string, opties: RequestInit) => {
     verzoeken.push({ url, signal: opties.signal! });
     if (url === "/hang-723.m3u8") return nooit;
-    if (url === "/master-723.m3u8") return { ok: true, text: async () => master };
-    if (url.endsWith("laag.m3u8")) return { ok: true, text: () => nooit };
+    if (url === "/master-723.m3u8") return playlist(master);
+    if (url.endsWith("laag.m3u8")) return { ok: true, headers: new Headers(), body: { getReader: () => ({ read: () => nooit, cancel: async () => {} }) } };
     if (url.endsWith("video.mp4")) return { ok: true, body: { getReader: () => ({ read: () => nooit, cancel: async () => { annuleerLezer++; } }) } };
-    if (url === "/segment-723.m3u8") return { ok: true, text: async () => "#EXTM3U\nvideo.ts" };
+    if (url === "/segment-723.m3u8") return playlist("#EXTM3U\nvideo.ts");
     if (url.endsWith("video.ts")) return { ok: true, body: { getReader: () => ({ read: () => nooit, cancel: async () => {} }) } };
-    return { ok: true, text: async () => "#EXTM3U" };
+    return playlist("#EXTM3U");
   });
   voerUit({ ...leeg, hls: ["/master-723.m3u8", "/segment-723.m3u8", "/hang-723.m3u8", "/volgende-723.m3u8"], mp4: "https://site.example/video.mp4" });
   await doorspoelen();
