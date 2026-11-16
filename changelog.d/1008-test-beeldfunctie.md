@@ -1,0 +1,1 @@
+- Extra tests voor de URL-validatie en formaatonderhandeling van de beeldproxy (#1008).
