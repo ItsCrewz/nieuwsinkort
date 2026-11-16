@@ -2,7 +2,7 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { bruikbareAfmeting } from "./beeld";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
@@ -11,6 +11,16 @@ import { scrollGedrag } from "./beweging";
 // Tijdens scrollen laden we de eerste foto van de volgende 3 berichten (in de scrollrichting) al helemaal in,
 // inclusief decoderen, zodat hij er meteen staat. Van het bericht in beeld ook al de 2e carrouselfoto.
 // Begrensd: nooit meer dan een handvol tegelijk, dus niet alle 200 foto's in één keer (die bevriezing blijft weg).
+type Verbinding = EventTarget & { saveData?: boolean };
+const verbinding = () => typeof navigator === "undefined" ? undefined : (navigator as Navigator & { connection?: Verbinding }).connection;
+const bespaarData = () => verbinding()?.saveData === true;
+const volgVerbinding = (bijwerken: () => void) => {
+  const v = verbinding();
+  const wijzig = () => { bijwerken(); if (!bespaarData()) vooruit(); };
+  v?.addEventListener("change", wijzig);
+  return () => v?.removeEventListener("change", wijzig);
+};
+
 const AHEAD = 3;
 const klaar = new Set<string>(); // url's die al gedecodeerd zijn
 // Vangnet: faalt de proxy (bijv. botbescherming van de uitgever), dan één keer rechtstreeks (oude gedrag) voor het wegvallen.
@@ -77,7 +87,7 @@ let plan = 0;
 function vooruit() {
   cancelAnimationFrame(plan);
   plan = requestAnimationFrame(() => {
-    if (!zichtbaar.size) return;
+    if (bespaarData() || !zichtbaar.size) return;
     if (!ordered) ordered = [...regs].filter((r) => r.el.isConnected).sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
     const idx = ordered.map((r, k) => (zichtbaar.has(r) ? k : -1)).filter((k) => k >= 0);
     if (!idx.length) return;
@@ -126,6 +136,7 @@ export function indexNaVerwijderen(i: number, weg: number, nieuweLengte: number)
 }
 
 export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = eager, className = "", onChange }: { urls: string[]; eager?: boolean; voorrang?: boolean; className?: string; onChange?: () => void }) {
+  const besparen = useSyncExternalStore(volgVerbinding, bespaarData, () => false);
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
   const zichtbare = list.slice(0, 6);
@@ -138,10 +149,10 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   useEffect(() => {
     const el = box.current;
     if (near || !el || !window.IntersectionObserver) { if (!window.IntersectionObserver) setNear(true); return; }
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setNear(true); io.disconnect(); } }, { rootMargin: "200% 0px" });
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setNear(true); io.disconnect(); } }, { rootMargin: besparen ? "0px" : "200% 0px" });
     io.observe(el);
     return () => io.disconnect();
-  }, [near]);
+  }, [near, besparen]);
   const listRef = useRef(urls);
   const iRef = useRef(0);
   useEffect(() => {
@@ -164,7 +175,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
   listRef.current = list;
   iRef.current = i;
-  useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
+  useEffect(() => { if (!besparen && i > 0) preloadBeeld(list[i + 1]); }, [i, list, besparen]); // door de carrousel bladeren: volgende foto alvast
   useEffect(() => { onChange?.(); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const drop = useCallback((u: string) => {
     const weg = listRef.current.indexOf(u);
@@ -220,7 +231,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       >
         {zichtbare.map((u, k) => (
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
-            {near && (k <= i + 1 || k === zichtbare.length - 1 && i === 0) ? (
+            {near && (besparen ? k === i : k <= i + 1 || k === zichtbare.length - 1 && i === 0) ? (
               <img
                 src={bronUrl(u)}
                 alt=""

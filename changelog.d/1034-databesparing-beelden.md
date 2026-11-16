@@ -1,0 +1,1 @@
+- Laad bij databesparing alleen zichtbare en gekozen beelden, zonder foto's van volgende kaarten of carrouselfoto's vooruit te laden (#1034).
