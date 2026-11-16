@@ -126,6 +126,19 @@ await t("mislukte gedeelde lezing geeft overal 503 en een volgende aanvraag prob
   } finally { console.error = err; }
 });
 
+await t("synchroon gooiende KV-get geeft 503 en blijft niet hangen", async () => {
+  const teller = { n: 0 };
+  let stuk = true;
+  const kv = { get(_k: string, _o: any) { teller.n++; if (stuk) throw new Error("KV down"); return Promise.resolve({ items: { a: { uitleg: ["x"] } } }); } };
+  const err = console.error; console.error = () => {};
+  try {
+    assert.equal((await meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })).status, 503);
+    stuk = false;
+    assert.equal((await meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })).status, 200);
+    assert.equal(teller.n, 2);
+  } finally { console.error = err; }
+});
+
 await t("ontbrekende blob geeft 404 en wordt bij de volgende aanvraag opnieuw gelezen", async () => {
   const teller = { n: 0 };
   const kv = traag(() => null, teller);

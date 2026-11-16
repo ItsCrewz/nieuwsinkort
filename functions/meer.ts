@@ -17,13 +17,14 @@ async function leesMeer(kv: KV): Promise<any> {
   const l = lopend.get(kv);
   if (l) return l;
   const p = (async () => {
-    try {
-      const M = await kv.get("meer", { type: "json", cacheTtl: 60 });
-      if (M) cache.set(kv, { at: Date.now(), M }); // ontbrekende blob niet bewaren: lezen kost dan geen parse
-      return M;
-    } finally { lopend.delete(kv); }
+    const M = await kv.get("meer", { type: "json", cacheTtl: 60 });
+    if (M) cache.set(kv, { at: Date.now(), M }); // ontbrekende blob niet bewaren: lezen kost dan geen parse
+    return M;
   })();
   lopend.set(kv, p);
+  // Opruimen na de set (ook als get synchroon gooit); een nieuwere lezing blijft staan.
+  const klaar = () => { if (lopend.get(kv) === p) lopend.delete(kv); };
+  p.then(klaar, klaar);
   return p;
 }
 
