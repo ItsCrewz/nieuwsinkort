@@ -17,7 +17,7 @@ Container max 1240px, gecentreerd, 24px zijmarge.
    - **Hoofdartikel**: het cluster met de meeste bronnen in cat `nl`. Beeld 16:9 links (3/5), kop (2rem), `ai`-regel en bronnen/tijd rechts (2/5).
    - **Drie secundaire kaarten** eronder: de volgende `nl`-clusters.
    - **Drie rubriekkolommen** (Tech, Showbizz, Haarlem) met elk de nieuwste 4 koppen.
-3. **Sidebar** (vaste 320px, sticky): "Laatste nieuws" (8 nieuwste items op `t`, met tijd) en "Meest gelezen".
+3. **Sidebar** (vaste 320px, sticky): "Laatste nieuws" (8 nieuwste items op `t`, met tijd) en "Meest gemeld" (alleen items met minstens 2 bronnen; zonder zulke items vervalt de sectie).
 
 ## Hoe het datamodel past
 
@@ -26,7 +26,7 @@ Geen nieuwe data of bronnen. Alles komt uit `items` van `/data.json` (`cat`, `ko
 - **Hoofdartikel**: `max(bronnen.length)` binnen `cat === "nl"`, gelijkspel op nieuwste `t`.
 - **Rubrieken**: filter op `cat`, gesorteerd op `t` aflopend.
 - **Laatste nieuws**: alle items op `t` aflopend.
-- **Meest gelezen**: er is **geen leesdata**. Voorstel: "Meest gelezen" wordt "Meest gemeld" = items met de meeste bronnen. **Open vraag aan Joey**: akkoord, of de sectie weglaten?
+- **Meest gemeld**: er is **geen leesdata**, dus geen "Meest gelezen". Voorstel: "Meest gemeld" = items met de meeste bronnen (minstens 2). **Open vraag aan Joey**: akkoord, of de sectie weglaten?
 - Het bestaande rubriekenfilter (`filters.tsx`, `sources.ts`) en `herindeel()` blijven de bron van waarheid voor wat in welke rubriek valt.
 
 ## Hergebruik van componenten
@@ -46,10 +46,14 @@ Inter (self-hosted, al aanwezig). Hoofdkop 2rem/1.2 bold; kaartkop 1rem/1.3 semi
 
 ## Geen CLS-regressie
 
-- Alle beelden in een container met `aspect-ratio: 16/9`; ruimte is er voordat het beeld laadt. Kaarten zonder foto krijgen géén beeldvak maar een vaste tekstkaart.
-- Header en sidebarkoppen hebben vaste hoogtes; fonts zijn self-hosted (bestaande preload).
-- Het aantal items per kolom is vast (4, 3 en 8), dus de hoogte verandert niet bij het laden. `/data.json` wordt vroeg gestart (`__vroegData`, #35); tot dan staan skeletons met dezelfde maten.
-- De sidebar is `position: sticky` en verschuift de inhoud niet.
+Doel: bij het vervangen van skeleton of leegtoestand door inhoud verschuift niets.
+
+- **Beelden**: container met `aspect-ratio: 16/9`; de ruimte staat er voordat het beeld laadt. Een kaart zonder beeld krijgt géén beeldvak maar een vaste tekstkaart, en wisselt na het laden niet van vorm.
+- **Variabele koplengte**: koppen krijgen `line-clamp` (hoofdkop 4 regels, kaartkop 3 regels) met een vaste `min-height` (3,9em voor kaartkoppen), zodat een korte of lange kop dezelfde hoogte inneemt.
+- **Minder artikelen dan slots**: een kolom met minder items dan slots (4, 3 of 8) houdt de hoogte van alle slots; lege slots zijn onzichtbare plaatshouders met dezelfde maat.
+- **Lege rubriek**: een rubriek zonder items toont één vaste regel "Geen berichten" in plaats van te inklappen. Alleen "Meest gemeld" vervalt als er geen items met minstens 2 bronnen zijn; de sidebar heeft dan een vaste minimale hoogte.
+- **Laden en fouten**: skeletons en de foutmelding hebben dezelfde maten als de inhoud (zelfde slots, dezelfde clamp en `min-height`). `/data.json` wordt vroeg gestart (`__vroegData`, #35).
+- **Sidebar**: 8 rijen van vaste hoogte (`min-height: 3.5rem`), `position: sticky`; header en sidebarkoppen hebben vaste hoogtes en fonts zijn self-hosted (bestaande preload).
 - De bestaande kaart-windowing (`KAARTEN_VOORAF`) is niet nodig: het overzicht heeft ca. 30 koppen.
 
 ## Fase 2 (niet in deze PR)

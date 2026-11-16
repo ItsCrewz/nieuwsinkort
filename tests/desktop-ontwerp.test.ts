@@ -28,6 +28,13 @@ t("ontwerp: beeldmaat gereserveerd tegen CLS", () => {
   assert.match(mock, /\.beeld\{aspect-ratio:16\/9/);
 });
 
+t("ontwerp: sectie heet Meest gemeld (geen leesdata) en CLS-regels staan erin", () => {
+  assert.match(mock, /<h2>Meest gemeld<\/h2>/);
+  assert.doesNotMatch(mock, /Meest gelezen/);
+  assert.match(mock, /line-clamp:3[^}]*min-height:3\.9em/);
+  for (const w of ["line-clamp", "Geen berichten", "Minder artikelen dan slots", "skeletons", "8 rijen van vaste hoogte"]) assert.ok(new RegExp(w, "i").test(ontwerp), w);
+});
+
 t("ontwerp: mockup is zelfstandig (geen script, geen externe requests)", () => {
   assert.doesNotMatch(mock, /<script|https?:\/\/|<link|@import|src=/i);
 });
