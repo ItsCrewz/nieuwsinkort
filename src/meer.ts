@@ -46,10 +46,13 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
   const timeout = new Promise<null>((resolve) => {
     timer = setTimeout(() => { controller.abort(); resolve(null); }, 10000);
   });
-  const aanvraag = fetch(`/meer?k=${encodeURIComponent(k)}`, { cache: "no-cache", signal: controller.signal })
-    .then((r) => (r.ok ? r.json() as Promise<unknown> : null))
-    .then((data) => geldigMeer(data) ? data : null)
-    .catch(() => null);
+  const aanvraag = (async () => {
+    try {
+      const r = await fetch(`/meer?k=${encodeURIComponent(k)}`, { cache: "no-cache", signal: controller.signal });
+      const data: unknown = r.ok ? await r.json() : null;
+      return geldigMeer(data) ? data : null;
+    } catch { return null; }
+  })();
   nieuw.p = Promise.race([aanvraag, timeout]).then((m) => {
     clearTimeout(timer);
     nieuw.bezig = false;

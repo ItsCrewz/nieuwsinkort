@@ -1,0 +1,1 @@
+- Artikelverdieping herstelt na een vastgelopen aanvraag of respons en blijft opnieuw opvraagbaar (#1090).
