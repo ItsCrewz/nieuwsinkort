@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import { act, createElement } from "react";
+import { zetNepDom } from "../hulp/nepdom";
+import fixture from "./fixtures/video-miniatuur-790.json";
+
+const dom = zetNepDom({});
+const gebeurtenissen = new EventTarget();
+dom.doc.addEventListener = gebeurtenissen.addEventListener.bind(gebeurtenissen);
+dom.doc.removeEventListener = gebeurtenissen.removeEventListener.bind(gebeurtenissen);
+const berichten: string[] = [];
+let pauzes = 0;
+const maakElement = dom.doc.createElement;
+dom.doc.createElement = (tag: string) => {
+  const element = maakElement(tag);
+  element.querySelectorAll = (selector: string) => selector === "iframe.f-yt" ? [{ contentWindow: { postMessage: (bericht: string) => berichten.push(bericht) } }] : [];
+  if (tag === "video") element.pause = () => { pauzes++; };
+  return element;
+};
+const { createRoot } = await import("react-dom/client");
+const { Feed } = await import("../../src/feed");
+const root = createRoot(dom.container as unknown as Element);
+await act(async () => root.render(createElement(Feed, { list: [{ ...fixture, ai: "", populariteit: "", tijd: "" }], cat: "filmpjes", start: null, onClose: () => {} })));
+await act(async () => { dom.doc.hidden = true; gebeurtenissen.dispatchEvent(new Event("visibilitychange")); });
+assert.ok(pauzes >= 3, "alle vaste native spelers worden gepauzeerd");
+assert.ok(berichten.some((bericht) => JSON.parse(bericht).func === "pauseVideo"), "ook YouTube wordt gepauzeerd");
+const eerder = pauzes;
+await act(async () => { dom.doc.hidden = false; gebeurtenissen.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("pagehide")); });
+assert.ok(pauzes >= eerder + 3, "pagehide pauzeert ook na snelle terugkeer");
+await act(async () => root.unmount());
+console.log("✓ videofeed pauzeert native spelers en YouTube bij verbergen (#1046)");
