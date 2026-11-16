@@ -1,1 +1,1 @@
-- Artikelverdieping herstelt na een vastgelopen aanvraag of respons en blijft opnieuw opvraagbaar (#1090).
+- Regressietests toegevoegd voor timeout, herstel en foutafhandeling bij artikelverdieping (#1090).

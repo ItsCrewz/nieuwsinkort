@@ -33,6 +33,22 @@ try {
   assert.deepEqual(await prefetchMeer(item), nieuw);
   assert.equal(aantal, 2);
   console.log("ok - timeout tijdens lezen, herstel en laat antwoord");
+
+  for (const fout of ["afgewezen", "niet-ok"]) {
+    let pogingen = 0;
+    const foutItem = { meer: `regressie-1090-${fout}` } as Item;
+    globalThis.fetch = (() => {
+      pogingen++;
+      if (pogingen === 1) return fout === "afgewezen"
+        ? Promise.reject(new Error("netwerkfout"))
+        : Promise.resolve(new Response(null, { status: 503 }));
+      return Promise.resolve(Response.json(nieuw));
+    }) as typeof fetch;
+    assert.equal(await prefetchMeer(foutItem), null);
+    assert.deepEqual(await prefetchMeer(foutItem), nieuw);
+    assert.equal(pogingen, 2);
+  }
+  console.log("ok - opnieuw proberen na netwerkfout en niet-OK-respons");
 } finally {
   globalThis.fetch = fetchEcht;
   globalThis.setTimeout = timeoutEcht;
