@@ -767,7 +767,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
           echteFout.current = true; foutCode.current = d.info; setVangnet(false);
           if (ytEchteFout(d.info)) setShown(true);
           onYtFout(d.info);
-        } else if (!echteFout.current && state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
+        } else if (!echteFout.current && state.current.active && !state.current.paused && autoplayGeblokkeerd(d.event, d.info)) {
           blokkade.current = d.event; diagnose();
           if (!state.current.muted) { onAutoplayBlocked(); post("mute"); post("playVideo"); }
         }
@@ -876,7 +876,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         listening();
       }}
     />
-    {active && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
+    {active && !paused && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
     </>
   );
 }
