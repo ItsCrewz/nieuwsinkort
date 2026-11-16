@@ -128,15 +128,24 @@ for (const wacht of [true, false]) {
   assert.equal(c.track().scrollLeft, 100);
   assert.equal(c.teller(), "Foto 2 van 3");
   assert.deepEqual(c.zichtbaar(), [urls[1]]);
-  // Een lopende scroll mag de nieuwe lijst niet alsnog naar een latere foto brengen.
-  await act(async () => props(c.knop("Volgende foto")).onClick({ stopPropagation() {}, preventDefault() {} }));
   const overlap = [nieuwe[0], urls[1], nieuwe[2]];
   await c.render(overlap);
-  await act(async () => { await new Promise((r) => setTimeout(r, 25)); });
   assert.equal(c.track().scrollLeft, 0);
   assert.equal(c.teller(), "Foto 1 van 3");
   assert.deepEqual(c.stippen(), ["on", "", ""]);
   assert.deepEqual(c.zichtbaar(), [overlap[0]]);
+  await act(async () => c.root.unmount());
+}
+
+// Een lopende animatie mag de nieuwe lijst niet alsnog naar een latere foto brengen.
+{
+  const c = await toon(urls);
+  await c.scrollNaar(1);
+  await act(async () => props(c.knop("Volgende foto")).onClick({ stopPropagation() {}, preventDefault() {} }));
+  await c.render([nieuwe[0], urls[1], nieuwe[2]]);
+  await act(async () => { await new Promise((r) => setTimeout(r, 25)); });
+  assert.equal(c.track().scrollLeft, 0);
+  assert.equal(c.teller(), "Foto 1 van 3");
   await act(async () => c.root.unmount());
 }
 
