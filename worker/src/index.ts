@@ -137,7 +137,7 @@ async function runOg(j: Job, t0: number): Promise<Res> {
 
 // "Lees verder": de artikeltekst zelf (alinea's, zonder AI). Browser-UA (DPG e.d. weigeren bots), max 900 kB lezen.
 async function runArt(j: Job, t0: number): Promise<Res> {
-  const r = await externeFetch(j.url, { headers: { "User-Agent": BR_UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8", ...extra }, signal: AbortSignal.timeout(10000), redirect: "follow" });
+  const r = await externeFetch(j.url, { headers: { "User-Agent": BR_UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8" }, signal: AbortSignal.timeout(10000), redirect: "follow" });
   if (!r.ok || !r.body || !/html/i.test(r.headers.get("content-type") || "html")) {
     r.body?.cancel().catch(() => {});
     return { url: j.url, ok: false, status: r.status, err: `HTTP ${r.status}`, ms: Date.now() - t0, json: [] };
