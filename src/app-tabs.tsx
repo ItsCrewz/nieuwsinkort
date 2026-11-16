@@ -38,6 +38,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
   const indRef = useRef<HTMLSpanElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
   const prev = useRef<{ x: number; w: number } | null>(null);
+  const focusKeuze = useRef<View | null>(null);
   const [fit, setFit] = useState<{ short: boolean; count: number }>({ short: false, count: 99 });
   const [open, setOpen] = useState(false);
   const options: TabOpt[] = useMemo(() => tabOpties(data.items, view), [data.items, view]);
@@ -111,12 +112,25 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
     place(listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]') ?? null, !firstPlace.current);
     firstPlace.current = false;
   }, [view, fit, place]);
+  useLayoutEffect(() => {
+    if (open) moreRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [open]);
+  useLayoutEffect(() => {
+    if (focusKeuze.current !== view) return;
+    listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+    focusKeuze.current = null;
+  }, [view, fit]);
   useEffect(() => {
     if (!open) return;
     const down = (e: PointerEvent) => {
       if (!moreRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setOpen(false);
+      moreRef.current?.querySelector<HTMLButtonElement>(".more-btn")?.focus();
+    };
     document.addEventListener("pointerdown", down);
     document.addEventListener("keydown", key);
     return () => {
@@ -159,7 +173,18 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
                 Meer <Icon name="chevdown" className="sm" />
               </button>
               {open ? (
-                <div className="menu" role="menu">
+                <div className="menu" role="menu" onKeyDown={(e) => {
+                  const items = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+                  const index = items.indexOf(document.activeElement as HTMLElement);
+                  let volgende = index;
+                  if (e.key === "ArrowDown") volgende = (index + 1) % items.length;
+                  else if (e.key === "ArrowUp") volgende = (index - 1 + items.length) % items.length;
+                  else if (e.key === "Home") volgende = 0;
+                  else if (e.key === "End") volgende = items.length - 1;
+                  else return;
+                  e.preventDefault();
+                  items[volgende]?.focus();
+                }}>
                   {rest.map((o) => (
                     <button
                       key={o.value}
@@ -168,6 +193,7 @@ function Tabs({ data, view, onChange }: { data: Data; view: View; onChange: (v: 
                       className="menu-item"
                       data-video-tab={o.value === "filmpjes" || o.value === "dumpert" ? "" : undefined}
                       onClick={() => {
+                        focusKeuze.current = o.value;
                         setOpen(false);
                         onChange(o.value);
                       }}
