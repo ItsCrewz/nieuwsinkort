@@ -1,0 +1,1 @@
+- Tests toegevoegd voor de briefing en rubriekkeuze (#967).
