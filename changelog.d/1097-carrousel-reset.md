@@ -1,0 +1,1 @@
+- Fotocarrousel: bij een nieuwe fotolijst staan scrollpositie, zichtbare foto, stip en schermlezermelding weer op dezelfde foto (#1097).

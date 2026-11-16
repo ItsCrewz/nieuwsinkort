@@ -177,6 +177,9 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     const huidig = listRef.current[iRef.current];
     const nieuw = Math.max(0, Math.min(5, urls.indexOf(huidig)));
     cancelAnimationFrame(raf.current);
+    // Track direct op de juiste foto zetten (breekt ook een lopende smooth-scroll af), niet pas na de volgende render.
+    const el = track.current;
+    if (el) el.scrollLeft = urls.length > 1 ? nieuw * el.clientWidth : 0;
     setList(urls);
     setI(nieuw);
   }, [urls]);
