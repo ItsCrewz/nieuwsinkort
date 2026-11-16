@@ -3,12 +3,12 @@ import { goedBeeld, uniekeBeelden } from "../../src/beeld";
 import { schoon } from "../../src/schoon";
 
 const foto = "https://example.nl/blogoverzicht/foto.jpg";
-for (const url of [foto, "https://example.nl/foto-blogoverzicht.jpg", "https://example.nl/catalogo/foto.jpg", "https://example.nl/catalogo.jpg"]) {
+for (const url of [foto, "https://example.nl/foto-blogoverzicht.jpg", "https://example.nl/catalogo/foto.jpg", "https://example.nl/catalogo.jpg", "https://example.nl/foto.jpg?type=logo"]) {
   assert.equal(goedBeeld(url), true, url);
 }
 for (const url of [
   "https://example.nl/logo.png", "https://example.nl/LOGO/foto.jpg",
-  "https://example.nl/site-logo_klein.png", "https://example.nl/foto.jpg?type=logo",
+  "https://example.nl/site-logo_klein.png",
   "https://example.nl/logos/foto.jpg", "https://example.nl/logo2.png",
   "https://example.nl/mylogo.png", "https://example.nl/siteLogo.png", "https://example.nl/logotype.png",
   "https://example.nl/placeholder.jpg", "https://example.nl/foto.svg", "https://example.nl/foto.gif",

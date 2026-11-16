@@ -1,0 +1,1 @@
+- Nieuwsfoto’s blijven zichtbaar wanneer trackingparameters in de URL staan (#1011).
