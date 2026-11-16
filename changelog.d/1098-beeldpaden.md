@@ -1,0 +1,1 @@
+- Behoud verschillende foto's met dezelfde bestandsnaam in verschillende artikelmappen; maatvarianten blijven ontdubbeld (#1098).

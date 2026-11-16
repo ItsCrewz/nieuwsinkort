@@ -54,18 +54,16 @@ export function beeldKey(u: string): string {
     try { x = new URL(`https://${h}/${rest.join("/")}`); } catch { return u; }
   }
   const segs = x.pathname.split("/").filter(Boolean);
-  const alle = segs.slice(0, -1);
   let file = (segs.pop() || "").toLowerCase();
   // maatmappen ('/1200x675/abc.jpg', '/w_800,h_450,c_fill/abc.jpg') negeren; de overige map telt mee,
   // zodat dezelfde bestandsnaam in een andere artikelmap een andere foto blijft
-  segs.length = 0;
-  for (const m of alle) if (!MAATMAP.test(m.toLowerCase())) segs.push(m.toLowerCase());
+  const pad = segs.map((m) => m.toLowerCase()).filter((m) => !MAATMAP.test(m));
   file = file
     .replace(/\.(jpe?g|png|webp|avif)$/i, "")
     .replace(/[@_-]\d{2,4}x\d{0,4}$/, "").replace(/[@_-]\d{2,4}w$/, "").replace(/@\dx$/, "")
     .replace(/[-_](large|medium|small|thumb|full|orig|original|hd|sd|crop|cropped|scaled)$/i, "");
   // bestandsnaam is alleen een maat (NOS: /1234567/1024x576a.jpg): het id zit in de map
-  file = /^\d{2,4}x\d{2,4}[a-z]?$|^w\d{2,4}$/.test(file) ? segs.join("/") : [...segs, file].join("/");
+  file = /^\d{2,4}x\d{2,4}[a-z]?$|^w\d{2,4}$/.test(file) ? pad.join("/") : [...pad, file].join("/");
   const fam = x.hostname.replace(/^(www|cdn\d*|img\d*|images?\d*|static\d*|media\d*|i\d*)\./, "").split(".").slice(-2).join(".");
   return `${fam}|${file}`;
 }
