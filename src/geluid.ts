@@ -24,8 +24,10 @@ export function saveSound(aan: boolean): void {
 
 // Een keuze uit een ander tabblad (storage-event op localStorage) overschrijft het eigen geheugen, zodat
 // een oude voorkeur niet blijft hangen. Het "getikt"-gebaar blijft per document: zonder eigen tik blijft dit tabblad gedempt.
-export function volgGeluid(cb: (aan: boolean) => void): () => void {
+export function volgGeluid(cb: (aan: boolean) => void = () => {}): () => void {
   const luister = (e: StorageEvent) => {
+    // Alleen localStorage telt: een sessionStorage-event (bijv. uit een iframe) is geen wijziging uit een ander tabblad.
+    if (e.storageArea && e.storageArea !== window.localStorage) return;
     if (e.key !== SLEUTEL || (e.newValue !== "0" && e.newValue !== "1")) return;
     const aan = e.newValue === "1";
     geheugen = aan;

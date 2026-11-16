@@ -35,7 +35,7 @@ assert.equal(soundOn(), true);
     removeEventListener: (_: string, f: (e: any) => void) => { luisteraars.delete(f); } } });
   const gezien: boolean[] = [];
   const stop = volgGeluid((a) => gezien.push(a));
-  const stuur = (key: string | null, newValue: string | null) => luisteraars.forEach((f) => f({ key, newValue }));
+  const stuur = (key: string | null, newValue: string | null) => luisteraars.forEach((f) => f({ key, newValue, storageArea: lokaal }));
   saveSound(true);
   stuur("nieuwsinkort-geluid", "0");
   assert.equal(soundOn(), false);
@@ -52,8 +52,18 @@ assert.equal(soundOn(), true);
   const voor = geluidTik();
   stuur("nieuwsinkort-geluid", "1");
   assert.equal(geluidTik(), voor);
+  // Een event van een andere opslag (bijv. sessionStorage uit een iframe) wordt genegeerd.
+  luisteraars.forEach((f) => f({ key: "nieuwsinkort-geluid", newValue: "0", storageArea: sessie2 }));
+  assert.equal(soundOn(), true);
   stop();
   assert.equal(luisteraars.size, 0);
+  // Regressie: zonder Feed-callback (overzicht) volgt het geheugen toch de andere tab.
+  const stop2 = volgGeluid();
+  saveSound(true);
+  luisteraars.forEach((f) => f({ key: "nieuwsinkort-geluid", newValue: "0", storageArea: lokaal }));
+  assert.equal(soundOn(), false);
+  stop2();
+  saveSound(true);
   // Geblokkeerde opslag: eigen keuze blijft, ook zonder events.
   Object.assign(globalThis, { window: { sessionStorage: geblokkeerd, localStorage: geblokkeerd } });
   assert.doesNotThrow(() => volgGeluid(() => {})());
