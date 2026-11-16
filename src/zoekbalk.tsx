@@ -64,16 +64,16 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: st
 
 export function ZoekFormulier({ query, onChange, sluit, invoer, scope, aantal = 0 }: { query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope; aantal?: number }) {
   const compositie = useRef(false);
-  // Geen maxLength: dat kapt plakken stil af en kan IME-invoer storen; hier melden we het wel (zonder eigen state: bij de grens is de melding zichtbaar).
-  const wijzig = (tekst: string) => onChange(begrensZoekterm(tekst));
-  const ingekort = query.length >= MAX_ZOEKTEKENS;
+  // Geen maxLength: dat kapt plakken stil af en kan IME-invoer storen; hier melden we het wel, alleen als er echt tekst is weggegooid.
+  const [ingekort, setIngekort] = useState(false);
+  const wijzig = (tekst: string) => { const begrensd = begrensZoekterm(tekst); setIngekort(begrensd !== tekst); onChange(begrensd); };
   return <form className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); if (!compositie.current && touchNu()) invoer.current?.blur(); }}>
         <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws"{...(scope ? { "aria-describedby": scopeId } : {})} value={query} onChange={(e) => wijzig(e.target.value)} onCompositionStart={() => { compositie.current = true; }} onCompositionEnd={() => { compositie.current = false; }} onBlur={() => { compositie.current = false; }} onKeyDown={(e) => {
           if (e.key === "Enter" && (compositie.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)) { e.preventDefault(); return; }
           if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sluit(); }
         }} />
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
-        <span className="zoek-scope" role="status">{ingekort ? `Zoekopdracht ingekort tot ${MAX_ZOEKTEKENS} tekens` : ""}</span>
+        <span className="zoek-scope" role="status">{ingekort && query ? `Zoekopdracht ingekort tot ${MAX_ZOEKTEKENS} tekens` : ""}</span>
         {aantal > 0 && !!normaliseer(query) && <a href={`#${resultatenId}`} className="zoek-wis-filters zoek-naar-resultaten" onClick={(e) => { e.preventDefault(); focusResultaten(document); }}>Ga naar resultaten ({aantal})</a>}
         {scope && <div id={scopeId} className="zoek-scope">
           <span>{scope.tekst}{scope.verborgen && query.trim() ? ` · ${verborgenTekst(scope.verborgen)}` : ""}</span>
