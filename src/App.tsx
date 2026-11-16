@@ -9,7 +9,7 @@ import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
-import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp } from "./focuslezen";
+import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
 import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
@@ -800,6 +800,8 @@ export default function App() {
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const routeRef = useRef(route);
   routeRef.current = route;
+
+  useEffect(() => volgFocusKeuze(setBionic), []); // Focus-lezen uit een ander tabblad direct overnemen (#1029)
 
   const geveegd = useRef(false);
   useEffect(() => {
