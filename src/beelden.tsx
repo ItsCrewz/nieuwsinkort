@@ -6,15 +6,18 @@ import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState 
 import { bruikbareAfmeting } from "./beeld";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
+import { LruSet } from "./lruset";
 
 // ---------------------------------------------------------------- vooruit laden
 // Tijdens scrollen laden we de eerste foto van de volgende 3 berichten (in de scrollrichting) al helemaal in,
 // inclusief decoderen, zodat hij er meteen staat. Van het bericht in beeld ook al de 2e carrouselfoto.
 // Begrensd: nooit meer dan een handvol tegelijk, dus niet alle 200 foto's in één keer (die bevriezing blijft weg).
 const AHEAD = 3;
-const klaar = new Set<string>(); // url's die al gedecodeerd zijn
+export const MAX_BEELD_ADMIN = 500; // begrensde administratie (#1091): lange sessies laten haar niet eindeloos groeien
+const klaar = new LruSet<string>(MAX_BEELD_ADMIN); // url's die al gedecodeerd zijn (uitgezet = bij nood opnieuw laden)
 // Vangnet: faalt de proxy (bijv. botbescherming van de uitgever), dan één keer rechtstreeks (oude gedrag) voor het wegvallen.
-const rechtstreeks = new Set<string>();
+const rechtstreeks = new LruSet<string>(MAX_BEELD_ADMIN);
+export const aantalBeeldAdmin = () => ({ klaar: klaar.size, rechtstreeks: rechtstreeks.size, bezig: bezig.size });
 export const bronUrl = (u: string): string => (rechtstreeks.has(u) ? u : beeldViaProxy(u));
 /** Proxy gefaald: true als er nog een rechtstreekse poging is (nu ingepland), false als dat al geprobeerd is of niet kan.
  *  `huidig` = src-attribuut van de falende <img>: had die nog de proxy-URL, dan altijd één poging, ook als de preload
@@ -39,7 +42,12 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
       if (afgerond) return;
       afgerond = true;
       clearTimeout(timer);
-      if (im) { im.onload = null; im.onerror = null; }
+      if (im) {
+        if (!gelukt) im.src = ""; // timeout of fout: breek het laden af (vóór het loskoppelen van de handlers)
+        im.onload = null;
+        im.onerror = null;
+        im = undefined; // referentie loslaten
+      }
       if (gelukt) klaar.add(u);
       resolve();
     };
@@ -49,9 +57,10 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
       im.decoding = "async";
       const fout = () => {
         if (afgerond) return;
-        if (im) { im.onload = null; im.onerror = null; }
-        if (naarRechtstreeks(u)) laad(u);
-        else stop(false);
+        if (naarRechtstreeks(u)) {
+          if (im) { im.src = ""; im.onload = null; im.onerror = null; } // mislukte proxy-poging loslaten
+          laad(u);
+        } else stop(false);
       };
       if (im.decode) { im.src = src; im.decode().then(() => stop(true), fout); return; }
       // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al

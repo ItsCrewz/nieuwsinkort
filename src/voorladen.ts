@@ -2,6 +2,7 @@
 // Pure keuzelogica (plan) + een kleine browser-runner. Alleen na de load-event, in idle-tijd, alles met lage
 // prioriteit en hooguit 3 requests tegelijk. Geen AI, geen /samenvatting, geen /meer.
 import type { Video } from "./types";
+import { LruSet } from "./lruset";
 
 export type Speler = { kind: "youtube" | "hls" | "mp4"; src: string } | null;
 export type Hulp = { playerFor: (v: Video) => Speler; viaProxy: (src: string) => string };
@@ -117,7 +118,8 @@ export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
 export const segmenten = (txt: string, base: string, max = 2): string[] => segmentenBereik(txt, base, max).map((s) => s.url);
 
 // ------------------------------------------------------------- browser-runner
-const gedaan = new Set<string>(); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
+export const MAX_GEDAAN = 300; // begrensd (#1091): de langst ongebruikte sleutel valt weg en kan later opnieuw voorladen
+const gedaan = new LruSet<string>(MAX_GEDAAN); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
 const bezig = new Set<string>(); // lopend of in de wachtrij: gelijktijdige verzoeken voor dezelfde URL delen die ene taak
 export const POSTER_MAX_MS = 8000; // langste wachttijd per poster-taak
 const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
