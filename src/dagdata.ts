@@ -4,7 +4,7 @@
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { normLink as norm } from "./linknorm";
-import { alleenVandaag, publicatieTijd } from "./vandaag";
+import { alleenVandaag, publicatieTijd, videoCacheMs } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams, vorigeDag } from "./tijd";
@@ -20,8 +20,14 @@ const dag = (iso?: string) => {
 // KV-edgecache (60 s is het minimum van KV): de leesvertraging blijft kleiner dan het kwartier tussen twee Worker-runs.
 const kvOpt = (type: "json" | "text") => ({ type, cacheTtl: 60 });
 // Per isolate: het verwerkte vooraf-antwoord 30 s hergebruiken zolang KV dezelfde tekst geeft (scheelt parse, dagfilter, stringify en SHA-1).
-let voorafGeheugen: { vooraf: string; dag: string; tot: number; body: string; tag: string } | undefined;
+let voorafGeheugen: { vooraf: string; dag: string; tot: number; body: string; tag: string; eind: number } | undefined;
 const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=240", "Access-Control-Allow-Origin": "*" };
+// Gisteren-filmpjes verdwijnen om 10:00: s-maxage + stale-while-revalidate mogen er nooit voorbij lopen (#1047). `eind` = tijdstip van die grens (of Infinity).
+const kopMet = (eind: number) => {
+  if (!Number.isFinite(eind)) return HDR;
+  const rest = Math.max(0, Math.floor((eind - Date.now()) / 1000)), smax = Math.min(60, rest);
+  return { ...HDR, "Cache-Control": `public, max-age=0, s-maxage=${smax}, stale-while-revalidate=${Math.min(240, rest - smax)}` };
+};
 
 /** Velden die de site niet leest (alleen diagnose); weg uit de respons. */
 export function slim(d: any) {
@@ -157,15 +163,15 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
         if (einde > 11) {
           const nu = Date.now(), vandaag = dag();
           let g = voorafGeheugen;
-          if (!g || g.vooraf !== vooraf || g.dag !== vandaag || g.tot < nu) {
+          if (!g || g.vooraf !== vooraf || g.dag !== vandaag || g.tot <= nu) {
             const data = JSON.parse(vooraf.slice(einde + 1));
             const gefilterd = alleenVandaag(data, nu);
             const body = JSON.stringify({ ...data, ...(Array.isArray(data.filmpjes) ? { filmpjes: gefilterd.filmpjes } : {}), ...(Array.isArray(data.dumpert) ? { dumpert: gefilterd.dumpert } : {}) });
-            g = voorafGeheugen = { vooraf, dag: vandaag, tot: nu + 30e3, body, tag: await etag(body) };
+            g = voorafGeheugen = { vooraf, dag: vandaag, tot: nu + Math.min(30e3, videoCacheMs(gefilterd, nu)), body, tag: await etag(body), eind: nu + videoCacheMs(gefilterd, nu) };
           }
-          const { body, tag } = g;
-          if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
-          return new Response(body, { headers: { ...HDR, ETag: tag } });
+          const { body, tag } = g, kop = kopMet(g.eind);
+          if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...kop, ETag: tag } });
+          return new Response(body, { headers: { ...kop, ETag: tag } });
         }
       }
     } catch { console.error("data.json: KV vooraf lezen mislukt"); }
@@ -198,15 +204,24 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   }
   // Zonder bruikbare statische data moet de uurdata van vandaag het dragen; anders een gecontroleerde 503.
   if (!out || !Array.isArray(out.items)) return onbeschikbaar();
-  try { out = alleenVandaag(out, Date.now()); } catch { console.error("data.json: dagfilter mislukt"); }
+  // De cachegrens hoort bij het filtermoment (niet bij het eind van de async stappen); wordt 10:00 tijdens het verwerken bereikt, dan opnieuw filteren.
+  let nuFilter = Date.now();
+  try { out = alleenVandaag(out, nuFilter); } catch { console.error("data.json: dagfilter mislukt"); }
+  let eind = nuFilter + videoCacheMs(out, nuFilter);
   try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
   // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
   try {
     const sv: any = video ? await kv.get("sv-klaar", kvOpt("json")) : null;
     if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
   } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
+  const nu2 = Date.now();
+  if (nu2 >= eind) {
+    nuFilter = nu2;
+    try { out = alleenVandaag(out, nuFilter); } catch { console.error("data.json: dagfilter mislukt"); }
+    eind = nuFilter + videoCacheMs(out, nuFilter);
+  }
   const body = JSON.stringify(slim(out));
-  const tag = await etag(body);
-  if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
-  return new Response(body, { headers: { ...HDR, ETag: tag } });
+  const tag = await etag(body), kop = kopMet(eind);
+  if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...kop, ETag: tag } });
+  return new Response(body, { headers: { ...kop, ETag: tag } });
 };
