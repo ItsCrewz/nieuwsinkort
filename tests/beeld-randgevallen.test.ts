@@ -63,6 +63,15 @@ t("beterBeeld decodeert CDN-parameters zonder de maat te wijzigen", () => {
   assert.equal(beterBeeld("https://images.nu.nl/m/abc123_sqr256/foto.jpg?w=256"), "https://images.nu.nl/m/abc123_wd1280.jpg");
 });
 
+t("beterBeeld behoudt toegangsparameters van NU-miniaturen, maat en tracking vallen weg (#1084)", () => {
+  const b = "https://images.nu.nl/m/abc123_sqr256/foto.jpg";
+  assert.equal(beterBeeld(`${b}?token=a1&w=256&utm_source=x&sig=z%2B`), "https://images.nu.nl/m/abc123_wd1280.jpg?token=a1&sig=z%2B");
+  assert.equal(beterBeeld(`${b}?fbclid=1&height=256#x`), "https://images.nu.nl/m/abc123_wd1280.jpg");
+  assert.equal(beterBeeld("https://nieuws.nl/foto.jpg?token=a&w=800"), "https://nieuws.nl/foto.jpg?token=a&w=800");
+  assert.equal(
+    uniekeBeelden([`${b}?token=a`, "https://images.nu.nl/m/abc123_wd1280.jpg"]).length, 1);
+});
+
 t("uniekeBeelden slaat null, undefined en onbruikbare waarden over", () => {
   assert.deepEqual(uniekeBeelden([null, undefined, "", "data:image/png;base64,aaa", "https://nieuws.nl/stadsbeeld.jpg"]), [
     "https://nieuws.nl/stadsbeeld.jpg",

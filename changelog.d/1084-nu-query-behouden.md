@@ -1,0 +1,1 @@
+- Beelden: bij het vergroten van NU-miniaturen blijven toegangsparameters (zoals token en sig) staan; maat- en trackingparameters vallen weg (#1084).
