@@ -116,10 +116,18 @@ for (const wacht of [true, false]) {
 // Een gelijke lijst behoudt de selectie; een gewijzigde lijst met dezelfde actieve foto begint opnieuw.
 {
   const c = await toon(urls);
-  await c.scrollNaar(1);
+  c.track().clientWidth = 100;
+  await act(async () => {
+    props(c.knop("Volgende foto")).onClick({ stopPropagation() {}, preventDefault() {} });
+    await new Promise((r) => setTimeout(r, 25));
+  });
+  assert.equal(c.track().scrollLeft, 100);
+  assert.equal(c.teller(), "Foto 2 van 3");
+  assert.deepEqual(c.zichtbaar(), [urls[1]]);
   await c.render([...urls]);
   assert.equal(c.track().scrollLeft, 100);
   assert.equal(c.teller(), "Foto 2 van 3");
+  assert.deepEqual(c.zichtbaar(), [urls[1]]);
   // Een lopende scroll mag de nieuwe lijst niet alsnog naar een latere foto brengen.
   await act(async () => props(c.knop("Volgende foto")).onClick({ stopPropagation() {}, preventDefault() {} }));
   const overlap = [nieuwe[0], urls[1], nieuwe[2]];
