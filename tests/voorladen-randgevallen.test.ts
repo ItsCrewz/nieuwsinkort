@@ -360,6 +360,33 @@ try {
     }
   });
 
+  await test("drie tegelijk vastgelopen posters blokkeren de wachtrij niet blijvend (#1089)", async () => {
+    const echt = globalThis.setTimeout;
+    await new Promise<void>((r) => echt(r, 0)); // laat de vorige test eerst volledig uitlopen
+    const timers: { fn: () => void; ms: number; weg: boolean }[] = [];
+    installeer("setTimeout", (fn: () => void, ms: number) => { timers.push({ fn, ms, weg: false }); return timers.length - 1; });
+    installeer("clearTimeout", (id: number) => { if (timers[id]) timers[id].weg = true; });
+    try {
+      const begin = afbeeldingen.length;
+      voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK + 1 }, (_, i) => `https://alle-vast.example/${i}.jpg`) });
+      assert.equal(afbeeldingen.length - begin, GELIJK);
+      timers.slice(0, GELIJK).forEach((t) => t.fn()); // alle drie lopen af, geen enkel event
+      await new Promise<void>((r) => echt(r, 0));
+      assert.equal(afbeeldingen.length - begin, GELIJK + 1); // de vierde taak start
+      afbeeldingen.slice(begin, begin + GELIJK).forEach((img) => {
+        assert.equal(img.src, "");
+        assert.equal(img.onload, null);
+        assert.equal(img.onerror, null);
+      });
+      assert.ok(timers.slice(0, GELIJK).every((t) => t.weg));
+      afbeeldingen[begin + GELIJK].onload!();
+      assert.ok(timers[GELIJK].weg);
+    } finally {
+      installeer("setTimeout", echt);
+      herstel(["clearTimeout"]);
+    }
+  });
+
   await test("preconnect-links blijven begrensd, zonder duplicaten, en verdrongen hosts kunnen terugkomen (#1073)", () => {
     const dom: { href: string; remove: () => void }[] = [];
     installeer("document", {

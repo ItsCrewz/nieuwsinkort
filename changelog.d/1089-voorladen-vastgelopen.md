@@ -1,0 +1,1 @@
+- Voorladen: een vastgelopen hls.js-chunk houdt geen poolplek meer vast (time-out), en een test toont dat drie niet-aflopende afbeeldingen de volgende taak niet blijvend blokkeren (#1089).
