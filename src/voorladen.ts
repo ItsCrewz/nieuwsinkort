@@ -17,6 +17,7 @@ const THUMBS = 6;
 const KIJK = 3; // zoveel items per tab telt als "eerste"
 const HLS_MAX = 2;
 export const MP4_BYTES = 256 * 1024;
+export const PLAYLIST_BYTES = 256 * 1024; // per master- of mediaplaylist
 export const HLS_BYTES = 256 * 1024; // totaal over de voorgeladen segmenten van één stream
 export const GELIJK = 3;
 export const NETWERK_TIMEOUT = 10000;
@@ -153,9 +154,41 @@ const taak = (k: string, f: () => Promise<unknown>) => {
   };
 };
 
+async function leesPlaylist(r: Response, signal: AbortSignal): Promise<string> {
+  if (!r.ok) {
+    r.body?.cancel().catch(() => {});
+    throw new Error("hls");
+  }
+  const lengte = r.headers.get("Content-Length");
+  if (lengte && /^\d+$/.test(lengte) && Number(lengte) > PLAYLIST_BYTES) {
+    r.body?.cancel().catch(() => {});
+    throw new Error("playlist te groot");
+  }
+  const rd = r.body?.getReader();
+  if (!rd) throw new Error("lege playlist");
+  const stop = () => { rd.cancel().catch(() => {}); };
+  signal.addEventListener("abort", stop, { once: true });
+  const decoder = new TextDecoder();
+  let tekst = "";
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await rd.read();
+      signal.throwIfAborted();
+      if (done) return tekst + decoder.decode();
+      bytes += value.byteLength;
+      if (bytes > PLAYLIST_BYTES) throw new Error("playlist te groot");
+      tekst += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    stop();
+    signal.removeEventListener("abort", stop);
+  }
+}
+
 async function warmHls(master: string, signal: AbortSignal) {
   // Basis voor relatieve verwijzingen is de uiteindelijke respons-URL: fetch volgt redirects naar andere mappen.
-  const get = (u: string) => fetch(u, { ...LOW, signal }).then(async (r) => (r.ok ? { txt: await r.text(), base: r.url || u } : Promise.reject(new Error("hls"))));
+  const get = (u: string) => fetch(u, { ...LOW, signal }).then(async (r) => ({ txt: await leesPlaylist(r, signal), base: r.url || u }));
   let { txt, base: b } = await get(master);
   if (!b.includes("://")) b = new URL(b, location.href).href;
   signal.throwIfAborted();
