@@ -1,0 +1,1 @@
+- Geluid: een gewijzigde geluidsvoorkeur werkt nu ook door in andere open tabbladen (zonder de eis van een eigen tik te omzeilen) (#1039)

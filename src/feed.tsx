@@ -26,7 +26,7 @@ import { maxBufferSeconden, niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
-import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
+import { soundOn, saveSound, geluidTik, onthoudGeluidTik, volgGeluid } from "./geluid";
 import { posterVerborgen } from "./poster";
 import { svCache } from "./samenvattingcache";
 import { useSamenvatting } from "./usesamenvatting";
@@ -1238,6 +1238,7 @@ export function Feed({
   // want = jouw keuze (onthouden); nativeBlocked = de browser weigerde geluid op een poolvideo (Dumpert, Instagram);
   // ytBlok = YouTube-slides die geluid weigerden (per slide, dempt nooit een native slide).
   const [want, setWant] = useState(soundOn);
+  useEffect(() => volgGeluid(setWant), []);
   const [nativeBlocked, setBlocked] = useState(false);
   const [getikt, setGetikt] = useState(geluidTik);
   const [ytBlok, setYtBlok] = useState<ReadonlySet<number>>(() => new Set());
