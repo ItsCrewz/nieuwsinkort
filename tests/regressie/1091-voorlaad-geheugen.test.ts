@@ -1,7 +1,7 @@
 // #1091: voorladen houdt geen afbeeldingen of onbegrensde administratie vast tijdens lange sessies.
 import assert from "node:assert/strict";
 import { MAX_GEDAAN, POSTER_MAX_MS, aantalActievePosters, voerUit, type Plan } from "../../src/voorladen";
-import { MAX_BEELD_ADMIN, aantalBeeldAdmin, preloadBeeld } from "../../src/beelden";
+import { MAX_BEELD_ADMIN, aantalBeeldAdmin, bronUrl, naarRechtstreeks, preloadBeeld } from "../../src/beelden";
 
 type Im = { src: string; onload: (() => void) | null; onerror: (() => void) | null; onabort: (() => void) | null };
 const g = globalThis as unknown as Record<string, unknown>;
@@ -84,6 +84,37 @@ try {
   assert.equal(beelden.length, w + 1, "uitgezette URL laadt opnieuw");
   laatste().onload!();
   await opnieuw;
+
+  // Een lopende rechtstreekse poging kan uit de administratie verdwijnen.
+  const oud = "https://images.nu.nl/oud.jpg";
+  const lopend = preloadBeeld(oud);
+  assert.notEqual(laatste().src, oud, "eerste poging gebruikt de proxy");
+  laatste().onerror!();
+  const directePoging = laatste();
+  assert.equal(directePoging.src, oud);
+  for (let i = 0; i < MAX_BEELD_ADMIN + 1; i++) {
+    const u = `https://images.nu.nl/proxy-${i}.jpg`;
+    const p = preloadBeeld(u);
+    assert.notEqual(laatste().src, u);
+    laatste().onerror!();
+    assert.equal(laatste().src, u);
+    laatste().onload!();
+    await p;
+  }
+  assert.equal(aantalBeeldAdmin().rechtstreeks, MAX_BEELD_ADMIN);
+  assert.notEqual(bronUrl(oud), oud, "oudste fallback is uitgezet");
+  assert.equal(naarRechtstreeks(oud, oud), false, "falende rechtstreekse afbeelding valt weg na uitzetting");
+  const aantal = beelden.length;
+  directePoging.onerror!();
+  await lopend;
+  assert.equal(beelden.length, aantal, "falende rechtstreekse preload probeert niet opnieuw");
+  assert.equal(directePoging.src, "");
+  const herladen = preloadBeeld(oud);
+  assert.notEqual(laatste().src, oud, "uitgezette fallback begint opnieuw via de proxy");
+  laatste().onerror!();
+  assert.equal(laatste().src, oud);
+  laatste().onload!();
+  await herladen;
   console.log("1091 voorlaadgeheugen: oké", begin >= 0);
 } finally {
   g.setTimeout = echteTimeout;

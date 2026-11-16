@@ -24,7 +24,10 @@ export const bronUrl = (u: string): string => (rechtstreeks.has(u) ? u : beeldVi
  *  de URL al in `rechtstreeks` zette (race). Na die poging is huidig === u, dus geen lus. */
 export function naarRechtstreeks(u: string, huidig?: string | null): boolean {
   if (beeldViaProxy(u) === u) return false;
-  if (huidig != null && huidig !== u) { rechtstreeks.add(u); return true; }
+  if (huidig != null) {
+    if (huidig === u) return false;
+    rechtstreeks.add(u); return true;
+  }
   if (rechtstreeks.has(u)) return false;
   rechtstreeks.add(u);
   return true;
@@ -57,7 +60,7 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
       im.decoding = "async";
       const fout = () => {
         if (afgerond) return;
-        if (naarRechtstreeks(u)) {
+        if (naarRechtstreeks(u, src)) {
           if (im) { im.src = ""; im.onload = null; im.onerror = null; } // mislukte proxy-poging loslaten
           laad(u);
         } else stop(false);
