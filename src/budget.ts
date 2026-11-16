@@ -148,7 +148,7 @@ export class BudgetLogica {
     const v = await this.s.get<number>(`video:${datum}`);
     if (typeof v === "number") { if (await this.s.get<boolean>(`videovuil:${datum}`)) await this.spiegel(datum, v); return v; }
     const z = await this.buiten.zaad(datum);
-    if (z == null) return 0; // KV onleesbaar: niet bewaren, volgende keer opnieuw proberen
+    if (z == null) throw new Error("budget: dagstand onleesbaar"); // volgende keer opnieuw lezen
     await this.s.put(`video:${datum}`, z);
     return z;
   }

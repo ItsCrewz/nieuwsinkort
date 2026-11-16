@@ -112,9 +112,9 @@ await t("reserveer: afronding op één decimaal en zaad wordt bewaard", async ()
   assert.equal(s.data.get("video:2026-10-30"), 50.1);
 });
 
-await t("stand: onleesbare KV (zaad null) geeft 0 en bewaart niets", async () => {
+await t("stand: onleesbare KV (zaad null) geeft een fout en bewaart niets", async () => {
   const { l, s } = maak(null);
-  assert.equal(await l.stand("2026-10-30"), 0);
+  await assert.rejects(l.stand("2026-10-30"), /dagstand onleesbaar/);
   assert.equal(s.data.has("video:2026-10-30"), false);
 });
 
