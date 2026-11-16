@@ -1,0 +1,1 @@
+- Filters: aantallen bij filterknoppen worden voor schermlezers als "N berichten" voorgelezen, zonder dubbele voorlezing van het zichtbare getal (#1064).
