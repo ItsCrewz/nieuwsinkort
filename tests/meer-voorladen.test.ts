@@ -72,5 +72,16 @@ const leeg = () => new Promise((r) => setTimeout(r, 0));
     await prefetchMeer(item("p0")); // oudste: verwijderd
     assert.equal(aanvragen.length, voor + 1);
   });
+  await t("recent gebruikt bericht blijft herbruikbaar na 10 nieuwe berichten (LRU)", async () => {
+    modus = "ok";
+    for (let i = 0; i < 50; i++) await prefetchMeer(item("l" + i));
+    await prefetchMeer(item("l0")); // hit: wordt recentst
+    for (let i = 0; i < 10; i++) await prefetchMeer(item("m" + i));
+    const voor = aanvragen.length;
+    await prefetchMeer(item("l0"));
+    assert.equal(aanvragen.length, voor);
+    await prefetchMeer(item("l1")); // minst recent: verwijderd
+    assert.equal(aanvragen.length, voor + 1);
+  });
   console.log(`${n} tests ok`);
 })();
