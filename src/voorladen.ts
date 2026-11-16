@@ -188,9 +188,18 @@ async function leesPlaylist(r: Response, signal: AbortSignal): Promise<string> {
   }
 }
 
+async function videoFetch(url: string, signal: AbortSignal, headers?: HeadersInit): Promise<Response> {
+  const r = await fetch(url, { ...LOW, signal, ...(headers ? { headers } : {}) });
+  if (signal.aborted) {
+    r.body?.cancel().catch(() => {});
+    signal.throwIfAborted();
+  }
+  return r;
+}
+
 async function warmHls(master: string, signal: AbortSignal) {
   // Basis voor relatieve verwijzingen is de uiteindelijke respons-URL: fetch volgt redirects naar andere mappen.
-  const get = (u: string) => fetch(u, { ...LOW, signal }).then(async (r) => ({ txt: await leesPlaylist(r, signal), base: r.url || u }));
+  const get = (u: string) => videoFetch(u, signal).then(async (r) => ({ txt: await leesPlaylist(r, signal), base: r.url || u }));
   let { txt, base: b } = await get(master);
   if (!b.includes("://")) b = new URL(b, location.href).href;
   signal.throwIfAborted();
@@ -210,7 +219,7 @@ async function warmHls(master: string, signal: AbortSignal) {
 
 // Bytebereik-segment: alleen dat bereik. Antwoordt de server met 200 (Range genegeerd = heel bestand), dan stoppen we meteen.
 async function warmBereik(url: string, van: number, tot: number, signal: AbortSignal, strikt: boolean): Promise<number> {
-  const r = await fetch(url, { ...LOW, signal, headers: { Range: `bytes=${van}-${tot}` } });
+  const r = await videoFetch(url, signal, { Range: `bytes=${van}-${tot}` });
   signal.throwIfAborted();
   if (r.status >= 400 || r.ok === false) {
     r.body?.cancel?.().catch(() => {});
@@ -243,7 +252,7 @@ async function warmBereik(url: string, van: number, tot: number, signal: AbortSi
 
 async function warmMp4(src: string, signal: AbortSignal) {
   // Alleen het begin: een Range-aanvraag (Instagram-CDN: CORS *, Range ok). Geeft de server toch 200, dan stoppen we zelf.
-  const r = await fetch(src, { ...LOW, signal, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+  const r = await videoFetch(src, signal, { Range: `bytes=0-${MP4_BYTES - 1}` });
   signal.throwIfAborted();
   if (!r.ok) throw new Error("mp4");
   const rd = r.body?.getReader();
