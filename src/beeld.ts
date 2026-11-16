@@ -98,7 +98,10 @@ export function ogImage(html: string, base: string): string {
       const naam = /\b(?:property|name)\s*=\s*["']([^"']+)["']/i.exec(tag);
       const inhoud = /\bcontent\s*=\s*["']([^"']+)["']/i.exec(tag);
       if (!naam || !inhoud || !sleutel.test(naam[1].trim()) || !inhoud[1].trim()) continue;
-      try { return new URL(inhoud[1].replace(/&amp;/g, "&"), base).toString(); } catch { return ""; }
+      try {
+        const url = new URL(inhoud[1].replace(/&amp;/g, "&"), base).toString();
+        if (uniekeBeelden([url]).length) return url;
+      } catch { /* probeer de volgende metadatawaarde */ }
     }
   }
   return "";
