@@ -92,4 +92,61 @@ await t("de meer-blob wordt per KV-binding 60 s hergebruikt (één KV-lezing/par
   assert.equal(reads, 2);
 });
 
+const traag = (data: () => any, teller: { n: number }) => ({ async get(_k: string, _o: any) { teller.n++; await new Promise((r) => setTimeout(r, 20)); return data(); } });
+
+await t("gelijktijdige missers delen één lopende KV-lezing (#1049)", async () => {
+  const teller = { n: 0 };
+  const kv = traag(() => ({ items: { a: { uitleg: ["x"] } } }), teller);
+  const rs = await Promise.all(Array.from({ length: 20 }, () => meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })));
+  assert.equal(teller.n, 1);
+  for (const r of rs) { assert.equal(r.status, 200); assert.deepEqual(await r.json(), { uitleg: ["x"] }); }
+});
+
+await t("verschillende bindings blijven gescheiden bij gelijktijdige lezing", async () => {
+  const teller = { n: 0 };
+  const kv1 = traag(() => ({ items: { a: { uitleg: ["een"] } } }), teller), kv2 = traag(() => ({ items: { a: { uitleg: ["twee"] } } }), teller);
+  const [r1, r2] = await Promise.all([meer({ request: req("/meer?k=a"), env: { NIEUWS: kv1 } }), meer({ request: req("/meer?k=a"), env: { NIEUWS: kv2 } })]);
+  assert.equal(teller.n, 2);
+  assert.deepEqual(await r1.json(), { uitleg: ["een"] });
+  assert.deepEqual(await r2.json(), { uitleg: ["twee"] });
+});
+
+await t("mislukte gedeelde lezing geeft overal 503 en een volgende aanvraag probeert opnieuw", async () => {
+  const teller = { n: 0 };
+  let stuk = true;
+  const kv = traag(() => { if (stuk) throw new Error("KV down"); return { items: { a: { uitleg: ["x"] } } }; }, teller);
+  const err = console.error; console.error = () => {};
+  try {
+    const rs = await Promise.all(Array.from({ length: 5 }, () => meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })));
+    assert.equal(teller.n, 1);
+    for (const r of rs) assert.equal(r.status, 503);
+    stuk = false;
+    assert.equal((await meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })).status, 200);
+    assert.equal(teller.n, 2);
+  } finally { console.error = err; }
+});
+
+await t("synchroon gooiende KV-get geeft 503 en blijft niet hangen", async () => {
+  const teller = { n: 0 };
+  let stuk = true;
+  const kv = { get(_k: string, _o: any) { teller.n++; if (stuk) throw new Error("KV down"); return Promise.resolve({ items: { a: { uitleg: ["x"] } } }); } };
+  const err = console.error; console.error = () => {};
+  try {
+    assert.equal((await meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })).status, 503);
+    stuk = false;
+    assert.equal((await meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })).status, 200);
+    assert.equal(teller.n, 2);
+  } finally { console.error = err; }
+});
+
+await t("ontbrekende blob geeft 404 en wordt bij de volgende aanvraag opnieuw gelezen", async () => {
+  const teller = { n: 0 };
+  const kv = traag(() => null, teller);
+  const rs = await Promise.all([1, 2, 3].map(() => meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })));
+  for (const r of rs) assert.equal(r.status, 404);
+  assert.equal(teller.n, 1);
+  assert.equal((await meer({ request: req("/meer?k=a"), env: { NIEUWS: kv } })).status, 404);
+  assert.equal(teller.n, 2);
+});
+
 console.log(`${n} meer-randgevallen-tests geslaagd`);
