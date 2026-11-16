@@ -8,7 +8,7 @@ import { touchNu } from "./invoer";
 const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 
 // scope: zichtbare zoekscope; verborgen: treffers die filters wegnemen; wisFilters alleen als er beperkende filters zijn.
-export type ZoekScope = { tekst: string; verborgen: number; wisFilters?: () => void };
+export type ZoekScope = { tekst: string; verborgen: number; wisFilters?: () => void; herstel?: () => void };
 const scopeId = "zoek-scope";
 
 export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
@@ -64,12 +64,13 @@ export function ZoekFormulier({ query, onChange, sluit, invoer, scope }: { query
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
         {scope && <div id={scopeId} className="zoek-scope">
           <span>{scope.tekst}{scope.verborgen && query.trim() ? ` · ${verborgenTekst(scope.verborgen)}` : ""}</span>
+          {scope.herstel && <button type="button" className="zoek-wis-filters" onClick={scope.herstel}>Terug naar eerdere selectie</button>}
           {scope.wisFilters && <button type="button" className="zoek-wis-filters" onClick={scope.wisFilters}>Wis filters</button>}
         </div>}
       </form>;
 }
 
-export function ZoekLeeg({ query, onWis, verborgen = 0, onWisFilters }: { query: string; onWis: () => void; verborgen?: number; onWisFilters?: () => void }) {
+export function ZoekLeeg({ query, onWis, verborgen = 0, onWisFilters, onZoekAlles }: { query: string; onWis: () => void; verborgen?: number; onWisFilters?: () => void; onZoekAlles?: () => void }) {
   const zoekbaar = !!normaliseer(query);
-  return <div className="zoek-leeg">{zoekbaar ? <>Niets gevonden voor “{query}”</> : zoekAanwijzing}{zoekbaar && verborgen > 0 && <> · {verborgenTekst(verborgen)}</>} <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button>{zoekbaar && verborgen > 0 && onWisFilters && <button type="button" className="zoek-wis" onClick={onWisFilters}>Wis filters en zoek opnieuw</button>}</div>;
+  return <div className="zoek-leeg">{zoekbaar ? <>Niets gevonden voor “{query}”</> : zoekAanwijzing}{zoekbaar && verborgen > 0 && <> · {verborgenTekst(verborgen)}</>} <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button>{zoekbaar && onZoekAlles && <button type="button" className="zoek-wis" onClick={onZoekAlles}>Zoek in alle rubrieken en beschikbare berichten</button>}{zoekbaar && verborgen > 0 && onWisFilters && <button type="button" className="zoek-wis" onClick={onWisFilters}>Wis filters en zoek opnieuw</button>}</div>;
 }
