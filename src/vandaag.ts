@@ -76,3 +76,13 @@ export function verwijderGisteren<T extends { filmpjes?: { gisteren?: boolean }[
   const filmpjes = data.filmpjes?.filter((v) => !v.gisteren), dumpert = data.dumpert?.filter((v) => !v.gisteren);
   return filmpjes?.length === data.filmpjes?.length && dumpert?.length === data.dumpert?.length ? data : { ...data, filmpjes, dumpert };
 }
+
+// Eerstvolgende 10:00 Amsterdam na `now` (ook op zomer-/wintertijdwisseldagen).
+export function volgende10(now: number): number {
+  const vandaag = amsTijdstip(now, 10, 0);
+  if (vandaag != null && vandaag > now) return vandaag;
+  return amsTijdstip(midnight(now) + 36 * 3600e3, 10, 0) as number;
+}
+export const heeftGisteren = (data: any) => ["filmpjes", "dumpert"].some((k) => Array.isArray(data?.[k]) && data[k].some((v: any) => v?.gisteren));
+// Hoe lang (ms) een respons met deze data gecachet mag blijven: zonder gisteren-video's onbegrensd, anders tot 10:00.
+export const videoCacheMs = (data: any, now: number) => heeftGisteren(data) ? volgende10(now) - now : Infinity;

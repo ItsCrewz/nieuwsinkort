@@ -4,7 +4,7 @@
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { normLink as norm } from "./linknorm";
-import { alleenVandaag, publicatieTijd } from "./vandaag";
+import { alleenVandaag, publicatieTijd, videoCacheMs } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams, vorigeDag } from "./tijd";
@@ -20,8 +20,14 @@ const dag = (iso?: string) => {
 // KV-edgecache (60 s is het minimum van KV): de leesvertraging blijft kleiner dan het kwartier tussen twee Worker-runs.
 const kvOpt = (type: "json" | "text") => ({ type, cacheTtl: 60 });
 // Per isolate: het verwerkte vooraf-antwoord 30 s hergebruiken zolang KV dezelfde tekst geeft (scheelt parse, dagfilter, stringify en SHA-1).
-let voorafGeheugen: { vooraf: string; dag: string; tot: number; body: string; tag: string } | undefined;
+let voorafGeheugen: { vooraf: string; dag: string; tot: number; body: string; tag: string; eind: number } | undefined;
 const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=240", "Access-Control-Allow-Origin": "*" };
+// Gisteren-filmpjes verdwijnen om 10:00: s-maxage + stale-while-revalidate mogen er nooit voorbij lopen (#1047). `eind` = tijdstip van die grens (of Infinity).
+const kopMet = (eind: number) => {
+  if (!Number.isFinite(eind)) return HDR;
+  const rest = Math.max(0, Math.floor((eind - Date.now()) / 1000)), smax = Math.min(60, rest);
+  return { ...HDR, "Cache-Control": `public, max-age=0, s-maxage=${smax}, stale-while-revalidate=${Math.min(240, rest - smax)}` };
+};
 
 /** Velden die de site niet leest (alleen diagnose); weg uit de respons. */
 export function slim(d: any) {
@@ -161,11 +167,11 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
             const data = JSON.parse(vooraf.slice(einde + 1));
             const gefilterd = alleenVandaag(data, nu);
             const body = JSON.stringify({ ...data, ...(Array.isArray(data.filmpjes) ? { filmpjes: gefilterd.filmpjes } : {}), ...(Array.isArray(data.dumpert) ? { dumpert: gefilterd.dumpert } : {}) });
-            g = voorafGeheugen = { vooraf, dag: vandaag, tot: nu + 30e3, body, tag: await etag(body) };
+            g = voorafGeheugen = { vooraf, dag: vandaag, tot: nu + Math.min(30e3, videoCacheMs(gefilterd, nu)), body, tag: await etag(body), eind: nu + videoCacheMs(gefilterd, nu) };
           }
-          const { body, tag } = g;
-          if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
-          return new Response(body, { headers: { ...HDR, ETag: tag } });
+          const { body, tag } = g, kop = kopMet(g.eind);
+          if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...kop, ETag: tag } });
+          return new Response(body, { headers: { ...kop, ETag: tag } });
         }
       }
     } catch { console.error("data.json: KV vooraf lezen mislukt"); }
@@ -206,7 +212,7 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
     if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
   } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
   const body = JSON.stringify(slim(out));
-  const tag = await etag(body);
-  if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...HDR, ETag: tag } });
-  return new Response(body, { headers: { ...HDR, ETag: tag } });
+  const tag = await etag(body), kop = kopMet(Date.now() + videoCacheMs(out, Date.now()));
+  if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...kop, ETag: tag } });
+  return new Response(body, { headers: { ...kop, ETag: tag } });
 };
