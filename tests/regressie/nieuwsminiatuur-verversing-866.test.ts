@@ -34,5 +34,19 @@ await act(async () => fout(img())());
 assert.equal(img(), undefined);
 await toon([tweede, eerste]);
 assert.equal(img(), undefined, "dezelfde lijst herstart niet na uitputting");
+
+// Een mislukte proxy probeert eerst rechtstreeks en schuift pas daarna door.
+const feed = readFileSync("tests/fixtures/tg-wijndal-item.xml", "utf8");
+const proxyFoto = feed.match(/<enclosure url="([^"]+)"/)?.[1];
+assert.ok(proxyFoto);
+await toon([proxyFoto, eerste]);
+assert.notEqual(bronUrl(proxyFoto), proxyFoto);
+assert.equal(img().getAttribute("src"), bronUrl(proxyFoto));
+await act(async () => fout(img())());
+assert.equal(img().getAttribute("src"), proxyFoto, "na de proxy volgt de rechtstreekse poging");
+await act(async () => fout(img())());
+assert.equal(img().getAttribute("src"), eerste, "na beide fouten volgt de volgende foto");
+await toon([tweede]);
+assert.equal(img().getAttribute("src"), tweede, "een kortere nieuwe lijst begint bij de eerste foto");
 await act(async () => root.unmount());
 console.log("✓ nieuwsminiatuur herstelt na verversing en negeert late fouten");
