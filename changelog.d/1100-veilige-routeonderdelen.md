@@ -1,0 +1,1 @@
+- Gedeelde routes verwerken gecodeerde scheidingstekens veilig en behouden de identiteit van video’s (#1100).

@@ -19,7 +19,7 @@ t("gecodeerde rubrieken en slugs worden eenmaal gedecodeerd", () => {
   assert.deepEqual(parseHash("#/neder%6Cand"), { view: "nl", selected: null, video: null });
   assert.deepEqual(parseHash("#/bericht/caf%C3%A9%20%26%20nieuws"), { view: "alles", selected: "café & nieuws", video: null });
   assert.deepEqual(parseHash("#/filmpjes/a%2Fb%2520c"), { view: "filmpjes", selected: null, video: "a/b%20c" });
-  assert.deepEqual(parseHash("#/dumpert%2Fvideo"), { view: "dumpert", selected: null, video: "video" });
+  assert.deepEqual(parseHash("#/dumpert%2Fvideo"), home);
   assert.deepEqual(parseHash("#/bericht/%E0%A4%A"), home);
 });
 
@@ -42,5 +42,16 @@ t("viewHash en parseHash vormen een round-trip voor iedere view", () => {
   for (const [view, hash] of Object.entries(hashes) as [View, string][]) {
     assert.equal(viewHash(view), hash, view);
     assert.deepEqual(parseHash(viewHash(view)), { view, selected: null, video: null }, view);
+  }
+});
+
+t("gereserveerde tekens blijven bij roundtrip in de videoparameter", () => {
+  for (const view of ["filmpjes", "dumpert"] as const) {
+    for (const id of ["a/b", "a?b", "a%b", "a%2Fb", "bericht/x?y%z"]) {
+      assert.deepEqual(parseHash(`#/${view}/${encodeURIComponent(id)}`), { view, selected: null, video: id });
+    }
+  }
+  for (const hash of ["#/filmpjes%2Fx", "#/bericht%2Fx", "#/filmpjes/%", "#/dumpert/%2", "#/bericht/%ZZ", "#/neder%6Cand/%C3"]) {
+    assert.deepEqual(parseHash(hash), home, hash);
   }
 });
