@@ -163,7 +163,7 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
         if (einde > 11) {
           const nu = Date.now(), vandaag = dag();
           let g = voorafGeheugen;
-          if (!g || g.vooraf !== vooraf || g.dag !== vandaag || g.tot < nu) {
+          if (!g || g.vooraf !== vooraf || g.dag !== vandaag || g.tot <= nu) {
             const data = JSON.parse(vooraf.slice(einde + 1));
             const gefilterd = alleenVandaag(data, nu);
             const body = JSON.stringify({ ...data, ...(Array.isArray(data.filmpjes) ? { filmpjes: gefilterd.filmpjes } : {}), ...(Array.isArray(data.dumpert) ? { dumpert: gefilterd.dumpert } : {}) });
@@ -204,15 +204,24 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   }
   // Zonder bruikbare statische data moet de uurdata van vandaag het dragen; anders een gecontroleerde 503.
   if (!out || !Array.isArray(out.items)) return onbeschikbaar();
-  try { out = alleenVandaag(out, Date.now()); } catch { console.error("data.json: dagfilter mislukt"); }
+  // De cachegrens hoort bij het filtermoment (niet bij het eind van de async stappen); wordt 10:00 tijdens het verwerken bereikt, dan opnieuw filteren.
+  let nuFilter = Date.now();
+  try { out = alleenVandaag(out, nuFilter); } catch { console.error("data.json: dagfilter mislukt"); }
+  let eind = nuFilter + videoCacheMs(out, nuFilter);
   try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
   // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
   try {
     const sv: any = video ? await kv.get("sv-klaar", kvOpt("json")) : null;
     if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
   } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
+  const nu2 = Date.now();
+  if (nu2 >= eind) {
+    nuFilter = nu2;
+    try { out = alleenVandaag(out, nuFilter); } catch { console.error("data.json: dagfilter mislukt"); }
+    eind = nuFilter + videoCacheMs(out, nuFilter);
+  }
   const body = JSON.stringify(slim(out));
-  const tag = await etag(body), kop = kopMet(Date.now() + videoCacheMs(out, Date.now()));
+  const tag = await etag(body), kop = kopMet(eind);
   if (etagPast(request.headers.get("If-None-Match"), tag)) return new Response(null, { status: 304, headers: { ...kop, ETag: tag } });
   return new Response(body, { headers: { ...kop, ETag: tag } });
 };

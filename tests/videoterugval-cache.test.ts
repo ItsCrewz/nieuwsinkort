@@ -57,6 +57,23 @@ try {
     assert.equal(r2.status, 304);
     assert.match(r2.headers.get("cache-control")!, /s-maxage=60, stale-while-revalidate=30/);
   });
+  await t("exact 10:00:00: geen gisteren-filmpjes uit de geheugencache", async () => {
+    const kv = tekst({ ...data([]), uniek: 3 });
+    let r = await draai("2026-07-01T09:59:59.900+02:00", kv);
+    assert.equal((await r.json()).filmpjes.length, 1);
+    r = await draai("2026-07-01T10:00:00+02:00", kv);
+    assert.equal((await r.json()).filmpjes.length, 0);
+  });
+  await t("KV-pad: klok gaat tijdens de KV-stap over 10:00 -> geen gisteren, geen cache tot morgen", async () => {
+    let nu = iso("2026-07-01T09:59:59+02:00");
+    Date.now = () => nu;
+    const uur = { ...data([]), uniek: 4 };
+    const env = { ASSETS: { fetch: async () => new Response("{}", { status: 404 }) },
+      NIEUWS: { get: async (k: string) => { if (k === "data-vooraf") return null; if (k === "uur") { nu = iso("2026-07-01T10:00:01+02:00"); return uur; } return null; } } };
+    const r = await dagdata({ request: new Request("https://site.test/data.json"), env } as any);
+    assert.equal((await r.json()).filmpjes.length, 0);
+    assert.equal(r.headers.get("cache-control"), "public, max-age=0, s-maxage=60, stale-while-revalidate=240");
+  });
   await t("vandaag-video's blijven na 10:00; zonder terugval ongewijzigde kop", async () => {
     const kv = tekst(data([vandaagV]));
     const r = await draai("2026-07-01T10:45:00+02:00", kv);
