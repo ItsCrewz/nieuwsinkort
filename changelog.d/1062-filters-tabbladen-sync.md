@@ -1,0 +1,1 @@
+- Filters: nieuwskeuzes en reset worden gesynchroniseerd tussen open tabbladen (storage-event, zonder terugschrijflus; ongeldige of geblokkeerde opslag valt terug op de standaard) (#1062)

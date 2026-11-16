@@ -60,6 +60,23 @@ function lees(): Filters {
   }
 }
 
+/** Neem filterwijzigingen uit andere tabbladen over (storage-event; `key === null` = opslag leeggemaakt). Schrijft nooit terug. */
+export function volgOpslag(zet: (f: Filters) => void): () => void {
+  const onStorage = (e: Event) => {
+    const key = (e as StorageEvent).key;
+    if (key !== null && key !== KEY) return;
+    zet(lees());
+  };
+  try {
+    window.addEventListener("storage", onStorage);
+  } catch {
+    return () => {};
+  }
+  return () => {
+    try { window.removeEventListener("storage", onStorage); } catch { /* negeer */ }
+  };
+}
+
 /** Houd de referentie ook zonder sessieopslag vast zolang het document open is. */
 export function maakVorigBezoek() {
   let vast: number | undefined;
@@ -97,7 +114,14 @@ export function useFilters() {
     document.addEventListener("visibilitychange", onHide);
     // Lang open tabblad: houd de bezoektijd vers (alleen opslag; `vorig` is een vaste sessiereferentie en verschuift niet).
     const timer = setInterval(() => document.visibilityState === "visible" && bewaarBezoek(), BEZOEK_INTERVAL);
+    const stopOpslag = volgOpslag(setF);
+    // Een wijziging tussen de eerste render en deze registratie levert geen event op: lees opnieuw (zelfde referentie bij gelijke inhoud, nooit terugschrijven).
+    setF((o) => {
+      const n = lees();
+      return JSON.stringify(o) === JSON.stringify(n) ? o : n;
+    });
     return () => {
+      stopOpslag();
       document.removeEventListener("visibilitychange", onHide);
       clearInterval(timer);
     };
