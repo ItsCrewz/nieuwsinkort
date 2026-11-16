@@ -5,6 +5,7 @@ import { telOp, type LlmState } from "../worker/src/llm";
 
 export const MAX_WHISPER_UUR = 30; // globale rem: hooguit zoveel Whisper-aanroepen per uur
 export const SLOT_TTL = 90e3; // ms; verloopt vanzelf als de Function wegvalt
+const SLOT_OPRUIM = 20; // max. sloten die één claim bekijkt om verlopen records op te ruimen
 
 // ---- meting van Workers AI-verbruik (gedeeld door Worker en Pages Function; zie docs/ai-budget.md)
 // Cloudflare telt de gratis 10.000 neuronen per UTC-dag (reset 00:00 UTC), niet per Amsterdamse dag.
@@ -60,7 +61,7 @@ export interface Opslag {
   put(k: string, v: unknown): Promise<void>;
   putMany?(o: Record<string, unknown>): Promise<void>; // atomair (DO-opslag: storage.put({...})); zonder valt reserveer() terug op herstelbaar schrijven
   delete(k: string | string[]): Promise<unknown>;
-  list<T = unknown>(o: { prefix: string }): Promise<Map<string, T>>;
+  list<T = unknown>(o: { prefix: string; limit?: number }): Promise<Map<string, T>>;
 }
 // spiegel: schrijft het dagtotaal naar KV `vid-neurons:<datum>` (de uur-Worker leest dat); zaad: leest die spiegel bij de eerste keer van de dag
 // spiegel geeft `false` als het schrijven mislukte: de logica probeert het bij de volgende aanroep (ook een lezing) opnieuw, zodat de Worker geen verouderde stand blijft lezen
@@ -118,16 +119,24 @@ export class BudgetLogica {
   }
 
   // Slot per video: bezig => null. Het token voorkomt dat een verlopen eigenaar het slot van een ander vrijgeeft.
+  // Alleen het gevraagde slot wordt gelezen (geen inventarisatie op het kritieke pad); verlopen sloten ruimt `ruimOp` begrensd op.
   async claim(id: string, ttl = SLOT_TTL): Promise<string | null> {
     const nu = this.nu();
-    const sloten = await this.s.list<{ tot: number; tok: string }>({ prefix: "slot:" });
-    const oud = [...sloten].filter(([, v]) => v.tot <= nu).map(([k]) => k);
-    if (oud.length) await this.s.delete(oud);
-    const huidig = sloten.get(`slot:${id}`);
+    const sleutel = `slot:${id}`;
+    const huidig = await this.s.get<{ tot: number; tok: string }>(sleutel);
     if (huidig && huidig.tot > nu) return null;
     const tok = crypto.randomUUID();
-    await this.s.put(`slot:${id}`, { tot: nu + ttl, tok });
+    await this.s.put(sleutel, { tot: nu + ttl, tok });
+    await this.ruimOp(sleutel, nu);
     return tok;
+  }
+  // Hooguit SLOT_OPRUIM sloten per claim bekijken; een fout hier mag de claim niet laten mislukken.
+  private async ruimOp(behoud: string, nu: number) {
+    try {
+      const sloten = await this.s.list<{ tot: number }>({ prefix: "slot:", limit: SLOT_OPRUIM });
+      const oud = [...sloten].filter(([k, v]) => k !== behoud && v.tot <= nu).map(([k]) => k);
+      if (oud.length) await this.s.delete(oud);
+    } catch { console.error("budget: sloten opruimen mislukt"); }
   }
   async geefVrij(id: string, tok: string) {
     const huidig = await this.s.get<{ tok: string }>(`slot:${id}`);
