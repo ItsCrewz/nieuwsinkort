@@ -1,7 +1,7 @@
 // Bewaakt de echte afspeeltijd; tijden van de klok zijn in milliseconden.
 type Tik = {
   now: number; currentTime: number; paused: boolean; hidden: boolean; ended: boolean;
-  seeking: boolean; herstelSeek: boolean; balkTijd: number; bufferVooruit: number; readyState?: number; networkState?: number;
+  seeking: boolean; herstelSeek: boolean; balkTijd: number; bufferVooruit: number; readyState?: number; networkState?: number; bufferEinde?: number;
 };
 type Besluit = "ok" | "balk-stop" | "balk-sync" | "nudge" | "herlaad";
 
@@ -10,17 +10,22 @@ export class Stall {
   private sinds = 0;
   private gestopt = false;
   private nudgeOp: number | null = null;
+  private nudgeStart: number | null = null;
   private vorigeReady: number | undefined;
+  private vorigBufferEinde: number | undefined;
 
   herstelNaar(tijd: number) { this.tijd = tijd; }
 
   tik(t: Tik): Besluit {
     const laadtVerder = t.networkState === 2 && this.vorigeReady !== undefined && (t.readyState ?? 0) > this.vorigeReady;
+    const bufferGroeit = t.bufferEinde !== undefined && this.vorigBufferEinde !== undefined && t.bufferEinde > this.vorigBufferEinde;
     this.vorigeReady = t.readyState;
+    this.vorigBufferEinde = t.bufferEinde;
     if (t.paused || t.hidden || t.ended || (t.seeking && !t.herstelSeek)) {
       this.tijd = null;
       this.gestopt = false;
       this.nudgeOp = null;
+      this.nudgeStart = null;
       return "ok";
     }
     if (this.tijd === null) {
@@ -32,21 +37,31 @@ export class Stall {
       this.tijd = t.currentTime;
       this.sinds = t.now;
       this.nudgeOp = null;
+      this.nudgeStart = null;
       if (this.gestopt || Math.abs(t.balkTijd - t.currentTime) > 0.3) {
         this.gestopt = false;
         return "balk-sync";
       }
       return "ok";
     }
+    if (this.nudgeStart !== null && t.now - this.nudgeStart >= 30000) {
+      this.nudgeOp = null;
+      this.nudgeStart = null;
+      this.sinds = t.now;
+      return "herlaad";
+    }
+    if (this.nudgeOp !== null && bufferGroeit) this.nudgeOp = t.now;
     if (this.nudgeOp !== null && t.now - this.nudgeOp >= 3000) {
       if (laadtVerder) return "ok";
       this.nudgeOp = null;
+      this.nudgeStart = null;
       this.sinds = t.now;
       return "herlaad";
     }
     const dataKlaar = t.bufferVooruit >= 1 || (t.readyState ?? 0) >= 3;
     if (this.nudgeOp === null && t.now - this.sinds >= (dataKlaar ? 3000 : 10000)) {
       this.nudgeOp = t.now;
+      this.nudgeStart = t.now;
       return "nudge";
     }
     if (!this.gestopt && t.now - this.sinds >= 600) {
