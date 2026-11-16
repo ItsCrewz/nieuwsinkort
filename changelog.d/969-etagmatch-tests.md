@@ -1,0 +1,1 @@
+- Gedrag van ETag-vergelijking vastgelegd in afzonderlijke tests (#969).
