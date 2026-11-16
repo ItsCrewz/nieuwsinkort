@@ -10,8 +10,14 @@ const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 // scope: zichtbare zoekscope; verborgen: treffers die filters wegnemen; wisFilters alleen als er beperkende filters zijn.
 export type ZoekScope = { tekst: string; verborgen: number; wisFilters?: () => void; herstel?: () => void };
 const scopeId = "zoek-scope";
-// Focusdoel van de link "Ga naar resultaten": het feedgebied in App.tsx.
+// Het feedgebied in App.tsx; de link "Ga naar resultaten" focust daarbinnen de eerste kaartlink.
 export const resultatenId = "zoek-resultaten";
+type FocusDoc = { getElementById(id: string): { focus(): void; querySelector(s: string): { focus(): void; querySelector(s: string): { focus(): void } | null } | null } | null };
+// Focus op de eerste link van de eerste kaart, zodat de weerlinks in .nc-head niet voor de resultaten komen; zonder gemounte kaart op het gebied zelf.
+export function focusResultaten(doc: FocusDoc) {
+  const gebied = doc.getElementById(resultatenId);
+  (gebied?.querySelector(".nc")?.querySelector("a[href]") ?? gebied)?.focus();
+}
 
 export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
   const [open, setOpen] = useState(!!query);
@@ -64,7 +70,7 @@ export function ZoekFormulier({ query, onChange, sluit, invoer, scope, aantal = 
           if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sluit(); }
         }} />
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
-        {aantal > 0 && !!normaliseer(query) && <a href={`#${resultatenId}`} className="zoek-wis-filters zoek-naar-resultaten" onClick={(e) => { e.preventDefault(); document.getElementById(resultatenId)?.focus(); }}>Ga naar resultaten ({aantal})</a>}
+        {aantal > 0 && !!normaliseer(query) && <a href={`#${resultatenId}`} className="zoek-wis-filters zoek-naar-resultaten" onClick={(e) => { e.preventDefault(); focusResultaten(document); }}>Ga naar resultaten ({aantal})</a>}
         {scope && <div id={scopeId} className="zoek-scope">
           <span>{scope.tekst}{scope.verborgen && query.trim() ? ` · ${verborgenTekst(scope.verborgen)}` : ""}</span>
           {scope.herstel && <button type="button" className="zoek-wis-filters" onClick={scope.herstel}>Terug naar eerdere selectie</button>}

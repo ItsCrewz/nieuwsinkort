@@ -1,1 +1,1 @@
-- Zoeken: link "Ga naar resultaten (N)" zet de focus op het resultatengebied, voor toetsenbord- en schermlezergebruikers (#1014).
+- Zoeken: link "Ga naar resultaten (N)" zet de focus op de eerste resultaatlink (zichtbare focus, geen weerlinks ertussen), voor toetsenbord- en schermlezergebruikers (#1014).

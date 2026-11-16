@@ -452,6 +452,7 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .nc-head.kompakt.samenvatting{height:auto;max-height:60%;overflow-y:auto;padding-bottom:24px}
 .nc-head.kompakt.samenvatting+.nc{height:100%}
 .nf{--kp:72px}
+.nf:focus-visible{outline:2px solid var(--a);outline-offset:-2px}
 .nc-end{scroll-snap-align:end}
 .nc-end .foot{margin-top:0;max-width:1120px;margin-left:auto;margin-right:auto;padding-left:32px;padding-right:32px}
 

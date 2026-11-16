@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import React, { createElement, createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
 import { scopeTekst, verborgenTekst } from "../src/zoek";
-import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
+import { Zoekbalk, ZoekFormulier, ZoekLeeg, focusResultaten } from "../src/zoekbalk";
 
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
 assert.match(leeg, /Niets gevonden voor “niets”/);
@@ -101,5 +101,18 @@ try {
   assert.match(html("fiets", 3), /<a href="#zoek-resultaten"[^>]*>Ga naar resultaten \(3\)<\/a>/);
   assert.ok(!html("fiets", 0).includes("Ga naar resultaten"));
   assert.ok(!html("", 3).includes("Ga naar resultaten"));
+}
+// Echte focusbestemming (#1014): eerste kaartlink, nooit .nc-head; zonder kaart het gebied zelf.
+{
+  const gefocust: string[] = [];
+  const el = (naam: string, kinderen: Record<string, unknown> = {}) => ({ focus: () => { gefocust.push(naam); }, querySelector: (s: string) => (kinderen[s] ?? null) as never });
+  const link = el("link");
+  const kaart = el("kaart", { "a[href]": link });
+  focusResultaten({ getElementById: (id) => id === "zoek-resultaten" ? el("gebied", { ".nc": kaart, ".nc-head a[href]": el("weer") }) : null });
+  assert.deepEqual(gefocust, ["link"]);
+  gefocust.length = 0;
+  focusResultaten({ getElementById: () => el("gebied") });
+  assert.deepEqual(gefocust, ["gebied"]);
+  focusResultaten({ getElementById: () => null });
 }
 console.log("zoekbalk: tests geslaagd");
