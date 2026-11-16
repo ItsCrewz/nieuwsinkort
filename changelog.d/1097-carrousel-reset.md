@@ -1,0 +1,1 @@
+- Fotocarrousel: bij een gewijzigde fotolijst gaan scrollpositie, zichtbare foto, stip en schermlezermelding terug naar de eerste foto (#1097).

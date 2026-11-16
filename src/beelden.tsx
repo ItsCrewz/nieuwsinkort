@@ -185,12 +185,16 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, []);
   const [, herlaad] = useState(0);
   const raf = useRef(0);
+  const vorigeUrls = useRef(urls);
   useLayoutEffect(() => {
-    const huidig = listRef.current[iRef.current];
-    const nieuw = Math.max(0, Math.min(5, urls.indexOf(huidig)));
+    if (vorigeUrls.current.length === urls.length && vorigeUrls.current.every((url, k) => url === urls[k])) return;
+    vorigeUrls.current = urls;
     cancelAnimationFrame(raf.current);
+    // Track direct op de juiste foto zetten (breekt ook een lopende smooth-scroll af), niet pas na de volgende render.
+    const el = track.current;
+    if (el) el.scrollLeft = 0;
     setList(urls);
-    setI(nieuw);
+    setI(0);
   }, [urls]);
   useLayoutEffect(() => {
     const el = track.current;
