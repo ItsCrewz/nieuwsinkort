@@ -10,6 +10,14 @@ const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 // scope: zichtbare zoekscope; verborgen: treffers die filters wegnemen; wisFilters alleen als er beperkende filters zijn.
 export type ZoekScope = { tekst: string; verborgen: number; wisFilters?: () => void; herstel?: () => void };
 const scopeId = "zoek-scope";
+// Het feedgebied in App.tsx; de link "Ga naar resultaten" focust daarbinnen de eerste kaartlink.
+export const resultatenId = "zoek-resultaten";
+type FocusDoc = { getElementById(id: string): { focus(): void; querySelector(s: string): { focus(): void; querySelector(s: string): { focus(): void } | null } | null } | null };
+// Focus op de eerste link van de eerste kaart, zodat de weerlinks in .nc-head niet voor de resultaten komen; zonder gemounte kaart op het gebied zelf.
+export function focusResultaten(doc: FocusDoc) {
+  const gebied = doc.getElementById(resultatenId);
+  (gebied?.querySelector(".nc")?.querySelector("a[href]") ?? gebied)?.focus();
+}
 
 export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
   const [open, setOpen] = useState(!!query);
@@ -48,13 +56,13 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: st
   return (
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
-      {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} scope={scope} />}
+      {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} scope={scope} aantal={aantal} />}
       <span className="zoek-status" aria-live="polite">{query.trim() && !normaliseer(query) ? zoekAanwijzing : open && query.trim() && melding?.query === query && melding.aantal === aantal ? resultaatTekst(aantal) + scopeMelding : ""}</span>
     </div>
   );
 }
 
-export function ZoekFormulier({ query, onChange, sluit, invoer, scope }: { query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
+export function ZoekFormulier({ query, onChange, sluit, invoer, scope, aantal = 0 }: { query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope; aantal?: number }) {
   const compositie = useRef(false);
   return <form className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); if (!compositie.current && touchNu()) invoer.current?.blur(); }}>
         <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws"{...(scope ? { "aria-describedby": scopeId } : {})} value={query} onChange={(e) => onChange(e.target.value)} onCompositionStart={() => { compositie.current = true; }} onCompositionEnd={() => { compositie.current = false; }} onBlur={() => { compositie.current = false; }} onKeyDown={(e) => {
@@ -62,6 +70,7 @@ export function ZoekFormulier({ query, onChange, sluit, invoer, scope }: { query
           if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sluit(); }
         }} />
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
+        {aantal > 0 && !!normaliseer(query) && <a href={`#${resultatenId}`} className="zoek-wis-filters zoek-naar-resultaten" onClick={(e) => { e.preventDefault(); focusResultaten(document); }}>Ga naar resultaten ({aantal})</a>}
         {scope && <div id={scopeId} className="zoek-scope">
           <span>{scope.tekst}{scope.verborgen && query.trim() ? ` · ${verborgenTekst(scope.verborgen)}` : ""}</span>
           {scope.herstel && <button type="button" className="zoek-wis-filters" onClick={scope.herstel}>Terug naar eerdere selectie</button>}
