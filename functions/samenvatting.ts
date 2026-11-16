@@ -268,8 +268,10 @@ export async function bewaarGroqStand(env: Env, key: string, verschil: LlmState)
     try {
       const stub = env.BUDGET_DO.get(env.BUDGET_DO.idFromName("dag"));
       const r = await stub.fetch("https://do/groq-bij", { method: "POST", body: JSON.stringify({ datum: key.slice("groq-chat:".length), verschil }) });
-      if (r.ok) return;
+      if (!r.ok) console.error("samenvatting: Groq-teller DO mislukt");
     } catch { console.error("samenvatting: Groq-teller DO niet beschikbaar"); }
+    // De DO kan het verschil al hebben opgeslagen, ook als het antwoord verloren gaat.
+    return;
   }
   await opKv(async () => {
     const vers: LlmState = await env.NIEUWS.get(key, "json") || {};

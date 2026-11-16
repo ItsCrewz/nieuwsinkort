@@ -38,7 +38,7 @@ for (const fout of ["status", "uitzondering"]) {
     BUDGET_DO: { idFromName: () => "dag", get: () => ({ fetch: async () => { if (fout === "uitzondering") throw new Error("DO-fout"); return new Response("fout", { status: 503 }); } }) },
   };
   await isolates[0].bewaarGroqStand(terugvalEnv, key, teller(5));
-  assert.equal(JSON.parse(terugvalKv.get(key)!)["groq:model"].tokens, 25, `KV-terugval bij ${fout}`);
+  assert.equal(JSON.parse(terugvalKv.get(key)!)["groq:model"].tokens, 20, `geen KV-terugval bij onzekere DO-uitkomst: ${fout}`);
 }
 
 const validatie = budget(new Map([[key, JSON.stringify(start)]]));

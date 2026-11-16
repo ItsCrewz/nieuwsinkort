@@ -1,11 +1,11 @@
 import { Budget } from "../worker/src/budget";
 
 // Budget-DO met in-memory opslag en KV-spiegel, geen Cloudflare
-export function budget(kv: Map<string, string> = new Map(), opties: { putFout?: () => boolean } = {}, data: Map<string, unknown> = new Map()) {
+export function budget(kv: Map<string, string> = new Map(), opties: { putFout?: () => boolean; opslagPutFout?: () => boolean } = {}, data: Map<string, unknown> = new Map()) {
   const telling = { list: 0 };
   const storage = {
     get: async (k: string) => data.get(k),
-    put: async (k: string | Record<string, unknown>, v?: unknown) => { if (typeof k === "string") data.set(k, v); else for (const [x, w] of Object.entries(k)) data.set(x, w); }, // object = atomaire multi-put
+    put: async (k: string | Record<string, unknown>, v?: unknown) => { if (opties.opslagPutFout?.()) throw new Error("opslagfout"); if (typeof k === "string") data.set(k, v); else for (const [x, w] of Object.entries(k)) data.set(x, w); }, // object = atomaire multi-put
     delete: async (k: string | string[]) => { for (const x of [k].flat()) data.delete(x); },
     list: async ({ prefix, limit }: { prefix: string; limit?: number }) => { telling.list++; return new Map([...data].filter(([k]) => k.startsWith(prefix)).slice(0, limit)); },
   };
