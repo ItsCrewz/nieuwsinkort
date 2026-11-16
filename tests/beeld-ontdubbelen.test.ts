@@ -81,7 +81,9 @@ t("maatmappen: ruime herkenning, maar geen echte mappen (#649)", () => {
   assert.equal(k("https://wsrv.nl/?url=" + encodeURIComponent("https://x.nl/a/640/foto.jpg")), k("https://x.nl/a/foto.jpg"));
   assert.equal(k("https://i1.wp.com/x.nl/wp-content/uploads/2026/10/foto.jpg?w=300"), k("https://x.nl/wp-content/uploads/2026/10/foto-300x200.jpg"));
   // wp.com zonder geldig ingepakt adres: geen kunstmatige sleutel (#1071)
-  assert.ok(!k("https://i0.wp.com/").startsWith("undefined"));
+  assert.notEqual(k("https://i0.wp.com/?a"), k("https://i0.wp.com/?b"));
+  assert.equal(k("https://i0.wp.com/"), "https://i0.wp.com/");
+  assert.notEqual(k("https://i0.wp.com/a.jpg"), k("https://i0.wp.com/b.jpg"));
   assert.ok(!k("https://i0.wp.com/foo/a.jpg").startsWith("foo|"));
   assert.notEqual(k("https://i0.wp.com/foo/a.jpg"), k("https://i0.wp.com/bar/a.jpg"));
   assert.equal(k("https://i0.wp.com/x.nl/a/foto.jpg?w=300"), k("https://i1.wp.com/x.nl/a/foto.jpg"));

@@ -50,7 +50,8 @@ export function beeldKey(u: string): string {
   // Alleen uitpakken als het eerste segment een echte hostnaam is; anders blijft de oorspronkelijke URL de identiteit
   if (/^i\d\.wp\.com$/.test(x.hostname)) {
     const [h, ...rest] = x.pathname.split("/").filter(Boolean);
-    if (h && /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(h)) { try { x = new URL(`https://${h}/${rest.join("/")}`); } catch { /* laat staan */ } }
+    if (!h || !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(h) || /\.(jpe?g|png|webp|avif|gif|svg)$/i.test(h)) return u;
+    try { x = new URL(`https://${h}/${rest.join("/")}`); } catch { return u; }
   }
   const segs = x.pathname.split("/").filter(Boolean);
   const alle = segs.slice(0, -1);
