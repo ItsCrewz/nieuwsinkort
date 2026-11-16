@@ -1,0 +1,1 @@
+- Bewaar Groq-verbruik bij een tijdelijke leesfout totdat de bestaande dagstand weer beschikbaar is (#1038).

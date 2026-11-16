@@ -67,7 +67,7 @@ export interface Opslag {
 // spiegel geeft `false` als het schrijven mislukte: de logica probeert het bij de volgende aanroep (ook een lezing) opnieuw, zodat de Worker geen verouderde stand blijft lezen
 export interface Buiten { spiegel(datum: string, n: number): Promise<void | boolean>; zaad(datum: string): Promise<number | null> }
 export type Reservering = { datum: string; uur: string; nieuws: number; budget: number; reserve: number; marge: number; schatting: number };
-export interface GroqBuiten { zaad(datum: string): Promise<LlmState>; spiegel(datum: string, stand: LlmState): Promise<boolean> }
+export interface GroqBuiten { zaad(datum: string): Promise<LlmState | null>; spiegel(datum: string, stand: LlmState): Promise<boolean> }
 
 const rond = (n: number) => Math.round(n * 10) / 10;
 
@@ -106,10 +106,19 @@ export class BudgetLogica {
   async groqBij(datum: string, verschil: LlmState): Promise<void> {
     if (!this.groq) throw new Error("Groq-spiegel ontbreekt");
     const sleutel = `groq:${datum}`;
-    const opgeslagen = await this.s.get<{ stand: LlmState; vuil: boolean }>(sleutel);
-    const stand = opgeslagen?.stand ?? await this.groq.zaad(datum);
+    const opgeslagen = await this.s.get<{ stand: LlmState; vuil: boolean; wachtOpZaad?: boolean }>(sleutel);
     const gewijzigd = Object.values(verschil).some((v) => v.calls || v.tokens || v.maandTokens);
-    if (gewijzigd) {
+    let stand = opgeslagen?.stand;
+    if (!stand || opgeslagen?.wachtOpZaad) {
+      // Bewaar het verschil voordat de KV-lezing wordt geprobeerd; een volgende aanroep kan het dan herstellen.
+      const wacht = stand ?? {};
+      if (gewijzigd) telOp(wacht, verschil);
+      if (gewijzigd) await this.s.put(sleutel, { stand: wacht, vuil: true, wachtOpZaad: true });
+      const zaad = await this.groq.zaad(datum);
+      if (zaad === null) return;
+      stand = telOp(zaad, wacht);
+      await this.s.put(sleutel, { stand, vuil: true });
+    } else if (gewijzigd) {
       telOp(stand, verschil);
       await this.s.put(sleutel, { stand, vuil: true });
     }
