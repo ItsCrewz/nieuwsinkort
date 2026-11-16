@@ -5,7 +5,7 @@ import { beeldProxyPad } from "./beeldhost";
 import { veiligeUrl } from "./url";
 
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-type Bericht = { id?: string; kop: string; ai?: string; samenvatting?: string; punten?: string[]; bronnen?: { site: string; href: string }[]; ruw?: boolean; cat?: string; t?: number | string; beeld?: string; beelden?: string[] };
+type Bericht = { id?: string; kop: string; ai?: string; samenvatting?: string; punten?: string[]; bronnen?: { site: string; href: string }[]; ruw?: boolean; cat?: string; t?: number | string; gewijzigd?: number | string; beeld?: string; beelden?: string[] };
 type Verwant = { id?: string; kop: string; bronnen?: { href: string }[] };
 const BASIS = "https://nieuwsinkort.nl";
 // Laat een aanvullend Unicode-teken heel als de grens tussen zijn surrogaten valt.
@@ -47,7 +47,9 @@ export function berichtHtml(sjabloon: string, item: Bericht, dag: string, verwan
   const beeld = deelbeeld(item);
   const bronnen = (item.bronnen || []).filter((b) => veiligeUrl(b.href));
   const tms = item.t ? new Date(item.t).getTime() : NaN, datum = Number.isFinite(tms) ? new Date(tms).toISOString() : `${dag}T00:00:00+01:00`; // ongeldige t mag de pagina niet breken
-  const json = JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: veiligKnippen(title, 110), datePublished: datum, dateModified: datum, inLanguage: "nl-NL", description: desc, mainEntityOfPage: url, author: { "@type": "Organization", name: "Nieuws in het kort", url: BASIS }, publisher: { "@type": "NewsMediaOrganization", name: "Nieuws in het kort", url: `${BASIS}/`, logo: { "@type": "ImageObject", url: `${BASIS}/icon-512.png`, width: 512, height: 512 } }, image: [beeld], isBasedOn: bronnen.map((b) => b.href), citation: bronnen.map((b) => b.href) }).replace(/</g, "\\u003c");
+  // dateModified alleen bij een echte wijzigingstijd (niet vóór publicatie, hooguit 20 minuten vooruit); nooit afgeleid van de publicatietijd
+  const gms = item.gewijzigd ? new Date(item.gewijzigd).getTime() : NaN, gewijzigd = Number.isFinite(gms) && Number.isFinite(tms) && gms >= tms && gms <= Date.now() + 20 * 60000 ? new Date(gms).toISOString() : "";
+  const json = JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: veiligKnippen(title, 110), datePublished: datum, ...(gewijzigd ? { dateModified: gewijzigd } : {}), inLanguage: "nl-NL", description: desc, mainEntityOfPage: url, author: { "@type": "Organization", name: "Nieuws in het kort", url: BASIS }, publisher: { "@type": "NewsMediaOrganization", name: "Nieuws in het kort", url: `${BASIS}/`, logo: { "@type": "ImageObject", url: `${BASIS}/icon-512.png`, width: 512, height: 512 } }, image: [beeld], isBasedOn: bronnen.map((b) => b.href), citation: bronnen.map((b) => b.href) }).replace(/</g, "\\u003c");
   let h = sjabloon.replace(/<title>[\s\S]*?<\/title>/, () => `<title>${esc(title)} – Nieuws in het kort</title>`)
     .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${esc(url)}" />`)
     .replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, () => `<script type="application/ld+json">${json}</script>`);
