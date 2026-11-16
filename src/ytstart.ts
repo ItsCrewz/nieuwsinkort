@@ -19,7 +19,7 @@ export function ytOndertitelsBijBericht(e: MessageEvent, frames: Iterable<HTMLIF
 }
 
 export function ytToonHint(s: YtStart): boolean {
-  return s.actief && !s.fout && !s.gespeeld && s.status !== 1 && s.status !== 3 && s.nu - s.sinds >= 1500;
+  return s.actief && !s.gepauzeerd && !s.fout && !s.gespeeld && s.status !== 1 && s.status !== 3 && s.nu - s.sinds >= 1500;
 }
 
 // Is dit een onReady van precies dit frame? Andere frames en andere origins tellen niet.
