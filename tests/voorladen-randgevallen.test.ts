@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, HLS_BYTES, PLAYLIST_BYTES, MP4_BYTES, POSTER_MAX_MS, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MAX_PRECONNECT, aantalPreconnects,HLS_BYTES, PLAYLIST_BYTES, MP4_BYTES, POSTER_MAX_MS, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -358,6 +358,30 @@ try {
       installeer("setTimeout", echt);
       herstel(["clearTimeout"]);
     }
+  });
+
+  await test("preconnect-links blijven begrensd, zonder duplicaten, en verdrongen hosts kunnen terugkomen (#1073)", () => {
+    const dom: { href: string; remove: () => void }[] = [];
+    installeer("document", {
+      head: { appendChild: (l: typeof dom[number]) => dom.push(l) },
+      createElement: () => {
+        const l = { rel: "", href: "", crossOrigin: "", remove: () => { dom.splice(dom.indexOf(l), 1); } };
+        return l;
+      },
+    });
+    const plan = (o: string): Plan => ({ ...leeg(), preconnect: [o] });
+    const basis = aantalPreconnects();
+    for (let i = 0; i < 20; i++) voerUit(plan(`https://grens${i}.example`));
+    assert.equal(aantalPreconnects(), MAX_PRECONNECT);
+    assert.equal(dom.length, MAX_PRECONNECT);
+    assert.ok(basis <= MAX_PRECONNECT);
+    voerUit(plan("https://grens19.example"));
+    voerUit(plan("https://grens19.example"));
+    assert.equal(dom.filter((l) => l.href === "https://grens19.example").length, 1);
+    assert.equal(dom.length, MAX_PRECONNECT);
+    voerUit(plan("https://grens0.example")); // verdrongen eerder: opnieuw opgewarmd
+    assert.equal(dom.filter((l) => l.href === "https://grens0.example").length, 1);
+    assert.equal(dom.length, MAX_PRECONNECT);
   });
 
   await test("naIdle wacht op load, idle en zichtbaarheid en kan annuleren", () => {
