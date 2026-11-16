@@ -74,10 +74,16 @@ let richting = 1; // 1 = omlaag/verder, -1 = terug
 let ordered: Reg[] | null = null;
 let visIO: IntersectionObserver | null = null;
 let plan = 0;
+type Verbinding = EventTarget & { saveData?: boolean };
+const verbinding = () => (typeof navigator === "undefined" ? undefined : (navigator as Navigator & { connection?: Verbinding }).connection);
+const bespaarData = () => verbinding()?.saveData === true;
+export const magVooruitladen = (bespaar: boolean) => !bespaar;
+export const toonBeeld = (bespaar: boolean, inBeeld: boolean, near: boolean, actief: boolean, vooruit: boolean) =>
+  bespaar ? inBeeld && actief : near && vooruit;
 function vooruit() {
   cancelAnimationFrame(plan);
   plan = requestAnimationFrame(() => {
-    if (!zichtbaar.size) return;
+    if (!magVooruitladen(bespaarData()) || !zichtbaar.size) return;
     if (!ordered) ordered = [...regs].filter((r) => r.el.isConnected).sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
     const idx = ordered.map((r, k) => (zichtbaar.has(r) ? k : -1)).filter((k) => k >= 0);
     if (!idx.length) return;
@@ -126,6 +132,13 @@ export function indexNaVerwijderen(i: number, weg: number, nieuweLengte: number)
 }
 
 export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = eager, className = "", onChange }: { urls: string[]; eager?: boolean; voorrang?: boolean; className?: string; onChange?: () => void }) {
+  const [bespaar, setBespaar] = useState(bespaarData);
+  useEffect(() => {
+    const v = verbinding();
+    const wijzig = () => { setBespaar(bespaarData()); vooruit(); };
+    v?.addEventListener("change", wijzig);
+    return () => v?.removeEventListener("change", wijzig);
+  }, []);
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
   const zichtbare = list.slice(0, 6);
@@ -135,6 +148,15 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   // Pas foto's plaatsen als het bericht (bijna) in beeld is, of als de vooruitlader hem al heeft binnengehaald
   // (volgende 3 berichten in de scrollrichting). Niet alle 200 tegelijk.
   const [near, setNear] = useState(eager);
+  const [inBeeld, setInBeeld] = useState(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!bespaar || !el) return;
+    if (!window.IntersectionObserver) { setInBeeld(true); return; }
+    const io = new IntersectionObserver((es) => setInBeeld(es.some((e) => e.isIntersecting)));
+    io.observe(el);
+    return () => { io.disconnect(); setInBeeld(false); };
+  }, [bespaar]);
   useEffect(() => {
     const el = box.current;
     if (near || !el || !window.IntersectionObserver) { if (!window.IntersectionObserver) setNear(true); return; }
@@ -164,7 +186,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
   listRef.current = list;
   iRef.current = i;
-  useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
+  useEffect(() => { if (i > 0 && magVooruitladen(bespaarData())) preloadBeeld(list[i + 1]); }, [i, list, bespaar]); // door de carrousel bladeren: volgende foto alvast
   useEffect(() => { onChange?.(); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const drop = useCallback((u: string) => {
     const weg = listRef.current.indexOf(u);
@@ -220,7 +242,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       >
         {zichtbare.map((u, k) => (
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
-            {near && (k <= i + 1 || k === zichtbare.length - 1 && i === 0) ? (
+            {toonBeeld(bespaar, inBeeld, near, k === i, k <= i + 1 || k === zichtbare.length - 1 && i === 0) ? (
               <img
                 src={bronUrl(u)}
                 alt=""
@@ -270,14 +292,31 @@ export function useThumbIndex(urls: string[]): [number, (k: number) => void] {
 
 export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
   const [k, setK] = useThumbIndex(urls);
+  const [bespaar, setBespaar] = useState(bespaarData);
+  const [inBeeld, setInBeeld] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const v = verbinding();
+    const wijzig = () => setBespaar(bespaarData());
+    v?.addEventListener("change", wijzig);
+    return () => v?.removeEventListener("change", wijzig);
+  }, []);
+  useEffect(() => {
+    const el = box.current;
+    if (!bespaar || !el) return;
+    if (!window.IntersectionObserver) { setInBeeld(true); return; }
+    const io = new IntersectionObserver((es) => setInBeeld(es.some((e) => e.isIntersecting)));
+    io.observe(el);
+    return () => { io.disconnect(); setInBeeld(false); };
+  }, [bespaar, Boolean(urls[k])]);
   const [, herlaad] = useState(0);
   const u = urls[k];
   if (!u) return null;
   return (
-    <span className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
-      <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
+    <span ref={box} className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
+      {toonBeeld(bespaar, inBeeld, true, true, true) && <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
         onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : setK(k + 1))}
-        onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />
+        onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />}
     </span>
   );
 });
