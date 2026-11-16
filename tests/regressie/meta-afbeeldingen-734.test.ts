@@ -1,6 +1,6 @@
 // #734: geldige witruimte rond meta-attributen mag artikelbeelden niet verbergen.
 import assert from "node:assert/strict";
-import { ogImage, uniekeBeelden } from "../../src/beeld";
+import { ogImage } from "../../src/beeld";
 
 const pagina = "https://nieuws.example/artikelen/2026/bericht";
 const voorbeelden = [
@@ -15,5 +15,5 @@ for (const [html, verwacht] of voorbeelden) assert.equal(ogImage(html, pagina), 
 for (const html of ["<meta property = 'og:image'>", "<meta property = 'og:image' content = ''>", "<meta property = 'og:image' content = '  '>", "<meta property = 'og:image' content = 'http://['>"]) {
   assert.equal(ogImage(html, pagina), "");
 }
-assert.deepEqual(uniekeBeelden([ogImage("<meta property = 'og:image' content = '/logo.svg'>", pagina)]), []);
+assert.equal(ogImage("<meta property = 'og:image' content = '/logo.svg'>", pagina), "");
 assert.equal(ogImage('<meta name="twitter:image" content="/eerste.jpg"><meta property="og:image" content="/tweede.jpg">', pagina), "https://nieuws.example/tweede.jpg");
