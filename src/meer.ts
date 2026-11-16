@@ -26,6 +26,13 @@ function geldigMeer(v: unknown): v is Meer {
 const VERS = 5 * 60e3;
 type Ingang = { p: Promise<Meer | null>; at: number; data: Meer | null; bezig: boolean };
 const meerCache = new Map<string, Ingang>();
+// Cache begrenzen (#1035): oudste ingangen die niet bezig zijn gaan eruit.
+function begrens(): void {
+  for (const [sl, ing] of meerCache) {
+    if (meerCache.size <= MAX_CACHE) break;
+    if (!ing.bezig) meerCache.delete(sl);
+  }
+}
 export function prefetchMeer(item: Item): Promise<Meer | null> {
   const k = item.meer;
   if (!k || item.bronnen?.some((b) => verzamelUrl(b.href))) return Promise.resolve(null);
@@ -46,10 +53,28 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
     clearTimeout(timer);
     nieuw.bezig = false;
     if (m) { nieuw.data = m; nieuw.at = Date.now(); } else if (!nieuw.data && meerCache.get(k) === nieuw) meerCache.delete(k);
+    begrens(); // ook na afronding: bij een piek van lopende aanvragen blijft de cache anders te groot
     return m ?? nieuw.data;
   });
   meerCache.set(k, nieuw);
+  begrens();
   return nieuw.p;
+}
+
+// Speculatief voorladen bij hover (#1035): geen wachtrij, een aanvraag die niet mag wordt weggegooid.
+// Expliciet openen (prefetchMeer) kijkt hier niet naar en loopt dus nooit vast.
+const MAX_CACHE = 50, MAX_SPEC = 2, SPEC_PAUZE = 400;
+let specBezig = 0, specLaatst = -Infinity;
+export function voorlaadMeer(item: Item): void {
+  const k = item.meer;
+  if (!k || specBezig >= MAX_SPEC) return;
+  const e = meerCache.get(k);
+  if (e && (e.bezig || Date.now() - e.at < VERS)) return;
+  const nu = Date.now();
+  if (nu - specLaatst < SPEC_PAUZE) return;
+  specLaatst = nu;
+  specBezig++;
+  void prefetchMeer(item).finally(() => { specBezig--; });
 }
 
 export function useMeer(item: Item): { meer: Meer | null; laden: boolean } {

@@ -1,0 +1,1 @@
+- Begrens speculatieve /meer-aanvragen bij muisbeweging (max 2 tegelijk, minstens 400 ms tussen starts) en de meer-cache (50 ingangen); expliciet openen blijft ongehinderd (#1035).
