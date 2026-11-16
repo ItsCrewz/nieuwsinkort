@@ -1,0 +1,1 @@
+- Begrens de omvang van HLS-playlists bij het voorladen en probeer mislukte taken later opnieuw (#1048).
