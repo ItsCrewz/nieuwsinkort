@@ -1,0 +1,1 @@
+- Ongeldige of onleesbare statische nieuwsdata levert een tijdelijke fout op als geen bruikbare terugval beschikbaar is (#1112).

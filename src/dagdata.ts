@@ -186,7 +186,14 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   const kv = env.NIEUWS;
   if (u.searchParams.has("statisch") || !kv) {
     if (!stat?.ok) return onbeschikbaar();
-    return new Response(stat.body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
+    try {
+      const body = await stat.text();
+      JSON.parse(body);
+      return new Response(body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
+    } catch {
+      console.error("data.json: statische data onleesbaar");
+      return onbeschikbaar();
+    }
   }
   // Bruikbaar = object met een items-lijst; uurdata moet ook een geldig tijdstip hebben, anders telt de bron niet mee.
   const bruikbaar = (d: any) => !!d && typeof d === "object" && !Array.isArray(d) && Array.isArray(d.items);
