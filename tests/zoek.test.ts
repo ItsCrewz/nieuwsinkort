@@ -1,6 +1,6 @@
 import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
-import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen } from "../src/zoek";
+import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen, begrensZoekterm, leesZoekterm, MAX_ZOEKTEKENS } from "../src/zoek";
 import type { Item } from "../src/types";
 import { filterNieuws, STANDAARD } from "../src/filters";
 
@@ -188,4 +188,23 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.equal(rangschikKoptreffers(lijst, "  "), lijst);
   assert.deepEqual(rangschikKoptreffers([tekst1, tekst2], "ajax"), [tekst1, tekst2]);
   assert.deepEqual(rangschikKoptreffers([tekst1, kop1], "ajax"), [kop1, tekst1]);
+}
+
+// Lengtegrens (#1051): grote plakinvoer blijft snel en splitst geen surrogaatparen.
+{
+  assert.equal(MAX_ZOEKTEKENS, 200);
+  assert.equal(begrensZoekterm("ajax"), "ajax");
+  assert.equal(begrensZoekterm("a".repeat(500)).length, 200);
+  const paar = "a".repeat(199) + "😀😀";
+  assert.equal(begrensZoekterm(paar), "a".repeat(199));
+  assert.equal(begrensZoekterm("a".repeat(198) + "😀😀"), "a".repeat(198) + "😀");
+  assert.equal(leesZoekterm("?q=" + "b".repeat(1000)).length, 200);
+  const start = Date.now();
+  const enorm = "ajax" + " ".repeat(1_000_000) + "onbekend";
+  assert.deepEqual(zoekItems([item], enorm), [item]);
+  assert.ok(markeerDelen("Ajax wint", enorm).length > 0);
+  assert.ok(rangschikKoptreffers([item, item], enorm).length === 2);
+  assert.ok(Date.now() - start < 2000);
+  assert.deepEqual(zoekItems([item], "café ajax"), [item]);
+  assert.deepEqual(zoekItems([item], '"ajax" nos'), [item]);
 }

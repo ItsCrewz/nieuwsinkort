@@ -48,7 +48,8 @@ assert.ok(!/>Zoek</.test(geslotenBalk));
 // De dispatcher maakt de compositieref beschikbaar zonder browser-DOM.
 const dispatcher = (React as any).__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher;
 const vorige = dispatcher.current;
-dispatcher.current = { useRef: (waarde: boolean) => ({ current: waarde }) };
+let ingekortWaarde: unknown = false;
+dispatcher.current = { useRef: (waarde: boolean) => ({ current: waarde }), useState: () => [ingekortWaarde, (w: unknown) => { ingekortWaarde = w; }] };
 try {
   let gesloten = 0;
   let geblurd = 0;
@@ -92,6 +93,18 @@ try {
   assert.equal(toets("Escape"), true);
   knop.props.onClick();
   assert.equal(gesloten, 2);
+  // Melding alleen bij echt afkappen (#1051): 199 tekens + emoji wordt ingekort, exact 200 niet.
+  const meldingBij = (invoerTekst: string) => {
+    ingekortWaarde = false;
+    let doorgegeven = "";
+    const f = ZoekFormulier({ query: "", onChange: (q) => { doorgegeven = q; }, sluit: () => {}, invoer: ref });
+    f.props.children[0].props.onChange({ target: { value: invoerTekst } });
+    const na = ZoekFormulier({ query: doorgegeven, onChange: () => {}, sluit: () => {}, invoer: ref });
+    return na.props.children[2].props.children;
+  };
+  assert.match(meldingBij("a".repeat(199) + "😀" + "bc"), /ingekort tot 200/);
+  assert.equal(meldingBij("a".repeat(200)), "");
+  assert.match(meldingBij("a".repeat(250)), /ingekort tot 200/);
 } finally {
   dispatcher.current = vorige;
 }

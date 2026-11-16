@@ -114,7 +114,17 @@ function alleTermenPassen(kand: [number, number][][], aantal: number): boolean {
   return kies(0, []);
 }
 
+// Grens op de te verwerken zoektekst (#1051): een geplakte tekst van megabytes mag de hoofdthread niet vastzetten.
+export const MAX_ZOEKTEKENS = 200;
+export function begrensZoekterm(tekst: string): string {
+  if (tekst.length <= MAX_ZOEKTEKENS) return tekst;
+  const laatste = tekst.charCodeAt(MAX_ZOEKTEKENS - 1);
+  // Splits geen surrogaatpaar: een los hoog surrogaat aan het eind valt weg.
+  return tekst.slice(0, laatste >= 0xd800 && laatste <= 0xdbff ? MAX_ZOEKTEKENS - 1 : MAX_ZOEKTEKENS);
+}
+
 export function zoekItems(items: Item[], query: string): Item[] {
+  query = begrensZoekterm(query);
   // Alleen gekoppelde woorddelen vormen een reeks; andere leestekens scheiden zoekwoorden.
   const termen: string[][] = [];
   // Woordgroepen tussen aanhalingstekens (#634): één term met meerdere delen, dus aaneengesloten in één veld. Een ongesloten teken blijft scheidingsteken.
@@ -169,7 +179,7 @@ export function verborgenTekst(aantal: number): string {
 
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
 export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
-  const woorden = normaliseer(query).split(" ").filter(Boolean);
+  const woorden = normaliseer(begrensZoekterm(query)).split(" ").filter(Boolean);
   const posities: { begin: number; eind: number }[] = [];
   let vlak = "", offset = 0;
   for (const teken of tekst) {
@@ -209,7 +219,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
 }
 
 export function leesZoekterm(zoek: string): string {
-  return new URLSearchParams(zoek).get("q") ?? "";
+  return begrensZoekterm(new URLSearchParams(zoek).get("q") ?? "");
 }
 
 export function schrijfZoekterm(url: string, term: string): string {
