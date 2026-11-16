@@ -1,0 +1,1 @@
+- Laad bij databesparing alleen zichtbare en gekozen foto's, geen beelden vooruit (#1034).
