@@ -38,7 +38,18 @@ export async function metOvergang(update: () => void | Promise<void>, soort: Ove
   if (!d || !kanOvergang() || !d.startViewTransition) { await update(); return; }
   const root = d.documentElement;
   root.dataset.overgang = soort;
-  try { await d.startViewTransition(update).finished; }
-  catch { /* overgang afgebroken: de update is dan al gedaan of gaat door */ }
+  let uitgevoerd = false;
+  const voerUit = () => {
+    if (uitgevoerd) return;
+    uitgevoerd = true;
+    return update();
+  };
+  try {
+    let overgang: ReturnType<NonNullable<VT["startViewTransition"]>>;
+    try { overgang = d.startViewTransition(voerUit); }
+    catch { await voerUit(); return; }
+    await overgang.finished;
+  }
+  catch { /* Een afgebroken overgang kan de update nog uitvoeren. */ }
   finally { delete root.dataset.overgang; }
 }
