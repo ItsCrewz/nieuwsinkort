@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import React from "react";
-import { FilterBalk, STANDAARD, useFilters, type Filters } from "../src/filters";
+import { FilterBalk, STANDAARD, useFilters, volgOpslag, type Filters } from "../src/filters";
 import { FilterBlad } from "../src/filters-blad";
 import type { Item } from "../src/types";
 
@@ -57,6 +57,44 @@ assert.deepEqual(JSON.parse(opslag.get("nieuwsinkort-filters")!), STANDAARD);
 if (typeof opruimen === "function") opruimen();
 g.clearInterval = echteClear;
 assert.equal(gewist, 42);
+
+// Synchronisatie tussen tabbladen (#1062): storage-events uit andere tabbladen, nooit terugschrijven.
+{
+  const ontvangen: Filters[] = [];
+  const stop = volgOpslag((f) => ontvangen.push(f));
+  const stuur = (key: string | null) => venster.dispatchEvent(Object.assign(new Event("storage"), { key }));
+  const schrijfsels: string[] = [];
+  const echteSet = store.setItem;
+  store.setItem = (k: string, v: string) => { schrijfsels.push(k); echteSet(k, v); };
+  opslag.set("nieuwsinkort-filters", JSON.stringify({ tijd: "1u", cats: ["sport"], video: true }));
+  stuur("nieuwsinkort-filters");
+  assert.equal(ontvangen.length, 1);
+  assert.equal(ontvangen[0].video, true);
+  assert.deepEqual(ontvangen[0].cats, ["sport"]);
+  stuur("iets-anders");
+  assert.equal(ontvangen.length, 1); // andere sleutel negeren
+  opslag.delete("nieuwsinkort-filters");
+  stuur(null); // localStorage.clear() elders
+  assert.equal(ontvangen.length, 2);
+  assert.deepEqual(ontvangen[1], STANDAARD);
+  opslag.set("nieuwsinkort-filters", "{kapot");
+  stuur("nieuwsinkort-filters");
+  assert.deepEqual(ontvangen[2], STANDAARD); // kapotte JSON
+  const echteGet = store.getItem;
+  store.getItem = () => { throw new Error("geblokkeerd"); };
+  stuur("nieuwsinkort-filters");
+  assert.deepEqual(ontvangen[3], STANDAARD); // geblokkeerde opslag
+  store.getItem = echteGet;
+  assert.deepEqual(schrijfsels, []); // geen terugschrijflus
+  store.setItem = echteSet;
+  stop();
+  stuur("nieuwsinkort-filters");
+  assert.equal(ontvangen.length, 4); // opgeruimd
+  const echteAdd = venster.addEventListener;
+  venster.addEventListener = () => { throw new Error("geen events"); };
+  assert.doesNotThrow(() => volgOpslag(() => {})());
+  venster.addEventListener = echteAdd;
+}
 
 function vind(n: any, pred: (n: any) => boolean): any[] {
   if (!n || typeof n !== "object") return [];
