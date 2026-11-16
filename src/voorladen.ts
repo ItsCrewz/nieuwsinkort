@@ -334,7 +334,7 @@ export function voerUit(p: Plan) {
     );
   }
   // zelfde specifier als feed.tsx: Vite deelt de chunk, de eerste speler vindt hem dus al in de cache
-  if (p.hlsChunk && mag("hls.js")) taken.push(taak("hls.js", () => import("hls.js")));
+  if (p.hlsChunk && mag("hls.js")) taken.push(taak("hls.js", () => netwerktaak(() => import("hls.js").then(() => {}))));
   for (const m of p.hls) if (mag(`hls:${m}`)) taken.push(taak(`hls:${m}`, () => netwerktaak((signal) => warmHls(m, signal))));
   if (p.mp4 && mag(`mp4:${p.mp4}`)) taken.push(taak(`mp4:${p.mp4}`, () => netwerktaak((signal) => warmMp4(p.mp4!, signal))));
   // Eén pool voor alle aanroepen, in volgorde van binnenkomst.
