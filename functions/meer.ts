@@ -9,12 +9,22 @@ const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/
 // Per isolate en per KV-binding 60 s hergebruiken, zoals de cacheTtl van KV zelf al toestond.
 const TTL = 60e3;
 const cache = new WeakMap<object, { at: number; M: any }>();
+// Gelijktijdige missers delen één lopende lezing per binding (#1049); na afloop (ook bij fout) wordt hij gewist.
+const lopend = new WeakMap<object, Promise<any>>();
 async function leesMeer(kv: KV): Promise<any> {
   const c = cache.get(kv);
   if (c && Date.now() - c.at < TTL) return c.M;
-  const M = await kv.get("meer", { type: "json", cacheTtl: 60 });
-  if (M) cache.set(kv, { at: Date.now(), M }); // ontbrekende blob niet bewaren: lezen kost dan geen parse
-  return M;
+  const l = lopend.get(kv);
+  if (l) return l;
+  const p = (async () => {
+    try {
+      const M = await kv.get("meer", { type: "json", cacheTtl: 60 });
+      if (M) cache.set(kv, { at: Date.now(), M }); // ontbrekende blob niet bewaren: lezen kost dan geen parse
+      return M;
+    } finally { lopend.delete(kv); }
+  })();
+  lopend.set(kv, p);
+  return p;
 }
 
 export const onRequestGet = async ({ request, env }: Ctx): Promise<Response> => {
