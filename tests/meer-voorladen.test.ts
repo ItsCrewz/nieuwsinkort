@@ -60,5 +60,17 @@ const leeg = () => new Promise((r) => setTimeout(r, 0));
     await prefetchMeer(item("w0")); // oudste: verwijderd, dus opnieuw
     assert.equal(aanvragen.length, voor + 1);
   });
+  await t("cache komt na een piek van 60 lopende aanvragen terug op 50", async () => {
+    modus = "hang"; open = [];
+    const ps = Array.from({ length: 60 }, (_, i) => prefetchMeer(item("p" + i)));
+    modus = "ok";
+    for (const r of open) r(new Response(JSON.stringify(ok)));
+    open = []; await Promise.all(ps); await leeg();
+    const voor = aanvragen.length;
+    await prefetchMeer(item("p59")); // recent: uit cache
+    assert.equal(aanvragen.length, voor);
+    await prefetchMeer(item("p0")); // oudste: verwijderd
+    assert.equal(aanvragen.length, voor + 1);
+  });
   console.log(`${n} tests ok`);
 })();

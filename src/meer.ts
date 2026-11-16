@@ -26,6 +26,13 @@ function geldigMeer(v: unknown): v is Meer {
 const VERS = 5 * 60e3;
 type Ingang = { p: Promise<Meer | null>; at: number; data: Meer | null; bezig: boolean };
 const meerCache = new Map<string, Ingang>();
+// Cache begrenzen (#1035): oudste ingangen die niet bezig zijn gaan eruit.
+function begrens(): void {
+  for (const [sl, ing] of meerCache) {
+    if (meerCache.size <= MAX_CACHE) break;
+    if (!ing.bezig) meerCache.delete(sl);
+  }
+}
 export function prefetchMeer(item: Item): Promise<Meer | null> {
   const k = item.meer;
   if (!k || item.bronnen?.some((b) => verzamelUrl(b.href))) return Promise.resolve(null);
@@ -46,14 +53,11 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
     clearTimeout(timer);
     nieuw.bezig = false;
     if (m) { nieuw.data = m; nieuw.at = Date.now(); } else if (!nieuw.data && meerCache.get(k) === nieuw) meerCache.delete(k);
+    begrens(); // ook na afronding: bij een piek van lopende aanvragen blijft de cache anders te groot
     return m ?? nieuw.data;
   });
   meerCache.set(k, nieuw);
-  // Cache begrenzen (#1035): oudste ingangen die niet bezig zijn gaan eruit.
-  for (const [sl, ing] of meerCache) {
-    if (meerCache.size <= MAX_CACHE) break;
-    if (!ing.bezig) meerCache.delete(sl);
-  }
+  begrens();
   return nieuw.p;
 }
 
