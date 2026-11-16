@@ -111,4 +111,16 @@ t("brug via titel én namen (#1027): twee verhalen blijven los in alle 6 volgord
     assert.ok(van("brug") === van("sporthal") || van("brug") === van("wolf"));
   }
 });
+t("brug (#1027): een brandbericht dat in de beschrijving ook 'Bram' noemt sluit niet aan bij de wolfkern, in alle 6 volgordes", () => {
+  const bron = {
+    sporthal: c("NOS", "Brand verwoest sporthal in Zaandam", "Burgemeester Bram Bakker bezocht de plek waar de sporthal aan de Haagweg door een felle brand verwoest is."),
+    wolf: c("RTL", "Publiek ziet probleemwolf Bram in museum Naturalis", "Bram is opgezet in Naturalis in Leiden en bezoekers kwamen kijken naar de doodgeschoten probleemwolf."),
+    brug: c("NU", "Brand verwoest sporthal Zaandam, wolf Bram", "Bram is opgezet in Naturalis in Leiden en bezoekers kwamen kijken naar de doodgeschoten wolf."),
+  } as Record<string, Cand>;
+  for (const p of perm(["sporthal", "wolf", "brug"])) {
+    const k = cluster(p.map((x, i) => ({ ...bron[x], d: i * 60000 })));
+    const van = (x: string) => k.findIndex((cl) => cl.c.some((y) => y.href === bron[x].href));
+    assert.notEqual(van("sporthal"), van("wolf"), p.join("-"));
+  }
+});
 console.log(`${n} tests ok`);

@@ -185,8 +185,8 @@ export function cluster(cands: Cand[]): Cluster[] {
       if (kostenBotst({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d })) return true;
       return false;
     }) && !k.leden.some((l) => afstandBotst(lid.afst, l.afst)) ;
-    // een cluster met kern (via namen gegroeid) neemt via de titelregel alleen een kandidaat op die minstens één kernnaam draagt (#1027): anders is die een brug naar een ander verhaal
-    const kernOk = (k: Cluster) => !k.kern || [...lid.nm!].some((w) => k.kern!.has(w));
+    // een cluster met kern (via namen gegroeid) neemt via de titelregel alleen een kandidaat op die minstens min(2, kernomvang) kernnamen draagt (#1027, zelfde drempel als naamClusters; één toevallig gedeelde naam is te weinig): anders is die een brug naar een ander verhaal
+    const kernOk = (k: Cluster) => !k.kern || [...lid.nm!].filter((w) => k.kern!.has(w)).length >= Math.min(2, k.kern.size);
     let raak = out.filter((k) => pas(k) && ((k.leden.some((l) => gelijk(lid, l, false) > 0) && kernOk(k)) || k.c.every((x) => zelfdeVerhaal({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d }))));
     let nieuweKern: string[] = [];
     // goedkope voorcheck: de naamregel eist ≥2 eigennamen en ≥1 naam in de titel
