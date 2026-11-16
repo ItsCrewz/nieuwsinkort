@@ -49,7 +49,28 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
     return m ?? nieuw.data;
   });
   meerCache.set(k, nieuw);
+  // Cache begrenzen (#1035): oudste ingangen die niet bezig zijn gaan eruit.
+  for (const [sl, ing] of meerCache) {
+    if (meerCache.size <= MAX_CACHE) break;
+    if (!ing.bezig) meerCache.delete(sl);
+  }
   return nieuw.p;
+}
+
+// Speculatief voorladen bij hover (#1035): geen wachtrij, een aanvraag die niet mag wordt weggegooid.
+// Expliciet openen (prefetchMeer) kijkt hier niet naar en loopt dus nooit vast.
+const MAX_CACHE = 50, MAX_SPEC = 2, SPEC_PAUZE = 400;
+let specBezig = 0, specLaatst = -Infinity;
+export function voorlaadMeer(item: Item): void {
+  const k = item.meer;
+  if (!k || specBezig >= MAX_SPEC) return;
+  const e = meerCache.get(k);
+  if (e && (e.bezig || Date.now() - e.at < VERS)) return;
+  const nu = Date.now();
+  if (nu - specLaatst < SPEC_PAUZE) return;
+  specLaatst = nu;
+  specBezig++;
+  void prefetchMeer(item).finally(() => { specBezig--; });
 }
 
 export function useMeer(item: Item): { meer: Meer | null; laden: boolean } {
