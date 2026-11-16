@@ -554,8 +554,8 @@ export class Runner extends DurableObject<Env> {
     };
     const [gehaaldAnder, gehaaldYt] = await Promise.all([haalNietYt(), haalYt()]);
     const gehaald = [...gehaaldYt, ...gehaaldAnder];
-    meldBronfouten(gehaald.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0, ...(r.status ? { status: r.status } : {}) })));
     const nieuwsUrls = new Set(srcFeeds.flatMap((f) => f.urls));
+    meldBronfouten(gehaald.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0, ...(r.status ? { status: r.status } : {}), ...(nieuwsUrls.has(r.url) ? { overgeslagen: !(all.find((j) => j.url === r.url && jobGroep(j) !== "core") && (tcCache.get(r.url)?.at || 0) >= since) } : {}) })));
     if (nieuwsUrls.size && !gehaald.some((r) => nieuwsUrls.has(r.url) && r.ok)) throw new Error("Geen nieuwsbron bereikbaar; vorige data behouden");
     const xUrls = new Set(xj.map((j) => j.url));
     const xDiagnose = xFouten(gehaald.filter((r) => xUrls.has(r.url)));

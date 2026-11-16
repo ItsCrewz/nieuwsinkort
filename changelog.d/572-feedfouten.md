@@ -1,1 +1,1 @@
-- Bewaar de HTTP-status van overgeslagen nieuwsfeeds in de runstatus, zodat bronfouten beter te onderzoeken zijn (#572).
+- Bewaar de HTTP-status en de overslagstatus van mislukte nieuwsfeeds in de runstatus, zodat bronfouten beter te onderzoeken zijn (#572).

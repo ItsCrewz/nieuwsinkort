@@ -26,7 +26,7 @@ try {
   const antwoord = await new Runner(ctx, env).fetch(new Request("https://do/run"));
   assert.equal(antwoord.status, 200);
   const fouten = JSON.parse(kv.get("run-status")!).bronfouten;
-  assert.deepEqual(fouten.filter((f: any) => urls.includes(f.url)).map((f: any) => [f.url, f.code, f.status]), [[urls[0], "SRC_HTTP", 403], [urls[1], "SRC_HTTP", 404]]);
+  assert.deepEqual(fouten.filter((f: any) => urls.includes(f.url)).map((f: any) => [f.url, f.code, f.status, f.overgeslagen]), [[urls[0], "SRC_HTTP", 403, true], [urls[1], "SRC_HTTP", 404, true]]);
   assert.ok(kv.has("uur"));
 } finally {
   globalThis.fetch = oorspronkelijkeFetch;
