@@ -1,0 +1,1 @@
+- Artikelverdieping (`src/meer.ts`): de sessiecache van `/meer` verwijdert nu de minst recent gebruikte ingang in plaats van de oudste, zodat vaak gebruikte berichten herbruikbaar blijven (#1082).

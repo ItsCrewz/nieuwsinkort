@@ -26,7 +26,8 @@ function geldigMeer(v: unknown): v is Meer {
 const VERS = 5 * 60e3;
 type Ingang = { p: Promise<Meer | null>; at: number; data: Meer | null; bezig: boolean };
 const meerCache = new Map<string, Ingang>();
-// Cache begrenzen (#1035): oudste ingangen die niet bezig zijn gaan eruit.
+// Cache begrenzen (#1035, #1082): minst recent gebruikte ingangen die niet bezig zijn gaan eruit; Map-volgorde = gebruiksvolgorde.
+function raak(k: string, ing: Ingang): void { meerCache.delete(k); meerCache.set(k, ing); }
 function begrens(): void {
   for (const [sl, ing] of meerCache) {
     if (meerCache.size <= MAX_CACHE) break;
@@ -37,7 +38,7 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
   const k = item.meer;
   if (!k || item.bronnen?.some((b) => verzamelUrl(b.href))) return Promise.resolve(null);
   const e = meerCache.get(k);
-  if (e && (e.bezig || Date.now() - e.at < VERS)) return e.p;
+  if (e && (e.bezig || Date.now() - e.at < VERS)) { raak(k, e); return e.p; }
   const nieuw: Ingang = { p: Promise.resolve(null), at: e?.at ?? 0, data: e?.data ?? null, bezig: true };
   // Een vastgelopen aanvraag stopt na 10 s (#742), zodat een volgende poging kan herstellen.
   const controller = new AbortController();
@@ -53,10 +54,11 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
     clearTimeout(timer);
     nieuw.bezig = false;
     if (m) { nieuw.data = m; nieuw.at = Date.now(); } else if (!nieuw.data && meerCache.get(k) === nieuw) meerCache.delete(k);
+    if (meerCache.get(k) === nieuw) raak(k, nieuw); // alleen als deze aanvraag nog de actuele ingang is
     begrens(); // ook na afronding: bij een piek van lopende aanvragen blijft de cache anders te groot
     return m ?? nieuw.data;
   });
-  meerCache.set(k, nieuw);
+  raak(k, nieuw);
   begrens();
   return nieuw.p;
 }
