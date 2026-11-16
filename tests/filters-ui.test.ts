@@ -15,8 +15,9 @@ g.window = venster;
 g.document = Object.assign(new EventTarget(), { body: { nodeType: 1 }, activeElement: { focus() {} }, visibilityState: "hidden" });
 const dispatcher = (React as any).__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher;
 let effect: (() => void | (() => void)) | undefined;
+const updaters: ((o: Filters) => Filters)[] = [];
 dispatcher.current = {
-  useState: (v: any) => [typeof v === "function" ? v() : v, (fn: any) => { if (typeof fn === "function") fn(STANDAARD); }],
+  useState: (v: any) => [typeof v === "function" ? v() : v, (fn: any) => { if (typeof fn === "function") { updaters.push(fn); fn(STANDAARD); } }],
   useRef: (v: any) => ({ current: v }),
   useCallback: (fn: any) => fn,
   useMemo: (fn: any) => fn(),
@@ -94,6 +95,32 @@ assert.equal(gewist, 42);
   venster.addEventListener = () => { throw new Error("geen events"); };
   assert.doesNotThrow(() => volgOpslag(() => {})());
   venster.addEventListener = echteAdd;
+}
+
+// Race (#1062): opslag verandert tussen render en effect, zonder storage-event; de effect leest opnieuw.
+{
+  opslag.set("nieuwsinkort-filters", JSON.stringify({ tijd: "1u", cats: null, regio: null }));
+  const raceHook = TestFilters();
+  opslag.set("nieuwsinkort-filters", JSON.stringify({ tijd: "3u", cats: ["sport"], video: true })); // ander tabblad, vóór de effect
+  const schrijfsels: string[] = [];
+  const echteSet = store.setItem;
+  store.setItem = (k: string, v: string) => { schrijfsels.push(k); echteSet(k, v); };
+  updaters.length = 0;
+  const echteInt = g.setInterval, echteCl = g.clearInterval;
+  g.setInterval = () => 1;
+  g.clearInterval = () => {};
+  const stopEffect = effect!();
+  g.setInterval = echteInt;
+  g.clearInterval = echteCl;
+  assert.equal(updaters.length, 1);
+  const nieuw = updaters[0](raceHook.f);
+  assert.equal(nieuw.tijd, "3u");
+  assert.equal(nieuw.video, true);
+  assert.deepEqual(nieuw.cats, ["sport"]);
+  assert.equal(updaters[0](nieuw), nieuw); // gelijke inhoud: zelfde referentie, geen extra render
+  assert.equal(schrijfsels.filter((k) => k === "nieuwsinkort-filters").length, 0); // niet teruggeschreven
+  store.setItem = echteSet;
+  if (typeof stopEffect === "function") stopEffect();
 }
 
 function vind(n: any, pred: (n: any) => boolean): any[] {

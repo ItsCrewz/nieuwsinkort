@@ -115,6 +115,11 @@ export function useFilters() {
     // Lang open tabblad: houd de bezoektijd vers (alleen opslag; `vorig` is een vaste sessiereferentie en verschuift niet).
     const timer = setInterval(() => document.visibilityState === "visible" && bewaarBezoek(), BEZOEK_INTERVAL);
     const stopOpslag = volgOpslag(setF);
+    // Een wijziging tussen de eerste render en deze registratie levert geen event op: lees opnieuw (zelfde referentie bij gelijke inhoud, nooit terugschrijven).
+    setF((o) => {
+      const n = lees();
+      return JSON.stringify(o) === JSON.stringify(n) ? o : n;
+    });
     return () => {
       stopOpslag();
       document.removeEventListener("visibilitychange", onHide);
