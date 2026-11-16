@@ -1,1 +1,1 @@
-- Toon bij mislukte bronfeeds de foutcode en HTTP-status in de runmeta, zodat overgeslagen feeds herkenbaar blijven (#572).
+- Markeer mislukte bronophalingen als overgeslagen en toon de HTTP-status bij bronfouten in de runstatus (#572).

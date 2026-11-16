@@ -23,9 +23,9 @@ try {
   const ctx: any = { storage: { get: async (k: string) => opslag.get(k), put: async (k: string | Record<string, any>, v?: any) => { if (typeof k === "string") opslag.set(k, v); else for (const [key, waarde] of Object.entries(k)) opslag.set(key, waarde); }, delete: async (k: string) => opslag.delete(k), getAlarm: async () => null, setAlarm: async () => {} }, blockConcurrencyWhile: async (fn: any) => fn() };
   const response = await new Runner(ctx, env).fetch(new Request("https://do/run"));
   assert.equal(response.status, 200);
-  const resultaat: any = await response.json();
-  const fouten = resultaat.bronfouten.filter((f: any) => urls.includes(f.url));
-  assert.deepEqual(fouten.map((f: any) => [f.url, f.code, f.status]), [[bleeping, "SRC_HTTP", 403], [cisa, "SRC_HTTP", 404]]);
+  const fouten = opslag.get("run-status").bronfouten.filter((f: any) => urls.includes(f.url));
+  assert.deepEqual(fouten.map((f: any) => [f.url, f.code, f.status, f.overgeslagen]), [[bleeping, "SRC_HTTP", 403, true], [cisa, "SRC_HTTP", 404, true]]);
   assert.ok(kv.get("uur"));
+  assert.equal(JSON.parse(kv.get("uur")!).meta.bronfouten, undefined);
   console.log("✓ HTTP-fouten in runmeta; overige feed gaat door");
 } finally { globalThis.fetch = origineel; }
