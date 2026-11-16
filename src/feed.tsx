@@ -374,15 +374,17 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       const stand = barStand.current;
       const balkTijd = stand.tijd + (stand.loopt ? (now - stand.sinds) / 1000 : 0);
       let bufferVooruit = 0;
+      let bufferEinde: number | undefined;
       for (let i = 0; i < video.buffered.length; i++) {
         if (video.buffered.start(i) <= video.currentTime && video.buffered.end(i) > video.currentTime) {
-          bufferVooruit = video.buffered.end(i) - video.currentTime;
+          bufferEinde = video.buffered.end(i);
+          bufferVooruit = bufferEinde - video.currentTime;
           break;
         }
       }
       const besluit = stall.tik({ now, currentTime: video.currentTime, paused: video.paused,
         hidden: document.hidden, ended: video.ended, seeking: video.seeking, herstelSeek, balkTijd,
-        bufferVooruit, readyState: video.readyState, networkState: video.networkState });
+        bufferVooruit, bufferEinde, readyState: video.readyState, networkState: video.networkState });
       if (besluit === "balk-stop") zetBar(video.currentTime, video.duration, false);
       if (besluit === "balk-sync") zetBar(video.currentTime, video.duration, true);
       if (besluit === "balk-stop" || besluit === "balk-sync" || besluit === "nudge" || besluit === "herlaad") debugEvent(besluit);

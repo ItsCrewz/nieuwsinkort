@@ -1,7 +1,7 @@
 // Bewaakt de echte afspeeltijd; tijden van de klok zijn in milliseconden.
 type Tik = {
   now: number; currentTime: number; paused: boolean; hidden: boolean; ended: boolean;
-  seeking: boolean; herstelSeek: boolean; balkTijd: number; bufferVooruit: number; readyState?: number; networkState?: number;
+  seeking: boolean; herstelSeek: boolean; balkTijd: number; bufferVooruit: number; readyState?: number; networkState?: number; bufferEinde?: number;
 };
 type Besluit = "ok" | "balk-stop" | "balk-sync" | "nudge" | "herlaad";
 
@@ -11,12 +11,15 @@ export class Stall {
   private gestopt = false;
   private nudgeOp: number | null = null;
   private vorigeReady: number | undefined;
+  private vorigBufferEinde: number | undefined;
 
   herstelNaar(tijd: number) { this.tijd = tijd; }
 
   tik(t: Tik): Besluit {
     const laadtVerder = t.networkState === 2 && this.vorigeReady !== undefined && (t.readyState ?? 0) > this.vorigeReady;
+    const bufferGroeit = t.bufferEinde !== undefined && this.vorigBufferEinde !== undefined && t.bufferEinde > this.vorigBufferEinde;
     this.vorigeReady = t.readyState;
+    this.vorigBufferEinde = t.bufferEinde;
     if (t.paused || t.hidden || t.ended || (t.seeking && !t.herstelSeek)) {
       this.tijd = null;
       this.gestopt = false;
@@ -38,6 +41,7 @@ export class Stall {
       }
       return "ok";
     }
+    if (this.nudgeOp !== null && bufferGroeit) this.nudgeOp = t.now;
     if (this.nudgeOp !== null && t.now - this.nudgeOp >= 3000) {
       if (laadtVerder) return "ok";
       this.nudgeOp = null;

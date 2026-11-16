@@ -1,0 +1,1 @@
+- Voorkom onnodig herladen van video's zolang de buffer bij een trage verbinding groeit (#1013).
