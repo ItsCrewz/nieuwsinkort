@@ -39,13 +39,23 @@ veeg();
 stuur("touchstart", 30, 200);
 stuur("touchcancel", 30, 210);
 await wacht(220);
-assert.equal(sluitingen, 1, "nieuwe interactie annuleert de oude sluiting");
+assert.equal(sluitingen, 2, "bevestigde veeg sluit ondanks nieuwe aanraking (#1111)");
 veeg(20);
 await wacht(220);
-assert.equal(sluitingen, 1, "terugveren sluit niet");
+assert.equal(sluitingen, 2, "terugveren sluit niet");
 assert.equal(element.style.transform, "");
+veeg(20);
+stuur("touchstart", 30, 200); // nieuwe aanraking tijdens terugveren breekt het terugveren af
+await wacht(260);
+assert.equal(sluitingen, 2, "afgewezen veeg + nieuwe aanraking sluit niet");
+assert.equal(element.style.transform, "");
+veeg();
+ruimOp(); // unmount tijdens de sluitanimatie
+await wacht(220);
+assert.equal(sluitingen, 2, "unmount tijdens animatie geeft geen late sluiting");
+ruimOp = open();
 reduced = true;
 veeg();
-assert.equal(sluitingen, 2, "reduced motion sluit direct");
+assert.equal(sluitingen, 3, "reduced motion sluit direct");
 ruimOp();
 console.log("✓ uitgestelde terugveeg blijft bij het oorspronkelijke artikel (#658)");

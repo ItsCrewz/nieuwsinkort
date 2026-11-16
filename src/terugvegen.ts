@@ -75,6 +75,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
     // Onderbroken veeg: artikel blijft open en veert terug (direct bij reduced motion).
     const veer = () => { if (rustig()) klaar(); else { zet(0, true, true); plan(klaar, 220); } };
     const start = (ev: TouchEvent) => {
+      if (stand === "sluit") return; // bevestigde veeg is definitief: een volgende aanraking breekt de sluiting niet af
       if (stand === "veeg") klaar(); // tweede vinger tijdens een veeg
       else if (timer !== undefined) klaar(); // nieuw gebaar tijdens terugveren of sluiten: annuleert (#658) en herstelt eerst
       stand = "uit";
