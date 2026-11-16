@@ -8,11 +8,16 @@ const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g,
 type Bericht = { id?: string; kop: string; ai?: string; samenvatting?: string; punten?: string[]; bronnen?: { site: string; href: string }[]; ruw?: boolean; cat?: string; t?: number | string; gewijzigd?: number | string; beeld?: string; beelden?: string[] };
 type Verwant = { id?: string; kop: string; bronnen?: { href: string }[] };
 const BASIS = "https://nieuwsinkort.nl";
+// Laat een aanvullend Unicode-teken heel als de grens tussen zijn surrogaten valt.
+function veiligKnippen(tekst: string, grens: number): string {
+  if (grens > 0 && /[\uD800-\uDBFF]/.test(tekst[grens - 1]) && /[\uDC00-\uDFFF]/.test(tekst[grens] || "")) grens--;
+  return tekst.slice(0, grens);
+}
 // Beschrijving op een woordgrens (inclusief "…" hooguit 155 tekens); alleen een eerste woord > 154 tekens wordt hard geknipt.
 export function beschrijving(tekst: string): string {
   const t = tekst.replace(/\s+/g, " ").trim();
   if (t.length <= 155) return t;
-  const knip = t.slice(0, 154), i = knip.lastIndexOf(" ");
+  const knip = veiligKnippen(t, 154), i = knip.lastIndexOf(" ");
   return `${(i > 0 ? knip.slice(0, i) : knip).replace(/[\s,;:.-]+$/, "")}…`;
 }
 // Vervang de content van één meta-tag (op name of property); bestaat hij niet, dan wordt hij vlak voor </head> toegevoegd.
@@ -44,7 +49,7 @@ export function berichtHtml(sjabloon: string, item: Bericht, dag: string, verwan
   const tms = item.t ? new Date(item.t).getTime() : NaN, datum = Number.isFinite(tms) ? new Date(tms).toISOString() : `${dag}T00:00:00+01:00`; // ongeldige t mag de pagina niet breken
   // dateModified alleen bij een echte wijzigingstijd (niet vóór publicatie, hooguit 20 minuten vooruit); nooit afgeleid van de publicatietijd
   const gms = item.gewijzigd ? new Date(item.gewijzigd).getTime() : NaN, gewijzigd = Number.isFinite(gms) && Number.isFinite(tms) && gms >= tms && gms <= Date.now() + 20 * 60000 ? new Date(gms).toISOString() : "";
-  const json = JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: title.slice(0, 110), datePublished: datum, ...(gewijzigd ? { dateModified: gewijzigd } : {}), inLanguage: "nl-NL", description: desc, mainEntityOfPage: url, author: { "@type": "Organization", name: "Nieuws in het kort", url: BASIS }, publisher: { "@type": "NewsMediaOrganization", name: "Nieuws in het kort", url: `${BASIS}/`, logo: { "@type": "ImageObject", url: `${BASIS}/icon-512.png`, width: 512, height: 512 } }, image: [beeld], isBasedOn: bronnen.map((b) => b.href), citation: bronnen.map((b) => b.href) }).replace(/</g, "\\u003c");
+  const json = JSON.stringify({ "@context": "https://schema.org", "@type": "NewsArticle", headline: veiligKnippen(title, 110), datePublished: datum, ...(gewijzigd ? { dateModified: gewijzigd } : {}), inLanguage: "nl-NL", description: desc, mainEntityOfPage: url, author: { "@type": "Organization", name: "Nieuws in het kort", url: BASIS }, publisher: { "@type": "NewsMediaOrganization", name: "Nieuws in het kort", url: `${BASIS}/`, logo: { "@type": "ImageObject", url: `${BASIS}/icon-512.png`, width: 512, height: 512 } }, image: [beeld], isBasedOn: bronnen.map((b) => b.href), citation: bronnen.map((b) => b.href) }).replace(/</g, "\\u003c");
   let h = sjabloon.replace(/<title>[\s\S]*?<\/title>/, () => `<title>${esc(title)} – Nieuws in het kort</title>`)
     .replace(/<link rel="canonical"[^>]*>/, () => `<link rel="canonical" href="${esc(url)}" />`)
     .replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, () => `<script type="application/ld+json">${json}</script>`);
