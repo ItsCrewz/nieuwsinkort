@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup desktop nieuwsoverzicht (#1067)</title>
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--t:#16181d;--muted:#5b6170;--a:#c8102e;--l:#e2e2de}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:16px/1.5 Inter,system-ui,sans-serif}
+a{color:inherit;text-decoration:none}h3 a:hover,.hoofd h2 a:hover{text-decoration:underline}
+a:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+.skip{position:absolute;left:-9999px}.skip:focus{left:12px;top:12px;background:#fff;padding:8px 12px;z-index:9}
+.melding{max-width:720px;margin:40px auto;padding:16px;background:#fff;border:1px solid var(--l)}
+.desk{display:none}.sr{position:absolute;left:-9999px}
+@media (min-width:1024px){
+.melding{display:none}.desk{display:block}
+header{background:var(--card);border-bottom:1px solid var(--l)}
+.hb{max-width:1240px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:32px;height:64px}
+.logo{font-weight:800;font-size:1.5rem;color:var(--a)}
+nav ul{display:flex;gap:4px;list-style:none;margin:0;padding:0}nav a{display:block;padding:8px 14px;font-weight:600;border-radius:8px}nav a:hover{background:var(--bg)}
+main{max-width:1240px;margin:0 auto;padding:24px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px}
+.hoofd{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:24px;background:var(--card);border:1px solid var(--l);border-radius:16px;padding:20px}
+.beeld{aspect-ratio:16/9;background:#c9ced8;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.875rem}
+.hoofd h2{font-size:2rem;line-height:1.2;margin:0 0 8px}.hoofd p{margin:0 0 8px}
+.sec{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:24px 0}
+.sec .k{background:var(--card);border:1px solid var(--l);border-radius:12px;padding:14px}
+.kol{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.kol h2,aside h2{font-size:1.125rem;border-bottom:3px solid var(--a);padding-bottom:6px;margin:0 0 12px}
+.k{padding:10px 0;border-bottom:1px solid var(--l)}.k h3{font-size:1rem;line-height:1.3;margin:0}
+.m{color:var(--muted);font-size:.8125rem;margin:2px 0 0}
+aside{background:var(--card);border:1px solid var(--l);border-radius:16px;padding:20px;align-self:start;position:sticky;top:16px}
+aside ol{margin:0 0 24px;padding:0;list-style:none}aside li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--l)}
+.uur{color:var(--a);font-weight:700;font-size:.8125rem;min-width:44px}
+}</style></head><body>
+<p class="melding">Mockup voor schermen vanaf 1024px breed. Op smalle schermen blijft de bestaande swipe-/scrollfeed ongewijzigd; verbreed dit venster.</p>
+<div class="desk">
+<a class="skip" href="#inhoud">Naar de inhoud</a>
+<header><div class="hb"><a class="logo" href="#">Nieuws in kort</a>
+<nav aria-label="Rubrieken"><ul><li><a href="#r-nl">Nederland</a></li><li><a href="#r-tech">Tech</a></li><li><a href="#r-showbizz">Showbizz</a></li><li><a href="#r-haarlem">Haarlem</a></li><li><a href="#">Filmpjes</a></li><li><a href="#">Dumpert</a></li></ul></nav></div></header>
+<main id="inhoud" tabindex="-1"><div>
+<section aria-labelledby="r-nl"><h2 id="r-nl" class="sr">Nederland</h2>
+<article class="hoofd"><div class="beeld" role="img" aria-label="Gereserveerd beeld bij het hoofdartikel (16:9)">16:9 beeld</div>
+<div><h2><a href="#">Israël: Netanyahu voor, geen meerderheid</a></h2><p>Met ruim driekwart van de stemmen geteld staat het blok van Netanyahu op 54 zetels en de oppositie op 47; geen van beide haalt de 61.</p><p class="m">10 bronnen · 01:17</p></div></article>
+<div class="sec"><article class="k"><h3><a href="#">Treinramp Spanje: tientallen doden</a></h3><p class="m">Telegraaf · 09:47</p></article><article class="k"><h3><a href="#">Zelensky in Den Haag</a></h3><p class="m">AD · 08:50</p></article><article class="k"><h3><a href="#">Aanslag bij ambassade Belgrado</a></h3><p class="m">de Volkskrant · 08:42</p></article></div></section>
+<div class="kol"><section aria-labelledby="r-tech"><h2 id="r-tech">Tech</h2><article class="k"><h3><a href="#">Anthropic-AI bouwt werkende exploits</a></h3><p class="m">The Hacker News · 09:15</p></article><article class="k"><h3><a href="#">AI-agents hackten Anthropic</a></h3><p class="m">The Decoder · 11:56</p></article><article class="k"><h3><a href="#">PHP2Shell: ook Palo Alto aangevallen</a></h3><p class="m">The Hacker News · 05:37</p></article><article class="k"><h3><a href="#">Webwinkels via Magento-lek aangevallen</a></h3><p class="m">The Hacker News · 06:42</p></article></section><section aria-labelledby="r-showbizz"><h2 id="r-showbizz">Showbizz</h2><article class="k"><h3><a href="#">Diederik over breuk met Anouk</a></h3><p class="m">Shownieuws · 10:31</p></article><article class="k"><h3><a href="#">Toppers-gedoe: Gordon en Joling</a></h3><p class="m">RTL Nieuws · 09:43</p></article><article class="k"><h3><a href="#">Ratelband op de vlucht?</a></h3><p class="m">Shownieuws · 09:43</p></article><article class="k"><h3><a href="#">Lil Kleine verliest rechtszaak</a></h3><p class="m">Telegraaf · 11:50</p></article></section><section aria-labelledby="r-haarlem"><h2 id="r-haarlem">Haarlem</h2><article class="k"><h3><a href="#">Explosie bij huis in Zuiderpolder</a></h3><p class="m">Haarlem105 · 10:18</p></article><article class="k"><h3><a href="#">Donkere Spaarne blijft deels dicht</a></h3><p class="m">NH Nieuws · </p></article><article class="k"><h3><a href="#">Fietsparkeerverbod Stationsplein en Houtstraat</a></h3><p class="m">Officiële bekendmakingen · </p></article></section></div></div>
+<aside aria-label="Zijbalk"><h2>Laatste nieuws</h2><ol><li><span class="uur">11:58</span><a href="#">Energiebedrijven leunen op VS-cloud</a></li><li><span class="uur">11:56</span><a href="#">AI-agents hackten Anthropic</a></li><li><span class="uur">11:50</span><a href="#">Lil Kleine verliest rechtszaak</a></li><li><span class="uur">11:39</span><a href="#">Minister Van Essen in Armenië</a></li><li><span class="uur">11:35</span><a href="#">WOII-explosieven op Eindhoven Airport</a></li><li><span class="uur">11:12</span><a href="#">Pro-prominenten: Halsema moet portefeuille inleveren</a></li><li><span class="uur">11:09</span><a href="#">Debbie zet B&amp;B te koop</a></li><li><span class="uur">11:07</span><a href="#">Stevie Wonder: tickets tot €13.000</a></li></ol>
+<h2>Meest gelezen</h2><ol><li><a href="#">Israël: Netanyahu voor, geen meerderheid</a></li><li><a href="#">Bolsonaro krijgt visum VS</a></li><li><a href="#">Zelensky in Den Haag</a></li><li><a href="#">Songfestival: ook IJsland en Hongarije niet</a></li><li><a href="#">Treinramp Spanje: tientallen doden</a></li></ol></aside>
+</main></div></body></html>
