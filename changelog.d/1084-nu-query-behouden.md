@@ -1,1 +1,1 @@
-- Beelden: bij het vergroten van NU-miniaturen blijven toegangsparameters (zoals token en sig) staan; maat- en trackingparameters vallen weg (#1084).
+- Beelden: NU-miniaturen worden alleen vergroot als er na het weghalen van maat- en trackingparameters geen andere parameters (zoals token of sig) overblijven; anders blijft het oorspronkelijke adres staan (#1084).
