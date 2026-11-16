@@ -35,7 +35,7 @@ import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
-import { Zoekbalk, ZoekLeeg, type ZoekScope } from "./zoekbalk";
+import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
 import { amsterdamTime, bronLabel, cap, itemKey, pickLead, sortItems } from "./nieuws-hulp";
@@ -494,7 +494,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
 
   return (
     <div className="nf-box">
-      <div className="nf" ref={ref} tabIndex={-1} role="region" aria-label="Berichten, één per scherm">
+      <div className="nf" id={resultatenId} ref={ref} tabIndex={-1} role="region" aria-label={zoekterm.trim() && total > 0 ? `Zoekresultaten, ${total} berichten` : "Berichten, één per scherm"}>
         <div className={kompakt ? `nc-head kompakt${samenvatting ? " samenvatting" : ""}` : "nc-head"}>{head}</div>
         {total === 0 ? (
           empty ?? <div className="empty">

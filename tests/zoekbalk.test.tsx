@@ -95,4 +95,11 @@ try {
 } finally {
   dispatcher.current = vorige;
 }
+// Link naar resultaten (#1014): alleen bij een zoekbare term en minstens één resultaat.
+{
+  const html = (query: string, aantal: number) => renderToStaticMarkup(createElement(ZoekFormulier, { query, onChange: () => {}, sluit: () => {}, invoer: createRef<HTMLInputElement>(), aantal }));
+  assert.match(html("fiets", 3), /<a href="#zoek-resultaten"[^>]*>Ga naar resultaten \(3\)<\/a>/);
+  assert.ok(!html("fiets", 0).includes("Ga naar resultaten"));
+  assert.ok(!html("", 3).includes("Ga naar resultaten"));
+}
 console.log("zoekbalk: tests geslaagd");
