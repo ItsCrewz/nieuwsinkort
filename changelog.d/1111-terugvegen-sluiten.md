@@ -1,0 +1,1 @@
+- Terugvegen: een bevestigde veeg sluit precies eenmaal, ook als tijdens de sluitanimatie een nieuwe aanraking volgt; opruimen bij unmount en reduced motion blijven ongewijzigd (#1111).
