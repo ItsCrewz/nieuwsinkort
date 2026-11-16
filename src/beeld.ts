@@ -47,7 +47,11 @@ export function beeldKey(u: string): string {
     if (inner && /^https?:\/\//i.test(inner)) return beeldKey(inner);
   }
   // WordPress-Jetpack (i0.wp.com/<site>/<pad>): de echte site staat in het pad
-  if (/^i\d\.wp\.com$/.test(x.hostname)) { const [h, ...rest] = x.pathname.split("/").filter(Boolean); try { x = new URL(`https://${h}/${rest.join("/")}`); } catch { /* laat staan */ } }
+  // Alleen uitpakken als het eerste segment een echte hostnaam is; anders blijft de oorspronkelijke URL de identiteit
+  if (/^i\d\.wp\.com$/.test(x.hostname)) {
+    const [h, ...rest] = x.pathname.split("/").filter(Boolean);
+    if (h && /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(h)) { try { x = new URL(`https://${h}/${rest.join("/")}`); } catch { /* laat staan */ } }
+  }
   const segs = x.pathname.split("/").filter(Boolean);
   const alle = segs.slice(0, -1);
   let file = (segs.pop() || "").toLowerCase();
