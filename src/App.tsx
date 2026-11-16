@@ -26,6 +26,7 @@ import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
 import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
 import { touchNu } from "./invoer";
+import { volgGeluid } from "./geluid";
 import { laadData, neemVroegeData } from "./vroeg";
 import { CAT_LABEL, rubriekTabId, wisselRichting } from "./tabs";
 import { TabBriefing, kopKompact } from "./tabbriefing";
@@ -794,6 +795,7 @@ export default function App() {
     () => (data ? { filmpjes: filterVideos(data.filmpjes, flt.f, flt.vorig, data.gegenereerd), dumpert: filterVideos(data.dumpert, flt.f, flt.vorig, data.gegenereerd) } : null),
     [data, flt.f, flt.vorig, klok, videoKlok]
   );
+  useEffect(() => volgGeluid(), []); // ook zonder open speler de voorkeur uit andere tabbladen volgen (#1039)
   useVoorladen(vids, data?.gegenereerd, !!route.video); // thumbs vooraf in idle-tijd; video pas bij intentie (tab aanraken/focus)
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const routeRef = useRef(route);
