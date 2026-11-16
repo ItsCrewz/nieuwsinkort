@@ -275,15 +275,30 @@ async function netwerktaak(taak: (signal: AbortSignal) => Promise<void>) {
   }
 }
 
+// Preconnect-links begrensd (#1073): oudste eerst; een hint weghalen breekt geen lopende fetch af.
+export const MAX_PRECONNECT = 8;
+const verbonden = new Map<string, HTMLLinkElement>();
+export const aantalPreconnects = () => verbonden.size;
+
 export function voerUit(p: Plan) {
   for (const o of p.preconnect) {
-    if (gedaan.has(`pc:${o}`)) continue;
-    gedaan.add(`pc:${o}`);
+    const bestaand = verbonden.get(o);
+    if (bestaand) { // al aanwezig: alleen als recent markeren, geen duplicaat
+      verbonden.delete(o);
+      verbonden.set(o, bestaand);
+      continue;
+    }
     const l = document.createElement("link");
     l.rel = "preconnect";
     l.href = o;
     l.crossOrigin = "";
     document.head.appendChild(l);
+    verbonden.set(o, l);
+    while (verbonden.size > MAX_PRECONNECT) {
+      const [oud, el] = verbonden.entries().next().value!;
+      verbonden.delete(oud);
+      el.remove?.();
+    }
   }
   const taken: (() => Promise<unknown>)[] = [];
   for (const t of p.thumbs) {
