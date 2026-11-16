@@ -11,6 +11,7 @@ for (const breedte of [375, 900]) test(`Rubrieken zijn met toetsenbord en muis t
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
   await page.goto("#/");
   const meer = page.getByRole("button", { name: "Meer", exact: true });
+  await expect(meer.or(page.getByRole("tab", { name: "Dumpert" }))).toBeVisible();
   // Als alles past, zijn alle rubrieken rechtstreeks bereikbaar en is er geen menu.
   if (!(await meer.count())) {
     expect(breedte).toBe(900);
