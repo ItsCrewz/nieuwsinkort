@@ -18,7 +18,7 @@ export class Budget extends DurableObject<BudgetEnv> {
     },
     zaad: async (datum) => { try { return +((await this.env.NIEUWS.get(`vid-neurons:${datum}`)) || 0) || 0; } catch { console.error("budget: KV-spiegel lezen mislukt"); return null; } },
   }, Date.now, {
-    zaad: async (datum) => { try { return JSON.parse((await this.env.NIEUWS.get(`groq-chat:${datum}`)) || "{}"); } catch { console.error("budget: Groq KV-spiegel lezen mislukt"); return {}; } },
+    zaad: async (datum) => { try { return JSON.parse((await this.env.NIEUWS.get(`groq-chat:${datum}`)) || "{}"); } catch { console.error("budget: Groq KV-spiegel lezen mislukt"); return null; } },
     spiegel: async (datum, stand) => {
       try { await this.env.NIEUWS.put(`groq-chat:${datum}`, JSON.stringify(stand), { expirationTtl: 3 * 86400 }); return true; }
       catch { console.error("budget: Groq KV-spiegel schrijven mislukt"); return false; }
