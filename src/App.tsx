@@ -34,7 +34,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer } from "./meer";
 import { kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm } from "./zoek";
+import { zoekItems, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
 import { Zoekbalk, ZoekLeeg, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
@@ -763,7 +763,7 @@ export default function App() {
   const [fsheet, setFsheet] = useState(false);
   const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
   const [zoekterm, setZoekterm] = useState(() => leesZoekterm(window.location.search));
-  const [zoekAlles, setZoekAlles] = useState(false);
+  const [zoekAllesSelectie, setZoekAllesSelectie] = useState<Zoekselectie | null>(null);
   const zoekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const schrijfZoekUrl = useCallback((term: string) => {
     clearTimeout(zoekTimer.current);
@@ -771,7 +771,7 @@ export default function App() {
   }, []);
   const wijzigZoekterm = useCallback((term: string) => {
     setZoekterm(term);
-    if (!term) setZoekAlles(false);
+    setZoekAllesSelectie(null);
     clearTimeout(zoekTimer.current);
     if (!term) schrijfZoekUrl(term);
     else zoekTimer.current = setTimeout(() => schrijfZoekUrl(term), 300);
@@ -783,6 +783,11 @@ export default function App() {
   }, []);
   const zoekInvoer = useRef<HTMLInputElement>(null);
   const flt = useFilters();
+  const zoekselectie = { term: zoekterm, rubriek: route.view, filters: flt.f, bronnen: off };
+  const zoekAlles = zelfdeZoekselectie(zoekAllesSelectie, zoekselectie);
+  useEffect(() => {
+    if (!zoekAlles) setZoekAllesSelectie(null);
+  }, [zoekAlles]);
   const klok = useKlok(data, flt.f.tijd, flt.vorig);
   const videoKlok = useVideoKlok(route.video ? flt.f.tijd : "alles");
   const vids = useMemo(
@@ -925,7 +930,7 @@ export default function App() {
     tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video-, samenvoeg- en bronfilters zijn verruimd." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
     verborgen: zoekVerborgen,
     wisFilters: !zoekAlles && zoekBeperkt ? wisZoekFilters : undefined,
-    herstel: zoekAlles ? () => { setZoekAlles(false); zoekInvoer.current?.focus(); } : undefined,
+    herstel: zoekAlles ? () => { setZoekAllesSelectie(null); zoekInvoer.current?.focus(); } : undefined,
   } : undefined;
   const top = (
     <>
@@ -1048,7 +1053,7 @@ export default function App() {
             zoekterm={zoekterm}
             nieuwsdata={raw}
             keepOrder={flt.f.sort !== "nieuw" || !!zoekterm.trim()}
-            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={zoekAlles ? undefined : wisZoekFilters} onZoekAlles={!zoekAlles ? () => { setZoekAlles(true); zoekInvoer.current?.focus(); } : undefined} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={zoekAlles ? undefined : wisZoekFilters} onZoekAlles={!zoekAlles ? () => { setZoekAllesSelectie(zoekselectie); zoekInvoer.current?.focus(); } : undefined} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

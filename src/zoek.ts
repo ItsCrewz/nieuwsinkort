@@ -1,6 +1,12 @@
 import { CAT_LABEL } from "./tabs";
 import type { Item } from "./types";
 
+export type Zoekselectie = { term: string; rubriek: string; filters: object; bronnen: object };
+
+export function zelfdeZoekselectie(a: Zoekselectie | null, b: Zoekselectie): boolean {
+  return !!a && a.term === b.term && a.rubriek === b.rubriek && a.filters === b.filters && a.bronnen === b.bronnen;
+}
+
 // Letters die NFD niet ontleedt: beperkte transliteratie zodat "Soren" ook "Søren" vindt (#735).
 const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "ß": "ss" };
 
