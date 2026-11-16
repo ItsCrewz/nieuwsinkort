@@ -769,7 +769,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
           echteFout.current = true; foutCode.current = d.info; setVangnet(false);
           if (ytEchteFout(d.info)) setShown(true);
           onYtFout(d.info);
-        } else if (!echteFout.current && state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
+        } else if (!echteFout.current && state.current.active && !state.current.paused && autoplayGeblokkeerd(d.event, d.info)) {
           blokkade.current = d.event; diagnose();
           if (!state.current.muted) { onAutoplayBlocked(); post("mute"); post("playVideo"); }
         }
@@ -1636,10 +1636,10 @@ export function Feed({
               i={i}
               total={items.length}
               cat={cat}
-              active={i === active && !verborgen && !closing}
+              active={i === active}
               mount={mounted.has(i)}
               preload={i === active + 1 ? 1 : 0}
-              paused={i === active && paused}
+              paused={verborgen || (i === active && paused)}
               want={want}
               getikt={getikt}
               nativeBlocked={nativeBlocked}
