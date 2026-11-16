@@ -1,0 +1,1 @@
+- BleepingComputer en CISA: bij een 403 volgt een retry met browser-UA, passende Accept en Referer van dezelfde uitgever; blijft het 403 of 404, dan staat de bron als overgeslagen met foutcode en HTTP-status in `run-status` en gaat de run door.
