@@ -52,6 +52,18 @@ t("regioVan: haarlem wint van buitenland en komt ook uit de tekst", () => {
   assert.equal(regioVan(item("x", "", { cat: "buitenland", ai: "Bloemendaal" })), "haarlem");
 });
 
+t("regioVan: Haarlem als plaatsnaam, niet als deel van een woord (#972)", () => {
+  assert.equal(regioVan(item("Haarlem wint", "")), "haarlem");
+  assert.equal(regioVan(item("Haarlemse bewoners boos", "")), "haarlem");
+  assert.equal(regioVan(item("Haarlemmer stemt", "")), "haarlem");
+  assert.equal(regioVan(item("Haarlemmers stemmen", "")), "haarlem");
+  assert.equal(regioVan(item("Brand in Velsen-Noord", "")), "haarlem");
+  assert.equal(regioVan(item("Haarlemmermeer breidt uit", "")), "haarlem");
+  assert.equal(regioVan(item("Haarlemmerolie weer populair", "")), "nl");
+  assert.equal(regioVan(item("Nieuwe Haarlemmerolie-studie", "")), "nl");
+  assert.equal(regioVan(item("Kapzandvoort", "")), "nl");
+});
+
 t("regioVan: wereld via categorie, bron of url; anders nl", () => {
   assert.equal(regioVan(item("x", "", { cat: "buitenland" })), "wereld");
   assert.equal(regioVan(item("x", "", { bronnen: [{ site: "BBC News", href: "https://bbc.com/a" }] })), "wereld");
