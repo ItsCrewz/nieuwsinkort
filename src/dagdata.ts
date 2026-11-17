@@ -4,7 +4,7 @@
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { normLink as norm } from "./linknorm";
-import { alleenVandaag, publicatieTijd, videoCacheMs } from "./vandaag";
+import { alleenVandaag, publicatieTijd, TOEKOMST_MARGE, videoCacheMs } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams, vorigeDag } from "./tijd";
@@ -54,8 +54,9 @@ function etagPast(kop: string | null, tag: string) {
 }
 
 export function merge(S: any, H: any) {
-  const vandaag = dag();
-  if (!H || dag(H.gegenereerd) !== vandaag) return S; // uur-data van gisteren: niet gebruiken
+  const nu = Date.now(), vandaag = ams(nu).iso;
+  const uurTijd = typeof H?.gegenereerd === "string" ? Date.parse(H.gegenereerd) : NaN;
+  if (!Number.isFinite(uurTijd) || uurTijd > nu + TOEKOMST_MARGE || dag(H.gegenereerd) !== vandaag) return S;
   const sOk = S && dag(S.gegenereerd) === vandaag;
   const base = sOk ? { ...S } : { items: [], filmpjes: [], dumpert: [] };
   const geblokkeerd = new Set<string>(Array.isArray(H.ytGeblokkeerd) ? H.ytGeblokkeerd : []);
@@ -77,7 +78,6 @@ export function merge(S: any, H: any) {
     try { return ["http:", "https:"].includes(new URL(v.href).protocol); } catch { return false; }
   };
   // Selecteer de dag vóór de keuze tussen routine en uurdata.
-  const nu = Date.now();
   for (const key of ["filmpjes", "dumpert"] as const) {
     const selectie = (lijst: any[]) => {
       const bekend = lijst.filter((v: any) => typeof v?.t === "number" || v?.gisteren);
