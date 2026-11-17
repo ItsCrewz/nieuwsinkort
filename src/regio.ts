@@ -8,10 +8,12 @@
 // 3. Meer buiten- dan binnensignalen = Buitenland. Zonder buiten/binnen en zonder neutraal signaal beslissen landnamen (BUITEN_WOORD).
 // Alleen cat "nl" wordt ooit herindeeld; andere rubrieken blijven ongemoeid.
 // Eindgrens via lookahead: \b ziet ë (België, Servië) niet als woordteken. Geen NAVO: dat kan ook Nederlands zijn.
-// Hoofdletterongevoelig (#1156): "israël" telt als "Israël". Woorden die in kleine letters iets anders zijn (vs, polen, pools, frans, congres, senaat, democraten) blijven hoofdlettergevoelig.
+// Hoofdletterongevoelig (#1156): "israël" telt als "Israël". Dubbelzinnige woorden blijven hoofdlettergevoelig; voor polen telt de context mee.
 const BUITEN_ONGEVOELIG =/\b(Amerika\w*|Trump|Biden|China|Chin\w+|Rusland|Russ\w+|Poetin|Oekraïn\w*|Zelensky|Israël\w*|Gaza|Iran\w*|Spanje|Spaans\w*|Brazili\w+|Bolsonaro|Lula|Duitsland|Duits\w*|Frankrijk|Engeland|Brit\w+|Londen|Italië|Itali\w+|Meloni|België|Belgisch\w*|Japan\w*|India(?!an)\w*|Canad\w+|Mexico|Turk(?!oois)\w+|Syri\w+|Libanon|Alaska|Cuba|Venezuela|Soedan|Finland|Zweden|Zweeds\w*|Bahama's|Washington|New York|Verenigde Staten|Florida|Californi(?:ë|e)|Texas|Louisiana|Alabama|Arizona|Nevada|Ohio|Oklahoma|Minnesota|Michigan|Tennessee|Hawaii|Los Angeles|Miami|Moskou|Kiev|Kyiv|Peking|Tokio|Teheran|Jeruzalem|Beiroet|Bagdad|Kaboel|Netanyahu|Likoed|Australi\w+|Noord-Korea|Kim Jong-un|Servi(?:ë|sch\w*|ër\w*)|Egypt\w*|Pakista\w+|Azi(?:ë|atisch\w*)|Kremlin|Hamas|Hezbollah|Houthi\w*)(?![\p{L}\d])/iu;
 const BUITEN_GEVOELIG =/\b(VS|V\.S\.|Polen|Pools\w*|Frans\w*|Congres|Senaat|Republikein\w*|Democraten)(?![\p{L}\d])/u;
-export const BUITEN_WOORD = { test: (t: string) => BUITEN_ONGEVOELIG.test(t) || BUITEN_GEVOELIG.test(t) };
+// Een lidwoord duidt bij kleine letters op de aardpolen of inwoners, niet op het land.
+const POLEN_LAND = /(?<!\bde\s)(?<!\bbeide\s)(?<!\btwee\s)\bpolen(?![\p{L}\d])/iu;
+export const BUITEN_WOORD = { test: (t: string) => BUITEN_ONGEVOELIG.test(t) || BUITEN_GEVOELIG.test(t) || POLEN_LAND.test(t) };
 // Alleen sterke plaatsaanduidingen, voor de feedomschrijving (#476): daar is een landnaam vaak terloops ("exporteert naar Duitsland"),
 // een Amerikaanse staat of de Verenigde Staten niet. Alleen VS, geen andere landen, wereldsteden of bijvoeglijke naamwoorden ("Amerikaanse investeerder").
 export const BUITEN_LOCATIE =/\b(Verenigde Staten|Amerikaanse staat|Florida|Californi(?:ë|e)|Texas|Louisiana|Alabama|Arizona|Nevada|Ohio|Oklahoma|Minnesota|Michigan|Tennessee|Hawaii|Los Angeles|Chicago|Miami|Las Vegas|New York)(?![\p{L}\d])/iu;
