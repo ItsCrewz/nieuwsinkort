@@ -13,3 +13,8 @@ for (const term of ["ile", "fire", "ﬁre", "ﬁle brand"]) assert.deepEqual(zoe
 assert.deepEqual(markeerDelen("ﬁle", "file"), [{ tekst: "ﬁle", markeer: true }]);
 assert.deepEqual(markeerDelen("file", "ﬁle"), [{ tekst: "file", markeer: true }]);
 assert.deepEqual(markeerDelen("De ﬁle", "fi"), [{ tekst: "De ", markeer: false }, { tekst: "ﬁ", markeer: true }, { tekst: "le", markeer: false }]);
+// Ligatuur telt als twee letters voor de koppeltekenregel: "ﬁ-le" is net zo gekoppeld als "fi-le".
+const kopLig = { cat: "nl", kop: "Het ﬁ-le en oﬃ-ce" } as Item;
+const kopGewoon = { cat: "nl", kop: "Het fi-le en offi-ce" } as Item;
+for (const term of ["file", "ﬁle", "office", "oﬃce"]) assert.deepEqual(zoekItems([kopLig, kopGewoon], term), [kopLig, kopGewoon], term);
+assert.deepEqual(zoekItems([kopLig, kopGewoon], "ile"), []);

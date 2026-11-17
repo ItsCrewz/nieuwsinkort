@@ -38,7 +38,7 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
   const woorden: string[] = [], lijm: boolean[] = [];
   for (const veld of velden) {
     let vorige = false;
-    for (const stuk of afkortingen(veld).normalize("NFC").replace(koppel, MARKER).split(MARKER)) {
+    for (const stuk of afkortingen(veld).normalize("NFC").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(koppel, MARKER).split(MARKER)) {
       const delen = normaliseer(stuk).split(" ").filter(Boolean);
       if (!delen.length) { vorige = false; continue; }
       if (vorige) lijm[lijm.length - 1] = true;
