@@ -76,7 +76,7 @@ await t("alleen een volledig gematchte bron in verkoopcontext", () => {
 });
 
 await t("ontkende of onzekere verkoopvermeldingen houden de bron (#1154)", () => {
-  for (const zin of ["Het product is niet te koop via NOS.", "De set is mogelijk verkrijgbaar via NOS.", "Het product kan verkrijgbaar zijn via NOS.", "De producten kunnen verkrijgbaar zijn via NOS.", "De reisset is nog niet te bestellen via iCulture."]) {
+  for (const zin of ["Het product is niet te koop via NOS.", "De set is mogelijk verkrijgbaar via NOS.", "Het product kan verkrijgbaar zijn via NOS.", "De producten kunnen verkrijgbaar zijn via NOS.", "Het product kan binnenkort verkrijgbaar zijn via NOS.", "De reisset is nog niet te bestellen via iCulture."]) {
     assert.equal(stripBronvermelding(zin, ["NOS", "iCulture"]), zin);
     assert.ok(!heeftBronvermelding(zin, ["NOS", "iCulture"]));
   }
