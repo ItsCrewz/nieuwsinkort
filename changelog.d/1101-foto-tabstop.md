@@ -1,0 +1,1 @@
+- De toetsenbord- en toegankelijkheidscontroles voor enkele foto's en fotocarrousels zijn uitgebreid (#1101).
