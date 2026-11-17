@@ -20,9 +20,8 @@ type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
 export async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage, timeoutMs = llmTimeoutMs(), magRetry?: () => boolean): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
-  let r: any;
   // timeout + hooguit één retry (#873); elke mislukte poging apart gemeten (een niet-afgebroken call kan toch neuronen kosten)
-  r = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry });
+  const r: any = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry });
   u.calls++;
   meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
   const txt = typeof r?.response === "string" ? r.response : r?.choices?.[0]?.message?.content || "";
@@ -320,16 +319,16 @@ export function kvPoort(env: Env): Poort {
       return "1";
     },
     async geefVrij(id) { bezigNu.delete(id); await env.NIEUWS.delete(`vs-bezig:${id}`).catch(() => {}); }, // klaar (of geweigerd): slot niet 60 s laten hangen
-    async stand(datum) { return +(await env.NIEUWS.get(`vid-neurons:${datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0; },
+    async stand(datum) { return +(await env.NIEUWS.get(`vid-neurons:${datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); throw new PoortFout(); })) || 0; },
     // lezen-controleren-schrijven achter elkaar per isolate (opKv): gelijktijdige verzoeken overschrijven elkaars stand niet
     reserveer: (r) => opKv(async () => {
-      const video = +(await env.NIEUWS.get(`vid-neurons:${r.datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
+      const video = +(await env.NIEUWS.get(`vid-neurons:${r.datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); throw new PoortFout(); })) || 0;
       if (r.nieuws + video + r.reserve + r.marge + r.schatting > r.budget) return "budget";
       const uurKey = `vs-uur:${r.uur}`;
       const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0;
       if (nUur >= MAX_WHISPER_UUR) return "druk";
       await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => {});
-      await optel(env, `vid-neurons:${r.datum}`, r.schatting);
+      await env.NIEUWS.put(`vid-neurons:${r.datum}`, String(Math.max(0, Math.round((video + r.schatting) * 10) / 10)), { expirationTtl: 3 * 86400 });
       return "ok";
     }),
     async verreken(datum, delta) { await addNeurons(env, `vid-neurons:${datum}`, delta).catch(() => { console.error("samenvatting: KV schrijven mislukt"); }); },
@@ -505,7 +504,7 @@ function opKv<T>(f: () => Promise<T>): Promise<T> {
 export const addNeurons = (env: Env, k: string, n: number) => opKv(() => optel(env, k, n));
 async function optel(env: Env, k: string, n: number) {
   if (!n) return; // n mag negatief zijn: correctie van een eerdere schatting
-  const cur = +(await env.NIEUWS.get(k).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
+  const cur = +(await env.NIEUWS.get(k).catch(() => { console.error("samenvatting: KV lezen mislukt"); throw new PoortFout(); })) || 0;
   await env.NIEUWS.put(k, String(Math.max(0, Math.round((cur + n) * 10) / 10)), { expirationTtl: 3 * 86400 });
 }
 export const onRequestGet = async ({ request, env }: Ctx) => {

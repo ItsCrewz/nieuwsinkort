@@ -29,7 +29,7 @@ for (let i = 0; i < 3; i++) assert.equal(ytStartBesluit({ ...basis, pogingen: i,
 assert.equal(ytStartBesluit({ ...basis, pogingen: 3, nu: 2500 }), "vangnet");
 // Een al klaargemaakte buur start onmiddellijk bij activatie.
 assert.equal(ytStartBesluit(basis), "probeer");
-assert.equal(ytStartBesluit({ ...basis, gepauzeerd: true, nu: 2500 }), "vangnet");
+assert.equal(ytStartBesluit({ ...basis, gepauzeerd: true, nu: 2500 }), "wacht");
 assert.equal(ytStartBesluit({ ...basis, klaar: false, nu: 2500 }), "vangnet");
 for (const status of [1, 3]) assert.equal(ytStartBesluit({ ...basis, status, nu: 2500 }), "wacht");
 assert.equal(ytStartBesluit({ ...basis, gespeeld: true, status: 2, nu: 2500 }), "wacht");

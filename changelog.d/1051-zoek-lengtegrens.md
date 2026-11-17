@@ -1,0 +1,1 @@
+- Zoeken: de zoekopdracht wordt begrensd op 200 tekens, met melding bij inkorten, zodat een enorm geplakte tekst de pagina niet vastzet.

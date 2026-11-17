@@ -1,0 +1,1 @@
+- Budget: een claim controleert nu alleen het gevraagde slot en ruimt verlopen sloten begrensd op in plaats van alle sloten te lezen (#1037).

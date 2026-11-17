@@ -1,0 +1,1 @@
+- Artikelbeelden: een geldige `og:image` krijgt voorrang op `twitter:image`, ongeacht de volgorde van de meta-attributen (#955).

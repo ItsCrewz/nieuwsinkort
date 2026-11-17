@@ -253,7 +253,7 @@ await t("cachesleutel verschilt per emmer en bevat host, pad en query", () => {
   const u = new URL("https://images.nu.nl/m/a%20b.jpg?w=1");
   const k = (["avif", "webp", "basis"] as const).map((e) => cacheSleutel(e, u));
   assert.equal(new Set(k).size, 3);
-  assert.equal(k[0], "https://nieuwsinkort.nl/__beeldcache/avif/images.nu.nl/m/a%20b.jpg?w=1");
+  assert.equal(k[0], "https://nieuwsinkort.nl/__beeldcache/v2/avif/images.nu.nl/m/a%20b.jpg?w=1");
   assert.notEqual(cacheSleutel("avif", u), cacheSleutel("avif", new URL("https://images.nu.nl/m/a%20b.jpg?w=2")));
 });
 
@@ -267,7 +267,7 @@ await t("Cache API: per emmer apart opgeslagen, hit geeft dezelfde headers zonde
     const a = await onRequest(ctx(AVIF));
     assert.equal(await a.text(), "AVIFBYTES");
     await Promise.all(wacht);
-    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/avif/images.nu.nl/a.jpg?w=1"]);
+    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/v2/avif/images.nu.nl/a.jpg?w=1"]);
     // andere emmer: geen hit, eigen upstream-fetch en eigen sleutel
     mock(bron("JPEGBYTES"));
     const b = await onRequest(ctx(BASIS));
@@ -319,7 +319,7 @@ await t("zonder waitUntil wordt inline opgeslagen; zonder Cache API werkt de pro
     mock(jpg());
     const r = await vraag("images.nu.nl/a.jpg", "GET", { Accept: WEBP });
     assert.equal(await r.text(), "jpgbytes");
-    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/webp/images.nu.nl/a.jpg"]);
+    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/v2/webp/images.nu.nl/a.jpg"]);
   } finally { zonderCache(); }
   mock(jpg());
   assert.equal(await (await vraag("images.nu.nl/a.jpg")).text(), "jpgbytes");
@@ -384,7 +384,24 @@ await t("Pubble: alleen Rodi-beeldpaden zonder query, ook bij redirects", async 
   const pad = "images.pubble.cloud/worker/jpg/quick/1920/2229725/648e3015/content/2026/11/1d8096c1-467a-4ef5-917b-d970306e659c";
   const url = `https://${pad}`;
   mock(jpg());
-  assert.equal(beeldProxyPad(url), `/media/beeld/${pad}`);
+  // #563: 1920 px-bron wordt 840 px; kleinere breedte blijft, en het resultaat blijft door het padpatroon komen
+  assert.equal(beeldProxyPad(url), `/media/beeld/${pad.replace("/1920/", "/840/")}`);
+  assert.equal(beeldProxyPad(url.replace("/1920/", "/640/")), `/media/beeld/${pad.replace("/1920/", "/640/")}`);
+  assert.equal(beeldProxyPad(url.replace("/1920/", "/840/")), `/media/beeld/${pad.replace("/1920/", "/840/")}`);
+  assert.ok(upstreamUrl(pad.replace("/1920/", "/840/"), ""));
+  assert.equal(beeldProxyPad("https://images.nu.nl/a.jpg?width=2400&x=1"), "/media/beeld/images.nu.nl/a.jpg?width=1200&x=1");
+  assert.equal(beeldProxyPad("https://images.nu.nl/a.jpg?w=800"), "/media/beeld/images.nu.nl/a.jpg?w=800");
+  // zonder breedte-parameter of met andere bronconventie (RTL `width=` na andere params, NRC/NOS in pad) blijft de URL ongemoeid
+  assert.equal(beeldProxyPad("https://images.nu.nl/m/abc_wd.jpg"), "/media/beeld/images.nu.nl/m/abc_wd.jpg");
+  assert.equal(beeldProxyPad("https://redactie.rtl.nl/sites/default/files/content/a.jpg?itok=x&width=1900&height=900"), "/media/beeld/redactie.rtl.nl/sites/default/files/content/a.jpg?itok=x&width=1200&height=900");
+  assert.equal(beeldProxyPad(url, false), `/media/beeld/${pad}`); // delen/og:image: geen vangrail
+  // per host: bronvoorbeeld uit de fixtures -> proxy-uitkomst (NOS/NRC/AD/Volkskrant: breedte in pad, ongemoeid)
+  for (const [bron, uit] of [
+    ["https://images.cdn.nos.nl/image/2026/11/01/1/a_1280.jpg", "/media/beeld/images.cdn.nos.nl/image/2026/11/01/1/a_1280.jpg"],
+    ["https://images.nrc.nl/abc/width/1280/a.jpg", "/media/beeld/images.nrc.nl/abc/width/1280/a.jpg"],
+    ["https://images.nu.nl/m/abc_wd1280.jpg", "/media/beeld/images.nu.nl/m/abc_wd1280.jpg"],
+    ["https://images.pubble.cloud/worker/webp/quick/2400/2229725/648e3015/content/2026/11/abc", "/media/beeld/images.pubble.cloud/worker/webp/quick/840/2229725/648e3015/content/2026/11/abc"],
+  ] as const) assert.equal(beeldProxyPad(bron), uit, bron);
   const r = await vraag(pad);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("content-type"), "image/jpeg");

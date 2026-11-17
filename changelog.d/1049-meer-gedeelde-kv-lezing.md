@@ -1,0 +1,1 @@
+- `functions/meer.ts`: gelijktijdige cachemissers delen nu één lopende KV-lezing per binding; een mislukte of lege lezing wordt niet bewaard (#1049).

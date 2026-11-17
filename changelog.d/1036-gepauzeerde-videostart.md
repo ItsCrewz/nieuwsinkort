@@ -1,0 +1,1 @@
+- Toon geen YouTube-starthint en start niet automatisch opnieuw tijdens bewust pauzeren (#1036).

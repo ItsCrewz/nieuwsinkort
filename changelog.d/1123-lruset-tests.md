@@ -1,0 +1,1 @@
+- Leg het bestaande gedrag van `LruSet` (verdringing, verversen, randgevallen) vast in tests (#1123).

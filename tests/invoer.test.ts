@@ -7,9 +7,12 @@ const mm = (waar: string[]) => (q: string) => ({ matches: waar.includes(q) });
 t("telefoon: pointer coarse en hover none = touch", () => {
   assert.equal(isTouch(mm(["(pointer: coarse)", "(hover: none)"])), true);
 });
-t("alleen één van beide is genoeg", () => {
+t("grove pointer alleen is genoeg; hover: none alleen niet", () => {
   assert.equal(isTouch(mm(["(pointer: coarse)"])), true);
-  assert.equal(isTouch(mm(["(hover: none)"])), true);
+  assert.equal(isTouch(mm(["(hover: none)"])), false);
+});
+t("geen pointer (pointer: none + hover: none) = gewone lijst", () => {
+  assert.equal(isTouch(mm(["(pointer: none)", "(hover: none)"])), false);
 });
 t("muis/trackpad = geen touch, ook in een smal venster", () => {
   assert.equal(isTouch(mm(["(max-width: 400px)", "(pointer: fine)", "(hover: hover)"])), false);
@@ -34,13 +37,13 @@ t("volgTouch reageert op wijzigingen en meldt af", () => {
   nu.clear();
   luisteraars.slice().forEach((l) => l());
   assert.equal(uit.at(-1), false);
-  assert.equal(luisteraars.length, 2);
+  assert.equal(luisteraars.length, 1);
   stop();
   assert.equal(luisteraars.length, 0);
 });
 
-t("TOUCH_QUERIES bevat precies de twee queries", () => {
-  assert.deepEqual([...TOUCH_QUERIES], ["(pointer: coarse)", "(hover: none)"]);
+t("TOUCH_QUERIES bevat precies de ene query", () => {
+  assert.deepEqual([...TOUCH_QUERIES], ["(pointer: coarse)"]);
 });
 t("isTouch: lege matchMedia-resultaten en onbekende queries", () => {
   assert.equal(isTouch(() => undefined), false);
@@ -48,14 +51,11 @@ t("isTouch: lege matchMedia-resultaten en onbekende queries", () => {
   assert.equal(isTouch(mm(["(pointer: fine)"])), false);
   assert.equal(isTouch(null), false);
 });
-t("isTouch: tweede query beslist als de eerste null geeft", () => {
-  assert.equal(isTouch((q) => (q === "(hover: none)" ? { matches: true } : null)), true);
-});
 t("volgTouch zonder matchMedia: no-op afmelder", () => {
   assert.equal(typeof volgTouch(null, () => {}), "function");
   volgTouch(undefined, () => { throw new Error("niet aanroepen"); })();
 });
-t("volgTouch: luistert op beide queries en tolereert ontbrekende addEventListener", () => {
+t("volgTouch: luistert op de touch-query en tolereert ontbrekende addEventListener", () => {
   const gezien: string[] = [];
   const f = (q: string) => { gezien.push(q); return { matches: false } as unknown as MediaQueryList; };
   const stop = volgTouch(f, () => {});

@@ -1,0 +1,1 @@
+- Leg uit wanneer uitgeschakelde bronnen een rubriek leeg maken en bied herstelacties aan (#973).

@@ -1,0 +1,1 @@
+- Artikelbeelden gebruiken een volgende bruikbare metadatawaarde als een eerdere ongeldig is (#1083).

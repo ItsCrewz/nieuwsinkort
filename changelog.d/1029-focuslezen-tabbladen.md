@@ -1,0 +1,1 @@
+- Focus-lezen: een wijziging of het verwijderen van de keuze in een ander tabblad werkt direct door in tekst en schakelaar (#1029).

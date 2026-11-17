@@ -1,0 +1,1 @@
+- Vastgelopen nieuwsaanvragen vallen na een beperkte wachttijd terug of tonen de bestaande foutmelding met een nieuwe poging (#1028).

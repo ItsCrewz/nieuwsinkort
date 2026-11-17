@@ -1,0 +1,1 @@
+- Controle toegevoegd voor herstel van de lijstthumbnail na een gewijzigde fotolijst en een laadfout (#1096).

@@ -1,0 +1,1 @@
+- Weiger ongevraagde gedeeltelijke beeldantwoorden, zodat afgeknotte afbeeldingen niet als volledig worden gecachet (#941).

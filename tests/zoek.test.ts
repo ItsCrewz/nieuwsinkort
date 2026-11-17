@@ -1,7 +1,8 @@
 import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
-import { normaliseer, zoekItems, markeerDelen } from "../src/zoek";
+import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen, begrensZoekterm, leesZoekterm, MAX_ZOEKTEKENS } from "../src/zoek";
 import type { Item } from "../src/types";
+import { filterNieuws, STANDAARD } from "../src/filters";
 
 const item: Item = { cat: "buitenland", kop: "Ajax", ai: "Wedstrijd", samenvatting: "Café bij PSV", punten: ["Supporters"], bronnen: [{ site: "NOS", href: "" }], tijd: "" };
 assert.equal(normaliseer("  CAFÉ,  nieuws! "), "cafe nieuws");
@@ -54,6 +55,19 @@ for (const schrijfwijze of ["Café-terras", "Cafe\u0301-terras"]) {
   const terras = { cat: "nl", kop: schrijfwijze } as Item;
   assert.deepEqual(zoekItems([terras], "cafeterras"), [terras]);
   assert.deepEqual(zoekItems([{ cat: "nl", kop: "cafeterras" } as Item], schrijfwijze).length, 1);
+}
+
+// De zoekrangschikking behoudt de volledige publicatietijd, ook over middernacht.
+{
+  const gisteren = { cat: "nl", kop: "Ajax gisteren", tijd: "23:00", t: Date.parse("2026-01-01T22:00:00Z") } as Item;
+  const vandaag = { cat: "nl", kop: "Ajax vandaag", tijd: "08:00", t: Date.parse("2026-01-02T07:00:00Z") } as Item;
+  const zonderKloktijd = { cat: "nl", kop: "Ajax later", t: Date.parse("2026-01-02T08:00:00Z") } as Item;
+  const tekst = { cat: "nl", kop: "Ander nieuws", ai: "Ajax", t: Date.parse("2026-01-02T09:00:00Z") } as Item;
+  const lijst = [gisteren, tekst, vandaag, zonderKloktijd];
+  for (const [sort, verwacht] of [["nieuw", [zonderKloktijd, vandaag, gisteren, tekst]], ["oud", [gisteren, vandaag, zonderKloktijd, tekst]]] as const) {
+    const gefilterd = filterNieuws(lijst, { ...STANDAARD, tijd: "alles", sort }, 0, "2026-01-02T10:00:00Z", true).items;
+    assert.deepEqual(rangschikKoptreffers(zoekItems(gefilterd, "ajax"), "ajax"), verwacht);
+  }
 }
 for (const leesteken of [",", ";", "/", "(", ")", "."]) {
   assert.deepEqual(zoekItems([corona], `corona-maatregelen${leesteken}kabinet`), [corona]);
@@ -160,4 +174,37 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.deepEqual(zoekItems([naast], 'max verstappen"'), [naast]);
   assert.deepEqual(zoekItems([naast], '""'), []);
   assert.deepEqual(zoekItems([naast], '"" max'), [naast]);
+}
+
+// Koptreffers voor teksttreffers (#1010); binnen een groep blijft de invoervolgorde.
+{
+  const tekst1 = { cat: "nl", kop: "Iets anders", samenvatting: "Over Ajax" } as Item;
+  const kop1 = { cat: "nl", kop: "Ajax wint" } as Item;
+  const tekst2 = { cat: "nl", kop: "Nog iets", ai: "ajax weer" } as Item;
+  const kop2 = { cat: "nl", kop: "Ajax verliest" } as Item;
+  const lijst = [tekst1, kop1, tekst2, kop2];
+  assert.deepEqual(rangschikKoptreffers(zoekItems(lijst, "ajax"), "ajax"), [kop1, kop2, tekst1, tekst2]);
+  assert.equal(rangschikKoptreffers(lijst, ""), lijst);
+  assert.equal(rangschikKoptreffers(lijst, "  "), lijst);
+  assert.deepEqual(rangschikKoptreffers([tekst1, tekst2], "ajax"), [tekst1, tekst2]);
+  assert.deepEqual(rangschikKoptreffers([tekst1, kop1], "ajax"), [kop1, tekst1]);
+}
+
+// Lengtegrens (#1051): grote plakinvoer blijft snel en splitst geen surrogaatparen.
+{
+  assert.equal(MAX_ZOEKTEKENS, 200);
+  assert.equal(begrensZoekterm("ajax"), "ajax");
+  assert.equal(begrensZoekterm("a".repeat(500)).length, 200);
+  const paar = "a".repeat(199) + "😀😀";
+  assert.equal(begrensZoekterm(paar), "a".repeat(199));
+  assert.equal(begrensZoekterm("a".repeat(198) + "😀😀"), "a".repeat(198) + "😀");
+  assert.equal(leesZoekterm("?q=" + "b".repeat(1000)).length, 200);
+  const start = Date.now();
+  const enorm = "ajax" + " ".repeat(1_000_000) + "onbekend";
+  assert.deepEqual(zoekItems([item], enorm), [item]);
+  assert.ok(markeerDelen("Ajax wint", enorm).length > 0);
+  assert.ok(rangschikKoptreffers([item, item], enorm).length === 2);
+  assert.ok(Date.now() - start < 2000);
+  assert.deepEqual(zoekItems([item], "café ajax"), [item]);
+  assert.deepEqual(zoekItems([item], '"ajax" nos'), [item]);
 }

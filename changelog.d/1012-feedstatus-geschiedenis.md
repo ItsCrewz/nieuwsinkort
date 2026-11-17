@@ -1,0 +1,1 @@
+- Videofeed herstelt via de geschiedenis als de sessiestatus beschadigd of ontoegankelijk is (#1012).

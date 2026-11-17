@@ -18,14 +18,17 @@ export function midnight(t = Date.now()) {
   }
   return guess;
 }
-// Tijdstip van h:min op de Amsterdamse dag van t; null als die kloktijd niet bestaat, bij dubbele tijd de eerste.
-export function amsTijdstip(t: number, h: number, min: number): number | null {
+// Tijdstip van h:min op de Amsterdamse dag van t; bij dubbele tijd het dichtst bij de referentie.
+export function amsTijdstip(t: number, h: number, min: number, referentie?: number): number | null {
   const iso = ams(t).iso, basis = midnight(t) + (h * 60 + min) * 60e3;
+  let beste: number | null = null;
   for (const c of [basis - 3600e3, basis, basis + 3600e3]) {
     const a = ams(c);
-    if (a.iso === iso && a.h === h && a.min === min) return c;
+    if (a.iso !== iso || a.h !== h || a.min !== min) continue;
+    if (referentie === undefined) return c;
+    if (c <= referentie + 20 * 60e3 && (beste === null || Math.abs(c - referentie) < Math.abs(beste - referentie))) beste = c;
   }
-  return null;
+  return beste;
 }
 
 // De milliseconde vóór middernacht ligt altijd op de vorige kalenderdag.

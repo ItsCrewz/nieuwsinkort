@@ -24,7 +24,11 @@ export function startIndex(items: Video[], start: string | null): number {
   return Math.max(0, items.findIndex((v) => videoSlug(v) === start));
 }
 export function leesFeed(): FeedStatus | null {
-  const geldig = (s: FeedStatus | null): s is FeedStatus => !!s && (s.cat === "dumpert" || s.cat === "filmpjes") && typeof s.slug === "string" && Array.isArray(s.lijst);
+  const geldig = (waarde: unknown): waarde is FeedStatus => {
+    if (!waarde || typeof waarde !== "object") return false;
+    const s = waarde as Partial<FeedStatus>;
+    return (s.cat === "dumpert" || s.cat === "filmpjes") && typeof s.slug === "string" && Array.isArray(s.lijst);
+  };
   try {
     const s = JSON.parse(sessionStorage.getItem(KEY) || "null");
     if (geldig(s)) return s;

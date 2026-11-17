@@ -28,9 +28,10 @@ export function sluit(dx: number, breedte: number, ms: number): boolean {
   return dx >= FLICK_MIN && ms > 0 && dx / ms >= FLICK;
 }
 
-const NEGEER = "video,iframe,embed,object,audio,input,textarea,select,[contenteditable],[data-geen-veeg]";
+const ROLLEN = ["button", "checkbox", "switch", "tab", "menuitem", "menuitemcheckbox", "menuitemradio", "radio", "slider", "spinbutton", "scrollbar", "combobox", "option", "treeitem"];
+export const NEGEER = ["video", "iframe", "embed", "object", "audio", "input", "textarea", "select", "button", "summary", "[contenteditable]", "[data-geen-veeg]", ...ROLLEN.map((r) => `[role="${r}"]`), '[tabindex]:not([tabindex="-1"])'].join(",");
 
-// Video, embeds, invoer en horizontaal scrollbare elementen (binnen het artikel) blijven van zichzelf.
+// Video, embeds, invoer, knoppen, aangepaste bediening (ARIA-rol of focusbaar via tabindex) en horizontaal scrollbare elementen (binnen het artikel) blijven van zichzelf.
 export function negeerDoel(el: Element | null, grens: Element | null = null): boolean {
   for (let e = el; e && e !== grens; e = e.parentElement) {
     if (e.matches(NEGEER)) return true;
@@ -74,7 +75,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
     // Onderbroken veeg: artikel blijft open en veert terug (direct bij reduced motion).
     const veer = () => { if (rustig()) klaar(); else { zet(0, true, true); plan(klaar, 220); } };
     const start = (ev: TouchEvent) => {
-      if (stand === "veeg") veer(); // tweede vinger tijdens een veeg
+      if (stand === "veeg") klaar(); // tweede vinger tijdens een veeg
       else if (timer !== undefined) klaar(); // nieuw gebaar tijdens terugveren of sluiten: annuleert (#658) en herstelt eerst
       stand = "uit";
       const t = ev.touches[0];
@@ -86,7 +87,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
     const beweeg = (ev: TouchEvent) => {
       if (stand === "uit" || stand === "sluit") return;
       const t = ev.touches[0];
-      if (!t || ev.touches.length !== 1 || selectie()) { if (stand === "veeg") veer(); stand = "uit"; return; }
+      if (!t || ev.touches.length !== 1 || selectie()) { if (stand === "veeg") klaar(); stand = "uit"; return; }
       dx = t.clientX - x0;
       if (stand === "wacht") {
         const b = besluit(dx, t.clientY - y0);

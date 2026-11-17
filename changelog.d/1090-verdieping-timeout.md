@@ -1,0 +1,1 @@
+- Regressietests toegevoegd voor timeout, herstel en foutafhandeling bij artikelverdieping (#1090).

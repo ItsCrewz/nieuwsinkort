@@ -1,0 +1,1 @@
+- Terugvegen start niet meer op knoppen of aangepaste interactieve bediening in een artikel; een tik werkt zoals voorheen (#953).
