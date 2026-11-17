@@ -37,7 +37,7 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: st
   useEffect(() => {
     const toets = (e: KeyboardEvent) => {
       if (document.querySelector('[aria-modal="true"]')) return;
-      if (e.key === "Escape" && open) {
+      if (e.key === "Escape" && open && !e.isComposing && e.keyCode !== 229) {
         e.preventDefault();
         e.stopPropagation();
         sluit();
@@ -70,7 +70,11 @@ export function ZoekFormulier({ query, onChange, sluit, invoer, scope, aantal = 
   return <form className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); if (!compositie.current && touchNu()) invoer.current?.blur(); }}>
         <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws"{...(scope ? { "aria-describedby": scopeId } : {})} value={query} onChange={(e) => wijzig(e.target.value)} onCompositionStart={() => { compositie.current = true; }} onCompositionEnd={() => { compositie.current = false; }} onBlur={() => { compositie.current = false; }} onKeyDown={(e) => {
           if (e.key === "Enter" && (compositie.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)) { e.preventDefault(); return; }
-          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sluit(); }
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            if (compositie.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+            e.preventDefault(); sluit();
+          }
         }} />
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
         <span className="zoek-scope" role="status">{ingekort && query ? `Zoekopdracht ingekort tot ${MAX_ZOEKTEKENS} tekens` : ""}</span>
