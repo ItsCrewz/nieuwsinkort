@@ -47,7 +47,7 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   // Ook het uitlezen van de body kan falen (afgebroken respons): dezelfde tijdelijke terugval, met behoud van de query.
   const terugval = () => redirect(302, `/${u.search}#/bericht/${artikelId(item)}`, "no-store");
   const sjabloon = await env.ASSETS.fetch(new Request(`${u.origin}/`)).catch(() => null);
-  if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return terugval();
+  if (!sjabloon?.ok || !(sjabloon.headers.get("Content-Type") || "").includes("text/html")) return redirect(302, `/${u.search}#/bericht/${artikelId(item)}`, "no-store");
   const tekst = await sjabloon.text().catch(() => null);
   if (tekst === null) return terugval();
   const verwant = !item.cat ? [] : items.filter((i) => i !== item && i.cat === item.cat && heeftArtikelId(i) && indexeerbaar(i) && i.kop).slice(0, 5); // interne links naar dezelfde rubriek
