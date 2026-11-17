@@ -18,6 +18,22 @@ try {
   assert.equal(samen.ai, "Nieuwe kern");
   assert.deepEqual(samen.punten, item.punten);
   assert.deepEqual(samen.bronnen, [bron, extra]);
+  const ander = { ...item, kop: "Een ander verhaal", ai: "Verkeerde kern", samenvatting: "Verkeerde samenvatting", punten: ["Verkeerd punt"], beeld: "https://voorbeeld.nl/ander.jpg", beelden: ["https://voorbeeld.nl/ander2.jpg"], bronnen: [bron, extra] };
+  const gedeeld = await lees(routine, { ...uur, items: [ander] });
+  assert.equal(gedeeld.items[0].ai, item.ai);
+  assert.equal(gedeeld.items[0].samenvatting, item.samenvatting);
+  assert.deepEqual(gedeeld.items[0].punten, item.punten);
+  assert.equal(gedeeld.items[0].beeld, undefined);
+  assert.equal(gedeeld.items[0].beelden, undefined);
+  assert.deepEqual(gedeeld.items[0].bronnen, [bron, extra]);
+  const tweedeBron = { site: "AD", href: "https://ad.nl/artikel/789" };
+  const tweede = { ...item, kop: "Tweede routinebericht", bronnen: [tweedeBron] };
+  const meerdere = await lees({ ...routine, items: [item, tweede] }, { ...uur, items: [{ ...ander, bronnen: [bron, tweedeBron, extra] }] });
+  assert.equal(meerdere.items.length, 2);
+  for (const bericht of meerdere.items) {
+    assert.equal(bericht.ai, item.ai);
+    assert.ok(bericht.bronnen.some((b: any) => b.href === extra.href));
+  }
   const oud = await lees(routine, { ...uur, gegenereerd: "2026-11-17T08:00:00Z" });
   assert.equal(oud.items.find((i: any) => i.kop === item.kop).samenvatting, item.samenvatting);
   const ruw = await lees(routine, { ...uur, items: [{ ...uur.items[0], ruw: true }] });

@@ -8,7 +8,7 @@ import { alleenVandaag, publicatieTijd, videoCacheMs } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams, vorigeDag } from "./tijd";
-import { ontdubbelVerhalen } from "./verhaaldubbel";
+import { ontdubbelVerhalen, zelfdeVerhaal } from "./verhaaldubbel";
 interface KV { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env }
@@ -71,25 +71,29 @@ export function merge(S: any, H: any) {
   const nieuw = uurItems.filter((i: any) => {
     const uurLinks = links(i);
     const matches = sLinks.map((set, n) => uurLinks.some((link: string) => set.has(link)) ? n : -1).filter((n) => n >= 0);
-    if (matches.length !== 1) return matches.length === 0;
-    const n = matches[0], bestaand = routine[n];
-    const bronnen = [...(bestaand.bronnen || [])];
-    const gezien = new Set<string>(links(bestaand));
-    for (const bron of i.bronnen || []) {
-      const link = typeof bron?.href === "string" ? norm(bron.href) : "";
-      if (link && !gezien.has(link)) { bronnen.push(bron); gezien.add(link); }
+    if (!matches.length) return true;
+    for (const n of matches) {
+      const bestaand = routine[n];
+      const bronnen = [...(bestaand.bronnen || [])];
+      const gezien = new Set<string>(links(bestaand));
+      for (const bron of i.bronnen || []) {
+        const link = typeof bron?.href === "string" ? norm(bron.href) : "";
+        if (link && !gezien.has(link)) { bronnen.push(bron); gezien.add(link); }
+      }
+      const samen = { ...bestaand, bronnen };
+      const verhaal = (x: any) => ({ kop: x.kop || "", tekst: `${x.ai || ""} ${x.samenvatting || ""}`, tijd: x.t || 0 });
+      const zelfde = !!i.kop && (i.kop === bestaand.kop || zelfdeVerhaal(verhaal(i), verhaal(bestaand)));
+      if (zelfde) for (const veld of ["ai", "samenvatting", "punten", "meer", "beeld", "beelden"]) {
+        const waarde = i[veld];
+        const bruikbaar = Array.isArray(waarde) ? waarde.length > 0 : typeof waarde === "string" && !!waarde.trim();
+        const oud = bestaand[veld];
+        const heeftOud = Array.isArray(oud) ? oud.length > 0 : typeof oud === "string" && !!oud.trim();
+        if (bruikbaar && (!heeftOud || (hNieuwer && (!i.ruw || bestaand.ruw)))) samen[veld] = waarde;
+      }
+      if (zelfde && hNieuwer && !i.ruw && (i.ai || i.samenvatting)) samen.ruw = i.ruw;
+      routine[n] = samen;
+      sLinks[n] = gezien;
     }
-    const samen = { ...bestaand, bronnen };
-    for (const veld of ["ai", "samenvatting", "punten", "meer", "beeld", "beelden"]) {
-      const waarde = i[veld];
-      const bruikbaar = Array.isArray(waarde) ? waarde.length > 0 : typeof waarde === "string" && !!waarde.trim();
-      const oud = bestaand[veld];
-      const heeftOud = Array.isArray(oud) ? oud.length > 0 : typeof oud === "string" && !!oud.trim();
-      if (bruikbaar && (!heeftOud || (hNieuwer && (!i.ruw || bestaand.ruw)))) samen[veld] = waarde;
-    }
-    if (hNieuwer && !i.ruw && (i.ai || i.samenvatting)) samen.ruw = i.ruw;
-    routine[n] = samen;
-    sLinks[n] = gezien;
     return false;
   });
   if (nieuw.length > 150) {
