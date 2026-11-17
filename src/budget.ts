@@ -33,16 +33,19 @@ export const aiFout = (e: any): "dagquota" | "tijdelijk" | "overig" => (isDagQuo
 /** Alleen eindige, niet-negatieve getallen (0 mag) tellen als geldig verbruik; negatief, NaN, Infinity en strings niet. */
 const geldig = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x) && x >= 0;
 
+// bovengrenzen tegen overflow: tellers blijven eindig en niet-dalend, ook bij extreme (maar eindige) invoer
+const MAX_TELLER = 1e15, MAX_TOKENS = 1e9;
+const klem = (x: number, max: number) => Math.min(x, max);
+
 /** Aanroep geslaagd: echte `usage` gebruiken, anders (of bij ongeldige waarden) schatten uit tekens en `geschat` ophogen. */
 export function meetChat(u: Meting, tarief: [number, number], prompt: string, uit: string, usage?: any) {
   const p = usage?.prompt_tokens, c = usage?.completion_tokens;
-  // een aanwezig maar ongeldig tokenveld telt als geschat; een ontbrekend veld blijft zoals voorheen zonder vlag
-  const slecht = (p != null && !geldig(p)) || (c != null && !geldig(c));
-  const pt = geldig(p) ? p : schatTokens(prompt);
-  const ct = geldig(c) ? c : schatTokens(uit);
-  u.inTok += pt; u.outTok += ct;
-  if (geldig(usage?.neurons)) { u.neurons += usage.neurons; if (slecht) u.geschat = (u.geschat || 0) + 1; }
-  else { u.neurons += (pt * tarief[0] + ct * tarief[1]) / 1e6; u.geschat = (u.geschat || 0) + 1; }
+  // een ontbrekend, null of ongeldig tokenveld telt als geschat, ook als `neurons` geldig is
+  const slecht = !geldig(p) || !geldig(c);
+  const pt = klem(geldig(p) ? p : schatTokens(prompt), MAX_TOKENS), ct = klem(geldig(c) ? c : schatTokens(uit), MAX_TOKENS);
+  u.inTok = klem(u.inTok + pt, MAX_TELLER); u.outTok = klem(u.outTok + ct, MAX_TELLER);
+  if (geldig(usage?.neurons)) { u.neurons = klem(u.neurons + usage.neurons, MAX_TELLER); if (slecht) u.geschat = (u.geschat || 0) + 1; }
+  else { u.neurons = klem(u.neurons + klem((pt * tarief[0] + ct * tarief[1]) / 1e6, MAX_TELLER), MAX_TELLER); u.geschat = (u.geschat || 0) + 1; }
 }
 /** Mislukte aanroep telt toch mee: invoer volledig, uitvoer half max_tokens; een afgewezen aanroep (dagquota/tijdelijk) kost geen uitvoer. */
 export function meetFout(u: Meting, tarief: [number, number], prompt: string, maxTokens: number, e: any) {
