@@ -73,7 +73,7 @@ t("maatmappen: ruime herkenning, maar geen echte mappen (#649)", () => {
   assert.equal(k("https://cdn.voorbeeld.nl/a/large/foto.jpg"), k("https://cdn.voorbeeld.nl/a/medium/foto.jpg"));
   // jaar-/maandmappen en hoofdletters
   assert.notEqual(k("https://x.nl/uploads/2026/10/foto.jpg"), k("https://x.nl/uploads/2025/10/foto.jpg"));
-  assert.equal(k("https://x.nl/Artikel-A/foto.jpg"), k("https://x.nl/artikel-a/foto.jpg"));
+  assert.notEqual(k("https://x.nl/Artikel-A/foto.jpg"), k("https://x.nl/artikel-a/foto.jpg"));
   // generieke bestandsnamen in verschillende mappen
   assert.notEqual(k("https://x.nl/a/image.jpg"), k("https://x.nl/b/image.jpg"));
   assert.notEqual(k("https://x.nl/a/1.jpg"), k("https://x.nl/b/1.jpg"));

@@ -1,0 +1,1 @@
+- Beelden: foto's waarvan het pad of de bestandsnaam alleen in hoofdletters verschilt blijven beide in de carrousel (#1165).

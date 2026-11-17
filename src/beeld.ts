@@ -37,7 +37,8 @@ export function goedBeeld(u?: string | null): u is string {
 const CLD = "(?:w|h|c|q|f|g|ar|dpr|e)_[^/,]+";
 const MAATMAP = new RegExp(`^(\\d{2,4}x\\d{2,4}[a-z]?|w\\d{2,4}|h\\d{2,4}|s\\d{2,4}(-c)?|${CLD}(?:,${CLD})*|(?:100|150|200|240|300|320|400|480|500|600|640|720|768|800|960|1024|1080|1200|1280|1440|1600|1920|2048)|[wh]|q\\d{2,3}|thumbs?|thumbnails?|large|medium|small|full|orig|original|scaled|resize|resized|crop(ped)?)$`);
 
-/** Sleutel voor 'zelfde foto': host-familie + inhoudspad + bestandsnaam zonder maat/kwaliteit/extensie. */
+/** Sleutel voor 'zelfde foto': host-familie + inhoudspad + bestandsnaam zonder maat/kwaliteit/extensie.
+ *  Pad en bestandsnaam zijn hoofdlettergevoelig (#1165): een server kan FotoABC.jpg en fotoabc.jpg als twee bestanden aanbieden. */
 export function beeldKey(u: string): string {
   let x: URL;
   try { x = new URL(u); } catch { return u; }
@@ -58,16 +59,16 @@ export function beeldKey(u: string): string {
     try { x = new URL(`https://${h}/${rest.join("/")}`); } catch { return u; }
   }
   const segs = x.pathname.split("/").filter(Boolean);
-  let file = (segs.pop() || "").toLowerCase();
+  let file = segs.pop() || "";
   // maatmappen ('/1200x675/abc.jpg', '/w_800,h_450,c_fill/abc.jpg') negeren; de overige map telt mee,
   // zodat dezelfde bestandsnaam in een andere artikelmap een andere foto blijft
-  const pad = segs.map((m) => m.toLowerCase()).filter((m) => !MAATMAP.test(m));
+  const pad = segs.filter((m) => !MAATMAP.test(m.toLowerCase()));
   file = file
     .replace(/\.(jpe?g|png|webp|avif)$/i, "")
-    .replace(/[@_-]\d{2,4}x\d{0,4}$/, "").replace(/[@_-]\d{2,4}w$/, "").replace(/@\dx$/, "")
+    .replace(/[@_-]\d{2,4}x\d{0,4}$/i, "").replace(/[@_-]\d{2,4}w$/i, "").replace(/@\dx$/i, "")
     .replace(/[-_](large|medium|small|thumb|full|orig|original|hd|sd|crop|cropped|scaled)$/i, "");
   // bestandsnaam is alleen een maat (NOS: /1234567/1024x576a.jpg): het id zit in de map
-  file = /^\d{2,4}x\d{2,4}[a-z]?$|^w\d{2,4}$/.test(file) ? pad.join("/") : [...pad, file].join("/");
+  file = /^\d{2,4}x\d{2,4}[a-z]?$|^w\d{2,4}$/i.test(file) ? pad.join("/") : [...pad, file].join("/");
   const fam = x.hostname.replace(/^(www|cdn\d*|img\d*|images?\d*|static\d*|media\d*|i\d*)\./, "").split(".").slice(-2).join(".");
   return `${fam}|${file}`;
 }
