@@ -82,6 +82,12 @@ await t("ontkende of onzekere beschikbaarheid behoudt de bron (#1154)", () => {
   assert.equal(stripBronvermelding("Het is te koop via NU.nl.", ["NU.nl"]), "Het is te koop.");
 });
 
+await t("ontkenning na de bron en beperkende woorden behouden de bron (#1154)", () => {
+  for (const zin of ["Het product is te koop via NOS, maar niet elders.", "Het product is alleen verkrijgbaar via NOS.", "Het product is uitsluitend te koop via NOS.", "Het product is slechts te bestellen via NOS."]) {
+    assert.equal(stripBronvermelding(zin, ["NOS"]), zin);
+  }
+});
+
 await t("uitzendingen en samengestelde bronnamen blijven intact", () => {
   for (const zin of ["De uitzending komt via NOS", "De livestream is beschikbaar via NOS", "De set is te koop via iCulture-shop", "De uitzending is te koop via NOS", "De wedstrijd is te koop via NOS om live te volgen."]) {
     assert.equal(stripBronvermelding(zin, ["NOS", "iCulture"]), zin);

@@ -1,1 +1,2 @@
 - Artikel: bij ontkende of onzekere beschikbaarheid ("niet te koop via NOS", "mogelijk verkrijgbaar via NOS") blijft de bronvermelding staan; gewone overbodige verkoopvermeldingen worden nog steeds verwijderd (#1154).
+- Artikel: ook ontkenningen na de bron ("te koop via NOS, maar niet elders") en beperkende woorden ("alleen verkrijgbaar via NOS") behouden de bronvermelding (#1154).

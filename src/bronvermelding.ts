@@ -18,8 +18,8 @@ export function stripBronvermelding(tekst: string, sites: string[]): string {
     const vooraf = tekst.slice(0, offset).split(/[.!?…;\n]/u).pop() || "";
     const zin = vooraf + tekst.slice(offset).split(/[!?…;\n]|\.(?![\p{L}\p{N}])/u)[0];
     if (/\b(?:kijken|luisteren|uitzending\w*|livestream\w*|aflevering\w*|programma(?:'s|’s|s)?|wedstrijd\w*|live|volgen|te zien|te horen)\b/iu.test(zin)) return match;
-    // Ontkende of onzekere beschikbaarheid: zonder bron zou de zin een andere bewering worden (#1154).
-    if (/\b(?:niet|geen|nooit|nergens|mogelijk|misschien|waarschijnlijk|wellicht|eventueel|vermoedelijk|onduidelijk|zou|zouden|kan|kunnen)\b/iu.test(vooraf)) return match;
+    // Ontkende of onzekere beschikbaarheid: zonder bron zou de zin een andere bewering worden (#1154); ook de rest van de zin telt mee ("maar niet elders", "alleen").
+    if (/\b(?:niet|geen|nooit|nergens|mogelijk|misschien|waarschijnlijk|wellicht|eventueel|vermoedelijk|onduidelijk|zou|zouden|kan|kunnen|alleen|slechts|uitsluitend|enkel|exclusief|pas)\b/iu.test(zin)) return match;
     return /\b(?:te koop|verkrijgbaar|te bestellen|verkocht|kopen|in de winkel|prijs)\b/iu.test(vooraf) || /\bkomt\s+(?:er\s+)?[^.!?…;\n]*\bbeschikbaar\s*$/iu.test(vooraf) ? "" : match;
   });
 }
