@@ -1,0 +1,1 @@
+- Zoeken: de zoekknop verwijst met `aria-controls` naar het geopende zoekformulier (#1186).
