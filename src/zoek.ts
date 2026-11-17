@@ -12,9 +12,10 @@ const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae"
 
 // Alleen letters en cijfers omzetten; andere betekenisvolle tekens behouden hun vorm.
 const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (teken) => String.fromCharCode(teken.charCodeAt(0) - 0xfee0));
+const zonderApostrof = (tekst: string) => tekst.replace(/(?<=\p{L})['’](?=\p{L})/gu, "");
 
 export function normaliseer(tekst: string): string {
-  return gewoneBreedte(tekst).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
+  return zonderApostrof(gewoneBreedte(tekst).normalize("NFC")).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
     .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
@@ -135,7 +136,7 @@ export function zoekItems(items: Item[], query: string): Item[] {
   });
   // Het stuurteken \u0001 is bewust de markering voor termkoppeltekens (#811).
   // eslint-disable-next-line no-control-regex
-  for (const token of afkortingen(rest).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
+  for (const token of zonderApostrof(afkortingen(rest).normalize("NFC")).replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
     const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
   }
@@ -185,6 +186,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   for (const teken of tekst) {
     const begin = offset;
     offset += teken.length;
+    if (/[’']/u.test(teken) && /\p{L}$/u.test(tekst.slice(0, begin)) && /^\p{L}/u.test(tekst.slice(offset))) continue;
     const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".");
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
