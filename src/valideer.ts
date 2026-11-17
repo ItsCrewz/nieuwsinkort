@@ -36,11 +36,25 @@ function weer(v: Record<string, any>) {
 
 // Optionele velden die routes en dagselectie gebruiken: een ongeldige waarde weglaten, het bericht blijft (oude data zonder deze velden blijft geldig).
 const OPTIONEEL: [string, (x: unknown) => boolean][] = [["id", (x) => tekst(x) && /^[a-z0-9]{8}$/.test(x as string)], ["t", getal], ["gisteren", (x) => typeof x === "boolean"]];
-function optioneel<T extends object>(b: T): T {
+export function optioneel<T>(b: T): T {
+  if (!obj(b)) return b;
   const r: Record<string, any> = b;
   if (!OPTIONEEL.some(([k, ok]) => k in r && !ok(r[k]))) return b;
   const c = { ...r };
   for (const [k, ok] of OPTIONEEL) if (k in c && !ok(c[k])) delete c[k];
+  return c as T;
+}
+
+/** Normaliseert alleen de optionele velden van items, filmpjes en dumpert (niets wordt afgewezen); voor de server vóór dagselectie en linkbouw. Geeft dezelfde verwijzing terug als er niets wijzigt. */
+export function normaliseerOptioneel<T>(d: T): T {
+  if (!obj(d)) return d;
+  let c: Record<string, any> = d;
+  for (const k of ["items", "filmpjes", "dumpert"]) {
+    const l = c[k];
+    if (!Array.isArray(l)) continue;
+    const n = l.map(optioneel);
+    if (n.some((x, i) => x !== l[i])) c = { ...c, [k]: n };
+  }
   return c as T;
 }
 

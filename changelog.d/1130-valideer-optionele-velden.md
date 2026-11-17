@@ -1,1 +1,2 @@
 - Valideer de optionele velden `id`, `t` en `gisteren` bij de datagrens: ongeldige waarden worden weggelaten, oudere data blijft geldig (#1130).
+- De server normaliseert `id`, `t` en `gisteren` ook vóór dagselectie, het vooraf-pad en serverlinks (#1130).
