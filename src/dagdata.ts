@@ -8,6 +8,7 @@ import { alleenVandaag, publicatieTijd, videoCacheMs } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams, vorigeDag } from "./tijd";
+import { normaliseerOptioneel } from "./valideer";
 import { ontdubbelVerhalen } from "./verhaaldubbel";
 interface KV { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
@@ -164,7 +165,7 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
           const nu = Date.now(), vandaag = dag();
           let g = voorafGeheugen;
           if (!g || g.vooraf !== vooraf || g.dag !== vandaag || g.tot <= nu) {
-            const data = JSON.parse(vooraf.slice(einde + 1));
+            const data = normaliseerOptioneel(JSON.parse(vooraf.slice(einde + 1)));
             const gefilterd = alleenVandaag(data, nu);
             const body = JSON.stringify({ ...data, ...(Array.isArray(data.filmpjes) ? { filmpjes: gefilterd.filmpjes } : {}), ...(Array.isArray(data.dumpert) ? { dumpert: gefilterd.dumpert } : {}) });
             g = voorafGeheugen = { vooraf, dag: vandaag, tot: nu + Math.min(30e3, videoCacheMs(gefilterd, nu)), body, tag: await etag(body), eind: nu + videoCacheMs(gefilterd, nu) };
@@ -187,8 +188,9 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   if (u.searchParams.has("statisch") || !kv) {
     if (!stat?.ok) return onbeschikbaar();
     try {
-      const body = await stat.text();
-      JSON.parse(body);
+      let body = await stat.text();
+      const j = JSON.parse(body), n = normaliseerOptioneel(j);
+      if (n !== j) body = JSON.stringify(n);
       return new Response(body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
     } catch {
       console.error("data.json: statische data onleesbaar");
@@ -204,6 +206,7 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   else console.error("data.json: statische data niet op te halen");
   let H: any = null;
   try { const j = await kv.get("uur", kvOpt("json")); if (bruikbaarUur(j)) H = j; } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
+  S = normaliseerOptioneel(S); H = normaliseerOptioneel(H);
   let out: any = S;
   try { out = merge(S, H); } catch {
     console.error("data.json: merge mislukt");
