@@ -1,0 +1,1 @@
+- Filmpjes: voorverbonden hosts (preconnect) zijn begrensd tot 8 links en registraties; oudste worden opgeruimd zonder lopende aanvragen te onderbreken (#1073).

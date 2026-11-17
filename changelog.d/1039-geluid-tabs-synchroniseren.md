@@ -1,0 +1,2 @@
+- Geluid: een gewijzigde geluidsvoorkeur werkt nu ook door in andere open tabbladen (zonder de eis van een eigen tik te omzeilen) (#1039)
+- Geluid: de voorkeur uit een ander tabblad wordt ook gevolgd als er geen filmpje open staat, en events van een andere opslag (sessionStorage) worden genegeerd (#1039)

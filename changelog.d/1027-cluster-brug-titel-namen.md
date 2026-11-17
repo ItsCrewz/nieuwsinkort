@@ -1,0 +1,1 @@
+- Clusteren: een brugbericht dat via de titelregel bij het ene en via eigennamen bij het andere verhaal past voegt die twee verhalen niet meer samen, in elke invoervolgorde.

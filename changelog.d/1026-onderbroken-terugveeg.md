@@ -1,0 +1,1 @@
+- Herstel het artikel direct wanneer een tweede vinger of tekstselectie een terugveeg onderbreekt (#1026).

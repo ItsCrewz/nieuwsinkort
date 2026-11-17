@@ -1,0 +1,1 @@
+- Beeldproxy voorkomt opnieuw downloaden van ongewijzigde afbeeldingen bij hervalidatie.

@@ -1,0 +1,1 @@
+- Voorkom beschadigde Unicode-tekens bij het afkappen van artikelmetadata (#999).

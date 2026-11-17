@@ -1,0 +1,1 @@
+- Stel herladen bij een groeiende videobuffer uit, maar herstel een blijvende stilstand binnen begrensde tijd (#1013).

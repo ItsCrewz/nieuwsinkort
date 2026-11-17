@@ -69,7 +69,7 @@ t("oude Safari zonder addEventListener registreert geen wijzigingen", () => {
   const mm = (q: string) => {
     queries.push(q);
     return {
-      matches: q === "(hover: none)",
+      matches: q === "(pointer: coarse)",
       addListener: () => { oudeRegistraties++; },
       removeListener: () => { oudeAfmeldingen++; },
     } as unknown as MediaQueryList;
@@ -83,7 +83,7 @@ t("oude Safari zonder addEventListener registreert geen wijzigingen", () => {
   assert.equal(oudeAfmeldingen, 0);
   assert.equal(meldingen, 0);
 });
-t("afmelden verwijdert beide luisteraars en stopt meldingen", () => {
+t("afmelden verwijdert de luisteraar en stopt meldingen", () => {
   const actief = new Set<string>();
   const luisteraars = new Map<string, Set<() => void>>();
   const mm = (q: string) => ({
@@ -106,8 +106,8 @@ t("afmelden verwijdert beide luisteraars en stopt meldingen", () => {
   luisteraars.get("(pointer: coarse)")?.forEach((fn) => fn());
   assert.deepEqual(meldingen, [true]);
   stop();
-  assert.deepEqual([...luisteraars.values()].map((set) => set.size), [0, 0]);
+  assert.deepEqual([...luisteraars.values()].map((set) => set.size), [0]);
   actief.clear();
-  luisteraars.get("(hover: none)")?.forEach((fn) => fn());
+  luisteraars.get("(pointer: coarse)")?.forEach((fn) => fn());
   assert.deepEqual(meldingen, [true]);
 });

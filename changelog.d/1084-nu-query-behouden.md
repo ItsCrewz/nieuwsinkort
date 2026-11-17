@@ -1,0 +1,1 @@
+- Beelden: NU-miniaturen worden alleen vergroot als er na het weghalen van maat- en trackingparameters geen andere parameters (zoals token of sig) overblijven; anders blijft het oorspronkelijke adres staan (#1084).

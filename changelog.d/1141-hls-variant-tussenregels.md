@@ -1,0 +1,1 @@
+- Voorladen: de laagste HLS-variant wordt ook gevonden als er lege regels of commentaar tussen `#EXT-X-STREAM-INF` en de URI staan (#1141).

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import React from "react";
-import { FilterBalk, STANDAARD, useFilters, type Filters } from "../src/filters";
+import { FilterBalk, STANDAARD, useFilters, volgOpslag, type Filters } from "../src/filters";
 import { FilterBlad } from "../src/filters-blad";
 import type { Item } from "../src/types";
 
@@ -15,8 +15,9 @@ g.window = venster;
 g.document = Object.assign(new EventTarget(), { body: { nodeType: 1 }, activeElement: { focus() {} }, visibilityState: "hidden" });
 const dispatcher = (React as any).__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher;
 let effect: (() => void | (() => void)) | undefined;
+const updaters: ((o: Filters) => Filters)[] = [];
 dispatcher.current = {
-  useState: (v: any) => [typeof v === "function" ? v() : v, (fn: any) => { if (typeof fn === "function") fn(STANDAARD); }],
+  useState: (v: any) => [typeof v === "function" ? v() : v, (fn: any) => { if (typeof fn === "function") { updaters.push(fn); fn(STANDAARD); } }],
   useRef: (v: any) => ({ current: v }),
   useCallback: (fn: any) => fn,
   useMemo: (fn: any) => fn(),
@@ -58,6 +59,70 @@ if (typeof opruimen === "function") opruimen();
 g.clearInterval = echteClear;
 assert.equal(gewist, 42);
 
+// Synchronisatie tussen tabbladen (#1062): storage-events uit andere tabbladen, nooit terugschrijven.
+{
+  const ontvangen: Filters[] = [];
+  const stop = volgOpslag((f) => ontvangen.push(f));
+  const stuur = (key: string | null) => venster.dispatchEvent(Object.assign(new Event("storage"), { key }));
+  const schrijfsels: string[] = [];
+  const echteSet = store.setItem;
+  store.setItem = (k: string, v: string) => { schrijfsels.push(k); echteSet(k, v); };
+  opslag.set("nieuwsinkort-filters", JSON.stringify({ tijd: "1u", cats: ["sport"], video: true }));
+  stuur("nieuwsinkort-filters");
+  assert.equal(ontvangen.length, 1);
+  assert.equal(ontvangen[0].video, true);
+  assert.deepEqual(ontvangen[0].cats, ["sport"]);
+  stuur("iets-anders");
+  assert.equal(ontvangen.length, 1); // andere sleutel negeren
+  opslag.delete("nieuwsinkort-filters");
+  stuur(null); // localStorage.clear() elders
+  assert.equal(ontvangen.length, 2);
+  assert.deepEqual(ontvangen[1], STANDAARD);
+  opslag.set("nieuwsinkort-filters", "{kapot");
+  stuur("nieuwsinkort-filters");
+  assert.deepEqual(ontvangen[2], STANDAARD); // kapotte JSON
+  const echteGet = store.getItem;
+  store.getItem = () => { throw new Error("geblokkeerd"); };
+  stuur("nieuwsinkort-filters");
+  assert.deepEqual(ontvangen[3], STANDAARD); // geblokkeerde opslag
+  store.getItem = echteGet;
+  assert.deepEqual(schrijfsels, []); // geen terugschrijflus
+  store.setItem = echteSet;
+  stop();
+  stuur("nieuwsinkort-filters");
+  assert.equal(ontvangen.length, 4); // opgeruimd
+  const echteAdd = venster.addEventListener;
+  venster.addEventListener = () => { throw new Error("geen events"); };
+  assert.doesNotThrow(() => volgOpslag(() => {})());
+  venster.addEventListener = echteAdd;
+}
+
+// Race (#1062): opslag verandert tussen render en effect, zonder storage-event; de effect leest opnieuw.
+{
+  opslag.set("nieuwsinkort-filters", JSON.stringify({ tijd: "1u", cats: null, regio: null }));
+  const raceHook = TestFilters();
+  opslag.set("nieuwsinkort-filters", JSON.stringify({ tijd: "3u", cats: ["sport"], video: true })); // ander tabblad, vóór de effect
+  const schrijfsels: string[] = [];
+  const echteSet = store.setItem;
+  store.setItem = (k: string, v: string) => { schrijfsels.push(k); echteSet(k, v); };
+  updaters.length = 0;
+  const echteInt = g.setInterval, echteCl = g.clearInterval;
+  g.setInterval = () => 1;
+  g.clearInterval = () => {};
+  const stopEffect = effect!();
+  g.setInterval = echteInt;
+  g.clearInterval = echteCl;
+  assert.equal(updaters.length, 1);
+  const nieuw = updaters[0](raceHook.f);
+  assert.equal(nieuw.tijd, "3u");
+  assert.equal(nieuw.video, true);
+  assert.deepEqual(nieuw.cats, ["sport"]);
+  assert.equal(updaters[0](nieuw), nieuw); // gelijke inhoud: zelfde referentie, geen extra render
+  assert.equal(schrijfsels.filter((k) => k === "nieuwsinkort-filters").length, 0); // niet teruggeschreven
+  store.setItem = echteSet;
+  if (typeof stopEffect === "function") stopEffect();
+}
+
 function vind(n: any, pred: (n: any) => boolean): any[] {
   if (!n || typeof n !== "object") return [];
   return [...(pred(n) ? [n] : []), ...React.Children.toArray(n.children ?? n.props?.children).flatMap((x) => vind(x, pred))];
@@ -71,6 +136,10 @@ let gesloten = 0, resets = 0;
 const u = { items: [item], tijd: "vandaag" as const, auto: true, per: { sinds: 1, vandaag: 1, "1u": 1, "3u": 1, alles: 1 }, nieuwSinds: 1 };
 const props = { f: STANDAARD, set: (p: Partial<Filters>) => wijzigingen.push(p), reset: () => resets++, u, bron: [item], catBron: [item], vorig: 123, alles: true, onClose: () => gesloten++ };
 const blad = FilterBlad(props) as any;
+const dubbel = { ...item, bronnen: [item.bronnen[0], item.bronnen[0]] };
+const leeg = { ...item, bronnen: [item.bronnen[0], { site: "", href: "" }] };
+const telBlad = FilterBlad({ ...props, bron: [item, dubbel, leeg, { ...item, bronnen: [] }] }) as any;
+assert.equal(vind(telBlad, (n) => typeof n.type === "function" && n.type.name === "Chip" && tekst(n) === "Uit meerdere bronnen")[0].props.n, 1);
 const chips = vind(blad, (n) => typeof n.type === "function" && n.type.name === "Chip");
 for (const label of ["Laatste uur", "Haarlem", "Met video", "Uit meerdere bronnen", "Oudste eerst"]) {
   const chip = chips.find((n) => tekst(n).includes(label));

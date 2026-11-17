@@ -1,0 +1,1 @@
+- Groq-verbruik blijft behouden als de eerste lezing van de dagstand tijdelijk mislukt (#1038).

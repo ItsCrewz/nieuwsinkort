@@ -1,0 +1,1 @@
+- Leg het bestaande gedrag van uitgevernormalisatie en ontdubbeling vast in tests (#1006).

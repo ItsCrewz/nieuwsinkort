@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import React, { createElement, createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
 import { scopeTekst, verborgenTekst } from "../src/zoek";
-import { Zoekbalk, ZoekFormulier, ZoekLeeg } from "../src/zoekbalk";
+import { Zoekbalk, ZoekFormulier, ZoekLeeg, focusResultaten } from "../src/zoekbalk";
 
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
 assert.match(leeg, /Niets gevonden voor “niets”/);
@@ -48,7 +48,8 @@ assert.ok(!/>Zoek</.test(geslotenBalk));
 // De dispatcher maakt de compositieref beschikbaar zonder browser-DOM.
 const dispatcher = (React as any).__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher;
 const vorige = dispatcher.current;
-dispatcher.current = { useRef: (waarde: boolean) => ({ current: waarde }) };
+let ingekortWaarde: unknown = false;
+dispatcher.current = { useRef: (waarde: boolean) => ({ current: waarde }), useState: () => [ingekortWaarde, (w: unknown) => { ingekortWaarde = w; }] };
 try {
   let gesloten = 0;
   let geblurd = 0;
@@ -92,7 +93,39 @@ try {
   assert.equal(toets("Escape"), true);
   knop.props.onClick();
   assert.equal(gesloten, 2);
+  // Melding alleen bij echt afkappen (#1051): 199 tekens + emoji wordt ingekort, exact 200 niet.
+  const meldingBij = (invoerTekst: string) => {
+    ingekortWaarde = false;
+    let doorgegeven = "";
+    const f = ZoekFormulier({ query: "", onChange: (q) => { doorgegeven = q; }, sluit: () => {}, invoer: ref });
+    f.props.children[0].props.onChange({ target: { value: invoerTekst } });
+    const na = ZoekFormulier({ query: doorgegeven, onChange: () => {}, sluit: () => {}, invoer: ref });
+    return na.props.children[2].props.children;
+  };
+  assert.match(meldingBij("a".repeat(199) + "😀" + "bc"), /ingekort tot 200/);
+  assert.equal(meldingBij("a".repeat(200)), "");
+  assert.match(meldingBij("a".repeat(250)), /ingekort tot 200/);
 } finally {
   dispatcher.current = vorige;
+}
+// Link naar resultaten (#1014): alleen bij een zoekbare term en minstens één resultaat.
+{
+  const html = (query: string, aantal: number) => renderToStaticMarkup(createElement(ZoekFormulier, { query, onChange: () => {}, sluit: () => {}, invoer: createRef<HTMLInputElement>(), aantal }));
+  assert.match(html("fiets", 3), /<a href="#zoek-resultaten"[^>]*>Ga naar resultaten \(3\)<\/a>/);
+  assert.ok(!html("fiets", 0).includes("Ga naar resultaten"));
+  assert.ok(!html("", 3).includes("Ga naar resultaten"));
+}
+// Echte focusbestemming (#1014): eerste kaartlink, nooit .nc-head; zonder kaart het gebied zelf.
+{
+  const gefocust: string[] = [];
+  const el = (naam: string, kinderen: Record<string, unknown> = {}) => ({ focus: () => { gefocust.push(naam); }, querySelector: (s: string) => (kinderen[s] ?? null) as never });
+  const link = el("link");
+  const kaart = el("kaart", { "a[href]": link });
+  focusResultaten({ getElementById: (id) => id === "zoek-resultaten" ? el("gebied", { ".nc": kaart, ".nc-head a[href]": el("weer") }) : null });
+  assert.deepEqual(gefocust, ["link"]);
+  gefocust.length = 0;
+  focusResultaten({ getElementById: () => el("gebied") });
+  assert.deepEqual(gefocust, ["gebied"]);
+  focusResultaten({ getElementById: () => null });
 }
 console.log("zoekbalk: tests geslaagd");

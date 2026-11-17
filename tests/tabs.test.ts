@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { CATS, CAT_LABEL, tabOpties, tabToets, volgendeTab } from "../src/tabs";
+import { CATS, CAT_LABEL, rubriekTabId, tabOpties, tabToets, volgendeTab } from "../src/tabs";
 import type { Cat } from "../src/types";
 
 const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
@@ -69,3 +69,11 @@ t("pijltjestoetsen doorlopen de zichtbare tabs in beide richtingen", () => {
     assert.equal(r.geblokkeerd, false);
   });
 }
+
+t("rubriektab-id's zijn uniek en stabiel (aria-labelledby van het paneel)", () => {
+  const opts = tabOpties(items(...ALLE), "alles");
+  const idl = opts.map((o) => rubriekTabId(o.value));
+  assert.equal(new Set(idl).size, idl.length);
+  assert.equal(rubriekTabId("nl"), "rubriek-tab-nl");
+  assert.ok(idl.includes(rubriekTabId("dumpert")));
+});

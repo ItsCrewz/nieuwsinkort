@@ -1,0 +1,1 @@
+- Het videofilter herkent videolinks aan de host en het pad, zonder treffers uit queryparameters (#995).

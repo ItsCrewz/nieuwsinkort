@@ -44,3 +44,19 @@ export function browserStorage(): FocusStorage | null {
     return null;
   }
 }
+
+// Wijziging uit een ander tabblad volgen (storage-event). Schrijft zelf nooit terug: geen echo of lus.
+// Verwijderde keuze (key === null bij clear(), of newValue null) → standaard uit.
+export function volgFocusKeuze(cb: (aan: boolean) => void): () => void {
+  const luister = (e: StorageEvent) => {
+    try {
+      // Alleen localStorage telt (geen sessionStorage-event).
+      if (e.storageArea && e.storageArea !== window.localStorage) return;
+    } catch { return; }
+    if (e.key === null) return cb(false);
+    if (e.key !== FOCUS_KEY) return;
+    cb(e.newValue === "aan");
+  };
+  try { window.addEventListener("storage", luister); } catch { return () => {}; }
+  return () => { try { window.removeEventListener("storage", luister); } catch { /* weg */ } };
+}

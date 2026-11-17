@@ -1,0 +1,1 @@
+- Filmpjes blijven werken als de browser geen bruikbare framekwaliteit teruggeeft (#956).
