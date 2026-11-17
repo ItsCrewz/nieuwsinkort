@@ -159,7 +159,8 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   if (!u.searchParams.has("statisch") && env.NIEUWS) {
     try {
       const vooraf = await env.NIEUWS.get("data-vooraf", kvOpt("text"));
-      if (vooraf && (vooraf.slice(0, 10) === dag() || (ams().h < 6 && vooraf.slice(0, 10) === vorigeDag())) && vooraf[10] === "\n") {
+      const moment = Date.now(), amsterdam = ams(moment);
+      if (vooraf && (vooraf.slice(0, 10) === amsterdam.iso || (amsterdam.h < 6 && vooraf.slice(0, 10) === vorigeDag(moment))) && vooraf[10] === "\n") {
         const einde = vooraf.indexOf("\n", 11);
         if (einde > 11) {
           const nu = Date.now(), vandaag = dag();

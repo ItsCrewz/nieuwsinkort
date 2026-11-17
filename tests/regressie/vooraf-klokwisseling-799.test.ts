@@ -34,6 +34,13 @@ try {
       await vraag();
       assert.equal(assets, 1); // Eén assetaanvraag voor de verouderde data.
       assets = 0;
+      zetVooraf(s.dag);
+      assert.deepEqual((await (await vraag()).json()).items, [artikel]);
+      assert.equal(assets, 0);
+      zetVooraf("2099-01-01");
+      await vraag();
+      assert.equal(assets, 1);
+      assets = 0;
       zetVooraf(s.gisteren);
     }
     Date.now = () => Date.parse(`${s.dag}T06:00:00${s.offset}`);

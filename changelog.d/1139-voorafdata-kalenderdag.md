@@ -1,0 +1,1 @@
+- Controleer de datum van voorafdata met één Amsterdamse klokstand rond de zomertijd en wintertijd (#1139).
