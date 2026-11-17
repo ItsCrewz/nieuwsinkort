@@ -1,0 +1,1 @@
+- Foto's met small in de onderwerpnaam blijven beschikbaar; herkenbare kleine beeldvarianten worden nog steeds uitgesloten (#1164).
