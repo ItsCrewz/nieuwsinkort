@@ -81,6 +81,10 @@ await t("ontkende of onzekere verkoopvermeldingen houden de bron (#1154)", () =>
     assert.ok(!heeftBronvermelding(zin, ["NOS", "iCulture"]));
   }
   assert.equal(stripBronvermelding("De set is te koop via iCulture.", ["iCulture"]), "De set is te koop.");
+  for (const zin of ["Het product is uitsluitend te koop via NOS.", "Het is de vraag of het product verkrijgbaar is via NOS.", "De set is alleen te bestellen via iCulture."]) {
+    assert.equal(stripBronvermelding(zin, ["NOS", "iCulture"]), zin);
+  }
+  assert.equal(stripBronvermelding("Het product is te koop via NOS en kan vandaag worden besteld.", ["NOS"]), "Het product is te koop en kan vandaag worden besteld.");
 });
 
 await t("uitzendingen en samengestelde bronnamen blijven intact", () => {
