@@ -1,0 +1,1 @@
+- Zoeken: een samenstelling wordt met en zonder koppelteken gevonden ("coronamaatregelen" vindt "corona-maatregelen" en andersom); een term met koppelteken telt alleen als de delen direct naast elkaar staan (#811).

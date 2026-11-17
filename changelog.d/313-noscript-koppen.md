@@ -1,0 +1,1 @@
+- Zonder JavaScript verwijst de startpagina naar het actuele nieuws op `/vandaag` en naar `/over`; verouderende nieuwskoppen worden niet ingebakken (#313).

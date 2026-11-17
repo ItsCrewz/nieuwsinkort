@@ -1,0 +1,1 @@
+- Beperk het geheugen van vooraf geladen afbeeldingen: begrensde URL-administratie en opruimen bij fout/timeout (#1091).

@@ -9,6 +9,6 @@ export function openGedeeld(w: Venster): boolean {
   if (!gedeeld) return false;
   const q = w.location.search;
   w.history.replaceState(null, "", `/${q}#/`);
-  w.history.pushState({ binnen: true }, "", `/${q}#/bericht/${gedeeld.id}`);
+  w.history.pushState({ binnen: true }, "", `/${q}#/bericht/${encodeURIComponent(gedeeld.id)}`);
   return true;
 }

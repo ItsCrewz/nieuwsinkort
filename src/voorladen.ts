@@ -2,6 +2,7 @@
 // Pure keuzelogica (plan) + een kleine browser-runner. Alleen na de load-event, in idle-tijd, alles met lage
 // prioriteit en hooguit 3 requests tegelijk. Geen AI, geen /samenvatting, geen /meer.
 import type { Video } from "./types";
+import { LruSet } from "./lruset";
 
 export type Speler = { kind: "youtube" | "hls" | "mp4"; src: string } | null;
 export type Hulp = { playerFor: (v: Video) => Speler; viaProxy: (src: string) => string };
@@ -17,7 +18,10 @@ const THUMBS = 6;
 const KIJK = 3; // zoveel items per tab telt als "eerste"
 const HLS_MAX = 2;
 export const MP4_BYTES = 256 * 1024;
+export const PLAYLIST_BYTES = 256 * 1024; // per master- of mediaplaylist
+export const HLS_BYTES = 256 * 1024; // totaal over de voorgeladen segmenten van één stream
 export const GELIJK = 3;
+export const NETWERK_TIMEOUT = 10000;
 
 const uniek = <T,>(l: T[]) => [...new Set(l)];
 const origin = (u: string) => {
@@ -73,96 +77,278 @@ export function laagsteVariant(txt: string, base: string): string {
     return "";
   }
 }
-export function segmenten(txt: string, base: string, max = 2): string[] {
-  const out: string[] = [];
+export type Segment = { url: string; bereik?: { van: number; tot: number } };
+
+/** Eerste segmenten uit een mediaplaylist. Segmenten met #EXT-X-BYTERANGE krijgen hun bereik mee (zonder @offset: aansluitend
+ *  op het vorige bereik van dezelfde URL); een kapot bereik slaat dat segment over, het hele bestand halen we nooit op. */
+export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
+  const out: Segment[] = [];
+  const einde = new Map<string, number>(); // volgende offset per URL
+  let br: string | null = null;
   for (const l of txt.split("\n").map((x) => x.trim())) {
-    if (!l || l.startsWith("#")) continue;
+    if (!l) continue;
+    if (l.startsWith("#")) {
+      const m = /^#EXT-X-BYTERANGE:(.*)$/.exec(l);
+      if (m) br = m[1].trim();
+      else if (/^#EXT-X-BYTERANGE(?:\s|:|$)/.test(l)) br = "";
+      continue;
+    }
+    const bereik = br;
+    br = null;
+    let url = "";
     try {
-      out.push(new URL(l, base).href);
+      url = new URL(l, base).href;
     } catch {
-      /* sla over */
+      continue;
+    }
+    if (bereik === null) out.push({ url });
+    else {
+      const m = /^(\d+)(?:@(\d+))?$/.exec(bereik);
+      const len = m ? +m[1] : 0;
+      const van = m ? (m[2] !== undefined ? +m[2] : einde.get(url)) : undefined;
+      if (m && len > 0 && van !== undefined && Number.isSafeInteger(van + len)) {
+        einde.set(url, van + len);
+        out.push({ url, bereik: { van, tot: van + len - 1 } });
+      } else einde.delete(url); // onbekende positie: volgende zonder @ ook overslaan
     }
     if (out.length >= max) break;
   }
   return out;
 }
+export const segmenten = (txt: string, base: string, max = 2): string[] => segmentenBereik(txt, base, max).map((s) => s.url);
 
 // ------------------------------------------------------------- browser-runner
-const gedaan = new Set<string>(); // al opgewarmd in deze sessie (ook over data-verversingen heen)
+export const MAX_GEDAAN = 300; // begrensd (#1091): de langst ongebruikte sleutel valt weg en kan later opnieuw voorladen
+const gedaan = new LruSet<string>(MAX_GEDAAN); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
+const bezig = new Set<string>(); // lopend of in de wachtrij: gelijktijdige verzoeken voor dezelfde URL delen die ene taak
+export const POSTER_MAX_MS = 8000; // langste wachttijd per poster-taak
 const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
 export const aantalActievePosters = () => vast.size;
-const POSTER_TIMEOUT = 15000;
 const LOW = { credentials: "omit", priority: "low" } as RequestInit;
+const wachtrij: (() => Promise<unknown>)[] = [];
+let actief = 0;
 
-const nieuw = (k: string) => (gedaan.has(k) ? false : (gedaan.add(k), true));
+function startTaken() {
+  while (actief < GELIJK && wachtrij.length) {
+    const taak = wachtrij.shift()!;
+    actief++;
+    (async () => taak())().catch(() => {}).finally(() => {
+      actief--;
+      startTaken();
+    });
+  }
+}
 
-async function warmHls(master: string) {
+const mag = (k: string) => !gedaan.has(k) && !bezig.has(k);
+// Registreert pas als de taak slaagt; na een fout komt de sleutel vrij en probeert het volgende voorlaadmoment het opnieuw
+// (nooit automatisch binnen dezelfde voerUit: geen retry-lus, ook niet na herstel van de verbinding).
+const taak = (k: string, f: () => Promise<unknown>) => {
+  bezig.add(k);
+  return async () => {
+    try {
+      await f();
+      gedaan.add(k);
+    } catch {
+      /* mislukt: volgend voorlaadmoment opnieuw */
+    } finally {
+      bezig.delete(k);
+    }
+  };
+};
+
+async function leesPlaylist(r: Response, signal: AbortSignal): Promise<string> {
+  if (!r.ok) {
+    r.body?.cancel().catch(() => {});
+    throw new Error("hls");
+  }
+  const lengte = r.headers.get("Content-Length");
+  if (lengte && /^\d+$/.test(lengte) && Number(lengte) > PLAYLIST_BYTES) {
+    r.body?.cancel().catch(() => {});
+    throw new Error("playlist te groot");
+  }
+  const rd = r.body?.getReader();
+  if (!rd) throw new Error("lege playlist");
+  const stop = () => { rd.cancel().catch(() => {}); };
+  signal.addEventListener("abort", stop, { once: true });
+  const decoder = new TextDecoder();
+  let tekst = "";
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await rd.read();
+      signal.throwIfAborted();
+      if (done) return tekst + decoder.decode();
+      bytes += value.byteLength;
+      if (bytes > PLAYLIST_BYTES) throw new Error("playlist te groot");
+      tekst += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    stop();
+    signal.removeEventListener("abort", stop);
+  }
+}
+
+async function videoFetch(url: string, signal: AbortSignal, headers?: HeadersInit): Promise<Response> {
+  const r = await fetch(url, { ...LOW, signal, ...(headers ? { headers } : {}) });
+  if (signal.aborted) {
+    r.body?.cancel().catch(() => {});
+    signal.throwIfAborted();
+  }
+  return r;
+}
+
+async function warmHls(master: string, signal: AbortSignal) {
   // Basis voor relatieve verwijzingen is de uiteindelijke respons-URL: fetch volgt redirects naar andere mappen.
-  const get = (u: string) => fetch(u, LOW).then(async (r) => (r.ok ? { txt: await r.text(), base: r.url || u } : { txt: "", base: u }));
+  const get = (u: string) => videoFetch(u, signal).then(async (r) => ({ txt: await leesPlaylist(r, signal), base: r.url || u }));
   let { txt, base: b } = await get(master);
   if (!b.includes("://")) b = new URL(b, location.href).href;
+  signal.throwIfAborted();
   if (/#EXT-X-STREAM-INF/.test(txt)) {
     const v = laagsteVariant(txt, b);
     ({ txt, base: b } = v ? await get(v) : { txt: "", base: b });
   }
-  for (const s of segmenten(txt, b)) await fetch(s, LOW).then((r) => r.arrayBuffer());
+  let rest = HLS_BYTES;
+  for (const s of segmentenBereik(txt, b)) {
+    signal.throwIfAborted();
+    if (rest <= 0) break;
+    const van = s.bereik?.van ?? 0;
+    const tot = Math.min(s.bereik?.tot ?? van + rest - 1, van + rest - 1);
+    rest -= await warmBereik(s.url, van, tot, signal, !!s.bereik);
+  }
 }
 
-async function warmMp4(src: string) {
+// Bytebereik-segment: alleen dat bereik. Antwoordt de server met 200 (Range genegeerd = heel bestand), dan stoppen we meteen.
+async function warmBereik(url: string, van: number, tot: number, signal: AbortSignal, strikt: boolean): Promise<number> {
+  const r = await videoFetch(url, signal, { Range: `bytes=${van}-${tot}` });
+  signal.throwIfAborted();
+  if (r.status >= 400 || r.ok === false) {
+    r.body?.cancel?.().catch(() => {});
+    throw new Error("hls");
+  }
+  const m = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(r.headers?.get("Content-Range") ?? "");
+  const geldig = m && Number(m[1]) === van && Number(m[2]) === tot && (m[3] === "*" || Number(m[3]) > tot);
+  if (strikt && (r.status !== 206 || !geldig)) {
+    r.body?.cancel?.().catch(() => {});
+    return 0;
+  }
+  const rd = r.body?.getReader();
+  if (!rd) return 0;
+  const stop = () => { rd.cancel().catch(() => {}); };
+  signal.addEventListener("abort", stop, { once: true });
+  let got = 0;
+  try {
+    while (got < tot - van + 1) {
+      const { done, value } = await rd.read();
+      signal.throwIfAborted();
+      if (done) return got;
+      got += value.length;
+    }
+    return Math.min(got, tot - van + 1);
+  } finally {
+    stop();
+    signal.removeEventListener("abort", stop);
+  }
+}
+
+async function warmMp4(src: string, signal: AbortSignal) {
   // Alleen het begin: een Range-aanvraag (Instagram-CDN: CORS *, Range ok). Geeft de server toch 200, dan stoppen we zelf.
-  const r = await fetch(src, { ...LOW, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+  const r = await videoFetch(src, signal, { Range: `bytes=0-${MP4_BYTES - 1}` });
+  signal.throwIfAborted();
+  if (!r.ok) throw new Error("mp4");
   const rd = r.body?.getReader();
   if (!rd) return;
-  for (let got = 0; got < MP4_BYTES; ) {
-    const { done, value } = await rd.read();
-    if (done) return;
-    got += value.length;
+  const stop = () => { rd.cancel().catch(() => {}); };
+  signal.addEventListener("abort", stop, { once: true });
+  try {
+    for (let got = 0; got < MP4_BYTES; ) {
+      const { done, value } = await rd.read();
+      signal.throwIfAborted();
+      if (done) return;
+      got += value.length;
+    }
+    stop();
+  } finally {
+    signal.removeEventListener("abort", stop);
   }
-  rd.cancel().catch(() => {});
 }
+
+// Een vastgelopen fetch of stream mag geen plaats in de wachtrij vasthouden.
+async function netwerktaak(taak: (signal: AbortSignal) => Promise<void>) {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<void>((_, fout) => {
+    timer = setTimeout(() => { controller.abort(); fout(new Error("timeout")); }, NETWERK_TIMEOUT);
+  });
+  try {
+    await Promise.race([taak(controller.signal), timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+
+// Preconnect-links begrensd (#1073): oudste eerst; een hint weghalen breekt geen lopende fetch af.
+export const MAX_PRECONNECT = 8;
+const verbonden = new Map<string, HTMLLinkElement>();
+export const aantalPreconnects = () => verbonden.size;
 
 export function voerUit(p: Plan) {
   for (const o of p.preconnect) {
-    if (!nieuw(`pc:${o}`)) continue;
+    const bestaand = verbonden.get(o);
+    if (bestaand) { // al aanwezig: alleen als recent markeren, geen duplicaat
+      verbonden.delete(o);
+      verbonden.set(o, bestaand);
+      continue;
+    }
     const l = document.createElement("link");
     l.rel = "preconnect";
     l.href = o;
     l.crossOrigin = "";
     document.head.appendChild(l);
+    verbonden.set(o, l);
+    while (verbonden.size > MAX_PRECONNECT) {
+      const [oud, el] = verbonden.entries().next().value!;
+      verbonden.delete(oud);
+      el.remove?.();
+    }
   }
   const taken: (() => Promise<unknown>)[] = [];
   for (const t of p.thumbs) {
-    if (!nieuw(`img:${t}`)) continue;
+    const k = `img:${t}`;
+    if (!mag(k)) continue;
     taken.push(
-      () =>
-        new Promise<void>((ok) => {
+      taak(k, () =>
+        new Promise<void>((ok, fout) => {
           const im = new Image();
           im.decoding = "async";
           im.referrerPolicy = "no-referrer"; // zoals de <img> in VideoCard
           (im as HTMLImageElement & { fetchPriority?: string }).fetchPriority = "low";
-          const klaar = () => {
+          // Een vastgelopen verbinding mag de wachtrij niet blokkeren.
+          const klaar = (fout_?: Error) => {
             clearTimeout(timer);
-            im.onload = im.onerror = null;
+            im.onload = im.onerror = im.onabort = null;
             vast.delete(im);
-            ok();
+            if (fout_) fout(fout_); // mislukt of te traag: de sleutel komt vrij voor een volgend voorlaadmoment (#636)
+            else ok();
           };
-          const timer = setTimeout(klaar, POSTER_TIMEOUT);
-          im.onload = im.onerror = klaar;
+          const timer = setTimeout(() => {
+            klaar(new Error("img"));
+            im.src = ""; // breekt de aanvraag af
+          }, POSTER_MAX_MS);
+          im.onload = () => klaar();
+          im.onerror = im.onabort = () => klaar(new Error("img")); // afgebroken laden mag de sleutel niet vasthouden
           vast.add(im);
-          try { im.src = t; } catch { klaar(); }
+          try { im.src = t; } catch { klaar(new Error("img")); }
         })
+      )
     );
   }
   // zelfde specifier als feed.tsx: Vite deelt de chunk, de eerste speler vindt hem dus al in de cache
-  if (p.hlsChunk && nieuw("hls.js")) taken.push(() => import("hls.js"));
-  for (const m of p.hls) if (nieuw(`hls:${m}`)) taken.push(() => warmHls(m));
-  if (p.mp4 && nieuw(`mp4:${p.mp4}`)) taken.push(() => warmMp4(p.mp4!));
-  // kleine pool: hooguit GELIJK taken tegelijk, in volgorde van belang
-  let i = 0;
-  const loop = async () => {
-    while (i < taken.length) await taken[i++]().catch(() => {});
-  };
-  for (let k = 0; k < GELIJK; k++) loop();
+  if (p.hlsChunk && mag("hls.js")) taken.push(taak("hls.js", () => netwerktaak(() => import("hls.js").then(() => {}))));
+  for (const m of p.hls) if (mag(`hls:${m}`)) taken.push(taak(`hls:${m}`, () => netwerktaak((signal) => warmHls(m, signal))));
+  if (p.mp4 && mag(`mp4:${p.mp4}`)) taken.push(taak(`mp4:${p.mp4}`, () => netwerktaak((signal) => warmMp4(p.mp4!, signal))));
+  // Eén pool voor alle aanroepen, in volgorde van binnenkomst.
+  wachtrij.push(...taken);
+  startTaken();
 }
 
 /** Wacht op load + een idle-moment (en op zichtbaarheid); geeft een annuleerfunctie terug. */

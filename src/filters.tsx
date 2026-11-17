@@ -2,9 +2,11 @@
 // Tijd staat standaard op "Automatisch": "Sinds je laatste bezoek" als er sindsdien genoeg nieuw is, anders "Vandaag".
 import { useCallback, useEffect, useState } from "react";
 import type { Cat, Item, Video } from "./types";
-import { midnight } from "./tijd";
+import { ams, amsTijdstip, midnight } from "./tijd";
+import { publicatieTijd } from "./vandaag";
 import { BUITEN_WOORD } from "./regio";
 import { Icon } from "./icons";
+import { bronSleutel } from "./uitgever";
 
 export type Tijd = "auto" | "sinds" | "vandaag" | "1u" | "3u" | "alles";
 export type Regio = "haarlem" | "nl" | "wereld";
@@ -58,18 +60,43 @@ function lees(): Filters {
   }
 }
 
-/** Vorig bezoek: bij de start van een sessie gelezen (en vastgehouden zolang het tabblad open is), daarna "nu" opgeslagen. */
-function vorigBezoek(): number {
+/** Neem filterwijzigingen uit andere tabbladen over (storage-event; `key === null` = opslag leeggemaakt). Schrijft nooit terug. */
+export function volgOpslag(zet: (f: Filters) => void): () => void {
+  const onStorage = (e: Event) => {
+    const key = (e as StorageEvent).key;
+    if (key !== null && key !== KEY) return;
+    zet(lees());
+  };
   try {
-    const ref = sessionStorage.getItem(BEZOEK_SESSIE);
-    if (ref != null) return +ref || 0;
-    const prev = +(localStorage.getItem(BEZOEK) || 0) || 0;
-    sessionStorage.setItem(BEZOEK_SESSIE, String(prev));
-    return prev;
+    window.addEventListener("storage", onStorage);
   } catch {
-    return 0;
+    return () => {};
   }
+  return () => {
+    try { window.removeEventListener("storage", onStorage); } catch { /* negeer */ }
+  };
 }
+
+/** Houd de referentie ook zonder sessieopslag vast zolang het document open is. */
+export function maakVorigBezoek() {
+  let vast: number | undefined;
+  return () => {
+    if (vast !== undefined) return vast;
+    try {
+      const ref = sessionStorage.getItem(BEZOEK_SESSIE);
+      if (ref !== null && Number.isFinite(Number(ref)) && Number(ref) >= 0 && ref.trim() !== "") return vast = Number(ref);
+    } catch { /* sessieopslag niet beschikbaar */ }
+    let prev = 0;
+    try {
+      const waarde = Number(localStorage.getItem(BEZOEK));
+      if (Number.isFinite(waarde) && waarde > 0) prev = waarde;
+    } catch { /* lokale opslag niet beschikbaar */ }
+    vast = prev;
+    try { sessionStorage.setItem(BEZOEK_SESSIE, String(prev)); } catch { /* geheugenfallback */ }
+    return vast;
+  };
+}
+const vorigBezoek = maakVorigBezoek();
 function bewaarBezoek() {
   try {
     localStorage.setItem(BEZOEK, String(Date.now()));
@@ -87,7 +114,14 @@ export function useFilters() {
     document.addEventListener("visibilitychange", onHide);
     // Lang open tabblad: houd de bezoektijd vers (alleen opslag; `vorig` is een vaste sessiereferentie en verschuift niet).
     const timer = setInterval(() => document.visibilityState === "visible" && bewaarBezoek(), BEZOEK_INTERVAL);
+    const stopOpslag = volgOpslag(setF);
+    // Een wijziging tussen de eerste render en deze registratie levert geen event op: lees opnieuw (zelfde referentie bij gelijke inhoud, nooit terugschrijven).
+    setF((o) => {
+      const n = lees();
+      return JSON.stringify(o) === JSON.stringify(n) ? o : n;
+    });
     return () => {
+      stopOpslag();
       document.removeEventListener("visibilitychange", onHide);
       clearInterval(timer);
     };
@@ -110,20 +144,17 @@ export function useFilters() {
 // ------------------------------------------------------------- tijd
 // Terugval voor data met alleen "HH:MM" (Amsterdam); gegenereerd bepaalt de referentiedag.
 // Tot 20 minuten vooruit blijft op die dag, zodat de toekomstmarge van de Worker past.
-const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const minVan = (d: Date) => {
-  const [h, m] = fmt.format(d).split(":").map(Number);
-  return h * 60 + m;
-};
 export function tijdstip(hhmm: string | undefined, gen: number): number | null {
   const m = /^(\d{1,2})[:.](\d{2})$/.exec(hhmm || "");
-  if (!m) return null;
+  if (!m || +m[1] > 23 || +m[2] > 59) return null; // onmogelijke kloktijd = onbekend
   const t = +m[1] * 60 + +m[2];
-  const g = new Date(gen);
-  const gm = minVan(g);
-  let ts = gen - g.getSeconds() * 1000 - g.getMilliseconds() - (gm - t) * 60e3;
-  if (t > gm + 20) ts -= 86400e3;
-  return ts;
+  const g = ams(gen);
+  // Kies bij een dubbele kloktijd de dichtstbijzijnde binnen de toekomstmarge.
+  const vandaag = amsTijdstip(gen, +m[1], +m[2], gen);
+  if (t > g.h * 60 + g.min + 20 && vandaag === null) {
+    return amsTijdstip(midnight(gen) - 1, +m[1], +m[2], gen);
+  }
+  return vandaag;
 }
 function vanafVoor(t: Exclude<Tijd, "auto">, vorig: number): number {
   const now = Date.now();
@@ -147,10 +178,18 @@ export function regioVan(it: Item): Regio {
   if (b.some((x) => BUITEN_SITE.test(x.site) || BUITEN_URL.test(x.href)) || BUITEN_WOORD.test(`${it.kop} ${it.ai || ""}`)) return "wereld";
   return "nl";
 }
-const VIDEO_URL = /\/video\/|\/video-|\/videos?\/|youtube\.com|youtu\.be|\.mp4\b|\/kijk\/|\/tv\//i;
-export const heeftVideo = (it: Item) => (it.bronnen || []).some((b) => VIDEO_URL.test(b.href));
-export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => b.site)).size;
-export const samengevoegd = (it: Item) => (it.bronnen || []).length > 1;
+const VIDEO_PAD = /\/videos?\/|\/video-|\.mp4\b|\/kijk\/|\/tv\//i;
+export const heeftVideo = (it: Item) => (it.bronnen || []).some((b) => {
+  try {
+    const url = new URL(b.href);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    return /(^|\.)(youtube\.com|youtu\.be)$/i.test(url.hostname) || VIDEO_PAD.test(url.pathname);
+  } catch {
+    return false;
+  }
+});
+export const sites = (it: Item) => new Set((it.bronnen || []).map((b) => bronSleutel(b.site || "")).filter(Boolean)).size;
+export const samengevoegd = (it: Item) => sites(it) > 1;
 
 /** Alles behalve tijd (tijd wordt apart bepaald, want "Automatisch" hangt af van wat er overblijft). */
 function zonderTijd(items: Item[], f: Filters, alles: boolean) {
@@ -203,11 +242,26 @@ export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: stri
     .map(({ item }) => item);
   return { items: out, tijd, auto, per, nieuwSinds: vorig ? per.sinds : 0 };
 }
+// Vernieuw relatieve videovensters ook als de server dezelfde data terugstuurt.
+export function useVideoKlok(tijd: Tijd): number {
+  const [tik, setTik] = useState(0);
+  useEffect(() => {
+    if (tijd !== "1u" && tijd !== "3u") return;
+    const ververs = () => setTik((n) => n + 1);
+    ververs(); // Ook bij terugkeer naar een video-overzicht opnieuw filteren.
+    const timer = window.setInterval(ververs, 60_000);
+    const zichtbaar = () => { if (document.visibilityState === "visible") ververs(); };
+    document.addEventListener("visibilitychange", zichtbaar);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", zichtbaar); };
+  }, [tijd]);
+  return tik;
+}
 /** Filmpjes: alleen het tijdfilter (de rest gaat over berichten). Automatisch = Vandaag, of Alles als er vandaag nog bijna niets is. */
 export function filterVideos(list: Video[], f: Filters, vorig: number, gen: string | undefined): Video[] {
   if (f.tijd === "alles") return list;
   const g = genVan(gen);
-  const ts = list.map((v) => tijdstip(v.tijd, g));
+  const now = Date.now();
+  const ts = list.map((v) => publicatieTijd(v.t, now) ?? (v.gisteren ? -Infinity : tijdstip(v.tijd, g)));
   let t: Exclude<Tijd, "auto">;
   if (f.tijd === "auto") {
     const vandaag = vanafVoor("vandaag", vorig);

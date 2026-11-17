@@ -1,0 +1,1 @@
+- De browsertab behoudt de kop van een geopend of gedeeld bericht (#622).

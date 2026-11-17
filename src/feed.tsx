@@ -17,17 +17,19 @@ import { dumpertRoute, isDumpertBron } from "./dumpertroute";
 
 export { videoSlug } from "./slug";
 import { videoSlug } from "./slug";
+import { startIndex } from "./feedstatus";
 import { veiligeUrl } from "./url";
 import { Stall } from "./stall";
 import { bronIndexen, gebruiktNativeHls, maakBronvrij, PoolEigenaars, POOL_GROOTTE, slotVan } from "./videopool";
-import { decodeTeller, FrameGezondheid, frameTeller, HerstelBudget } from "./framegezondheid";
-import { niveauVan, planVoor } from "./buffer";
+import { decodeTeller, FrameGezondheid, frameTeller, frameTellerBron, HerstelBudget } from "./framegezondheid";
+import { maxBufferSeconden, niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
-import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
+import { soundOn, saveSound, geluidTik, onthoudGeluidTik, volgGeluid } from "./geluid";
 import { posterVerborgen } from "./poster";
-import { svCache, type Sv } from "./samenvattingcache";
+import { svCache } from "./samenvattingcache";
+import { useSamenvatting } from "./usesamenvatting";
 import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
@@ -248,9 +250,10 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
   useEffect(() => {
     const h = hlsRef.current;
     if (!h) return;
-    const plan = planVoor(active ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
+    const niveau = niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
+    const plan = planVoor(active ? 0 : 1, niveau);
     h.config.maxBufferLength = plan.secs;
-    h.config.maxMaxBufferLength = active ? 60 : plan.secs;
+    h.config.maxMaxBufferLength = maxBufferSeconden(active ? 0 : 1, niveau);
     h.config.maxBufferSize = plan.bytes;
     if (active && !started.current) {
       started.current = true;
@@ -371,15 +374,17 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       const stand = barStand.current;
       const balkTijd = stand.tijd + (stand.loopt ? (now - stand.sinds) / 1000 : 0);
       let bufferVooruit = 0;
+      let bufferEinde: number | undefined;
       for (let i = 0; i < video.buffered.length; i++) {
         if (video.buffered.start(i) <= video.currentTime && video.buffered.end(i) > video.currentTime) {
-          bufferVooruit = video.buffered.end(i) - video.currentTime;
+          bufferEinde = video.buffered.end(i);
+          bufferVooruit = bufferEinde - video.currentTime;
           break;
         }
       }
       const besluit = stall.tik({ now, currentTime: video.currentTime, paused: video.paused,
         hidden: document.hidden, ended: video.ended, seeking: video.seeking, herstelSeek, balkTijd,
-        bufferVooruit, readyState: video.readyState, networkState: video.networkState });
+        bufferVooruit, bufferEinde, readyState: video.readyState, networkState: video.networkState });
       if (besluit === "balk-stop") zetBar(video.currentTime, video.duration, false);
       if (besluit === "balk-sync") zetBar(video.currentTime, video.duration, true);
       if (besluit === "balk-stop" || besluit === "balk-sync" || besluit === "nudge" || besluit === "herlaad") debugEvent(besluit);
@@ -485,7 +490,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       const st = frameStand.current;
       const besluit = fg.tik({ now, currentTime: video.currentTime, paused: video.paused, hidden: document.hidden,
         seeking: video.seeking, ended: video.ended, seekRecent: now - seekOp.current < 1500,
-        frames: frameTeller(st), videoWidth: video.videoWidth, readyState: video.readyState });
+        frames: frameTeller(st), bron: frameTellerBron(st), videoWidth: video.videoWidth, readyState: video.readyState });
       if (besluit === "ok") return;
       debugEvent(besluit);
       diag.vast++;
@@ -624,7 +629,8 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       }
       // De volgende speler buffert kort op het laagste startniveau; het actieve filmpje mag verder bufferen.
       const on = activeNow.current;
-      const plan = planVoor(on ? 0 : 1, niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection));
+      const niveau = niveauVan((navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string; type?: string } }).connection);
+      const plan = planVoor(on ? 0 : 1, niveau);
       const h = new Hls({
         enableWorker: true,
         startLevel: 0,
@@ -632,7 +638,7 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
         startFragPrefetch: true,
         autoStartLoad: on || rankRef.current === 1,
         maxBufferLength: plan.secs,
-        maxMaxBufferLength: on ? 60 : plan.secs,
+        maxMaxBufferLength: maxBufferSeconden(on ? 0 : 1, niveau),
         maxBufferSize: plan.bytes,
         backBufferLength: 10,
         startPosition: resumeAt.current > 0 ? resumeAt.current : -1,
@@ -763,7 +769,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
           echteFout.current = true; foutCode.current = d.info; setVangnet(false);
           if (ytEchteFout(d.info)) setShown(true);
           onYtFout(d.info);
-        } else if (!echteFout.current && state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
+        } else if (!echteFout.current && state.current.active && !state.current.paused && autoplayGeblokkeerd(d.event, d.info)) {
           blokkade.current = d.event; diagnose();
           if (!state.current.muted) { onAutoplayBlocked(); post("mute"); post("playVideo"); }
         }
@@ -872,7 +878,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         listening();
       }}
     />
-    {active && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
+    {active && !paused && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
     </>
   );
 }
@@ -1121,61 +1127,44 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
 // ------------------------------------------------------------- samenvatting op verzoek
 // Knop + onderblad. De server (functions/samenvatting.ts) haalt ondertiteling of luistert de eerste minuten,
 // vat samen in simpele punten en bewaart dat per filmpje, dus de tweede keer is het meteen klaar.
-async function haalSamenvatting(id: string, signal: AbortSignal): Promise<Sv> {
-  const hit = svCache.get(id);
-  if (hit) return hit;
-  for (let poging = 0; poging < 8; poging++) {
-    let r: Response;
-    try {
-      r = await fetch("/samenvatting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }), signal });
-    } catch (e) {
-      if (signal.aborted) throw e;
-      return { ok: false, code: "net", fout: "Geen verbinding. Check je internet en probeer het nog eens." };
-    }
-    const j = (await r.json().catch(() => null)) as Sv | null;
-    if (j && !j.ok && j.code === "bezig") { await new Promise((ok) => setTimeout(ok, 4000)); continue; }
-    if (!j) return { ok: false, code: "fout", fout: "Samenvatten lukt even niet. Probeer het later nog eens." };
-    if (j.ok || ["geen-tekst", "te-lang", "onbekend"].includes(j.code)) svCache.set(id, j);
-    return j;
-  }
-  return { ok: false, code: "fout", fout: "Het duurt te lang. Probeer het zo nog eens." };
-}
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 function SamenvattingKnop({ v }: { v: Video }) {
   const [open, setOpen] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
   const klaar = (svCache.get(videoSlug(v)) as any)?.ok === true;
   return (
     <>
-      <button type="button" className={`f-btn${klaar ? " sv-klaar" : ""}`} onClick={(e) => { e.stopPropagation(); setOpen(true); }} aria-haspopup="dialog">
+      <button ref={opener} type="button" className={`f-btn${klaar ? " sv-klaar" : ""}`} onClick={(e) => { e.stopPropagation(); setOpen(true); }} aria-haspopup="dialog">
         Samenvatting{klaar ? <span className="sv-dot" aria-label="klaar" title="Staat al klaar" /> : null}
       </button>
-      {open ? createPortal(<SamenvattingBlad v={v} onClose={() => setOpen(false)} />, document.body) : null}
+      {open ? createPortal(<SamenvattingBlad v={v} opener={opener} onClose={() => setOpen(false)} />, document.body) : null}
     </>
   );
 }
-function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
+function SamenvattingBlad({ v, opener, onClose }: { v: Video; opener: React.RefObject<HTMLButtonElement>; onClose: () => void }) {
   const id = videoSlug(v);
-  const [res, setRes] = useState<Sv | null>(() => svCache.get(id) || null);
-  const [n, setN] = useState(0);
+  const { res, opnieuw } = useSamenvatting(id);
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (svCache.has(id) && n === 0) return;
-    const ac = new AbortController();
-    setRes(null);
-    haalSamenvatting(id, ac.signal).then(setRes, () => {});
-    return () => ac.abort();
-  }, [id, n]);
-  useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
     closeBtn.current?.focus({ preventScroll: true });
     const key = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); onClose(); } };
     window.addEventListener("keydown", key, true);
-    return () => { window.removeEventListener("keydown", key, true); prev?.focus?.({ preventScroll: true }); };
-  }, [onClose]);
+    return () => { window.removeEventListener("keydown", key, true); opener.current?.focus({ preventScroll: true }); };
+  }, [onClose, opener]);
+  const toets = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+    if (e.key !== "Tab") return;
+    const knoppen = Array.from(sheet.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") || []).filter((knop) => knop.getClientRects().length > 0);
+    const eerste = knoppen[0];
+    const laatste = knoppen[knoppen.length - 1];
+    if (e.shiftKey && document.activeElement === eerste) { e.preventDefault(); laatste?.focus(); }
+    else if (!e.shiftKey && document.activeElement === laatste) { e.preventDefault(); eerste?.focus(); }
+  };
   const min = res && res.ok && res.sec ? Math.max(1, Math.round(res.sec / 60)) : 0;
   return (
-    <div className="sv-wrap" onClick={(e) => { e.stopPropagation(); onClose(); }} onPointerDown={stop} onTouchStart={stop} onTouchMove={stop} onWheel={stop} onKeyDown={stop}>
-      <div className="sv-sheet" role="dialog" aria-modal="true" aria-labelledby="sv-kop" onClick={stop}>
+    <div className="sv-wrap" onClick={(e) => { e.stopPropagation(); onClose(); }} onPointerDown={stop} onTouchStart={stop} onTouchMove={stop} onWheel={stop} onKeyDown={toets}>
+      <div ref={sheet} className="sv-sheet" role="dialog" aria-modal="true" aria-labelledby="sv-kop" onClick={stop}>
         <div className="sv-head">
           <h2 id="sv-kop" className="sv-kop">Samenvatting</h2>
           <button ref={closeBtn} type="button" className="sv-x" onClick={onClose} aria-label="Sluit samenvatting">
@@ -1197,7 +1186,7 @@ function SamenvattingBlad({ v, onClose }: { v: Video; onClose: () => void }) {
             <>
               <p className="sv-fout">{res.fout}</p>
               {["fout", "net", "bezig", "geblokkeerd"].includes(res.code) ? (
-                <button type="button" className="f-btn" onClick={() => { svCache.delete(id); setN((x) => x + 1); }}>Probeer opnieuw</button>
+                <button type="button" className="f-btn" onClick={() => { closeBtn.current?.focus({ preventScroll: true }); opnieuw(); }}>Probeer opnieuw</button>
               ) : null}
             </>
           )}
@@ -1224,22 +1213,23 @@ export function Feed({
   groups?: FeedGroup[];
   onGroup?: (id: string) => void;
 }) {
-  // Lijsten vastzetten zolang de feed open is (de 15-minuten-verversing schuift dan niets onder je duim weg).
-  const [gs] = useState(() => (groups && groups.length > 1 ? groups : null));
+  const gs = groups && groups.length > 1 ? groups : null;
   const [gi, setGi] = useState(() => {
     if (!gs) return 0;
     const k = gs.findIndex((g) => g.list.some((v) => videoSlug(v) === start));
     return k < 0 ? 0 : k;
   });
-  const [items, setItems] = useState(() => (gs ? gs[gi].list : list));
-  const [first] = useState(() => Math.max(0, items.findIndex((v) => videoSlug(v) === start)));
+  const [verwijderd, setVerwijderd] = useState<ReadonlySet<string>>(() => new Set());
+  const bronItems = gs ? (gs[gi]?.list ?? gs[0].list) : list;
+  const items = useMemo(() => bronItems.filter((v) => !verwijderd.has(videoSlug(v))), [bronItems, verwijderd]);
+  const [first] = useState(() => startIndex(items, start));
   const [active, setActive] = useState(first);
+  useEffect(() => { setActive((i) => Math.min(i, Math.max(0, items.length - 1))); }, [items.length]);
   // Wisselen tussen Shorts en Journaals: nieuwe lijst, vanaf de eerste video (de scroller wordt vers opgebouwd).
   const pickGroup = useCallback(
     (k: number) => {
       if (!gs || k === gi) return;
       setGi(k);
-      setItems(gs[k].list);
       setActive(0);
       setPaused(false);
       onGroup?.(gs[k].id);
@@ -1247,18 +1237,24 @@ export function Feed({
     [gs, gi, onGroup]
   );
   const [paused, setPaused] = useState(false);
+  const [verborgen, setVerborgen] = useState(() => document.hidden);
+  const verborgenRef = useRef(document.hidden);
+  const zichtGeneratie = useRef(0);
   // want = jouw keuze (onthouden); nativeBlocked = de browser weigerde geluid op een poolvideo (Dumpert, Instagram);
   // ytBlok = YouTube-slides die geluid weigerden (per slide, dempt nooit een native slide).
   const [want, setWant] = useState(soundOn);
+  useEffect(() => volgGeluid(setWant), []);
   const [nativeBlocked, setBlocked] = useState(false);
   const [getikt, setGetikt] = useState(geluidTik);
   const [ytBlok, setYtBlok] = useState<ReadonlySet<number>>(() => new Set());
   const ytBlokAan = useCallback((i: number) => setYtBlok((s) => (s.has(i) ? s : new Set(s).add(i))), []);
   const ytBlokWis = useCallback(() => setYtBlok((s) => (s.size ? new Set() : s)), []);
-  const activeKind = playerFor(items[active])?.kind ?? "";
+  const activeKind = items[active] ? playerFor(items[active])?.kind ?? "" : "";
   const muted = !geluidVoorSlide(activeKind, want, getikt, nativeBlocked, ytBlok.has(active));
   const unmutedAt = useRef(0);
   const [closing, setClosing] = useState(false);
+  const closingRef = useRef(closing);
+  closingRef.current = closing;
   const scroller = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
@@ -1274,6 +1270,32 @@ export function Feed({
     for (let i = active; i <= active + 1; i++) if (i >= 0 && i < items.length && playerFor(items[i])?.kind === "youtube") next.add(i);
     return next;
   }, [active, items]);
+  useEffect(() => {
+    const verberg = () => {
+      verborgenRef.current = true;
+      zichtGeneratie.current++;
+      swipeStart.current = null;
+      pool.els.forEach((el) => el.pause());
+      root.current?.querySelectorAll<HTMLIFrameElement>("iframe.f-yt").forEach((frame) =>
+        frame.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), YT_ORIGIN)
+      );
+      flushSync(() => setVerborgen(true));
+    };
+    const toon = () => {
+      if (document.hidden) return;
+      verborgenRef.current = false;
+      setVerborgen(false);
+    };
+    const zicht = () => document.hidden ? verberg() : toon();
+    document.addEventListener("visibilitychange", zicht);
+    window.addEventListener("pagehide", verberg);
+    window.addEventListener("pageshow", toon);
+    return () => {
+      document.removeEventListener("visibilitychange", zicht);
+      window.removeEventListener("pagehide", verberg);
+      window.removeEventListener("pageshow", toon);
+    };
+  }, [pool]);
   // Geparkeerde pool-elementen blijven in het document (overlay, iOS-gebruiksstatus); weg als de feed sluit.
   useLayoutEffect(() => {
     const r = root.current;
@@ -1299,7 +1321,7 @@ export function Feed({
     const poging = swipeStart.current;
     if (!poging) return;
     swipeStart.current = null;
-    if (!herstelSwipe(poging.van, poging.naar, activeRef.current)) return;
+    if (verborgenRef.current || closingRef.current || !herstelSwipe(poging.van, poging.naar, activeRef.current)) return;
     const volgend = pool.els[slotVan(poging.naar)];
     if (Number(volgend.closest<HTMLElement>(".fslide")?.dataset.i) === poging.naar) {
       volgend.pause();
@@ -1309,6 +1331,8 @@ export function Feed({
     if (poging.speelde && !pausedRef.current && Number(huidig.closest<HTMLElement>(".fslide")?.dataset.i) === poging.van) huidig.play().catch(() => {});
   }, [pool]);
   const startDirect = useCallback((i: number) => {
+    if (verborgenRef.current || closingRef.current) return;
+    const generatie = zichtGeneratie.current;
     const video = pool.els[slotVan(i)];
     const slide = video.closest<HTMLElement>(".fslide");
     if (!slide || Number(slide.dataset.i) !== i || !video.getAttribute("src")) return;
@@ -1325,11 +1349,11 @@ export function Feed({
     video.play().catch((err: DOMException) => {
       if (err?.name === "NotAllowedError") {
         video.dataset.autoplayBlokkade = "NotAllowedError";
-        if (!video.muted) { setBlocked(true); video.muted = true; video.play().catch(() => {}); }
+        if (!video.muted && !verborgenRef.current && !closingRef.current && generatie === zichtGeneratie.current) { setBlocked(true); video.muted = true; video.play().catch(() => {}); }
       }
     });
     if (i !== vorige && swipeStart.current?.naar !== i) window.setTimeout(() => {
-      if (i === activeRef.current) return;
+      if (verborgenRef.current || closingRef.current || generatie !== zichtGeneratie.current || i === activeRef.current) return;
       if (video.closest<HTMLElement>(".fslide") === slide) video.pause();
       // Swipe ging niet door: de vorige speelt verder.
       if (uitIframe && activeRef.current === vorige && !pausedRef.current) uitIframe.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), YT_ORIGIN);
@@ -1362,11 +1386,11 @@ export function Feed({
     swipeStart.current = null;
     activeRef.current = besluit.actief;
     flushSync(() => {
-      setItems((oud) => oud.filter((_, index) => index !== i));
+      setVerwijderd((oud) => new Set([...oud, videoSlug(items[i])]));
       setActive(besluit.actief);
     });
     if (s) s.scrollTop = nieuwTop;
-  }, [items.length]);
+  }, [items]);
   const ytSpeelt = useCallback(() => {}, []);
 
   // Start op de gekozen video, vóór de eerste paint.
@@ -1444,7 +1468,7 @@ export function Feed({
   const vrijgegeven = useRef(new WeakSet<HTMLVideoElement>());
   const unmuteNow = useCallback(() => {
     const r = root.current;
-    if (!r) return;
+    if (!r || verborgenRef.current) return;
     const cur = r.querySelector<HTMLElement>(`.fslide[data-i="${activeRef.current}"]`);
     let huidig: HTMLVideoElement | null = null;
     pool.els.forEach((el) => {
@@ -1479,6 +1503,7 @@ export function Feed({
     if (!r) return;
     const onGesture = (e: Event) => {
       if (!e.isTrusted) return;
+      if (e.type === "keydown" && (e.target as HTMLElement)?.closest?.(".sv-wrap")) return;
       const eerste = !geluidTik();
       onthoudGeluidTik();
       setGetikt(true);
@@ -1614,7 +1639,7 @@ export function Feed({
               active={i === active}
               mount={mounted.has(i)}
               preload={i === active + 1 ? 1 : 0}
-              paused={i === active && paused}
+              paused={verborgen || (i === active && paused)}
               want={want}
               getikt={getikt}
               nativeBlocked={nativeBlocked}

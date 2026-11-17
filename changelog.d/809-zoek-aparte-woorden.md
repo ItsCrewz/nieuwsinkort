@@ -1,0 +1,1 @@
+- Zoeken: meerdere zoektermen vallen op afzonderlijke woorden, dus "mark markt" vindt geen bericht met alleen "markt" en "brand brand" vraagt twee keer "brand" (#809).

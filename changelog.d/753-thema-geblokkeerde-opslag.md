@@ -1,0 +1,1 @@
+- Behoud een handmatig gekozen thema bij geblokkeerde opslag zolang de pagina openstaat (#753).

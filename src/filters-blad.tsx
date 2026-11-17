@@ -6,11 +6,16 @@ import { Icon } from "./icons";
 import { rustig } from "./beweging";
 import { CAT_OPT, REGIO_LABEL, STANDAARD, TIJD_LABEL, heeftVideo, regioVan, samengevoegd, type Filters, type Uitkomst } from "./filters";
 
-function Chip({ on, onClick, children, n }: { on: boolean; onClick: () => void; children: React.ReactNode; n?: number }) {
+export function Chip({ on, onClick, children, n }: { on: boolean; onClick: () => void; children: React.ReactNode; n?: number }) {
   return (
     <button type="button" className={`fchip ${on ? "on" : ""}`} aria-pressed={on} onClick={onClick}>
       <span>{children}</span>
-      {n != null ? <span className="tnum fchip-n">{n}</span> : null}
+      {n != null ? (
+        <>
+          <span className="tnum fchip-n" aria-hidden="true">{n}</span>
+          <span className="sr-only">{`, ${n} ${n === 1 ? "bericht" : "berichten"}`}</span>
+        </>
+      ) : null}
     </button>
   );
 }
@@ -62,11 +67,35 @@ export function FilterBlad({
   useEffect(() => {
     afgehandeld.current = false;
     const prev = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    // Tab blijft in het blad; uitgeschakelde knoppen (bijv. Standaard) tellen niet mee.
+    const bedien = () => Array.from(panel.current?.querySelectorAll<HTMLElement>("button:not([disabled]), [tabindex]:not([tabindex='-1'])") ?? []);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return close();
+      if (e.key !== "Tab") return;
+      const lijst = bedien();
+      const eerste = lijst[0], laatste = lijst[lijst.length - 1];
+      const nu = document.activeElement as HTMLElement | null;
+      if (!eerste || !nu || !panel.current?.contains(nu)) {
+        e.preventDefault();
+        (eerste ?? closeBtn.current)?.focus({ preventScroll: true });
+      } else if (e.shiftKey && nu === eerste) {
+        e.preventDefault();
+        laatste.focus({ preventScroll: true });
+      } else if (!e.shiftKey && nu === laatste) {
+        e.preventDefault();
+        eerste.focus({ preventScroll: true });
+      }
+    };
+    // Focus die toch buiten het blad belandt (muis, schermlezer) gaat terug naar de sluitknop.
+    const onIn = (e: FocusEvent) => {
+      if (panel.current && e.target instanceof Node && !panel.current.contains(e.target)) closeBtn.current?.focus({ preventScroll: true });
+    };
     window.addEventListener("keydown", onKey);
+    document.addEventListener?.("focusin", onIn);
     closeBtn.current?.focus({ preventScroll: true });
     return () => {
       window.removeEventListener("keydown", onKey);
+      document.removeEventListener?.("focusin", onIn);
       if (timer.current !== null) window.clearTimeout(timer.current);
       afgehandeld.current = true;
       prev?.focus?.({ preventScroll: true });

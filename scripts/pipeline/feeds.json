@@ -550,7 +550,7 @@
   "naam": "BleepingComputer",
   "url": "https://www.bleepingcomputer.com/feed/",
   "werkt": true,
-  "notitie": "Chrome-UA; soms Cloudflare 403"
+  "notitie": "Chrome-UA; Cloudflare 403 op datacenter-IP; bij 403 staat de bron als overgeslagen met status in run-status"
  },
  {
   "cat": "tech",
@@ -563,7 +563,8 @@
   "cat": "tech",
   "naam": "CISA advisories",
   "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
-  "werkt": true
+  "werkt": true,
+  "notitie": "Akamai: bot-UA geweigerd; retry met browser-UA en Referer"
  },
  {
   "cat": "tech",

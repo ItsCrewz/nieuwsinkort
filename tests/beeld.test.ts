@@ -1,6 +1,6 @@
 // Draai: npm test  (beeld-URL's en og:image, src/beeld.ts)
 import assert from "node:assert/strict";
-import { beeldKey, beterBeeld, goedBeeld, ogImage, uniekeBeelden } from "../src/beeld";
+import { beeldKey, beterBeeld, bruikbareAfmeting, goedBeeld, ogImage, uniekeBeelden } from "../src/beeld";
 
 let n = 0;
 const t = (name: string, fn: () => void) => { fn(); n++; console.log("✓", name); };
@@ -24,7 +24,7 @@ t("beeldKey herkent varianten van hetzelfde beeld", () => {
 t("beterBeeld normaliseert gecodeerde Nu.nl-thumbnails", () => {
   assert.equal(
     beterBeeld(" https://images.nu.nl/m/abc123_sqr256/foto.jpg?x&#x3D;1&amp;y&#61;2 "),
-    "https://images.nu.nl/m/abc123_wd1280.jpg",
+    "https://images.nu.nl/m/abc123_sqr256/foto.jpg?x=1&y=2",
   );
   assert.equal(beterBeeld(" https://nieuws.nl/foto.jpg?x&#x3D;1&amp;y&#61;2 "), "https://nieuws.nl/foto.jpg?x=1&y=2");
 });
@@ -36,8 +36,8 @@ t("uniekeBeelden behoudt de eerste bron, verwijdert dubbelen en respecteert max"
     "https://nieuws.nl/logo.png",
     "https://nieuws.nl/andere-foto.jpg",
   ];
-  assert.deepEqual(uniekeBeelden(urls), ["https://nieuws.nl/foto-1200x675.jpg", "https://nieuws.nl/andere-foto.jpg"]);
-  assert.deepEqual(uniekeBeelden(urls, 1), ["https://nieuws.nl/foto-1200x675.jpg"]);
+  assert.deepEqual(uniekeBeelden(urls), ["https://cdn.nieuws.nl/foto-600x338.jpg", "https://nieuws.nl/andere-foto.jpg"]);
+  assert.deepEqual(uniekeBeelden(urls, 1), ["https://cdn.nieuws.nl/foto-600x338.jpg"]);
 });
 
 t("ogImage leest een relatieve og:image ten opzichte van de basis-URL", () => {
@@ -45,6 +45,17 @@ t("ogImage leest een relatieve og:image ten opzichte van de basis-URL", () => {
     ogImage('<meta property="og:image" content="/beelden/foto.jpg?bron=a&amp;maat=breed">', "https://nieuws.nl/artikelen/123"),
     "https://nieuws.nl/beelden/foto.jpg?bron=a&maat=breed",
   );
+});
+
+t("bruikbareAfmeting: staande foto blijft, icoon en banner niet (#996)", () => {
+  assert.equal(bruikbareAfmeting(400, 1000), true);
+  assert.equal(bruikbareAfmeting(400, 1400), true);
+  assert.equal(bruikbareAfmeting(400, 1401), false);
+  assert.equal(bruikbareAfmeting(100, 1000), false);
+  assert.equal(bruikbareAfmeting(199, 300), false);
+  assert.equal(bruikbareAfmeting(300, 119), false);
+  assert.equal(bruikbareAfmeting(1200, 300), true);
+  assert.equal(bruikbareAfmeting(1200, 299), false);
 });
 
 console.log(`\n${n} tests geslaagd`);

@@ -35,6 +35,12 @@ t("CSP staat alleen het exacte thema-script en de benodigde mediabronnen toe", (
   assert.ok(!headers.includes("/data.json"));
 });
 
+t("statische bestanden krijgen exact zeven dagen HSTS", () => {
+  const headers = readFileSync("public/_headers", "utf8");
+  const algemeen = headers.split("\n").slice(headers.split("\n").indexOf("/*") + 1).find((r) => r.includes("Strict-Transport-Security:"));
+  assert.equal(algemeen?.trim(), "Strict-Transport-Security: max-age=604800");
+});
+
 t("statische bestanden krijgen passende cacheheaders", () => {
   const headers = readFileSync("public/_headers", "utf8");
   for (const pad of ["/fonts/*", "/favicon.svg", "/favicon.ico", "/icon-48.png", "/icon-96.png", "/icon-maskable-512.png", "/apple-touch-icon.png", "/icon-192.png", "/icon-512.png"]) {

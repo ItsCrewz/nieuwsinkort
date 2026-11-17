@@ -53,6 +53,7 @@ assert.deepEqual(groups.find((g) => g.id === "nl"), {
   label: "Nederland",
   total: 3,
   published: 3,
+  onvolledig: true,
   sources: [
     { id: "nos", naam: "NOS", alias: ["nosnieuws"], hosts: ["nos.nl"], key: "nl|nos", count: 1, fromData: false, stat: { vandaag: 3 } },
     { id: "nu", naam: "NU.nl", hosts: ["nu.nl"], key: "nl|nu", count: 1, fromData: false, stat: { vandaag: null } },
@@ -96,6 +97,12 @@ assert.equal(zonderStats.groups[0].sources.some((s) => "stat" in s), false);
 const metStats = buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: { "tech|d": { vandaag: 5 }, "tech|b": { vandaag: 1 }, "tech|a": { vandaag: null } } });
 assert.deepEqual(metStats.groups[0].sources.map((s) => s.id), ["d", "b", "a", "c"]);
 assert.deepEqual(metStats.groups.map((g) => [g.id, g.total, g.published]), [["tech", 0, 6]]);
+// ontbrekende of mislukte telling: totaal is een ondergrens; alles bekend: volledig
+assert.equal(metStats.groups[0].onvolledig, true);
+assert.equal(buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: { "tech|a": { vandaag: 1 }, "tech|b": { vandaag: 2 }, "tech|c": { vandaag: 0 }, "tech|d": { vandaag: 3 } } }).groups[0].onvolledig, false);
+assert.equal(buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: { "tech|a": { vandaag: 1 }, "tech|b": { vandaag: 2 }, "tech|c": { vandaag: 0 }, "tech|d": { vandaag: 3, storing: true } } }).groups[0].onvolledig, true);
+assert.equal(buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: { "tech|a": { vandaag: null } } }).groups[0].published, null);
+assert.equal(zonderStats.groups[0].onvolledig, false);
 
 // eerste bron wint bij dubbele alias of host
 const dubbelCatalogus: Catalog = {

@@ -23,16 +23,31 @@ await t("vroeg: een afgewezen promise wordt ongewijzigd teruggegeven", async () 
   assert.equal(neemVroegeData(w), null);
 });
 
-await t("laadData valt eenmaal terug op statische data bij fout of ongeldige JSON", async () => {
-  const { laadData } = await import("../src/vroeg");
-  for (const respons of [new Response("fout", { status: 503 }), new Response("geen json")]) {
+
+const { laadData } = await import("../src/vroeg");
+const uitgesteld = <T>() => {
+  let los!: (waarde: T) => void;
+  const promise = new Promise<T>((resolve) => { los = resolve; });
+  return { promise, los };
+};
+await t("vroeg: vastgelopen respons en body vallen terug, late antwoorden veranderen het resultaat niet", async () => {
+  for (const body of [false, true]) {
+    const laat = uitgesteld<any>();
+    const vroeg = body ? Promise.resolve({ ok: true, json: () => laat.promise } as Response) : laat.promise;
+    const resultaat = laadData(vroeg, (async () => Response.json({ versie: "nieuw" })) as typeof fetch, 5);
+    assert.deepEqual(await resultaat, { versie: "nieuw" });
+    laat.los(body ? { versie: "oud" } : Response.json({ versie: "oud" }));
+    assert.deepEqual(await resultaat, { versie: "nieuw" });
+  }
+});
+await t("vroeg: ook actuele en statische respons of body hebben een tijdslimiet", async () => {
+  for (const body of [false, true]) {
     const paden: string[] = [];
-    const ophalen = (async (pad: string | URL | Request, opties?: RequestInit) => {
+    const ophalen = ((pad: string | URL | Request) => {
       paden.push(String(pad));
-      assert.equal(opties?.cache, "no-cache");
-      return Response.json({ items: [] });
+      return body ? Promise.resolve({ ok: true, json: () => new Promise(() => {}) } as Response) : new Promise<Response>(() => {});
     }) as typeof fetch;
-    assert.deepEqual(await laadData(Promise.resolve(respons), ophalen), { items: [] });
-    assert.deepEqual(paden, ["/data.json?statisch=1"]);
+    await assert.rejects(laadData(null, ophalen, 5), /Laadtijd verstreken/);
+    assert.deepEqual(paden, ["/data.json", "/data.json?statisch=1"]);
   }
 });

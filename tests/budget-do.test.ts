@@ -20,6 +20,31 @@ await t("Budget: slot claimen, vrijgeven en verlopen", async () => {
   (data.get("slot:vid-1") as any).tot = Date.now() - 1;
   assert.ok((await call("claim", { id: "vid-1" })).tok, "verlopen slot is vrij");
 });
+await t("Budget: gelijktijdige claims op één id geven één token", async () => {
+  const { call } = budget();
+  const r = await Promise.all(Array.from({ length: 10 }, () => call("claim", { id: "vid-x" })));
+  assert.equal(r.filter((x) => x.tok).length, 1);
+});
+await t("Budget: oude eigenaar geeft het nieuwe slot niet vrij", async () => {
+  const { call, data } = budget();
+  const oud = (await call("claim", { id: "v" })).tok;
+  (data.get("slot:v") as any).tot = Date.now() - 1;
+  const nieuw = (await call("claim", { id: "v" })).tok;
+  assert.ok(nieuw && nieuw !== oud);
+  await call("vrij", { id: "v", tok: oud });
+  assert.equal((await call("claim", { id: "v" })).tok, null, "nieuwe eigenaar houdt slot");
+  assert.ok(data.has("slot:v"));
+});
+await t("Budget: claim leest niet alle sloten en ruimt begrensd op", async () => {
+  const { call, data, telling } = budget();
+  for (let i = 0; i < 500; i++) data.set(`slot:oud-${String(i).padStart(3, "0")}`, { tot: 1, tok: "x" });
+  assert.ok((await call("claim", { id: "nieuw" })).tok);
+  assert.equal([...data.keys()].filter((k) => k.startsWith("slot:oud-")).length, 480, "max 20 per claim opgeruimd");
+  assert.ok(data.has("slot:nieuw"));
+  telling.list = 0;
+  assert.equal((await call("claim", { id: "nieuw" })).tok, null);
+  assert.equal(telling.list, 0, "bezet slot: geen list");
+});
 await t("Budget: reserveren, boven budget geweigerd, verrekenen met spiegel in KV", async () => {
   const { call, kv } = budget();
   assert.deepEqual(await call("reserveer", res()), { ok: true, video: 100 });
@@ -55,7 +80,7 @@ await t("Budget: uurrem staat op 30 en geldt per uur", async () => {
   assert.equal((await call("reserveer", res({ schatting: 1, uur: "2026-10-30T11" }))).ok, true, "volgend uur weer ruimte");
   assert.equal([...data.keys()].filter((k) => k.startsWith("uur:2026-10-30T")).length, 2);
   await call("reserveer", res({ datum: "2026-10-31", uur: "2026-10-31T06", schatting: 1 }));
-  assert.deepEqual([...data.keys()].filter((k) => k.startsWith("uur:") || k.startsWith("video:")).sort(), ["uur:2026-10-31T06", "video:2026-10-31"], "oude dag opgeruimd");
+  assert.deepEqual([...data.keys()].filter((k) => k.startsWith("uur:") || k.startsWith("video:")).sort(), ["uur:2026-10-31T06", "video:2026-10-30", "video:2026-10-31"], "oude uren opgeruimd, vorige dag bewaard");
 });
 await t("Budget: mislukte KV-spiegel blijft gemarkeerd, herstart herstelt vid-neurons", async () => {
   const kv = new Map<string, string>(), opslag = new Map<string, unknown>();

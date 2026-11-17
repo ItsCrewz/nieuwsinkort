@@ -1,0 +1,1 @@
+- Budget: een mislukte opslagwrite tijdens `reserveer()` laat geen verbruikte uurplaats of dagteller meer achter (atomaire write in de Durable Object, anders terugzetten); opruimen en KV-spiegelen na een geslaagde boeking kunnen een reservering niet meer laten mislukken (#958).

@@ -9,3 +9,11 @@ assert.equal(await deel({ share: async () => { throw new DOMException("", "Abort
 assert.equal(await deel({ share: async () => { throw Error(); }, clipboard: { writeText: async (s) => { gekopieerd = s; } } }, "Titel", url), "gekopieerd");
 assert.equal(gekopieerd, url);
 assert.equal(await deel({ clipboard: { writeText: async () => { throw Error(); } } }, "Titel", url), "handmatig");
+let shareAangeroepen = false;
+const share = async () => { shareAangeroepen = true; };
+const canShare = () => { throw new DOMException("", "AbortError"); };
+gekopieerd = "";
+assert.equal(await deel({ share, canShare, clipboard: { writeText: async (s) => { gekopieerd = s; } } }, "Titel", url), "gekopieerd");
+assert.equal(gekopieerd, url);
+assert.equal(await deel({ share, canShare, clipboard: { writeText: async () => { throw Error(); } } }, "Titel", url), "handmatig");
+assert.equal(shareAangeroepen, false);

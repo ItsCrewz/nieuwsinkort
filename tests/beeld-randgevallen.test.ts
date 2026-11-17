@@ -39,8 +39,20 @@ t("beeldKey negeert CDN-maten en queryparameters maar niet de foto-identiteit", 
 
 t("beeldKey herkent de oorspronkelijke foto achter een CDN-proxy", () => {
   const origineel = "https://nieuws.nl/fotos/stadsbeeld.jpg";
-  const proxy = `https://cdn.voorbeeld.nl/image?url=${encodeURIComponent(origineel)}&w=800`;
-  assert.equal(beeldKey(proxy), beeldKey(origineel));
+  for (const proxy of [
+    `https://nieuws.nl/_next/image?url=${encodeURIComponent(origineel)}&w=800`,
+    `https://wsrv.nl/?url=${encodeURIComponent(origineel)}&w=800`,
+    `https://images.weserv.nl/?src=${encodeURIComponent(origineel)}&w=800`,
+    `https://voorbeeld.imgix.net/?u=${encodeURIComponent(origineel)}&w=800`,
+  ]) assert.deepEqual(uniekeBeelden([proxy, origineel]), [proxy]);
+});
+
+t("verwijzingsparameters op gewone beeldpaden voegen foto's niet samen (#954)", () => {
+  for (const parameter of ["url", "src", "u"]) {
+    const verwijzing = encodeURIComponent("https://nieuws.nl/artikel/123");
+    const fotos = ["eerste", "tweede"].map((naam) => `https://nieuws.nl/fotos/${naam}.jpg?${parameter}=${verwijzing}`);
+    assert.deepEqual(uniekeBeelden(fotos), fotos);
+  }
 });
 
 t("beterBeeld decodeert CDN-parameters zonder de maat te wijzigen", () => {
@@ -49,6 +61,16 @@ t("beterBeeld decodeert CDN-parameters zonder de maat te wijzigen", () => {
     "https://cdn.nieuws.nl/stadsbeeld.jpg?w=800&h=450&fit=crop",
   );
   assert.equal(beterBeeld("https://images.nu.nl/m/abc123_sqr256/foto.jpg?w=256"), "https://images.nu.nl/m/abc123_wd1280.jpg");
+});
+
+t("beterBeeld vergroot NU-miniaturen alleen zonder toegangsparameters, anders blijft het adres staan (#1084)", () => {
+  const b = "https://images.nu.nl/m/abc123_sqr256/foto.jpg";
+  assert.equal(beterBeeld(`${b}?w=256&utm_source=x`), "https://images.nu.nl/m/abc123_wd1280.jpg");
+  assert.equal(beterBeeld(`${b}?fbclid=1&height=256#x`), "https://images.nu.nl/m/abc123_wd1280.jpg");
+  assert.equal(beterBeeld(`${b}?token=a1&w=256&sig=z%2B`), `${b}?token=a1&w=256&sig=z%2B`);
+  assert.equal(beterBeeld(`${b}?onbekend=1`), `${b}?onbekend=1`);
+  assert.equal(beterBeeld(`${b}?token=a&amp;sig=b`), `${b}?token=a&sig=b`);
+  assert.equal(beterBeeld("https://nieuws.nl/foto.jpg?token=a&w=800"), "https://nieuws.nl/foto.jpg?token=a&w=800");
 });
 
 t("uniekeBeelden slaat null, undefined en onbruikbare waarden over", () => {
@@ -66,10 +88,10 @@ t("uniekeBeelden geeft precies max unieke beelden in bronvolgorde", () => {
   assert.deepEqual(uniekeBeelden([null, eerste, eerste, tweede, derde], 2), [eerste, tweede]);
 });
 
-t("uniekeBeelden begrenst standaard tot zes unieke beelden", () => {
-  const urls = Array.from({ length: 7 }, (_, i) => `https://nieuws.nl/stadsbeeld${i}.jpg`);
+t("uniekeBeelden begrenst standaard tot twaalf unieke beelden", () => {
+  const urls = Array.from({ length: 14 }, (_, i) => `https://nieuws.nl/stadsbeeld${i}.jpg`);
   assert.deepEqual(uniekeBeelden(urls.slice(0, 6)), urls.slice(0, 6));
-  assert.deepEqual(uniekeBeelden(urls), urls.slice(0, 6));
+  assert.deepEqual(uniekeBeelden(urls), urls.slice(0, 12));
 });
 
 t("ogImage lost een relatief pad met enkele aanhalingstekens en entities op", () => {
@@ -87,6 +109,31 @@ t("ogImage geeft een lege string bij ontbrekende of onbruikbare metadata", () =>
   assert.equal(ogImage("<title>Nieuws</title><meta name='description' content='tekst'>", "https://nieuws.nl/"), "");
   assert.equal(ogImage("<meta property='og:image' content=''>", "https://nieuws.nl/"), "");
   assert.equal(ogImage("<meta property='og:image' content='/foto.jpg'>", "geen geldige basis"), "");
+});
+
+t("protocol van beeld-URL's is hoofdletterongevoelig (#869)", () => {
+  for (const p of ["https://", "HTTPS://", "HtTpS://"]) assert.equal(goedBeeld(`${p}images.example.org/foto.jpg`), true, p);
+  assert.equal(goedBeeld("HTTP://images.example.org/foto.jpg"), true);
+  for (const u of ["ftp://images.example.org/foto.jpg", "javascript:alert(1)", "HTTPS//images.example.org/foto.jpg", "niet een url"]) assert.equal(goedBeeld(u), false, u);
+  assert.deepEqual(uniekeBeelden(["HTTPS://images.example.org/foto.jpg"]), ["https://images.example.org/foto.jpg"]);
+  assert.deepEqual(uniekeBeelden(["HtTpS://a.example.org/x.jpg", "https://a.example.org/x.jpg"]), ["https://a.example.org/x.jpg"]);
+  assert.deepEqual(uniekeBeelden(["HTTP://a.example.org/x.jpg", "ftp://a.example.org/y.jpg", "javascript:alert(1)", "kapot"]), []);
+});
+
+t("ogImage: og:image wint van twitter:image in alle attribuut- en tagvolgordes", () => {
+  const b = "https://x.example/a/b";
+  const og = ['<meta property="og:image" content="/og.jpg">', '<meta content="/og.jpg" property="og:image">'];
+  const tw = ['<meta name="twitter:image" content="/tw.jpg">', '<meta content="/tw.jpg" name="twitter:image">'];
+  for (const o of og) for (const w of tw) {
+    assert.equal(ogImage(o + w, b), "https://x.example/og.jpg");
+    assert.equal(ogImage(w + o, b), "https://x.example/og.jpg");
+  }
+});
+
+t("ogImage: twitter:image werkt zonder og en na een lege og", () => {
+  const b = "https://x.example/a/b";
+  assert.equal(ogImage('<meta content="tw.jpg" name="twitter:image:src">', b), "https://x.example/a/tw.jpg");
+  assert.equal(ogImage('<meta property="og:image" content=" "><meta name="twitter:image" content="/tw.jpg">', b), "https://x.example/tw.jpg");
 });
 
 console.log(`\n${n} tests geslaagd`);

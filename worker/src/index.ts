@@ -3,6 +3,7 @@ import { relevantePunten, verzamelUrl, invoerBijKop } from "../../src/puntenrele
 import { videomoment, videoToegestaan, zonderGisteren } from "./videomoment";
 import { berekenBody, etag } from "../../functions/data.json";
 import { somStand, kopieStand, verschilStand, telOp, groqTokens, type LlmState } from "./llm";
+import { llmTimeoutMs } from "../../src/llm-aanroep";
 // nieuwsinkort-uur: elke 5 minuten (06:00–23:00 Amsterdam; zwaardere bronnen elke 15 of 30 minuten, zie tier.ts) feeds ophalen, samenvatten met Workers AI en in KV zetten.
 // De Pages Function /data.json voegt dit samen met de data.json van de routine.
 // Free plan: de cron zelf doet bijna niets (10 ms CPU); het werk gebeurt in Durable Objects (30 s CPU per verzoek)
@@ -11,6 +12,7 @@ import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
+import { batchesOphalen, foutcode, type Broncode, type Bronfout } from "./bronfouten";
 import { maakTel, voegTellerToe, legeRun, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoudVandaag, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
@@ -68,7 +70,7 @@ export function kiesVoorAI<T>(byCat: Record<string, T[]>, tier: number, capN: nu
 
 export interface Env {
   NIEUWS: KVNamespace; AI: Ai; RUNNER: DurableObjectNamespace<Runner>; FETCHER: DurableObjectNamespace<Fetcher>; BUDGET_DO: DurableObjectNamespace<Budget>;
-  RUN_KEY?: string; GROQ_API_KEY?: string; MISTRAL_API_KEY?: string; MISTRAL_MAAND_TOKENS?: string; MISTRAL_TUSSENPOOS_MS?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string; NEURON_FACTOR?: string;
+  RUN_KEY?: string; GROQ_API_KEY?: string; MISTRAL_API_KEY?: string; MISTRAL_MAAND_TOKENS?: string; MISTRAL_TUSSENPOOS_MS?: string; SITE: string; MODEL: string; SMALL_MODEL?: string; CAP?: string; BUDGET?: string; NEURON_FACTOR?: string; LLM_TIMEOUT_MS?: string;
 }
 const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";
 const TZ = "Europe/Amsterdam";
@@ -79,7 +81,7 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 
 // ---------------------------------------------------------------- fetcher-DO
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; pad?: string; alleenVideo?: boolean };
-type Res = { url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; ytPad?: "primair" | "fallback"; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
+type Res = { code?: Broncode; url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; ytPad?: "primair" | "fallback"; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 const igGet = (url: string) => fetch(url, { headers: { "User-Agent": IG_UA, Accept: "text/html", "Accept-Language": "nl-NL,nl;q=0.9" }, signal: AbortSignal.timeout(15000) });
@@ -178,12 +180,18 @@ async function runX(j: Job, _since: number, t0: number): Promise<Res> {
 const FEED_UA = "Feedly/1.0 (+http://www.feedly.com/fetcher.html; like FeedFetcher-Google)";
 const HN_RSS = /^https?:\/\/news\.ycombinator\.com\/rss\/?$/;
 const BR_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
-async function get(url: string, timeout = 15000, ua = UA): Promise<Response> {
+// Extra headers voor de 403-retry, alleen voor uitgevers met botbescherming (#572): passende Accept per feedtype en een Referer van dezelfde uitgever
+export function hostHeaders(url: string): Record<string, string> {
+  let h = ""; try { h = new URL(url).hostname; } catch { return {}; }
+  if (h !== "www.bleepingcomputer.com" && h !== "www.cisa.gov") return {};
+  return { Accept: /\.json(\?|$)/.test(url) ? "application/json, */*;q=0.5" : "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5", Referer: `https://${h}/` };
+}
+async function get(url: string, timeout = 15000, ua = UA, extra: Record<string, string> = {}): Promise<Response> {
   // SRU (overheid.nl) geeft JSON terug zodra "application/json" in Accept staat: dan alleen XML vragen
   const accept = /\/sru\?/.test(url) ? "application/xml, text/xml" : "application/rss+xml, application/atom+xml, application/xml, text/xml, application/json, text/html;q=0.8, */*;q=0.5";
   // ORI-elastic zonder query geeft willekeurige documenten: nieuwste eerst
   if (/openraadsinformatie\.nl\/.*\/_search$/.test(url)) url += "?size=50&sort=start_date:desc&_source=name,start_date,last_discussed_at,date_modified,@type";
-  return fetch(url, { headers: { "User-Agent": ua, Accept: accept, "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8" }, signal: AbortSignal.timeout(timeout), redirect: "follow" });
+  return fetch(url, { headers: { "User-Agent": ua, Accept: accept, "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8", ...extra }, signal: AbortSignal.timeout(timeout), redirect: "follow" });
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let redlibN = 0;
@@ -202,7 +210,7 @@ async function viaRedlib(url: string): Promise<Response | null> {
   return null;
 }
 
-async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
+export async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
   const t0 = Date.now();
   let status = 0;
   try {
@@ -253,17 +261,18 @@ async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
         // daarna Redlib: 2 instances per bron, per uur roterend; alleen een pagina met echte posts telt
         if (!r.ok) { const rl = await viaRedlib(u); if (rl) r = rl; }
       }
-      else { await sleep(1500); r = await get(u, 15000, BR_UA); }
+      else { await sleep(1500); r = await get(u, 15000, BR_UA, hostHeaders(u)); }
     }
     if (uploads && r.ok && !ytPad) ytPad = "primair";
     status = r.status;
-    if (!r.ok) return { url: j.url, ok: false, status, err: `HTTP ${status}`, ms: Date.now() - t0 };
+    if (!r.ok) return { url: j.url, ok: false, status, code: "SRC_HTTP", err: `HTTP ${status}`, ms: Date.now() - t0 };
     const body = await r.text();
     const base: Res = { url: j.url, ok: true, status, ms: 0, ...(ytPad ? { ytPad } : {}) };
     if (j.kind === "json") base.json = JSON.parse(body);
     else if (j.kind === "text") base.text = body.length > 400000 ? body.slice(0, 400000) : body;
     else if (j.kind === "dumpert") base.videos = parseDumpert(body, hhmm);
     else {
+      if (!body.trim()) return { url: j.url, ok: false, status, code: "SRC_EMPTY", err: "lege respons", ms: Date.now() - t0 };
       if (/^\s*<!doctype html|^\s*<html/i.test(body.slice(0, 300))) throw new Error("HTML i.p.v. feed");
       const all = parseFeed(body, j.url, j.pad);
       const now = Date.now();
@@ -276,7 +285,7 @@ async function runJob(j: Job, since: number, ig?: IgCache): Promise<Res> {
     base.ms = Date.now() - t0;
     return base;
   } catch (e: any) {
-    return { url: j.url, ok: false, status, err: String(e?.message || e).slice(0, 120), ms: Date.now() - t0, ...(j.kind === "x" && e instanceof XFout ? { xFout: { fx: e.fx, syn: e.syn } } : {}) };
+    return { url: j.url, ok: false, status, code: foutcode(e, status), err: String(e?.message || e).slice(0, 120), ms: Date.now() - t0, ...(j.kind === "x" && e instanceof XFout ? { xFout: { fx: e.fx, syn: e.syn } } : {}) };
   }
 }
 
@@ -357,7 +366,8 @@ export class Runner extends DurableObject<Env> {
       mag: async (s: { faalReeks: number; laatsteFout: string | null }, oud: { faalReeks: number; laatsteFout: string | null }) => s.faalReeks !== oud.faalReeks || s.laatsteFout !== oud.laatsteFout || moetSchrijven(((await opslag.get<KvStand>("kvstand")) || {})["run-status"], undefined, Date.now()),
       gedaan: () => bewaarKvStand(opslag, { "run-status": { at: Date.now() } }),
     };
-    try { res = await bewaakteRun(() => this.run(force, slot, tel, geplandTijd), opslag, tel.kv, kvBeleid); }
+    let bronfouten: Bronfout[] = [];
+    try { res = await bewaakteRun(() => this.run(force, slot, tel, geplandTijd, (f) => { bronfouten = f; }), opslag, tel.kv, kvBeleid, () => bronfouten); }
     finally { await geefSlot(opslag, nu).catch(() => console.error("run-slot vrijgeven mislukt")); }
     await telKvDag(this.ctx.storage, utcDag(Date.now()), tel.kvN()).catch(() => console.error("kv-dagteller opslaan mislukt"));
     // lege succesrun zichtbaar maken (#478): alleen in het bestaande tellerregel-object, geen extra opslag-write
@@ -418,9 +428,9 @@ export class Runner extends DurableObject<Env> {
 
   // Groq-verbruik van deze run (#431): wordt bij een mislukte run apart in `state.llm` bijgeschreven, anders gaat het verloren met `st`.
   private llmBewaar: (() => Promise<void>) | null = null;
-  async run(force: boolean, interval = 60, tel: Tel = maakTel(this.env.NIEUWS, this.ctx.storage), geplandTijd?: number) {
+  async run(force: boolean, interval = 60, tel: Tel = maakTel(this.env.NIEUWS, this.ctx.storage), geplandTijd?: number, meldBronfouten: (fouten: Bronfout[]) => void = () => {}) {
     this.llmBewaar = null;
-    try { return await this.runBinnen(force, interval, tel, geplandTijd); }
+    try { return await this.runBinnen(force, interval, tel, geplandTijd, meldBronfouten); }
     catch (e) { await this.bewaarLlm(); throw e; }
     finally { this.llmBewaar = null; }
   }
@@ -444,15 +454,15 @@ export class Runner extends DurableObject<Env> {
       return true;
     } catch (x) { console.error("opslagfout state (llm)", x); return false; }
   }
-  private async runBinnen(force: boolean, interval: number, tel: Tel, geplandTijd?: number) {
+  private async runBinnen(force: boolean, interval: number, tel: Tel, geplandTijd: number | undefined, meldBronfouten: (fouten: Bronfout[]) => void) {
     // KV en DO-opslag lopen via de tellende proxy's van deze run (meta.kvWritesRun, tellerregel)
     const env = { ...this.env, NIEUWS: tel.kv } as Env, opslag = tel.opslag as DurableObjectStorage, T0 = Date.now(), now = Date.now(), A = ams(now), U = utcDag(now), since = midnight(now);
     // BUDGET / NEURON_FACTOR: de echte Cloudflare-teller kan hoger staan dan onze schatting (docs/ai-budget.md)
     const model = env.MODEL, CAP = +(env.CAP || 40), FACTOR = neuronFactor(env.NEURON_FACTOR), BUDGET = +(env.BUDGET || 9000) / FACTOR;
     const site = env.SITE.replace(/\/$/, "");
     const [bronnenR, staticR, geladen] = await Promise.all([
-      fetch(`${site}/bronnen.json?t=${now}`, { headers: { "User-Agent": UA } }),
-      fetch(`${site}/data.json?statisch=1&t=${now}`, { headers: { "User-Agent": UA } }),
+      fetch(`${site}/bronnen.json?t=${now}`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15000) }),
+      fetch(`${site}/data.json?statisch=1&t=${now}`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15000) }).catch(() => new Response(null, { status: 503 })),
       leesState(opslag),
     ]);
     // state staat primair in DO-opslag; de KV-kopie wordt alleen gelezen en wint bij nieuwere inhoud (terugrollen naar de vorige Worker, of een mislukte DO-write), zie kvStateWint
@@ -517,12 +527,13 @@ export class Runner extends DurableObject<Env> {
     }));
     const vd = verdeelJobs(all, bronTier, tcCache, since), uitvoeren = new Set(vd.uitvoeren.map((j) => j.url));
     let fetcherHoofd = 0;
-    const haalBatch = async (b: Job[], naam: string) => {
+    const haalBatch = async (b: Job[], naam: string): Promise<Res[]> => batchesOphalen([b], async () => {
       fetcherHoofd++;
       const stub = env.FETCHER.get(env.FETCHER.idFromName(naam));
       const r = await stub.fetch("https://do/f", { method: "POST", body: JSON.stringify({ jobs: b, since }) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return (await r.json()) as Res[];
-    };
+    }, (url, code, ms) => ({ url, ok: false, status: 0, code, ms }));
     // #480: eerst één YouTube-feed (kanarie); bij 404/5xx slaan we de rest van de YouTube-feeds deze run over.
     // Alleen de overige YouTube-feeds wachten op de kanarie: alle andere batches vertrekken er direct naast.
     const isYt = (j: Job) => j.kind === "feed" && isYtFeed(j.url);
@@ -549,6 +560,9 @@ export class Runner extends DurableObject<Env> {
     };
     const [gehaaldAnder, gehaaldYt] = await Promise.all([haalNietYt(), haalYt()]);
     const gehaald = [...gehaaldYt, ...gehaaldAnder];
+    meldBronfouten(gehaald.filter((r) => !r.ok).map((r) => ({ url: r.url, code: r.code || foutcode(r.err || "", r.status), ms: r.ms || 0, ...(r.status ? { status: r.status } : {}) })));
+    const nieuwsUrls = new Set(srcFeeds.flatMap((f) => f.urls));
+    if (nieuwsUrls.size && !gehaald.some((r) => nieuwsUrls.has(r.url) && r.ok)) throw new Error("Geen nieuwsbron bereikbaar; vorige data behouden");
     const xUrls = new Set(xj.map((j) => j.url));
     const xDiagnose = xFouten(gehaald.filter((r) => xUrls.has(r.url)));
     if (xDiagnose.length) console.warn(`X-accounts mislukt: ${xDiagnose.map((f) => f.account).join(", ")}`);
@@ -674,7 +688,7 @@ export class Runner extends DurableObject<Env> {
     const groqChatKey = `groq-chat:${U}`;
     const groqChat = ((await env.NIEUWS.get(groqChatKey, "json").catch(() => null)) as LlmState | null) || {};
     const ketenStand = somStand(st.llm!, groqChat, U), ketenVoor = kopieStand(ketenStand);
-    const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: ketenStand } };
+    const usage: Usage = { neurons: 0, calls: 0, fails: 0, inTok: 0, outTok: 0, llmTimeoutMs: llmTimeoutMs(env.LLM_TIMEOUT_MS), llm: { sleutel: env.GROQ_API_KEY, mistralSleutel: env.MISTRAL_API_KEY, mistralMaandTokens: env.MISTRAL_MAAND_TOKENS, mistralTussenpoos: env.MISTRAL_TUSSENPOOS_MS, state: ketenStand } };
     let llmKlaar: { stAt: number; llm: string } | null = null;
     this.llmBewaar = async () => { await this.bewaarLlmDo(tel, ketenVoor, ketenStand, llmKlaar); };
     // Alleen-politiek (losse partijposts) nooit door de AI: die tonen we zoals de partij ze schrijft.
@@ -693,6 +707,7 @@ export class Runner extends DurableObject<Env> {
     const runsLeft = runsOver(now, interval);
     const runBudget = runPlafonds(BUDGET - st.neurons - vidN, runsLeft, interval).runBudget;
     const tier0 = tier();
+    usage.magRetry = () => tier() === 1 && usage.neurons < runBudget; // retry na timeout alleen in de ruimste tier en binnen het runplafond (#873)
     let runCapped = false;
     const modelsUsed = new Set<string>();
     // prioriteit: meer bronnen eerst, dan nieuwste; eerlijk verdeeld over rubrieken

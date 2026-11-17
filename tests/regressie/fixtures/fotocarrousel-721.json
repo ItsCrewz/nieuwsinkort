@@ -1,0 +1,6 @@
+{
+  "oorspronkelijk": ["/foto-a.svg", "/foto-b.svg", "/foto-c.svg"],
+  "gewijzigd": ["/foto-c.svg", "/foto-a.svg", "/foto-b.svg"],
+  "verwijderd": ["/foto-a.svg", "/foto-c.svg"],
+  "een": ["/foto-c.svg"]
+}

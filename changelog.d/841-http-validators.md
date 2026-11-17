@@ -1,0 +1,1 @@
+- Data.json herkent ook lijsten, sterke ETags en de wildcard bij cachevalidatie (#841).

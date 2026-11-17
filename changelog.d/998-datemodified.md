@@ -1,0 +1,1 @@
+- `dateModified` staat in de JSON-LD van berichtpagina's alleen nog bij een bekende, geloofwaardige wijzigingstijd (#998); de publicatietijd wordt er niet meer voor gebruikt.

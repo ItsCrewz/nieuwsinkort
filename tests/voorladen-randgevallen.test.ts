@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MP4_BYTES, laagsteVariant, naIdle, planVoorladen, segmenten, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MAX_PRECONNECT, aantalPreconnects,HLS_BYTES, PLAYLIST_BYTES, MP4_BYTES, POSTER_MAX_MS, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -48,18 +48,19 @@ const herstel = (namen: string[]) => {
     else Reflect.deleteProperty(globalThis, naam);
   }
 };
+const playlist = (txt: string) => ({ body: new Response(txt).body, headers: new Headers() });
 const wacht = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 try {
   const links: { rel: string; href: string; crossOrigin: string }[] = [];
-  const afbeeldingen: { src: string; decoding: string; referrerPolicy: string; fetchPriority: string; onload: (() => void) | null; onerror: (() => void) | null }[] = [];
+  const afbeeldingen: { src: string; decoding: string; referrerPolicy: string; fetchPriority: string; onload: (() => void) | null; onerror: (() => void) | null; onabort: (() => void) | null }[] = [];
   installeer("document", {
     head: { appendChild: (link: typeof links[number]) => links.push(link) },
     createElement: () => ({ rel: "", href: "", crossOrigin: "niet-ingesteld" }),
   });
   installeer("Image", class {
     src = ""; decoding = ""; referrerPolicy = ""; fetchPriority = "";
-    onload: (() => void) | null = null; onerror: (() => void) | null = null;
+    onload: (() => void) | null = null; onerror: (() => void) | null = null; onabort: (() => void) | null = null;
     constructor() { afbeeldingen.push(this); }
   });
   installeer("location", { href: "https://site.example/" });
@@ -76,7 +77,7 @@ try {
     const verzoeken: { url: string; opties: RequestInit }[] = [];
     installeer("fetch", async (url: string, opties: RequestInit) => {
       verzoeken.push({ url, opties });
-      return { body: null };
+      return { ok: true, body: null };
     });
     const v = video("https://mobiel.example/a.mp4", "https://img.example/mobiel.jpg");
     const p = planVoorladen([v], [], false, hulp);
@@ -89,7 +90,7 @@ try {
     assert.equal(afbeeldingen[0].fetchPriority, "low");
     assert.equal(verzoeken.length, 1);
     assert.equal(verzoeken[0].url, v.embed);
-    assert.deepEqual(verzoeken[0].opties, { credentials: "omit", priority: "low", headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+    assert.deepEqual({ ...verzoeken[0].opties, signal: undefined }, { credentials: "omit", priority: "low", signal: undefined, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
     afbeeldingen[0].onload!();
     voerUit(p);
     await wacht();
@@ -98,16 +99,58 @@ try {
     assert.equal(verzoeken.length, 1);
   });
 
-  await test("offline-fouten worden opgevangen en niet opnieuw geprobeerd", async () => {
+  await test("offline-fouten worden opgevangen en bij elk volgend voorlaadmoment opnieuw geprobeerd", async () => {
     installeer("navigator", { onLine: false });
     const verzoeken: string[] = [];
     installeer("fetch", async (url: string) => { verzoeken.push(url); throw new Error("offline"); });
     const p = { ...leeg(), hls: ["/offline.m3u8"], mp4: "https://offline.example/a.mp4" };
+    for (let i = 0; i < 3; i++) {
+      voerUit(p);
+      await wacht();
+    }
+    assert.deepEqual(verzoeken, ["/offline.m3u8", "https://offline.example/a.mp4", "/offline.m3u8", "https://offline.example/a.mp4", "/offline.m3u8", "https://offline.example/a.mp4"]);
+  });
+
+  await test("fout gevolgd door succes: opnieuw geprobeerd, daarna ontdubbeld; gelijktijdig gedeeld", async () => {
+    const verzoeken: string[] = [];
+    let stuk = true;
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (stuk) throw new Error("tijdelijk");
+      return { ok: true, body: null };
+    });
+    const p = { ...leeg(), mp4: "https://herstel.example/a.mp4", thumbs: ["https://herstel.example/a.jpg"] };
+    const begin = afbeeldingen.length;
+    voerUit(p);
+    voerUit(p); // gelijktijdig: gedeeld, geen tweede verzoek
+    assert.equal(afbeeldingen.length - begin, 1);
+    afbeeldingen[begin].onerror!();
+    await wacht();
+    assert.equal(verzoeken.length, 1);
+    stuk = false;
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 2);
+    afbeeldingen[begin + 1].onload!();
+    await wacht();
+    assert.equal(verzoeken.length, 2);
     voerUit(p);
     await wacht();
+    assert.equal(afbeeldingen.length - begin, 2);
+    assert.equal(verzoeken.length, 2);
+  });
+
+  await test("afgebroken afbeelding komt vrij en wordt opnieuw geprobeerd", async () => {
+    const p = { ...leeg(), thumbs: ["https://abort.example/a.jpg"] };
+    const begin = afbeeldingen.length;
     voerUit(p);
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 1);
+    afbeeldingen[begin].onabort!();
     await wacht();
-    assert.deepEqual(verzoeken, ["/offline.m3u8", "https://offline.example/a.mp4"]);
+    voerUit(p);
+    assert.equal(afbeeldingen.length - begin, 2);
+    afbeeldingen[begin + 1].onload!();
+    await wacht();
   });
 
   await test("HLS haalt laagste variant en hooguit twee segmenten op", async () => {
@@ -117,12 +160,132 @@ try {
       verzoeken.push(url);
       optiesLijst.push(opties);
       const txt = url === "/master-test.m3u8" ? "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500\nhoog.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=100\nlaag.m3u8" : "#EXTM3U\n1.ts\n2.ts\n3.ts";
-      return { ok: true, text: async () => txt, arrayBuffer: async () => new ArrayBuffer(0) };
+      return { ok: true, ...playlist(txt) };
     });
     voerUit({ ...leeg(), hls: ["/master-test.m3u8"] });
     await wacht();
     assert.deepEqual(verzoeken, ["/master-test.m3u8", "https://site.example/laag.m3u8", "https://site.example/1.ts", "https://site.example/2.ts"]);
-    assert.deepEqual(optiesLijst, verzoeken.map(() => ({ credentials: "omit", priority: "low" })));
+    assert.ok(optiesLijst.every((opties) => opties.credentials === "omit" && opties.priority === "low" && opties.signal instanceof AbortSignal));
+    assert.deepEqual(optiesLijst[2].headers, { Range: `bytes=0-${HLS_BYTES - 1}` });
+  });
+
+  await test("te grote en afgebroken playlists geven de wachtrij vrij en zijn opnieuw te proberen", async () => {
+    for (const fout of ["master", "media", "lengte", "afgebroken"]) {
+      let poging = 0;
+      let gestopt = false;
+      const verzoeken: string[] = [];
+      const master = `/grens-${fout}.m3u8`;
+      installeer("fetch", async (url: string) => {
+        verzoeken.push(url);
+        if (url === master) poging++;
+        if (url.endsWith(".mp4")) return { ok: true, body: null };
+        if (poging > 1) return { ok: true, ...playlist("#EXTM3U") };
+        if (fout === "media" && url === master) return { ok: true, ...playlist("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nmedia.m3u8") };
+        return { ok: true, headers: new Headers(fout === "lengte" ? { "Content-Length": String(PLAYLIST_BYTES + 1) } : {}), body: {
+          cancel: async () => { gestopt = true; },
+          getReader: () => ({
+            read: async () => { if (fout === "afgebroken") throw new Error("afgebroken"); return { done: false, value: new Uint8Array(PLAYLIST_BYTES + 1) }; },
+            cancel: async () => { gestopt = true; },
+          }),
+        } };
+      });
+      const p = { ...leeg(), hls: [master], mp4: `https://grens.example/${fout}.mp4` };
+      voerUit(p);
+      await wacht();
+      assert.equal(gestopt, true, fout);
+      assert.ok(verzoeken.includes(p.mp4), fout);
+      voerUit(p);
+      await wacht();
+      assert.equal(poging, 2, fout);
+    }
+  });
+
+  const stroom = (stuk: number, status: number, headers: Record<string, string>, teller: { gelezen: number; gestopt: boolean }) => ({
+    ok: true, status, headers: { get: (k: string) => headers[k.toLowerCase()] ?? null },
+    body: { getReader: () => ({
+      read: async () => { teller.gelezen += stuk; return { done: false, value: new Uint8Array(stuk) }; },
+      cancel: async () => { teller.gestopt = true; },
+    }) },
+  });
+
+  await test("HLS-segmenten: 200 zonder Range-ondersteuning en groot of ontbrekend Content-Length stoppen op het totaalbudget", async () => {
+    for (const [naam, status, headers] of [["groot", 200, { "content-length": "999999999" }], ["ontbreekt", 200, {}], ["206", 206, { "content-length": "999999999" }]] as const) {
+      const t = { gelezen: 0, gestopt: false };
+      const verzoeken: string[] = [];
+      installeer("fetch", async (url: string) => {
+        verzoeken.push(url);
+        if (url.endsWith(".m3u8")) return { ok: true, ...playlist("#EXTM3U\n1.ts\n2.ts") };
+        return stroom(HLS_BYTES / 4, status, headers, t);
+      });
+      voerUit({ ...leeg(), hls: [`/budget-${naam}.m3u8`] });
+      await wacht();
+      assert.equal(t.gelezen, HLS_BYTES, naam); // eerste segment haalt het hele budget leeg, tweede wordt niet gestart
+      assert.equal(t.gestopt, true, naam);
+      assert.deepEqual(verzoeken, [`/budget-${naam}.m3u8`, `https://site.example/1.ts`], naam);
+    }
+  });
+
+  await test("HLS-wachtrij gaat door na een mislukt segment en een lege body", async () => {
+    const verzoeken: string[] = [];
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (url.endsWith(".m3u8")) return { ok: true, ...playlist("#EXTM3U\n1.ts\n2.ts") };
+      if (url.endsWith("1.ts")) return { ok: true, body: null };
+      return { ok: true, body: { getReader: () => ({ read: async () => ({ done: true }), cancel: async () => {} }) } };
+    });
+    voerUit({ ...leeg(), hls: ["/wachtrij.m3u8"], mp4: "https://wachtrij.example/a.mp4" });
+    await wacht();
+    assert.deepEqual(verzoeken, ["/wachtrij.m3u8", "https://wachtrij.example/a.mp4", "https://site.example/1.ts", "https://site.example/2.ts"]);
+  });
+
+  await test("HLS met bytebereiken haalt alleen die bereiken op, nooit het hele bestand", async () => {
+    const verzoeken: { url: string; range?: string }[] = [];
+    installeer("fetch", async (url: string, opties: RequestInit) => {
+      const range = (opties?.headers as Record<string, string> | undefined)?.Range;
+      verzoeken.push({ url, range });
+      if (url.endsWith(".m3u8")) return { ok: true, status: 200, ...playlist("#EXTM3U\n#EXT-X-BYTERANGE:1000@0\ngroot.mp4\n#EXT-X-BYTERANGE:500\ngroot.mp4\n#EXT-X-BYTERANGE:9\ngroot.mp4") };
+      const len = +range!.split("-")[1] - +range!.split("=")[1].split("-")[0] + 1;
+      let gelezen = false;
+      return { ok: true, status: 206, headers: new Headers({ "Content-Range": `bytes ${range!.slice(6)}/*` }), body: { getReader: () => ({ read: async () => (gelezen ? { done: true } : ((gelezen = true), { done: false, value: new Uint8Array(len) })), cancel: async () => {} }) } };
+    });
+    voerUit({ ...leeg(), hls: ["/bereik.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken.slice(1), [
+      { url: "https://site.example/groot.mp4", range: "bytes=0-999" },
+      { url: "https://site.example/groot.mp4", range: "bytes=1000-1499" },
+    ]);
+  });
+
+  await test("bytebereik zonder bekende positie of met 200-antwoord haalt niets binnen", async () => {
+    assert.deepEqual(segmentenBereik("#EXT-X-BYTERANGE:50\na.mp4\n#EXT-X-BYTERANGE:x@y\nb.mp4", "https://s.example/"), []);
+    let gelezen = 0;
+    let geannuleerd = false;
+    installeer("fetch", async (url: string) => url.endsWith(".m3u8")
+      ? { ok: true, status: 200, ...playlist("#EXT-X-BYTERANGE:10@5\nx.mp4") }
+      : { ok: true, status: 200, headers: new Headers(), body: { cancel: async () => { geannuleerd = true; }, getReader: () => ({ read: async () => { gelezen++; return { done: true }; } }) } });
+    voerUit({ ...leeg(), hls: ["/negeer.m3u8"] });
+    await wacht();
+    assert.equal(gelezen, 0);
+    assert.equal(geannuleerd, true);
+  });
+
+  await test("beschadigde bereiktag en afwijkend 206-antwoord worden overgeslagen", async () => {
+    const verzoeken: string[] = [];
+    let gelezen = 0;
+    let geannuleerd = false;
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (url.endsWith(".m3u8")) return { ok: true, ...playlist("#EXT-X-BYTERANGE :100@0\nkapot.mp4\n#EXT-X-BYTERANGE:10@5\nafwijkend.mp4") };
+      return { status: 206, headers: new Headers({ "Content-Range": "bytes 0-999/1000" }), body: {
+        cancel: async () => { geannuleerd = true; },
+        getReader: () => ({ read: async () => { gelezen++; return { done: false, value: new Uint8Array(1000) }; } }),
+      } };
+    });
+    voerUit({ ...leeg(), hls: ["/beschadigd.m3u8"] });
+    await wacht();
+    assert.deepEqual(verzoeken, ["/beschadigd.m3u8", "https://site.example/afwijkend.mp4"]);
+    assert.equal(gelezen, 0);
+    assert.equal(geannuleerd, true);
   });
 
   await test("HLS volgt redirects: relatieve paden t.o.v. de uiteindelijke URL (master en mediaplaylist)", async () => {
@@ -135,7 +298,7 @@ try {
       verzoeken.push(url);
       const eind = doel[url] || url;
       const txt = eind.endsWith("master.m3u8") ? "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\nlaag.m3u8" : eind.endsWith("media.m3u8") ? "#EXTM3U\n1.ts\n/abs.ts" : "";
-      return { ok: true, url: eind, text: async () => txt, arrayBuffer: async () => new ArrayBuffer(0) };
+      return { ok: true, url: eind, ...playlist(txt) };
     });
     voerUit({ ...leeg(), hls: ["https://site.example/m.m3u8"] });
     await wacht();
@@ -145,7 +308,7 @@ try {
   await test("mp4-stream stopt bij de bytegrens", async () => {
     let gelezen = 0;
     let gestopt = false;
-    installeer("fetch", async () => ({ body: { getReader: () => ({
+    installeer("fetch", async () => ({ ok: true, body: { getReader: () => ({
       read: async () => { gelezen++; return { done: false, value: new Uint8Array(MP4_BYTES / 2) }; },
       cancel: async () => { gestopt = true; },
     }) } }));
@@ -167,6 +330,85 @@ try {
     assert.equal(afbeeldingen.length - begin, GELIJK + 2);
     afbeeldingen.slice(begin + 2).forEach((img) => img.onload!());
     await wacht();
+  });
+
+  await test("vastgelopen posters geven na de time-out hun plaats vrij", async () => {
+    const echt = globalThis.setTimeout;
+    const timers: { fn: () => void; ms: number; weg: boolean }[] = [];
+    installeer("setTimeout", (fn: () => void, ms: number) => { timers.push({ fn, ms, weg: false }); return timers.length - 1; });
+    installeer("clearTimeout", (id: number) => { if (timers[id]) timers[id].weg = true; });
+    try {
+      const begin = afbeeldingen.length;
+      voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK + 1 }, (_, i) => `https://vast.example/${i}.jpg`) });
+      assert.equal(afbeeldingen.length - begin, GELIJK);
+      assert.deepEqual(timers.map((t) => t.ms), Array(GELIJK).fill(POSTER_MAX_MS));
+      timers[0].fn(); // eerste vastloper: time-out geeft de plaats vrij
+      await new Promise<void>((r) => echt(r, 0));
+      assert.equal(afbeeldingen.length - begin, GELIJK + 1);
+      assert.equal(afbeeldingen[begin].src, "");
+      assert.equal(afbeeldingen[begin].onload, null);
+      assert.equal(afbeeldingen[begin].onerror, null);
+      assert.equal(timers[0].weg, true);
+      // succes en fout ruimen hun timer op
+      afbeeldingen[begin + 1].onload!();
+      afbeeldingen[begin + 2].onerror!();
+      assert.equal(timers[1].weg && timers[2].weg, true);
+      afbeeldingen[begin + GELIJK].onload!();
+    } finally {
+      installeer("setTimeout", echt);
+      herstel(["clearTimeout"]);
+    }
+  });
+
+  await test("drie tegelijk vastgelopen posters blokkeren de wachtrij niet blijvend (#1089)", async () => {
+    const echt = globalThis.setTimeout;
+    await new Promise<void>((r) => echt(r, 0)); // laat de vorige test eerst volledig uitlopen
+    const timers: { fn: () => void; ms: number; weg: boolean }[] = [];
+    installeer("setTimeout", (fn: () => void, ms: number) => { timers.push({ fn, ms, weg: false }); return timers.length - 1; });
+    installeer("clearTimeout", (id: number) => { if (timers[id]) timers[id].weg = true; });
+    try {
+      const begin = afbeeldingen.length;
+      voerUit({ ...leeg(), thumbs: Array.from({ length: GELIJK + 1 }, (_, i) => `https://alle-vast.example/${i}.jpg`) });
+      assert.equal(afbeeldingen.length - begin, GELIJK);
+      timers.slice(0, GELIJK).forEach((t) => t.fn()); // alle drie lopen af, geen enkel event
+      await new Promise<void>((r) => echt(r, 0));
+      assert.equal(afbeeldingen.length - begin, GELIJK + 1); // de vierde taak start
+      afbeeldingen.slice(begin, begin + GELIJK).forEach((img) => {
+        assert.equal(img.src, "");
+        assert.equal(img.onload, null);
+        assert.equal(img.onerror, null);
+      });
+      assert.ok(timers.slice(0, GELIJK).every((t) => t.weg));
+      afbeeldingen[begin + GELIJK].onload!();
+      assert.ok(timers[GELIJK].weg);
+    } finally {
+      installeer("setTimeout", echt);
+      herstel(["clearTimeout"]);
+    }
+  });
+
+  await test("preconnect-links blijven begrensd, zonder duplicaten, en verdrongen hosts kunnen terugkomen (#1073)", () => {
+    const dom: { href: string; remove: () => void }[] = [];
+    installeer("document", {
+      head: { appendChild: (l: typeof dom[number]) => dom.push(l) },
+      createElement: () => {
+        const l = { rel: "", href: "", crossOrigin: "", remove: () => { dom.splice(dom.indexOf(l), 1); } };
+        return l;
+      },
+    });
+    const plan = (o: string): Plan => ({ ...leeg(), preconnect: [o] });
+    const basis = aantalPreconnects();
+    for (let i = 0; i < 20; i++) voerUit(plan(`https://grens${i}.example`));
+    assert.equal(aantalPreconnects(), MAX_PRECONNECT);
+    assert.equal(dom.length, MAX_PRECONNECT);
+    assert.ok(basis <= MAX_PRECONNECT);
+    voerUit(plan("https://grens19.example"));
+    voerUit(plan("https://grens19.example"));
+    assert.equal(dom.filter((l) => l.href === "https://grens19.example").length, 1);
+    assert.equal(dom.length, MAX_PRECONNECT);
+    voerUit(plan("https://grens0.example")); // verdrongen eerder: opnieuw opgewarmd
+    assert.equal(dom.filter((l) => l.href === "https://grens0.example").length, 1);
+    assert.equal(dom.length, MAX_PRECONNECT);
   });
 
   await test("naIdle wacht op load, idle en zichtbaarheid en kan annuleren", () => {

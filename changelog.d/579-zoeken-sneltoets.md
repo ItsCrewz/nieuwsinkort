@@ -1,0 +1,1 @@
+- Open zoeken op desktop met `/`; Escape sluit het zoekveld en brengt de focus terug naar de zoekknop (#579).

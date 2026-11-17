@@ -1,0 +1,1 @@
+- Het Meer-menu is met het toetsenbord te bedienen en herstelt de focus bij sluiten of kiezen (#1050).

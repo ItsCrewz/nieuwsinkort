@@ -1,0 +1,1 @@
+- De rubriektabs hebben nu een stabiele id en het rubriekpaneel verwijst ernaar met `aria-labelledby`, zodat hulptechnologie het paneel bij de gekozen tab kan benoemen (#974).

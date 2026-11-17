@@ -1,0 +1,1 @@
+- Gedeelde artikelen vermelden geen verzonnen publicatietijd meer als die ontbreekt of ongeldig is (#726).

@@ -1,0 +1,1 @@
+- Swipen: een apparaat zonder aanwijsapparaat (`pointer: none`, `hover: none`) krijgt niet langer de swipefeed maar de gewone videolijst; touch wordt alleen bepaald door een grove primaire pointer (#928).

@@ -18,6 +18,12 @@ const t = (name: string, fn: () => void | Promise<void>, nu = MIDDAG) => {
   } catch (e) { Date.now = origineel; throw e; }
 };
 
+t("schoon: NU-miniatuur met toegangsparameters blijft op het oorspronkelijke adres (#1084)", () => {
+  const b = "https://images.nu.nl/m/abc123_sqr256/foto.jpg";
+  const r: any = schoon({ gegenereerd: new Date(Date.now()).toISOString(), items: [{ cat: "nl", kop: "A", bronnen: [{ site: "NU.nl", href: "https://nu.nl/1" }], beeld: `${b}?token=a&sig=z`, beelden: [`${b}?token=a&sig=z`] }] } as any);
+  assert.deepEqual(r.items[0].beelden, [`${b}?token=a&sig=z`]);
+});
+
 t("merge + schoon: uur-filmpjes en statische filmpjes ontdubbeld, foto's per bericht uniek", () => {
   const now = new Date(Date.now()).toISOString();
   const S = { gegenereerd: new Date(Date.now() - 3600e3).toISOString(), items: [{ cat: "nl", kop: "A", bronnen: [{ site: "NOS", href: "https://nos.nl/1" }], beeld: "https://cdn.nos.nl/a-1200x675.jpg", beelden: ["https://cdn.nos.nl/a-600x338.jpg"] }],
@@ -65,3 +71,66 @@ const grensTest = (gen: string, verwacht: "uur" | "statisch", statischBlijft = t
 t("merge 23:59 Amsterdam: uur-data van dezelfde dag wordt gemerged", grensTest("2026-10-29T23:50:00+01:00", "uur"), Date.parse("2026-10-29T23:59:00+01:00"));
 t("merge 00:30 Amsterdam: uur-data van gisteren wordt niet gebruikt (statisch blijft)", grensTest("2026-10-29T23:50:00+01:00", "statisch"), Date.parse("2026-10-30T00:30:00+01:00"));
 t("merge 00:30 Amsterdam: uur-data van de nieuwe dag wordt wel gebruikt, statische data van gisteren valt weg", grensTest("2026-10-30T00:20:00+01:00", "uur", false), Date.parse("2026-10-30T00:30:00+01:00"));
+
+t("merge: rubrieksamenvatting van de recentste bron, per rubriek met terugval", () => {
+  const tab = (tekst: string, g: string) => ({ tekst, ai: true, bron: "x", gegenereerd: g });
+  const S = { gegenereerd: "2026-11-04T09:00:00Z", dag_samenvatting: "routine dag", items: [{ kop: "Routinebericht", bronnen: [{ href: "https://nos.nl/routine" }] }], filmpjes: [], dumpert: [], tab_samenvatting: { nl: tab("routine nl", "r"), tech: tab("routine tech", "r") } };
+  const Houd = { gegenereerd: "2026-11-04T08:00:00Z", dag_samenvatting: "uur dag", items: [{ kop: "Uurbericht", bronnen: [{ href: "https://nos.nl/uur" }] }], filmpjes: [], dumpert: [], tab_samenvatting: { nl: tab("uur nl", "u"), sport: tab("uur sport", "u") } };
+  const oud: any = merge(S, Houd).tab_samenvatting;
+  assert.equal(oud.nl.tekst, "routine nl");
+  assert.equal(oud.tech.tekst, "routine tech");
+  assert.equal(oud.sport.tekst, "uur sport");
+  const Hnieuw = { ...Houd, gegenereerd: "2026-11-04T09:30:00Z" };
+  const nw: any = merge(S, Hnieuw).tab_samenvatting;
+  assert.equal(nw.nl.tekst, "uur nl");
+  assert.equal(nw.tech.tekst, "routine tech");
+  for (const [uur, dagtekst, tijd] of [[Houd, "routine dag", S.gegenereerd], [Hnieuw, "uur dag", Hnieuw.gegenereerd]] as const) {
+    const uit = merge(S, uur);
+    assert.equal(uit.dag_samenvatting, dagtekst);
+    assert.equal(uit.gegenereerd, tijd);
+    assert.deepEqual(uit.items.map((i: any) => i.kop), ["Uurbericht", "Routinebericht"]);
+  }
+  // Nieuwere uurdata zonder samenvatting: de routinetekst blijft.
+  assert.equal((merge(S, { ...Hnieuw, tab_samenvatting: undefined }) as any).tab_samenvatting.nl.tekst, "routine nl");
+  assert.equal(merge({ ...S, tab_samenvatting: undefined }, { ...Houd, tab_samenvatting: undefined }).tab_samenvatting, undefined);
+  assert.equal((merge({ ...S, tab_samenvatting: undefined }, Houd) as any).tab_samenvatting.nl.tekst, "uur nl");
+  assert.equal(merge(S, { ...Hnieuw, tab_samenvatting: { nl: null } }).tab_samenvatting.nl.tekst, "routine nl");
+  assert.equal(merge({ ...S, tab_samenvatting: { nl: undefined } }, Houd).tab_samenvatting.nl.tekst, "uur nl");
+}, Date.parse("2026-11-04T10:00:00Z"));
+
+// #917: uurfilmpjes na de routine beoordelen op het volledige moment `t`, met terugval op `tijd` zonder bruikbare `t`.
+const clip = (id: string, extra: any) => ({ titel: "Clip " + id, href: "https://www.youtube.com/shorts/" + id, bron: "YouTube", ...extra });
+const mergeClips = (clips: any[], gen = "2026-10-29T10:00:00+01:00") => {
+  const S = { gegenereerd: gen, items: [], filmpjes: [], dumpert: [] };
+  const H = { gegenereerd: "2026-10-29T11:30:00+01:00", items: [], filmpjes: clips, dumpert: [] };
+  return merge(S, H).filmpjes.map((v: any) => v.href.split("/").pop());
+};
+t("merge filmpjes: t na de routine blijft zichtbaar bij ontbrekende of tegenstrijdige tijd", () => {
+  const na = Date.parse("2026-10-29T11:00:00+01:00");
+  assert.deepEqual(mergeClips([clip("aaaaaaaaaaa", { t: na }), clip("bbbbbbbbbbb", { t: na, tijd: "03:00" })]), ["aaaaaaaaaaa", "bbbbbbbbbbb"]);
+});
+t("merge filmpjes: t voor de routine met late tijd wordt niet toegevoegd", () => {
+  const voor = Date.parse("2026-10-29T08:00:00+01:00");
+  assert.deepEqual(mergeClips([clip("ccccccccccc", { t: voor, tijd: "11:00" })]), []);
+});
+t("merge filmpjes: zonder t valt het terug op tijd", () => {
+  assert.deepEqual(mergeClips([clip("ddddddddddd", { tijd: "11:00" }), clip("eeeeeeeeeee", { tijd: "08:00" })]), ["ddddddddddd"]);
+});
+t("merge filmpjes: ontdubbeling op href en Instagram-uitzondering", () => {
+  const S = { gegenereerd: "2026-10-29T10:00:00+01:00", items: [], filmpjes: [clip("fffffffffff", { t: Date.parse("2026-10-29T09:00:00+01:00") })], dumpert: [] };
+  const na = Date.parse("2026-10-29T11:00:00+01:00");
+  const H = { gegenereerd: "2026-10-29T11:30:00+01:00", items: [], dumpert: [], filmpjes: [clip("fffffffffff", { t: na }),
+    { titel: "Reel", href: "https://www.instagram.com/reel/ZZ1/", bron: "Instagram", embed: "https://x/v.mp4", t: Date.parse("2026-10-29T07:00:00+01:00") }] };
+  const uit = merge(S, H).filmpjes.map((v: any) => v.href);
+  assert.equal(uit.filter((h: string) => h.includes("fffffffffff")).length, 1);
+  assert.ok(uit.some((h: string) => h.includes("instagram.com/reel/ZZ1")));
+});
+// Routine en uurdata op dezelfde Amsterdamse dag, zodat naRoutine echt beslist (niet de dagselectie).
+t("merge filmpjes: daggrens rond 00:30 Amsterdam", () => {
+  const S = { gegenereerd: "2026-10-30T00:05:00+01:00", items: [], filmpjes: [], dumpert: [] };
+  const H = { gegenereerd: "2026-10-30T00:25:00+01:00", items: [], dumpert: [], filmpjes: [
+    clip("ggggggggggg", { t: Date.parse("2026-10-30T00:10:00+01:00"), tijd: "00:01" }), clip("hhhhhhhhhhh", { t: Date.parse("2026-10-30T00:03:00+01:00"), tijd: "23:59" })] };
+  const uit = merge(S, H).filmpjes.map((v: any) => v.href.split("/").pop());
+  assert.ok(uit.includes("ggggggggggg"), JSON.stringify(uit));
+  assert.ok(!uit.includes("hhhhhhhhhhh"), JSON.stringify(uit));
+}, Date.parse("2026-10-30T00:30:00+01:00"));

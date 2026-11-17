@@ -5,6 +5,7 @@ import { telOp, type LlmState } from "../worker/src/llm";
 
 export const MAX_WHISPER_UUR = 30; // globale rem: hooguit zoveel Whisper-aanroepen per uur
 export const SLOT_TTL = 90e3; // ms; verloopt vanzelf als de Function wegvalt
+const SLOT_OPRUIM = 20; // max. sloten die één claim bekijkt om verlopen records op te ruimen
 
 // ---- meting van Workers AI-verbruik (gedeeld door Worker en Pages Function; zie docs/ai-budget.md)
 // Cloudflare telt de gratis 10.000 neuronen per UTC-dag (reset 00:00 UTC), niet per Amsterdamse dag.
@@ -58,14 +59,15 @@ export const quotaSleutel = (utc: string) => `ai-quota:${utc}`;
 export interface Opslag {
   get<T = unknown>(k: string): Promise<T | undefined>;
   put(k: string, v: unknown): Promise<void>;
+  putMany?(o: Record<string, unknown>): Promise<void>; // atomair (DO-opslag: storage.put({...})); zonder valt reserveer() terug op herstelbaar schrijven
   delete(k: string | string[]): Promise<unknown>;
-  list<T = unknown>(o: { prefix: string }): Promise<Map<string, T>>;
+  list<T = unknown>(o: { prefix: string; limit?: number }): Promise<Map<string, T>>;
 }
 // spiegel: schrijft het dagtotaal naar KV `vid-neurons:<datum>` (de uur-Worker leest dat); zaad: leest die spiegel bij de eerste keer van de dag
 // spiegel geeft `false` als het schrijven mislukte: de logica probeert het bij de volgende aanroep (ook een lezing) opnieuw, zodat de Worker geen verouderde stand blijft lezen
 export interface Buiten { spiegel(datum: string, n: number): Promise<void | boolean>; zaad(datum: string): Promise<number | null> }
 export type Reservering = { datum: string; uur: string; nieuws: number; budget: number; reserve: number; marge: number; schatting: number };
-export interface GroqBuiten { zaad(datum: string): Promise<LlmState>; spiegel(datum: string, stand: LlmState): Promise<boolean> }
+export interface GroqBuiten { zaad(datum: string): Promise<LlmState | null>; spiegel(datum: string, stand: LlmState): Promise<boolean> }
 
 const rond = (n: number) => Math.round(n * 10) / 10;
 
@@ -83,14 +85,37 @@ export class BudgetLogica {
     await this.s.put(`video:${datum}`, n);
   }
 
+  // Uurplaats + markering + dagtotaal als één geheel: atomair via putMany, anders één voor één met `uur:` als laatste
+  // en bij een fout de al geschreven sleutels terugzetten, zodat een mislukte reservering niets blijvend verbruikt.
+  private async boek(r: Reservering, uurN: number, oudVideo: number, nieuw: number) {
+    const uur = `uur:${r.uur}`, vuil = `videovuil:${r.datum}`, vid = `video:${r.datum}`;
+    if (this.s.putMany) { await this.s.putMany({ [vuil]: true, [vid]: nieuw, [uur]: uurN + 1 }); return; }
+    const oudVuil = await this.s.get<boolean>(vuil);
+    const gedaan: Array<() => Promise<unknown>> = [];
+    try {
+      await this.s.put(vuil, true); gedaan.push(() => (oudVuil === undefined ? this.s.delete(vuil) : this.s.put(vuil, oudVuil)));
+      await this.s.put(vid, nieuw); gedaan.push(() => this.s.put(vid, oudVideo));
+      await this.s.put(uur, uurN + 1);
+    } catch (e) {
+      for (const terug of gedaan.reverse()) { try { await terug(); } catch { console.error("budget: terugzetten mislukt"); } }
+      throw e;
+    }
+  }
+
   // Eén opslagwaarde bewaart ook of een mislukte KV-spiegel nog moet worden hersteld.
   async groqBij(datum: string, verschil: LlmState): Promise<void> {
     if (!this.groq) throw new Error("Groq-spiegel ontbreekt");
     const sleutel = `groq:${datum}`;
-    const opgeslagen = await this.s.get<{ stand: LlmState; vuil: boolean }>(sleutel);
+    const opgeslagen = await this.s.get<{ stand?: LlmState; vuil: boolean; wacht?: LlmState }>(sleutel);
     const stand = opgeslagen?.stand ?? await this.groq.zaad(datum);
     const gewijzigd = Object.values(verschil).some((v) => v.calls || v.tokens || v.maandTokens);
-    if (gewijzigd) {
+    if (stand === null) {
+      const wacht: LlmState = structuredClone(opgeslagen?.wacht ?? {});
+      if (gewijzigd) { telOp(wacht, verschil); await this.s.put(sleutel, { vuil: true, wacht }); }
+      return;
+    }
+    if (opgeslagen?.wacht) telOp(stand, opgeslagen.wacht);
+    if (gewijzigd || opgeslagen?.wacht) {
       telOp(stand, verschil);
       await this.s.put(sleutel, { stand, vuil: true });
     }
@@ -100,16 +125,24 @@ export class BudgetLogica {
   }
 
   // Slot per video: bezig => null. Het token voorkomt dat een verlopen eigenaar het slot van een ander vrijgeeft.
+  // Alleen het gevraagde slot wordt gelezen (geen inventarisatie op het kritieke pad); verlopen sloten ruimt `ruimOp` begrensd op.
   async claim(id: string, ttl = SLOT_TTL): Promise<string | null> {
     const nu = this.nu();
-    const sloten = await this.s.list<{ tot: number; tok: string }>({ prefix: "slot:" });
-    const oud = [...sloten].filter(([, v]) => v.tot <= nu).map(([k]) => k);
-    if (oud.length) await this.s.delete(oud);
-    const huidig = sloten.get(`slot:${id}`);
+    const sleutel = `slot:${id}`;
+    const huidig = await this.s.get<{ tot: number; tok: string }>(sleutel);
     if (huidig && huidig.tot > nu) return null;
     const tok = crypto.randomUUID();
-    await this.s.put(`slot:${id}`, { tot: nu + ttl, tok });
+    await this.s.put(sleutel, { tot: nu + ttl, tok });
+    await this.ruimOp(sleutel, nu);
     return tok;
+  }
+  // Hooguit SLOT_OPRUIM sloten per claim bekijken; een fout hier mag de claim niet laten mislukken.
+  private async ruimOp(behoud: string, nu: number) {
+    try {
+      const sloten = await this.s.list<{ tot: number }>({ prefix: "slot:", limit: SLOT_OPRUIM });
+      const oud = [...sloten].filter(([k, v]) => k !== behoud && v.tot <= nu).map(([k]) => k);
+      if (oud.length) await this.s.delete(oud);
+    } catch { console.error("budget: sloten opruimen mislukt"); }
   }
   async geefVrij(id: string, tok: string) {
     const huidig = await this.s.get<{ tok: string }>(`slot:${id}`);
@@ -121,7 +154,7 @@ export class BudgetLogica {
     const v = await this.s.get<number>(`video:${datum}`);
     if (typeof v === "number") { if (await this.s.get<boolean>(`videovuil:${datum}`)) await this.spiegel(datum, v); return v; }
     const z = await this.buiten.zaad(datum);
-    if (z == null) return 0; // KV onleesbaar: niet bewaren, volgende keer opnieuw proberen
+    if (z == null) throw new Error("budget: dagstand onleesbaar"); // volgende keer opnieuw lezen
     await this.s.put(`video:${datum}`, z);
     return z;
   }
@@ -133,12 +166,19 @@ export class BudgetLogica {
     const n = (await this.s.get<number>(`uur:${r.uur}`)) || 0;
     if (n >= MAX_WHISPER_UUR) return { ok: false, reden: "druk", video };
     const nieuw = rond(video + r.schatting);
-    await this.s.put(`uur:${r.uur}`, n + 1);
-    await this.bewaar(r.datum, nieuw);
-    // oude dagen en uren opruimen
-    const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "uur:" })).keys(), ...(await this.s.list({ prefix: "videovuil:" })).keys()].filter((k) => k !== `video:${r.datum}` && k !== `videovuil:${r.datum}` && k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`));
-    if (oud.length) await this.s.delete(oud);
-    await this.spiegel(r.datum, nieuw);
+    await this.boek(r, n, video, nieuw);
+    // Oude dagen en uren opruimen. De vorige dag blijft staan: een aanvraag van vóór UTC-middernacht kan nog verrekenen,
+    // en zonder die stand zou verreken() hem uit een achterlopende KV-spiegel zaaien. Nieuwere dagen blijven ook staan.
+    // Pas na de boeking en afzonderlijk afgevangen: een fout hier mag een geboekte reservering niet alsnog laten mislukken (dan boekt een nieuwe poging dubbel).
+    try {
+      const vorige = utcDag(Date.parse(r.datum) - 864e5);
+      const dagOud = (k: string) => k.slice(k.indexOf(":") + 1) < vorige;
+      const oud = [...(await this.s.list({ prefix: "video:" })).keys(), ...(await this.s.list({ prefix: "videovuil:" })).keys()].filter(dagOud)
+        .concat([...(await this.s.list({ prefix: "uur:" })).keys()].filter((k) => k !== `uur:${r.uur}` && !k.startsWith(`uur:${r.datum}T`)));
+      if (oud.length) await this.s.delete(oud);
+    } catch { console.error("budget: opruimen mislukt"); }
+    // Spiegelfout apart: de `videovuil`-markering staat er al, `stand` herstelt de spiegel bij de volgende aanroep.
+    try { await this.spiegel(r.datum, nieuw); } catch { console.error("budget: KV-spiegel mislukt"); }
     return { ok: true, video: nieuw };
   }
 

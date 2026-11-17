@@ -1,0 +1,1 @@
+- Nieuwsfoto’s over brand blijven beschikbaar in het beeldfilter (#985).

@@ -1,0 +1,1 @@
+- Voeg tests toe voor de weergave en indeling van het weerbericht (#968).

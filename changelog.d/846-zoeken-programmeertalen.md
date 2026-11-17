@@ -1,0 +1,1 @@
+- Zoeken onderscheidt de programmeertalen C++ en C# van elkaar en van C (#846).

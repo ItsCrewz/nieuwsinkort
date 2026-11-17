@@ -1,0 +1,1 @@
+- Geef open vensters voorrang op de zoeksneltoetsen en sla selectievakken over bij `/` (#579).

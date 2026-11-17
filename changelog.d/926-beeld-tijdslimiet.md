@@ -1,0 +1,1 @@
+- Begrens het ophalen van artikelbeelden tot 8 seconden (redirects en body samen): 504 zonder cache vóór de headers, afgebroken stream zonder gedeeltelijk beeld in de cache (#926).

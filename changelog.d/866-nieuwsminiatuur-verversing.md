@@ -1,0 +1,1 @@
+- Nieuwsminiaturen proberen bij een vernieuwde beeldlijst weer de eerste foto en negeren late fouten van de oude lijst (#866).

@@ -15,7 +15,7 @@ export type SourceRow = CatSource & {
   /** door de pipeline geteld uit de feed zelf; undefined = geen bronstats in data.json */
   stat?: import("./types").BronStat;
 };
-export type SourceGroup = { id: GroupId; label: string; sources: SourceRow[]; total: number; published: number | null };
+export type SourceGroup = { id: GroupId; label: string; sources: SourceRow[]; total: number; published: number | null; /** minstens één bron zonder bekende telling of deels mislukt: published is een ondergrens */ onvolledig: boolean };
 
 export const GROUP_ORDER: { id: GroupId; label: string }[] = [
   { id: "nl", label: "Nederland" },
@@ -46,7 +46,7 @@ export const norm = (s: string) =>
 
 function hostOf(href: string) {
   try {
-    return new URL(href).hostname.replace(/^www\./, "").split(".").slice(-2).join(".");
+    return new URL(href).hostname.replace(/^www\./, "");
   } catch {
     return "";
   }
@@ -156,7 +156,9 @@ export function buildSources(catalog: Catalog | null, data: Data | null): { grou
       ...g,
       sources,
       total: sources.reduce((n, s) => n + s.count, 0),
-      published: stats ? sources.reduce((n, s) => n + (s.stat?.vandaag ?? 0), 0) : null,
+      // Ontbrekende of mislukte tellingen zijn onbekend, geen nul: dan is het totaal een ondergrens.
+      published: stats && sources.some((s) => s.stat?.vandaag != null) ? sources.reduce((n, s) => n + (s.stat?.vandaag ?? 0), 0) : null,
+      onvolledig: !!stats && sources.some((s) => s.stat?.vandaag == null || s.stat.fout || s.stat.storing),
     };
   }).filter((g) => g.sources.length > 0);
   return { groups, index };
@@ -171,10 +173,15 @@ function resolveIn(ix: { byName: Map<string, string>; byHost: Map<string, string
   const byHandle = xh ? ix.byName.get(norm(xh[1])) : undefined;
   if (byHandle) return byHandle;
   const h = hostOf(href);
-  const byHost = h ? ix.byHost.get(h) : undefined;
+  // Een catalogushost mag een subdomein omvatten, maar geen gedeeld landsuffix.
+  const kandidaten = [...ix.byHost.keys()].filter((host) =>
+    !/^(?:co|com|org|net|gov|ac|edu)\.[a-z]{2}$/.test(host) && (h === host || h.endsWith(`.${host}`))
+  ).sort((a, b) => b.length - a.length);
+  const catalogusHost = kandidaten[0];
+  const byHost = catalogusHost ? ix.byHost.get(catalogusHost) : undefined;
   if (byHost && !n) return byHost;
   // Onbekende naam: alleen naar host terugvallen als de naam op die host lijkt (bijv. "NOS" ~ nos.nl)
-  if (byHost && h.replace(/\.[a-z]+$/, "").replace(/[^a-z0-9]/g, "") === n) return byHost;
+  if (byHost && catalogusHost.replace(/\.[a-z]+$/, "").replace(/[^a-z0-9]/g, "") === n) return byHost;
   return n || h || "onbekend";
 }
 
@@ -227,7 +234,8 @@ export function useSourceFilter() {
   }, []);
   // andere tabbladen bijhouden
   useEffect(() => {
-    const on = (e: StorageEvent) => e.key === FILTER_KEY && setOff(readOff());
+    // key === null: localStorage.clear() in een ander tabblad
+    const on = (e: StorageEvent) => (e.key === FILTER_KEY || e.key === null) && setOff(readOff());
     window.addEventListener("storage", on);
     return () => window.removeEventListener("storage", on);
   }, []);

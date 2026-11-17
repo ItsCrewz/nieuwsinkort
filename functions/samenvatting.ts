@@ -11,16 +11,17 @@
 // `Budget` (binding BUDGET_DO, atomair); ontbreekt die binding (lokaal/preview), dan het oudere KV-gedrag (een rem, geen garantie).
 // @ts-ignore - node:buffer via compatibility_flags nodejs_compat (snel, native base64)
 import { Buffer } from "node:buffer";
+import { svSleutel, youtubeId } from "../src/slug";
 import { MAX_WHISPER_UUR, utcDag, neuronFactor, nieuwsNeuronen, aiFout, meetChat, meetFout, quotaSleutel, type Meting } from "../src/budget";
+import { llmTimeoutMs, metRetry, metTimeout, WHISPER_TIMEOUT } from "../src/llm-aanroep";
 import { groq, keten, somStand, kopieStand, verschilStand, telOp, type LlmState } from "../worker/src/llm";
 
 type Usage = Meting;
 const RATES: Record<string, [number, number]> = { "@cf/google/gemma-4-26b-a4b-it": [9091, 27273], "@cf/meta/llama-3.2-1b-instruct": [2457, 18252], "@cf/meta/llama-3.2-3b-instruct": [4625, 30475] };
-async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage): Promise<string> {
+export async function chat(ai: any, model: string, sys: string, user: string, maxTokens: number, u: Usage, timeoutMs = llmTimeoutMs(), magRetry?: () => boolean): Promise<string> {
   const tarief = RATES[model] || [10000, 30000];
-  let r: any;
-  try { r = await ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }); }
-  catch (e) { meetFout(u, tarief, sys + user, maxTokens, e); throw e; } // een mislukte aanroep kan toch neuronen kosten
+  // timeout + hooguit één retry (#873); elke mislukte poging apart gemeten (een niet-afgebroken call kan toch neuronen kosten)
+  const r: any = await metRetry(() => ai.run(model, { messages: [{ role: "system", content: sys }, { role: "user", content: user }], max_tokens: maxTokens, max_completion_tokens: maxTokens, temperature: 0.3, chat_template_kwargs: { enable_thinking: false, thinking: false } }), { model, timeoutMs, onFout: (e) => meetFout(u, tarief, sys + user, maxTokens, e), magRetry });
   u.calls++;
   meetChat(u, tarief, sys + user, String(r?.response ?? ""), r?.usage);
   const txt = typeof r?.response === "string" ? r.response : r?.choices?.[0]?.message?.content || "";
@@ -29,7 +30,7 @@ async function chat(ai: any, model: string, sys: string, user: string, maxTokens
 
 interface KV { get(key: string, type?: "json" | "text"): Promise<any>; put(key: string, v: string, o?: { expirationTtl?: number }): Promise<void>; delete(key: string): Promise<void> }
 interface DO { idFromName(n: string): unknown; get(id: unknown): { fetch(url: string, init?: RequestInit): Promise<Response> } }
-interface Env { NIEUWS: KV; AI: any; GROQ_API_KEY?: string; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string }
+interface Env { NIEUWS: KV; AI: any; GROQ_API_KEY?: string; BUDGET_DO?: DO; ASSETS: { fetch(req: Request | string): Promise<Response> }; BUDGET?: string; NEURON_FACTOR?: string; MODEL?: string; SMALL_MODEL?: string; LLM_TIMEOUT_MS?: string }
 interface Ctx { request: Request; env: Env }
 
 const BUDGET_DEF = 9000;
@@ -63,7 +64,6 @@ function ams(t = Date.now()) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
   return { iso: `${p.year}-${p.month}-${p.day}`, h: +p.hour };
 }
-export const ytId = (u = "") => /(?:youtube(?:-nocookie)?\.com\/(?:shorts\/|embed\/|watch\?(?:.*&)?v=|live\/)|youtu\.be\/)([\w-]{11})/.exec(u)?.[1] || null;
 
 // ---------------- tekst uit YouTube-ondertiteling
 function capText(j: any): string {
@@ -176,12 +176,31 @@ async function hlsAudio(url: string, why: string[], maxSec = MAX_SEC): Promise<{
   let o = 0; for (const p of parts) { bytes.set(p, o); o += p.length; }
   return { bytes, sec: d };
 }
-async function mp4Audio(url: string, why: string[], maxBytes = MAX_MP4): Promise<{ bytes: Uint8Array; sec: number } | null> {
+export async function mp4Audio(url: string, why: string[], maxBytes = MAX_MP4): Promise<{ bytes: Uint8Array; sec: number } | null> {
   const H = { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" };
   // eerst alleen het begin: staat de index (moov) vooraan, dan is een afgeknipt stuk nog af te spelen
   const r = await fetch(url, { headers: { ...H, Range: `bytes=0-${maxBytes - 1}` }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) { why.push(`mp4: HTTP ${r.status}${r.status === 403 ? " (link verlopen)" : ""}`); return null; }
-  const bytes = new Uint8Array(await r.arrayBuffer());
+  const delen: Uint8Array[] = [];
+  let lengte = 0;
+  const lezer = r.body?.getReader();
+  if (lezer) {
+    try {
+      while (true) {
+        const { done, value } = await lezer.read();
+        if (done) break;
+        lengte += value.length;
+        if (lengte > maxBytes) {
+          await lezer.cancel().catch(() => {});
+          why.push("mp4: te groot (downloadlimiet overschreden)");
+          return { bytes: new Uint8Array(0), sec: -1 };
+        }
+        delen.push(value);
+      }
+    } finally { lezer.releaseLock(); }
+  }
+  const bytes = new Uint8Array(lengte);
+  let offset = 0; for (const deel of delen) { bytes.set(deel, offset); offset += deel.length; }
   const total = +((r.headers.get("content-range") || "").split("/")[1] || 0) || bytes.length;
   if (total <= bytes.length) return { bytes, sec: 0 };
   const head = new TextDecoder("latin1").decode(bytes.subarray(0, 4096));
@@ -219,7 +238,7 @@ async function groqAudio(env: Env, bytes: Uint8Array, schatting: number): Promis
 
 // ---------------- samenvatten
 const STIJL = "Je schrijft voor de Nederlandse nieuwssite 'Nieuws in het kort'. Schrijf in heel simpel, informeel Nederlands: korte zinnen, gewone woorden, geen jargon. Gebruik ALLEEN wat in de tekst staat; verzin niets, geen eigen mening. Is de tekst Engels, schrijf toch in het Nederlands.";
-async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null): Promise<{ punten: string[]; model: string }> {
+async function punten(env: Env, model: string, titel: string, bron: string, tekst: string, u: Usage, cloudToegestaan: () => Response | null, ruimteOver: () => number): Promise<{ punten: string[]; model: string }> {
   const user = `Dit is wat er gezegd wordt in een filmpje van ${bron} met de titel "${titel}".\nVat het samen in 3 tot 5 korte punten (elk max 15 woorden). Zet elk punt op een nieuwe regel en begin met "- ". Geen inleiding, geen kopje.\n\nTekst:\n${tekst}`;
   let t = "", gebruikt = model;
   const aanbieder = groq(env.GROQ_API_KEY);
@@ -237,7 +256,7 @@ async function punten(env: Env, model: string, titel: string, bron: string, teks
   if (!t) {
     const fout = cloudToegestaan();
     if (fout) throw new CloudBudgetFout(fout);
-    t = await chat(env.AI, model, STIJL, user, 320, u);
+    t = await chat(env.AI, model, STIJL, user, 320, u, llmTimeoutMs(env.LLM_TIMEOUT_MS), () => ruimteOver() - u.neurons >= 60); // retry na timeout alleen met nog ruim 60 neuronen over, na aftrek van de eerste poging
   }
   return { model: gebruikt, punten: t.split("\n").map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim()).filter((l) => l.length > 3 && !/^(hier|samenvatting|punten)\b.*:$/i.test(l)).slice(0, 5) };
 }
@@ -300,16 +319,16 @@ export function kvPoort(env: Env): Poort {
       return "1";
     },
     async geefVrij(id) { bezigNu.delete(id); await env.NIEUWS.delete(`vs-bezig:${id}`).catch(() => {}); }, // klaar (of geweigerd): slot niet 60 s laten hangen
-    async stand(datum) { return +(await env.NIEUWS.get(`vid-neurons:${datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0; },
+    async stand(datum) { return +(await env.NIEUWS.get(`vid-neurons:${datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); throw new PoortFout(); })) || 0; },
     // lezen-controleren-schrijven achter elkaar per isolate (opKv): gelijktijdige verzoeken overschrijven elkaars stand niet
     reserveer: (r) => opKv(async () => {
-      const video = +(await env.NIEUWS.get(`vid-neurons:${r.datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
+      const video = +(await env.NIEUWS.get(`vid-neurons:${r.datum}`).catch(() => { console.error("samenvatting: KV lezen mislukt"); throw new PoortFout(); })) || 0;
       if (r.nieuws + video + r.reserve + r.marge + r.schatting > r.budget) return "budget";
       const uurKey = `vs-uur:${r.uur}`;
       const nUur = +(await env.NIEUWS.get(uurKey).catch(() => 0)) || 0;
       if (nUur >= MAX_WHISPER_UUR) return "druk";
       await env.NIEUWS.put(uurKey, String(nUur + 1), { expirationTtl: 2 * 3600 }).catch(() => {});
-      await optel(env, `vid-neurons:${r.datum}`, r.schatting);
+      await env.NIEUWS.put(`vid-neurons:${r.datum}`, String(Math.max(0, Math.round((video + r.schatting) * 10) / 10)), { expirationTtl: 3 * 86400 });
       return "ok";
     }),
     async verreken(datum, delta) { await addNeurons(env, `vid-neurons:${datum}`, delta).catch(() => { console.error("samenvatting: KV schrijven mislukt"); }); },
@@ -346,7 +365,7 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   // pre = vooraf maken door de uur-Worker: strenger budget (marge voor nieuws + verzoeken), korter luisteren
   const pre = body?.pre === true;
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false, code: "onbekend", fout: MSG.onbekend }, 400);
-  const key = `vs:${id}`;
+  const key = svSleutel(id);
   const hit = await env.NIEUWS.get(key, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   if (hit) return json({ ...hit, cached: true });
   const { v, volledig } = await vindVideo(env, request, id);
@@ -399,7 +418,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
   let reserved = 0; // vooraf weggeschreven schatting, wordt na afloop gecorrigeerd
   let tekst = "", bron = "", sec = 0;
   try {
-    const yt = ytId(v.embed) || ytId(v.href);
+    const yt = youtubeId(v.embed || "") || youtubeId(v.href || "");
     if (yt) {
       tekst = await ytCaptions(yt, why);
       bron = "ondertiteling";
@@ -426,7 +445,8 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
         if (res === "budget") return json({ ok: false, code: pre ? "budget-pre" : "budget", fout: MSG.budget });
         if (res === "druk") return json({ ok: false, code: pre ? "budget-pre" : "druk", fout: MSG.druk });
         reserved = schat;
-        const r: any = await env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false });
+        // wel een timeout, geen retry: de gereserveerde neuronen (`reserved`) blijven staan, dus er komt nooit een tweede Whisper-kost bij
+        const r: any = await metTimeout(() => env.AI.run(WHISPER, { audio: Buffer.from(a.bytes).toString("base64"), vad_filter: true, condition_on_previous_text: false }), WHISPER_TIMEOUT);
         const dur = +r?.transcription_info?.duration || estMin * 60;
         if (!(+r?.transcription_info?.duration > 0)) u.geschat = (u.geschat || 0) + 1; // Whisper meldt geen neuronen, duur is de enige meting
         u.neurons += (dur / 60) * WHISPER_PER_MIN; u.calls++;
@@ -445,7 +465,7 @@ async function maak(env: Env, poort: Poort, v: any, _id: string, key: string, pr
       await verreken(u.neurons - reserved);
       return uit({ ...out, neuronen: Math.round(u.neurons * 10) / 10 });
     }
-    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan);
+    const resultaat = await punten(env, model, String(v.titel || ""), String(v.bron || ""), tekst.slice(0, 9000), u, cloudToegestaan, () => ruimte);
     const p = resultaat.punten;
     await verreken(u.neurons - reserved);
     if (p.length < 2) {
@@ -484,13 +504,13 @@ function opKv<T>(f: () => Promise<T>): Promise<T> {
 export const addNeurons = (env: Env, k: string, n: number) => opKv(() => optel(env, k, n));
 async function optel(env: Env, k: string, n: number) {
   if (!n) return; // n mag negatief zijn: correctie van een eerdere schatting
-  const cur = +(await env.NIEUWS.get(k).catch(() => { console.error("samenvatting: KV lezen mislukt"); return 0; })) || 0;
+  const cur = +(await env.NIEUWS.get(k).catch(() => { console.error("samenvatting: KV lezen mislukt"); throw new PoortFout(); })) || 0;
   await env.NIEUWS.put(k, String(Math.max(0, Math.round((cur + n) * 10) / 10)), { expirationTtl: 3 * 86400 });
 }
 export const onRequestGet = async ({ request, env }: Ctx) => {
   // GET /samenvatting?id=... alleen uit de cache (handig om te tonen of er al een samenvatting is)
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!/^[\w-]{3,90}$/.test(id)) return json({ ok: false }, 400);
-  const hit = await env.NIEUWS.get(`vs:${id}`, "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
+  const hit = await env.NIEUWS.get(svSleutel(id), "json").catch(() => { console.error("samenvatting: KV lezen mislukt"); return null; });
   return json(hit ? { ...hit, cached: true } : { ok: false, code: "geen" });
 };

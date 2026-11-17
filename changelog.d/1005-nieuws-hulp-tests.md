@@ -1,0 +1,1 @@
+- Tests: src/nieuws-hulp.tsx heeft nu een eigen test met 7 afzonderlijke tests (#1005).

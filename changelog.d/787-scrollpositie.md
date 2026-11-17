@@ -1,0 +1,1 @@
+- De nieuwsfeed onthoudt per rubriek het gelezen bericht en meldt nieuwe artikelen (#787).

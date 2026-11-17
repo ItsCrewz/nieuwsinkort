@@ -12,6 +12,7 @@ import { beeldHostToegestaan, beeldPadToegestaan, beeldPrefixToegestaan } from "
 interface Ctx {
   request: Request;
   waitUntil?: (p: Promise<unknown>) => void;
+  timeoutMs?: number; // alleen voor tests
 }
 const PREFIX = "/media/beeld/";
 
@@ -20,16 +21,48 @@ const TYPE = /^image\/(jpeg|png|webp|gif|avif)(\s*;.*)?$/i;
 const MAX = 5 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
 const TTL = 86400;
+const TIJDSLIMIET = 8000; // totale wachttijd upstream (redirects + body)
 const UA = "nieuwsinkort/1.0 (+https://nieuwsinkort.pages.dev)";
-const ACCEPT = { avif: "image/avif,image/webp,image/*;q=0.8", webp: "image/webp,image/*;q=0.8", basis: "image/png,image/jpeg,image/gif,image/*;q=0.8" } as const;
+// Geen image/*-joker: die zou ook een uitgesloten formaat (avif bij q=0) toestaan.
+const ACCEPT = { avif: "image/avif,image/webp,image/jpeg,image/png,image/gif", webp: "image/webp,image/jpeg,image/png,image/gif", basis: "image/png,image/jpeg,image/gif" } as const;
 export type Emmer = keyof typeof ACCEPT;
 const fout = (status: number, cache = "no-store") => new Response(status === 405 ? "Method not allowed" : "Not found", { status, headers: { ...HDR, "Cache-Control": cache, ...(status === 405 ? { Allow: "GET, HEAD" } : {}) } });
 const weg = (r: Response) => { try { r.body?.cancel().catch(() => {}); } catch { /* al gelezen of vergrendeld */ } };
 
+const ongewijzigd = (verzoek: Headers, antwoord: Headers): boolean => {
+  const inm = verzoek.get("if-none-match");
+  if (inm !== null) {
+    const etag = antwoord.get("etag");
+    if (inm.trim() === "*") return true;
+    if (!etag || !/^(?:W\/)?"[\x21\x23-\x7e\x80-\xff]*"$/.test(etag)) return false;
+    return (inm.match(/(?:W\/)?"[\x21\x23-\x7e\x80-\xff]*"/g) || []).some((tag) => tag.replace(/^W\//, "") === etag.replace(/^W\//, ""));
+  }
+  const sinds = verzoek.get("if-modified-since"), gewijzigd = antwoord.get("last-modified");
+  if (!sinds || !gewijzigd) return false;
+  const s = Date.parse(sinds), g = Date.parse(gewijzigd);
+  return Number.isFinite(s) && Number.isFinite(g) && g <= s;
+};
+
 /** Accept van de bezoeker → emmer: avif als image/avif erin staat, anders webp, anders basis. */
-export const acceptEmmer = (accept: string | null): Emmer => (/image\/avif/i.test(accept || "") ? "avif" : /image\/webp/i.test(accept || "") ? "webp" : "basis");
+// Een formaat telt alleen als het genoemd is met q > 0 (q=0 = uitdrukkelijk uitgesloten).
+const accepteert = (accept: string, type: string): boolean =>
+  accept.toLowerCase().split(",").some((deel) => {
+    const [naam, ...params] = deel.split(";").map((s) => s.trim());
+    if (naam !== type) return false;
+    const q = params.map((p) => /^q\s*=\s*([\d.]+)$/.exec(p)).find(Boolean);
+    return !q || Number(q[1]) > 0;
+  });
+// Uitdrukkelijk uitgesloten (q=0) formaat van deze bezoeker; geldt ook voor wat een uitgever of oude cache-entry teruggeeft.
+export const uitgesloten = (accept: string | null, type: string): boolean =>
+  (accept || "").toLowerCase().split(",").some((deel) => {
+    const [naam, ...params] = deel.split(";").map((x) => x.trim());
+    return naam === type.split(";")[0].trim().toLowerCase() && params.some((x) => /^q\s*=\s*0*(\.0*)?$/.test(x));
+  });
+export const acceptEmmer = (accept: string | null): Emmer => (accepteert(accept || "", "image/avif") ? "avif" : accepteert(accept || "", "image/webp") ? "webp" : "basis");
+// Upstream-Accept van de emmer zonder formaten die de bezoeker uitsloot (q=0); anders levert de uitgever een formaat dat we daarna afwijzen.
+export const upstreamAccept = (emmer: Emmer, accept: string | null): string => ACCEPT[emmer].split(",").filter((t) => !uitgesloten(accept, t)).join(",");
 /** Synthetische Cache API-sleutel; de emmer zit erin, dus nooit vermenging tussen formaten. */
-export const cacheSleutel = (emmer: Emmer, u: URL): string => `https://nieuwsinkort.nl/__beeldcache/${emmer}/${u.host}${u.pathname}${u.search}`;
+export const cacheSleutel = (emmer: Emmer, u: URL): string => `https://nieuwsinkort.nl/__beeldcache/v2/${emmer}/${u.host}${u.pathname}${u.search}`;
 
 // Upstream-URL uit het pad; null bij alles wat niet strikt een schone https-URL op de allowlist is.
 export function upstreamUrl(path: string, search: string): URL | null {
@@ -43,7 +76,7 @@ export function upstreamUrl(path: string, search: string): URL | null {
   return u;
 }
 
-export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> => {
+export const onRequest = async ({ request, waitUntil, timeoutMs }: Ctx): Promise<Response> => {
   if (request.method !== "GET" && request.method !== "HEAD") return fout(405);
   // Ruwe pad en query uit de request-URL (params zijn al gedecodeerd, dan zijn %2f-trucs niet te zien).
   let p = "", search = "";
@@ -51,7 +84,8 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
   let doel = upstreamUrl(p, search);
   if (!doel) return fout(404, "public, max-age=60");
 
-  const emmer = acceptEmmer(request.headers.get("accept"));
+  const accept = request.headers.get("accept");
+  const emmer = acceptEmmer(accept);
   const sleutel = new Request(cacheSleutel(emmer, doel));
   const cache: Cache | undefined = (globalThis as { caches?: { default?: Cache } }).caches?.default;
   // Naar de bezoeker `private`: de gedeelde zone-randcache keyt op URL en negeert Vary, dus de eerste bezoeker bepaalde het formaat voor iedereen.
@@ -60,23 +94,35 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
   if (cache) {
     let hit: Response | undefined;
     try { hit = await cache.match(sleutel); } catch { /* cachefout: gewoon upstream */ }
-    if (hit && request.method === "HEAD") hit.body?.cancel().catch(() => {});
-    if (hit) return new Response(request.method === "HEAD" ? null : hit.body, { status: 200, headers: metVary(new Headers(hit.headers)) });
+    if (hit && uitgesloten(accept, hit.headers.get("content-type") || "")) { weg(hit); hit = undefined; }
+    if (hit) {
+      const headers = metVary(new Headers(hit.headers));
+      const nietGewijzigd = ongewijzigd(request.headers, headers);
+      if (nietGewijzigd || request.method === "HEAD") weg(hit);
+      if (nietGewijzigd) headers.delete("content-length");
+      return new Response(nietGewijzigd || request.method === "HEAD" ? null : hit.body, { status: nietGewijzigd ? 304 : 200, headers });
+    }
   }
 
+  // Eén deadline voor redirects en body samen; bij overschrijding wordt elk upstream-verzoek afgebroken.
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs ?? TIJDSLIMIET);
+  const klaar = () => clearTimeout(timer);
   let r: Response | null = null;
   for (let n = 0; n <= MAX_REDIRECTS; n++) {
     try {
       r = await fetch(doel.toString(), {
         method: request.method,
-        headers: { "User-Agent": UA, Accept: ACCEPT[emmer] }, // bewust zonder Cookie/Authorization/Referer van de bezoeker
+        headers: { "User-Agent": UA, Accept: upstreamAccept(emmer, accept) }, // bewust zonder Cookie/Authorization/Referer van de bezoeker
         redirect: "manual",
+        signal: ac.signal,
         cache: "no-store", // geen randcache op URL-basis: die kent geen Accept en zou emmers mengen
         // @ts-ignore - Cloudflare-specifieke opties; cacheTtl -1 = ook cf-kant geen opslag (cacheKey werkt alleen op Enterprise)
         cf: { cacheTtl: -1, cacheEverything: false },
       });
     } catch {
-      return fout(502);
+      klaar();
+      return ac.signal.aborted ? fout(504) : fout(502);
     }
     if (r.status < 300 || r.status >= 400) break;
     // Redirect: elke stap opnieuw door dezelfde controle (host op de allowlist, https), anders weigeren.
@@ -84,17 +130,17 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
     weg(r);
     let volgende: URL | null = null;
     try { if (loc) volgende = new URL(loc, doel); } catch { /* ongeldig */ }
-    if (!volgende || volgende.protocol !== "https:" || volgende.port || volgende.username || volgende.password || !beeldHostToegestaan(volgende.hostname) || !beeldPrefixToegestaan(volgende.hostname, volgende.pathname, volgende.search) || n === MAX_REDIRECTS) return fout(502);
+    if (!volgende || volgende.protocol !== "https:" || volgende.port || volgende.username || volgende.password || !beeldHostToegestaan(volgende.hostname) || !beeldPrefixToegestaan(volgende.hostname, volgende.pathname, volgende.search) || n === MAX_REDIRECTS) { klaar(); return fout(502); }
     doel = volgende;
     r = null;
   }
-  if (!r) return fout(502);
-  if (!r.ok) { weg(r); return fout(r.status === 404 ? 404 : 502, r.status === 404 ? "public, max-age=30" : "no-store"); }
+  if (!r) { klaar(); return fout(502); }
+  if (r.status !== 200) { klaar(); weg(r); return fout(r.status === 404 ? 404 : 502, r.status === 404 ? "public, max-age=30" : "no-store"); }
 
   const type = r.headers.get("content-type") || "";
-  if (!TYPE.test(type)) { weg(r); return fout(415); }
+  if (!TYPE.test(type) || uitgesloten(accept, type)) { klaar(); weg(r); return fout(415); }
   const lengte = r.headers.get("content-length");
-  if (lengte !== null && !(/^\d+$/.test(lengte) && Number(lengte) <= MAX)) { weg(r); return fout(413); }
+  if (lengte !== null && !(/^\d+$/.test(lengte) && Number(lengte) <= MAX)) { klaar(); weg(r); return fout(413); }
 
   const out = new Headers(HDR);
   out.set("Content-Type", type.split(";")[0].trim().toLowerCase());
@@ -104,7 +150,27 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
     if (v) out.set(h, v);
   }
   out.set("Cache-Control", `public, max-age=${TTL}`);
-  if (request.method === "HEAD" || !r.body) { weg(r); return new Response(null, { status: 200, headers: metVary(out) }); }
+  if (request.method === "HEAD") { klaar(); weg(r); return new Response(null, { status: 200, headers: metVary(out) }); }
+  if (!r.body) { klaar(); return fout(502); }
+
+  // Wacht op de eerste byte voordat een 200 of cache-entry wordt verstuurd.
+  const lezer = r.body.getReader();
+  let eerste: ReadableStreamReadResult<Uint8Array>;
+  try {
+    do { eerste = await lezer.read(); } while (!eerste.done && eerste.value.byteLength === 0);
+  } catch {
+    klaar();
+    return ac.signal.aborted ? fout(504) : fout(502);
+  }
+  if (eerste.done) { klaar(); return fout(502); }
+  const bron = new ReadableStream<Uint8Array>({
+    start(ctl) { ctl.enqueue(eerste.value); },
+    async pull(ctl) {
+      try { const deel = await lezer.read(); if (deel.done) ctl.close(); else ctl.enqueue(deel.value); }
+      catch (e) { ctl.error(e); }
+    },
+    cancel(reden) { return lezer.cancel(reden); },
+  });
 
   // Zonder (of met een liegende) content-length: tellen en afbreken zodra de grens overschreden wordt.
   let tel = 0;
@@ -114,8 +180,9 @@ export const onRequest = async ({ request, waitUntil }: Ctx): Promise<Response> 
       if (tel > MAX) ctl.error(new Error("te groot"));
       else ctl.enqueue(chunk);
     },
+    flush: klaar,
   });
-  const body = r.body.pipeThrough(begrens);
+  const body = bron.pipeThrough(begrens);
   if (!cache) return new Response(body, { status: 200, headers: metVary(out) });
   // Alleen dit geslaagde antwoord in de Cache API (24 u); een afgebroken (te grote) stream wordt niet opgeslagen.
   const [naarBezoeker, naarCache] = body.tee();

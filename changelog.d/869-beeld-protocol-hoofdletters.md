@@ -1,0 +1,1 @@
+- Accepteer hoofdletters in het protocol van beeld-URL's (`HTTPS://…`) in `goedBeeld` en `uniekeBeelden` (#869).

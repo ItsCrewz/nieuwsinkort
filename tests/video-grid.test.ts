@@ -55,3 +55,13 @@ for (const html of [kaarten, render([filmpje({ titel: "Uitzending", soort: "jour
   assert.match(stops[0], /aria-selected="true"/, "de tabstop is de geselecteerde tab");
   assert.equal(tabs.filter((t) => t.includes('aria-selected="true"')).length, 1);
 }
+
+// Paneel ↔ tab (#940): tabpanel alleen met tablijst, verwijst naar de actieve tab.
+{
+  const actief = kaarten.match(/<button[^>]*id="(video-tab-[^"]+)"[^>]*aria-selected="true"/)?.[1];
+  assert.ok(actief, "actieve tab heeft id");
+  assert.match(kaarten, new RegExp(`id="video-paneel"[^>]*aria-labelledby="${actief}"|aria-labelledby="${actief}"[^>]*id="video-paneel"`));
+  assert.match(kaarten, /role="tabpanel"/);
+  assert.doesNotMatch(dumpert, /role="tabpanel"/);
+  assert.match(dumpert, /id="video-paneel"/);
+}

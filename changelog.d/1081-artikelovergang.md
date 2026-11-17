@@ -1,0 +1,1 @@
+- Artikelen openen en sluiten ook als de browser een beeldovergang weigert (#1081).

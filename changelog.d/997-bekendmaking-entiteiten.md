@@ -1,0 +1,1 @@
+- Gangbare HTML-entiteiten in bekendmakingen worden leesbaar weergegeven (#997).

@@ -2,25 +2,32 @@
 // Native scroll-snap (soepel op 120 Hz, Safari kiest zelf horizontaal óf verticaal, dus geen ruzie met
 // het verticale swipen door berichten). Alleen de huidige en de volgende foto worden geladen.
 // Kapotte, piepkleine of banner-achtige plaatjes vallen stil weg; blijft er niets over, dan geen fotoblok.
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { bruikbareAfmeting } from "./beeld";
 import { beeldViaProxy } from "./beeldhost";
 import { scrollGedrag } from "./beweging";
+import { LruSet } from "./lruset";
 
 // ---------------------------------------------------------------- vooruit laden
 // Tijdens scrollen laden we de eerste foto van de volgende 3 berichten (in de scrollrichting) al helemaal in,
 // inclusief decoderen, zodat hij er meteen staat. Van het bericht in beeld ook al de 2e carrouselfoto.
 // Begrensd: nooit meer dan een handvol tegelijk, dus niet alle 200 foto's in één keer (die bevriezing blijft weg).
 const AHEAD = 3;
-const klaar = new Set<string>(); // url's die al gedecodeerd zijn
+export const MAX_BEELD_ADMIN = 500; // begrensde administratie (#1091): lange sessies laten haar niet eindeloos groeien
+const klaar = new LruSet<string>(MAX_BEELD_ADMIN); // url's die al gedecodeerd zijn (uitgezet = bij nood opnieuw laden)
 // Vangnet: faalt de proxy (bijv. botbescherming van de uitgever), dan één keer rechtstreeks (oude gedrag) voor het wegvallen.
-const rechtstreeks = new Set<string>();
+const rechtstreeks = new LruSet<string>(MAX_BEELD_ADMIN);
+export const aantalBeeldAdmin = () => ({ klaar: klaar.size, rechtstreeks: rechtstreeks.size, bezig: bezig.size });
 export const bronUrl = (u: string): string => (rechtstreeks.has(u) ? u : beeldViaProxy(u));
 /** Proxy gefaald: true als er nog een rechtstreekse poging is (nu ingepland), false als dat al geprobeerd is of niet kan.
  *  `huidig` = src-attribuut van de falende <img>: had die nog de proxy-URL, dan altijd één poging, ook als de preload
  *  de URL al in `rechtstreeks` zette (race). Na die poging is huidig === u, dus geen lus. */
 export function naarRechtstreeks(u: string, huidig?: string | null): boolean {
   if (beeldViaProxy(u) === u) return false;
-  if (huidig != null && huidig !== u) { rechtstreeks.add(u); return true; }
+  if (huidig != null) {
+    if (huidig === u) return false;
+    rechtstreeks.add(u); return true;
+  }
   if (rechtstreeks.has(u)) return false;
   rechtstreeks.add(u);
   return true;
@@ -30,25 +37,45 @@ export function preloadBeeld(u: string | undefined): Promise<void> {
   if (!u || klaar.has(u)) return Promise.resolve();
   const p0 = bezig.get(u);
   if (p0) return p0;
-  const laad = (src: string): Promise<void> => {
-    const im = new Image();
-    im.referrerPolicy = "no-referrer";
-    im.decoding = "async";
-    if (im.decode) { im.src = src; return im.decode(); }
-    // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
-    // voltooide afbeelding direct afhandelen; handlers daarna opruimen.
-    return new Promise<void>((ok, nok) => {
-      const af = (goed: boolean) => { im.onload = im.onerror = null; if (goed) ok(); else nok(new Error("laden mislukt")); };
-      im.onload = () => af(true);
-      im.onerror = () => af(false);
+  let afgerond = false;
+  let im: HTMLImageElement | undefined;
+  let timer: ReturnType<typeof setTimeout>;
+  const p = new Promise<void>((resolve) => {
+    const stop = (gelukt: boolean) => {
+      if (afgerond) return;
+      afgerond = true;
+      clearTimeout(timer);
+      if (im) {
+        if (!gelukt) im.src = ""; // timeout of fout: breek het laden af (vóór het loskoppelen van de handlers)
+        im.onload = null;
+        im.onerror = null;
+        im = undefined; // referentie loslaten
+      }
+      if (gelukt) klaar.add(u);
+      resolve();
+    };
+    const laad = (src: string) => {
+      im = new Image();
+      im.referrerPolicy = "no-referrer";
+      im.decoding = "async";
+      const fout = () => {
+        if (afgerond) return;
+        if (naarRechtstreeks(u, src)) {
+          if (im) { im.src = ""; im.onload = null; im.onerror = null; } // mislukte proxy-poging loslaten
+          laad(u);
+        } else stop(false);
+      };
+      if (im.decode) { im.src = src; im.decode().then(() => stop(true), fout); return; }
+      // Zonder decode(): handlers vóór src (een snelle cachehit mag de gebeurtenis niet missen), en een al
+      // voltooide afbeelding direct afhandelen.
+      im.onload = () => stop(true);
+      im.onerror = fout;
       im.src = src;
-      if (im.complete) af(im.naturalWidth > 0);
-    });
-  };
-  const p = laad(bronUrl(u)) // zelfde URL als de <img src>, anders dubbele downloads
-    .catch(() => (naarRechtstreeks(u) ? laad(u) : Promise.reject()))
-    .then(() => { klaar.add(u); }, () => {})
-    .finally(() => bezig.delete(u));
+      if (im.complete) { if (im.naturalWidth > 0) stop(true); else fout(); }
+    };
+    timer = setTimeout(() => stop(false), 10000);
+    laad(bronUrl(u)); // zelfde URL als de <img src>, anders dubbele downloads
+  }).finally(() => { if (bezig.get(u) === p) bezig.delete(u); });
   bezig.set(u, p);
   return p;
 }
@@ -59,10 +86,16 @@ let richting = 1; // 1 = omlaag/verder, -1 = terug
 let ordered: Reg[] | null = null;
 let visIO: IntersectionObserver | null = null;
 let plan = 0;
+type Verbinding = EventTarget & { saveData?: boolean };
+const verbinding = () => (typeof navigator === "undefined" ? undefined : (navigator as Navigator & { connection?: Verbinding }).connection);
+const bespaarData = () => verbinding()?.saveData === true;
+export const magVooruitladen = (bespaar: boolean) => !bespaar;
+export const toonBeeld = (bespaar: boolean, inBeeld: boolean, near: boolean, actief: boolean, vooruit: boolean) =>
+  bespaar ? inBeeld && actief : near && vooruit;
 function vooruit() {
   cancelAnimationFrame(plan);
   plan = requestAnimationFrame(() => {
-    if (!zichtbaar.size) return;
+    if (!magVooruitladen(bespaarData()) || !zichtbaar.size) return;
     if (!ordered) ordered = [...regs].filter((r) => r.el.isConnected).sort((a, b) => (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
     const idx = ordered.map((r, k) => (zichtbaar.has(r) ? k : -1)).filter((k) => k >= 0);
     if (!idx.length) return;
@@ -104,14 +137,38 @@ function register(r: Reg) {
   return () => { regs.delete(r); zichtbaar.delete(r); ordered = null; visIO?.unobserve(r.el); };
 }
 
+/** Actieve index na verwijderen van de foto op `weg`: eerdere foto weg schuift mee, actieve/laatste weg klemt binnen de lijst. */
+export function indexNaVerwijderen(i: number, weg: number, nieuweLengte: number): number {
+  const n = weg < i ? i - 1 : i;
+  return Math.max(0, Math.min(nieuweLengte - 1, n));
+}
+
 export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = eager, className = "", onChange }: { urls: string[]; eager?: boolean; voorrang?: boolean; className?: string; onChange?: () => void }) {
+  const [bespaar, setBespaar] = useState(bespaarData);
+  useEffect(() => {
+    const v = verbinding();
+    const wijzig = () => { setBespaar(bespaarData()); vooruit(); };
+    v?.addEventListener("change", wijzig);
+    return () => v?.removeEventListener("change", wijzig);
+  }, []);
   const [list, setList] = useState(urls);
   const [i, setI] = useState(0);
+  const zichtbare = list.slice(0, 6);
+  const instructieId = useId();
   const track = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
   // Pas foto's plaatsen als het bericht (bijna) in beeld is, of als de vooruitlader hem al heeft binnengehaald
   // (volgende 3 berichten in de scrollrichting). Niet alle 200 tegelijk.
   const [near, setNear] = useState(eager);
+  const [inBeeld, setInBeeld] = useState(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!bespaar || !el) return;
+    if (!window.IntersectionObserver) { setInBeeld(true); return; }
+    const io = new IntersectionObserver((es) => setInBeeld(es.some((e) => e.isIntersecting)));
+    io.observe(el);
+    return () => { io.disconnect(); setInBeeld(false); };
+  }, [bespaar]);
   useEffect(() => {
     const el = box.current;
     if (near || !el || !window.IntersectionObserver) { if (!window.IntersectionObserver) setNear(true); return; }
@@ -128,31 +185,54 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, []);
   const [, herlaad] = useState(0);
   const raf = useRef(0);
-  useEffect(() => { setList(urls); setI(0); }, [urls]);
+  const vorigeUrls = useRef(urls);
+  useLayoutEffect(() => {
+    if (vorigeUrls.current.length === urls.length && vorigeUrls.current.every((url, k) => url === urls[k])) return;
+    vorigeUrls.current = urls;
+    cancelAnimationFrame(raf.current);
+    // Track direct op de juiste foto zetten (breekt ook een lopende smooth-scroll af), niet pas na de volgende render.
+    const el = track.current;
+    if (el) el.scrollLeft = 0;
+    setList(urls);
+    setI(0);
+  }, [urls]);
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (el) el.scrollLeft = i * el.clientWidth;
+  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
   listRef.current = list;
   iRef.current = i;
-  useEffect(() => { if (i > 0) preloadBeeld(list[i + 1]); }, [i, list]); // door de carrousel bladeren: volgende foto alvast
+  useEffect(() => { if (i > 0 && magVooruitladen(bespaarData())) preloadBeeld(list[i + 1]); }, [i, list, bespaar]); // door de carrousel bladeren: volgende foto alvast
   useEffect(() => { onChange?.(); }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const drop = useCallback((u: string) => {
-    if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus();
-    setList((l) => l.filter((x) => x !== u));
-    setI((n) => Math.max(0, Math.min(n, listRef.current.length - 2))); // alleen terug als de huidige foto buiten de lijst valt
+    const weg = listRef.current.indexOf(u);
+    if (weg < 0) return;
+    if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus(); // bediening verdwijnt: focus naar de strook
+    const rest = listRef.current.filter((x) => x !== u);
+    listRef.current = rest; // direct bijwerken: meerdere drops in één batch rekenen op de actuele lijst
+    setList(rest);
+    setI((v) => indexNaVerwijderen(v, weg, rest.length));
   }, []);
+  // Na verwijderen de track weer op de actieve foto zetten (scroll-snap schuift anders mee naar een buurfoto).
+  useEffect(() => {
+    const el = track.current;
+    if (el && el.clientWidth && list.length > 1 && Math.round(el.scrollLeft / el.clientWidth) !== i) el.scrollLeft = i * el.clientWidth;
+  }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const onScroll = useCallback(() => {
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
       const el = track.current;
-      if (el && el.clientWidth) setI(Math.max(0, Math.min(list.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
+      if (el && el.clientWidth) setI(Math.max(0, Math.min(zichtbare.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
     });
-  }, [list.length]);
+  }, [zichtbare.length]);
   const go = (k: number) => {
     const el = track.current;
     if (!el) return;
-    const n = (k + list.length) % list.length;
+    const n = (k + zichtbare.length) % zichtbare.length;
     el.scrollTo({ left: n * el.clientWidth, behavior: scrollGedrag() });
   };
   if (!list.length) return null;
-  const multi = list.length > 1;
+  const multi = zichtbare.length > 1;
   return (
     <div ref={box} className={`bl ${multi ? "multi" : ""} ${className}`} aria-roledescription={multi ? "fotocarrousel" : undefined}>
       <div
@@ -161,6 +241,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
         tabIndex={multi ? 0 : -1}
         role={multi ? "group" : undefined}
         aria-label={multi ? "Foto's" : undefined}
+        aria-describedby={multi ? instructieId : undefined}
         onKeyDown={multi ? (e) => {
           if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
             e.preventDefault();
@@ -175,9 +256,9 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
           go(e.clientX - r.left > r.width * 0.35 ? i + 1 : i - 1);
         } : undefined}
       >
-        {list.map((u, k) => (
+        {zichtbare.map((u, k) => (
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
-            {near && (k <= i + 1 || k === list.length - 1 && i === 0) ? (
+            {toonBeeld(bespaar, inBeeld, near, k === i, k <= i + 1 || k === zichtbare.length - 1 && i === 0) ? (
               <img
                 src={bronUrl(u)}
                 alt=""
@@ -192,7 +273,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
                 onLoad={(e) => {
                   const im = e.currentTarget;
                   const w = im.naturalWidth, h = im.naturalHeight;
-                  if (w < 200 || h < 120 || w / h > 4 || h / w > 2.2) drop(u); // logo/icoon/banner
+                  if (!bruikbareAfmeting(w, h)) drop(u); // logo/icoon/banner
                   else im.classList.add("in");
                 }}
               />
@@ -202,12 +283,13 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       </div>
       {multi ? (
         <>
+          <span id={instructieId} className="sr-only">Gebruik de pijltjestoetsen links en rechts om van foto te wisselen.</span>
           <div className="bl-dots" aria-hidden="true">
-            {list.map((u, k) => <span key={u} className={k === i ? "on" : ""} />)}
+            {zichtbare.map((u, k) => <span key={u} className={k === i ? "on" : ""} />)}
           </div>
           <button type="button" className="bl-nav prev" aria-label="Vorige foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(i - 1); }}>‹</button>
           <button type="button" className="bl-nav next" aria-label="Volgende foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(i + 1); }}>›</button>
-          <span className="sr-only" aria-live="polite">Foto {i + 1} van {list.length}</span>
+          <span className="sr-only" aria-live="polite">Foto {i + 1} van {zichtbare.length}</span>
         </>
       ) : null}
     </div>
@@ -218,22 +300,39 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
 /** Index van de foto die Thumb probeert. Verandert de inhoud van de lijst (ververst bericht), dan terug naar de eerste;
  *  een rerender met dezelfde lijst (nieuwe array, zelfde urls) laat de index staan. */
 export function useThumbIndex(urls: string[]): [number, (k: number) => void] {
-  const sleutel = urls.join("\n");
+  const sleutel = JSON.stringify(urls);
   const [st, setSt] = useState({ sleutel, k: 0 });
-  if (st.sleutel !== sleutel) { setSt({ sleutel, k: 0 }); return [0, (k) => setSt({ sleutel, k })]; }
-  return [st.k, (k) => setSt({ sleutel, k })];
+  if (st.sleutel !== sleutel) setSt({ sleutel, k: 0 });
+  return [st.sleutel === sleutel ? st.k : 0, (k) => setSt((huidig) => huidig.sleutel === sleutel ? { sleutel, k } : huidig)];
 }
 
 export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
   const [k, setK] = useThumbIndex(urls);
+  const [bespaar, setBespaar] = useState(bespaarData);
+  const [inBeeld, setInBeeld] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const v = verbinding();
+    const wijzig = () => setBespaar(bespaarData());
+    v?.addEventListener("change", wijzig);
+    return () => v?.removeEventListener("change", wijzig);
+  }, []);
+  useEffect(() => {
+    const el = box.current;
+    if (!bespaar || !el) return;
+    if (!window.IntersectionObserver) { setInBeeld(true); return; }
+    const io = new IntersectionObserver((es) => setInBeeld(es.some((e) => e.isIntersecting)));
+    io.observe(el);
+    return () => { io.disconnect(); setInBeeld(false); };
+  }, [bespaar, Boolean(urls[k])]);
   const [, herlaad] = useState(0);
   const u = urls[k];
   if (!u) return null;
   return (
-    <span className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
-      <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
+    <span ref={box} className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
+      {toonBeeld(bespaar, inBeeld, true, true, true) && <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
         onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : setK(k + 1))}
-        onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />
+        onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />}
     </span>
   );
 });

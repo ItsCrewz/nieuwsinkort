@@ -1,0 +1,1 @@
+- Zoekwoorden worden in resultaten gemarkeerd; de lege zoekstaat biedt een knop om de zoekopdracht te wissen (#578).

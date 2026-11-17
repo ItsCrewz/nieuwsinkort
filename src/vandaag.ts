@@ -1,5 +1,5 @@
 // Publicatietijden en de Amsterdamse dag voor Worker en Pages.
-import { ams, midnight } from "./tijd";
+import { ams, amsTijdstip, midnight } from "./tijd";
 
 export const TOEKOMST_MARGE = 15 * 60e3;
 export const TZ_MARGE = 2 * 3600e3 + TOEKOMST_MARGE;
@@ -22,6 +22,13 @@ export function selecteerVideodag<T extends object>(lijst: T[], now: number, tij
   if (ams(now).h >= 10) return [];
   const begin = midnight(now), vorig = videoVanaf(now);
   return lijst.filter((v) => { const t = publicatieTijd(tijd(v), now); return t != null && t >= vorig && t < begin; }).map((v) => ({ ...v, gisteren: true }));
+}
+// Ontbreekt een numerieke t, dan volgt die uit de dag van de dataset en een geldige HH:MM (anders null).
+export function afgeleideTijd(x: any, gen: number): number | null {
+  if (typeof x?.t === "number") return x.t;
+  if (x?.t != null || !Number.isFinite(gen)) return null;
+  const m = /^(\d{2}):(\d{2})$/.exec(x?.tijd || "");
+  return m && +m[1] < 24 && +m[2] < 60 ? amsTijdstip(gen, +m[1], +m[2]) : null;
 }
 export const nieuwsteTijd = (leden: { d: number }[]) => Math.max(...leden.map((lid) => lid.d));
 
@@ -49,7 +56,8 @@ export function alleenVandaag(data: any, now: number) {
     if (key === "items") out[key] = gefilterd;
     else {
       const genGisteren = Number.isFinite(gen) && ams(gen).iso === ams(midnight(now) - 1).iso;
-      const video = vandaag ? selecteerVideodag(lijst, now, (x: any) => x?.t) : genGisteren ? selecteerVideodag(lijst.filter((x: any) => !vanVandaag(x?.t, now)), now, (x: any) => x?.t) : [];
+      const tijd = (x: any) => afgeleideTijd(x, gen);
+      const video = vandaag ? selecteerVideodag(lijst, now, tijd) : genGisteren ? selecteerVideodag(lijst.filter((x: any) => !vanVandaag(tijd(x), now)), now, tijd) : [];
       out[key] = gefilterd.length ? gefilterd.filter((x: any) => !x.gisteren) : video;
       oud[key] = lijst.length - out[key].length;
     }
@@ -67,4 +75,40 @@ export function verwijderGisteren<T extends { filmpjes?: { gisteren?: boolean }[
   if (ams(now).h < 10) return data;
   const filmpjes = data.filmpjes?.filter((v) => !v.gisteren), dumpert = data.dumpert?.filter((v) => !v.gisteren);
   return filmpjes?.length === data.filmpjes?.length && dumpert?.length === data.dumpert?.length ? data : { ...data, filmpjes, dumpert };
+}
+
+// Eerstvolgende 10:00 Amsterdam na `now` (ook op zomer-/wintertijdwisseldagen).
+export function volgende10(now: number): number {
+  const vandaag = amsTijdstip(now, 10, 0);
+  if (vandaag != null && vandaag > now) return vandaag;
+  return amsTijdstip(midnight(now) + 36 * 3600e3, 10, 0) as number;
+}
+export const heeftGisteren = (data: any) => ["filmpjes", "dumpert"].some((k) => Array.isArray(data?.[k]) && data[k].some((v: any) => v?.gisteren));
+// Hoe lang (ms) een respons met deze data gecachet mag blijven: zonder gisteren-video's onbegrensd, anders tot 10:00.
+export const videoCacheMs = (data: any, now: number) => heeftGisteren(data) ? volgende10(now) - now : Infinity;
+
+const MAX_TIMER = 2 ** 31 - 1;
+export interface GrensOmgeving {
+  nu?: () => number;
+  setT?: (f: () => void, ms: number) => unknown;
+  clearT?: (id: unknown) => void;
+  doc?: { visibilityState?: string; addEventListener: (n: string, f: () => void) => void; removeEventListener: (n: string, f: () => void) => void };
+  win?: { addEventListener: (n: string, f: () => void) => void; removeEventListener: (n: string, f: () => void) => void };
+}
+/** Eén timer op de eerstvolgende 10:00 Amsterdam i.p.v. een controle per seconde; `ruim` verwijdert de gisteren-items. Plant opnieuw na een klokwisseling en ruimt direct op bij terugkeer in het tabblad. Geeft de opruimfunctie terug. */
+export function bewaakGrens(ruim: () => void, o: GrensOmgeving = {}): () => void {
+  const nu = o.nu ?? Date.now, setT = o.setT ?? ((f, ms) => setTimeout(f, ms)), clearT = o.clearT ?? ((id) => clearTimeout(id as any));
+  const g = globalThis as any; // geen dom-lib in de Worker-tsconfig; daar zijn document/window undefined
+  const doc: GrensOmgeving["doc"] = o.doc ?? g.document, win: GrensOmgeving["win"] = o.win ?? g.window;
+  let id: unknown, weg = false;
+  const plan = () => {
+    if (id != null) clearT(id);
+    id = setT(tik, Math.min(Math.max(volgende10(nu()) - nu(), 0), MAX_TIMER));
+  };
+  const tik = () => { if (weg) return; ruim(); plan(); };
+  const terug = () => { if (!weg && doc?.visibilityState !== "hidden") tik(); };
+  doc?.addEventListener("visibilitychange", terug);
+  win?.addEventListener("focus", terug);
+  tik();
+  return () => { weg = true; if (id != null) clearT(id); doc?.removeEventListener("visibilitychange", terug); win?.removeEventListener("focus", terug); };
 }

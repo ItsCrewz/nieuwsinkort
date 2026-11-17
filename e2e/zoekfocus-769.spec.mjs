@@ -1,0 +1,30 @@
+import { test, expect } from "@playwright/test";
+
+test("wissen van een zoekopdracht herstelt de focus en de resultaten", async ({ page }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const resultaat = page.locator(".nc-title a").first();
+  await expect(resultaat).toBeVisible();
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  await knop.focus();
+  await page.keyboard.press("Enter");
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await expect(invoer).toBeFocused();
+  await page.keyboard.type("onvindbarezoekterm769");
+  const wis = page.getByRole("button", { name: "Wis zoekopdracht" });
+  await expect(wis).toBeVisible();
+  for (let i = 0; i < 100 && !(await wis.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab");
+  await expect(wis).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(invoer).toBeFocused();
+  await expect(invoer).toHaveValue("");
+  await expect(knop).toHaveAttribute("aria-expanded", "true");
+  await expect(resultaat).toBeVisible();
+  await page.keyboard.type("onvindbarezoekterm769");
+  await expect(wis).toBeVisible();
+  await invoer.press("Escape");
+  await expect(knop).toBeFocused();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Sluiten" }).click();
+  await expect(knop).toBeFocused();
+});

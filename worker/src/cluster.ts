@@ -1,5 +1,7 @@
 // Clusteren van nieuwskandidaten uit feeds: pure module (geen Worker-API's), getest in tests/cluster.test.ts.
 // Conservatief: liever twee losse berichten dan twee verschillende verhalen samen.
+import { normLink } from "../../src/linknorm";
+export { normLink } from "../../src/linknorm";
 import { sportCat } from "./sportcat";
 import { kostenBotst, wedstrijdTeams, zelfdeVerhaal } from "../../src/verhaaldubbel";
 
@@ -42,7 +44,6 @@ export const toks = (s: string) => {
   return out;
 };
 export function sim(a: Set<string>, b: Set<string>) { let n = 0; for (const x of a) if (b.has(x)) n++; return { n, j: n / (a.size + b.size - n || 1) }; }
-export const normLink = (l: string) => l.replace(/^https?:\/\/(www\.)?/, "").replace(/[?#].*$/, "").replace(/\/$/, "").toLowerCase();
 
 const AFSTAND = /(\d{1,2}(?:\.\d{3})+|\d+)\s?(km|kilometer|m|meter)\b/gi;
 
@@ -153,6 +154,8 @@ function naamClusters(lid: Lid, out: Cluster[]): { k: Cluster; gedeeld: string[]
   for (const k of out) {
     const gedeeld = new Set<string>();
     for (const l of k.leden) if (gelijk(lid, l) > 0) { const g = deelNamen(lid, l); if (!k.kern || g.filter((w) => k.kern!.has(w)).length >= 2) g.forEach((w) => gedeeld.add(w)); }
+    // een cluster zonder kern met meerdere leden: de kandidaat moet bij elk lid passen, anders is hij een brug naar (een deel van) een ander verhaal (#1027)
+    if (gedeeld.size && !k.kern && k.leden.length > 1 && !k.leden.every((l) => gelijk(lid, l) > 0)) continue;
     if (gedeeld.size) res.push({ k, gedeeld: [...gedeeld] });
   }
   return res;
@@ -182,7 +185,9 @@ export function cluster(cands: Cand[]): Cluster[] {
       if (kostenBotst({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d })) return true;
       return false;
     }) && !k.leden.some((l) => afstandBotst(lid.afst, l.afst)) ;
-    let raak = out.filter((k) => pas(k) && (k.leden.some((l) => gelijk(lid, l, false) > 0) || k.c.every((x) => zelfdeVerhaal({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d }))));
+    // een cluster met kern (via namen gegroeid) neemt via de titelregel alleen een kandidaat op die minstens min(2, kernomvang) kernnamen draagt (#1027, zelfde drempel als naamClusters; één toevallig gedeelde naam is te weinig): anders is die een brug naar een ander verhaal
+    const kernOk = (k: Cluster) => !k.kern || [...lid.nm!].filter((w) => k.kern!.has(w)).length >= Math.min(2, k.kern.size);
+    let raak = out.filter((k) => pas(k) && ((k.leden.some((l) => gelijk(lid, l, false) > 0) && kernOk(k)) || k.c.every((x) => zelfdeVerhaal({ kop: c.t, tekst: c.s, tijd: c.d }, { kop: x.t, tekst: x.s, tijd: x.d }))));
     let nieuweKern: string[] = [];
     // goedkope voorcheck: de naamregel eist ≥2 eigennamen en ≥1 naam in de titel
     if (!raak.length && lid.nm!.size >= 2 && lid.nmT!.size > 0) {

@@ -10,11 +10,20 @@ export function niveauVan(c: Netwerk): Niveau {
 
 // hls.js gebruikt seconden en bytes als richtgrenzen; hele segmenten kunnen die overschrijden.
 export function planVoor(afstand: number, niveau: Niveau): { secs: number; bytes: number } {
-  if (afstand === 0) return { secs: 30, bytes: 60e6 };
+  if (afstand === 0) return {
+    ruim: { secs: 30, bytes: 60e6 },
+    zuinig: { secs: 15, bytes: 8e6 },
+    minimaal: { secs: 8, bytes: 4e6 },
+  }[niveau];
   if (afstand === 1) return {
     ruim: { secs: 12, bytes: 4e6 },
     zuinig: { secs: 6, bytes: 2e6 },
     minimaal: { secs: 2, bytes: 1e6 },
   }[niveau];
   return { secs: 0, bytes: 0 };
+}
+
+// De ruime actieve speler behoudt extra speelruimte; andere profielen blijven begrensd.
+export function maxBufferSeconden(afstand: number, niveau: Niveau): number {
+  return afstand === 0 && niveau === "ruim" ? 60 : planVoor(afstand, niveau).secs;
 }
