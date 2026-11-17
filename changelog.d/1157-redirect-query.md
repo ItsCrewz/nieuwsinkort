@@ -1,0 +1,1 @@
+- De tijdelijke artikelredirect behoudt de zoekcontext en blijft op de eigen site (#1157).
