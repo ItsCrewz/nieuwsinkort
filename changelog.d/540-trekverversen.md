@@ -1,0 +1,1 @@
+- Ververs de nieuwsfeed door bovenaan omlaag te trekken; houd rekening met verminderde beweging en een verversrem (#540).

@@ -139,3 +139,26 @@ test("reduced motion: geen lopende animaties bij rubriekwissel", async ({ page }
     expect(await traag(page)).toEqual([]);
   }
 });
+
+test("trekken ververst eenmaal en werkt met verminderde beweging", async ({ page, context }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await blokkeer(page);
+  let verzoeken = 0;
+  page.on("request", (r) => { if (new URL(r.url()).pathname === "/data.json") verzoeken++; });
+  await page.goto("#/tech");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; document.querySelector(".nf").scrollTop = 0; });
+  const voor = verzoeken;
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+  const box = await page.locator(".nf").boundingBox();
+  const x = box.x + box.width / 2, y = box.y + 40;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y + 140 }] });
+  await expect(page.locator(".ptr")).toContainText("Loslaten om te verversen");
+  expect(await traag(page)).toEqual([]);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(page.locator(".ptr")).toContainText(/Je bent bij|Bijgewerkt om/);
+  expect(verzoeken - voor).toBe(1);
+  await expect(page.locator(".ptr")).not.toContainText(/Je bent bij|Bijgewerkt om/, { timeout: 3000 });
+});
