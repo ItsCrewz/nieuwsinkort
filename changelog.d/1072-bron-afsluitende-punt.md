@@ -1,0 +1,1 @@
+- Herken Nederlandse bronhosts met een afsluitende DNS-punt in de fallback (#1072).
