@@ -1,3 +1,4 @@
+import { useTrekverversen } from "./trekverversen";
 import { Foutgrens } from "./foutgrens";
 import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
@@ -341,7 +342,7 @@ function ZoekTekst({ tekst, query, bionic = false }: { tekst: string; query: str
   return <>{markeerDelen(tekst, query).map((deel, i) => deel.markeer ? <mark key={i}><BionicText text={deel.tekst} on={bionic} /></mark> : <BionicText key={i} text={deel.tekst} on={bionic} />)}</>;
 }
 
-function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm }: { tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm, ververs, verversActief, laatstVerversd }: { ververs: () => Promise<boolean | undefined>; verversActief: boolean; laatstVerversd: { current: number }; tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -349,6 +350,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
     return li > 0 ? [s[li], ...s.filter((_, k) => k !== li)] : s;
   }, [items, keepOrder]);
   const ref = useRef<HTMLDivElement>(null);
+  const trek = useTrekverversen(ref, verversActief, ververs, laatstVerversd);
   const railRef = useRef<HTMLSpanElement>(null);
   const startRef = useRef<HTMLButtonElement>(null);
   const [idx, setIdx] = useState(-1); // -1 = de "vandaag"-kaart met samenvatting en weer
@@ -495,6 +497,10 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
 
   return (
     <div className="nf-box">
+      <div className={`ptr${trek.trekt ? " trekt" : ""}${trek.afstand >= 56 ? " klaar" : ""}`} style={{ transform: `translateY(${trek.verminderd ? (trek.afstand >= 56 ? 56 : 0) : trek.afstand}px)` }} role="status" aria-live="polite">
+        <span className="ptr-pijl" style={{ transform: `rotate(${trek.verminderd ? 0 : Math.min(trek.afstand / 56, 1) * 180}deg)` }} aria-hidden="true">↓</span>
+        {(trek.status || (trek.verminderd && trek.afstand >= 56)) && <span>{trek.status || "Loslaten om te verversen"}</span>}
+      </div>
       <div className="nf" id={resultatenId} ref={ref} tabIndex={-1} role="region" aria-label={zoekterm.trim() && total > 0 ? `Zoekresultaten, ${total} berichten` : "Berichten, één per scherm"}>
         <div className={kompakt ? `nc-head kompakt${samenvatting ? " samenvatting" : ""}` : "nc-head"}>{head}</div>
         {total === 0 ? (
@@ -544,6 +550,7 @@ let afgewezenBerichten = 0;
 // ---------------------------------------------------------------- data + thema
 export function useData() {
   const volgnummer = useRef(0);
+  const generatie = useRef<string | undefined>(undefined);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState(false);
   const load = useCallback(async () => {
@@ -561,8 +568,11 @@ export function useData() {
       d.dumpert ??= [];
       d.dumpert = d.dumpert.filter((v) => !!playerFor(v)); // alleen echte, afspeelbare filmpjes
       d.filmpjes = sorteerOpGroep(d.filmpjes.map((v) => ({ ...v, soort: soortVan(v) }))); // Shorts of Journaals; op onderwerpgroep (#459): Sport onderaan, ook voor de volgorde van doorlopend kijken
+      const nieuw = !!generatie.current && Date.parse(d.gegenereerd || "") > Date.parse(generatie.current);
+      if (!generatie.current || nieuw) generatie.current = d.gegenereerd;
       setData((prev) => kiesNieuweData(prev, verwijderGisteren(d, Date.now())));
       setError(false);
+      return nieuw;
     } catch {
       if (aanvraag === volgnummer.current) setError(true);
     }
@@ -733,6 +743,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
 
 export default function App() {
   const { data: raw, error, reload } = useData();
+  const laatstVerversd = useRef(0);
   // Rustige melding i.p.v. stil falen: bijwerken mislukt, of de AI-dagruimte is (bijna) op.
   const briefNote = [
     error && raw ? "Bijwerken lukt even niet; je ziet het nieuws van de laatste keer." : "",
@@ -1054,6 +1065,9 @@ export default function App() {
           <Foutgrens key={view} code="CLIENT_FEED"><NewsFeed
             key={view}
             tab={view}
+            ververs={reload}
+            verversActief={!error}
+            laatstVerversd={laatstVerversd}
             items={zoekUitkomst}
             zoekterm={zoekterm}
             nieuwsdata={raw}

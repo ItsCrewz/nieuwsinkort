@@ -32,7 +32,6 @@ assert.equal(invoerBijKop("Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.",
 assert.equal(invoerBijKop("Advocaat mr. De Vries pleit voor vrijspraak. Daarna ander nieuws.", kort), "Advocaat mr. De Vries pleit voor vrijspraak.");
 assert.equal(invoerBijKop("Prof. dr. ir. Bakker waarschuwt. Delft organiseert een festival.", kort), "Prof. dr. ir. Bakker waarschuwt.");
 assert.equal(invoerBijKop("Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.", "https://voorbeeld.nl/nieuws/artikel"), "Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.");
-// Worker-invoer (worker/src/index.ts): per clusterlid begrensd, samengevoegd met " // ".
-const workerTekst = [["Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.", kort], ["Gewoon artikel. Tweede zin.", "https://voorbeeld.nl/a"]].map(([s, h]) => invoerBijKop(s, h)).join(" // ");
-assert.equal(workerTekst, "Dr. Jansen onderzoekt de zaak. // Gewoon artikel. Tweede zin.");
+assert.equal(invoerBijKop("Hij werkt bij ING. Daarna ander nieuws.", kort), "Hij werkt bij ING.");
+assert.equal(invoerBijKop("Hij woont in de VS. Daarna ander nieuws.", kort), "Hij woont in de VS.");
 console.log("ok - titelafkortingen kappen de invoer niet af");

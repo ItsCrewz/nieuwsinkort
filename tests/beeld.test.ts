@@ -14,6 +14,14 @@ t("goedBeeld accepteert bruikbare URLs en weigert ongeldige afbeeldingen", () =>
   assert.equal(goedBeeld("https://youtube.com/watch?v=abc"), false);
 });
 
+t("small als onderwerp blijft bruikbaar, als maatsuffix niet (#1164)", () => {
+  for (const naam of ["small-business.jpg", "report-small-business.jpg"]) {
+    assert.equal(goedBeeld(`https://example.org/news/${naam}`), true);
+  }
+  assert.equal(goedBeeld("https://example.org/news/report-small.jpg"), false);
+  assert.equal(goedBeeld("https://example.org/news/report-small.jpg?v=1"), false);
+});
+
 t("beeldKey herkent varianten van hetzelfde beeld", () => {
   assert.equal(
     beeldKey("https://cdn1.voorbeeld.nl/foto-1200x675.jpg?quality=80"),
