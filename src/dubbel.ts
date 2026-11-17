@@ -41,7 +41,7 @@ function nieuwFeit(tekst: string, bekend: string): boolean {
 }
 // Vergelijk met één bronzin: standpunten, ontkenningen, onzekerheid en tijdsaanduidingen veranderen de betekenis.
 const MODAAL: Record<string, string> = { kunnen: "kan", zouden: "zou", mogelijke: "mogelijk", mogelijkerwijs: "mogelijk", vermoedelijk: "waarschijnlijk", wellicht: "misschien" };
-const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:voor|tegen|kan|kunnen|zou|zouden|mogelijk|mogelijke|mogelijkerwijs|waarschijnlijk|vermoedelijk|misschien|wellicht|niet|geen|nooit|nu|nog|al|pas|weer|morgen|vandaag|gisteren|overmorgen|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\d{1,2}:\d{2}/gu) || []).map((w) => MODAAL[w] ?? w));
+const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:voor|tegen|aan|uit|in|op|af|kan|kunnen|zou|zouden|mogelijk|mogelijke|mogelijkerwijs|waarschijnlijk|vermoedelijk|misschien|wellicht|niet|geen|nooit|nu|nog|al|pas|weer|morgen|vandaag|gisteren|overmorgen|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\d{1,2}:\d{2}/gu) || []).map((w) => MODAAL[w] ?? w));
 function herhaling(tekst: string, bekend: string): boolean {
   return bekend.split(/\n/).flatMap(zinnen).some((bron) => {
     const a = bijzonder(tekst), b = bijzonder(bron);
