@@ -1,0 +1,1 @@
+- Negeer toekomstige bezoektijden bij het filter Sinds je laatste bezoek, ook na een klokcorrectie (#1124).
