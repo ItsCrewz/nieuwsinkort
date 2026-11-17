@@ -1,0 +1,1 @@
+- Zoeken: een minteken voor een woord sluit dat woord uit (bijv. `verkiezing -amerika`), met uitleg bij het zoekveld (#1166).
