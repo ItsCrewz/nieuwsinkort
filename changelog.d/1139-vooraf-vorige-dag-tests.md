@@ -1,0 +1,1 @@
+- Tests: voorafdata van gisteren wordt vóór 06:00 ook op de klokwisseldagen (29 maart, 25 oktober) correct geaccepteerd; `dagdata` gebruikt al de vorige Amsterdamse kalenderdag (#1139).

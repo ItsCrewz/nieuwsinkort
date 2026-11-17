@@ -6,9 +6,12 @@ import { dagdata } from "../../src/dagdata";
 const fixture = JSON.parse(readFileSync("tests/fixtures/joey/dubbel-borsato-1305.json", "utf8"));
 const artikel = fixture.items[0];
 const klok = Date.now;
-const scenarios = [
+const scenarios: { dag: string; gisteren: string; oud: string; offset: string; start?: string; gOffset?: string }[] = [
   { dag: "2026-03-30", gisteren: "2026-03-29", oud: "2026-03-28", offset: "+02:00" },
   { dag: "2026-10-26", gisteren: "2026-10-25", oud: "2026-10-24", offset: "+01:00" },
+  // De wisseldagen zelf (23 en 25 uur): vóór 06:00 geldt per tijdstip een andere offset.
+  { dag: "2026-03-29", gisteren: "2026-03-28", oud: "2026-03-27", offset: "+02:00", start: "+01:00", gOffset: "+01:00" },
+  { dag: "2026-10-25", gisteren: "2026-10-24", oud: "2026-10-23", offset: "+01:00", start: "+02:00", gOffset: "+02:00" },
   { dag: "2026-05-05", gisteren: "2026-05-04", oud: "2026-05-03", offset: "+02:00" },
 ];
 try {
@@ -22,10 +25,11 @@ try {
     const vraag = (tag?: string) => dagdata({ request: new Request("https://voorbeeld.nl/data.json", { headers: tag ? { "If-None-Match": tag } : {} }), env });
     const zetVooraf = (datum: string) => { vooraf = `${datum}\nhash\n${JSON.stringify({ items: [artikel], filmpjes: [], dumpert: [] })}`; };
     zetVooraf(s.gisteren);
-    Date.now = () => Date.parse(`${s.gisteren}T23:59:00${s.offset}`);
+    Date.now = () => Date.parse(`${s.gisteren}T23:59:00${s.gOffset ?? s.offset}`);
     assert.deepEqual((await (await vraag()).json()).items, [artikel]);
     for (const tijd of ["00:00:00", "05:59:59"]) {
-      Date.now = () => Date.parse(`${s.dag}T${tijd}${s.offset}`);
+      const off = tijd === "00:00:00" ? s.start ?? s.offset : s.offset;
+      Date.now = () => Date.parse(`${s.dag}T${tijd}${off}`);
       const antwoord = await vraag();
       assert.deepEqual((await antwoord.json()).items, [artikel]);
       assert.equal((await vraag(antwoord.headers.get("etag")!)).status, 304);
