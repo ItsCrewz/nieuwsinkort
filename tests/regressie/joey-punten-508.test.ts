@@ -25,3 +25,13 @@ for (const tekst of ["Ahold Delhaize N.V. verloor geld. Delft organiseert een fe
   assert.equal(invoerBijKop(tekst, ahold.bronnen[0].href), tekst.slice(0, tekst.indexOf(". Delft") + 1));
 }
 console.log("ok - URL-pad en afkortingen begrenzen de invoer correct");
+
+// #1173: titelafkortingen midden in de eerste zin kappen die zin niet af.
+const kort = ahold.bronnen[0].href;
+assert.equal(invoerBijKop("Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.", kort), "Dr. Jansen onderzoekt de zaak.");
+assert.equal(invoerBijKop("Advocaat mr. De Vries pleit voor vrijspraak. Daarna ander nieuws.", kort), "Advocaat mr. De Vries pleit voor vrijspraak.");
+assert.equal(invoerBijKop("Prof. dr. ir. Bakker waarschuwt. Delft organiseert een festival.", kort), "Prof. dr. ir. Bakker waarschuwt.");
+assert.equal(invoerBijKop("Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.", "https://voorbeeld.nl/nieuws/artikel"), "Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.");
+assert.equal(invoerBijKop("Hij werkt bij ING. Daarna ander nieuws.", kort), "Hij werkt bij ING.");
+assert.equal(invoerBijKop("Hij woont in de VS. Daarna ander nieuws.", kort), "Hij woont in de VS.");
+console.log("ok - titelafkortingen kappen de invoer niet af");
