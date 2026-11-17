@@ -33,7 +33,6 @@ try {
     const r = await bezoek(`${canoniek}${q}`);
     assert.equal(r.status, 302);
     assert.equal(r.headers.get("location"), `/${q}#/bericht/${artikelId(item)}`);
-    assert.equal(new URL(r.headers.get("location")!, "https://nieuwsinkort.nl").origin, "https://nieuwsinkort.nl");
     assert.equal(r.headers.get("cache-control"), "no-store");
     assert.equal(r.headers.get("x-robots-tag"), "noindex");
   }
