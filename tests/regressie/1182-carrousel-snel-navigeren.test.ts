@@ -137,13 +137,12 @@ const eind = async (c: Awaited<ReturnType<typeof toon>>, foto: number) => {
   await eind(c, 1);
   await act(async () => c.root.unmount());
 }
-// Direct na het bereiken van een doel, vóór de scrollmeting, blijft de positie de basis.
+// Direct na het bereiken van een doel, vóór het scroll-event, blijft het doel de basis.
 {
   const c = await toon(urls);
   await c.klik("Volgende foto");
   await act(async () => {
     c.track().scrollLeft = 100;
-    props(c.track()).onScroll();
     props(c.knop("Volgende foto")).onClick({ stopPropagation() {}, preventDefault() {} });
   });
   assert.deepEqual(c.track().scrolls, [100, 200]);
@@ -165,14 +164,13 @@ const eind = async (c: Awaited<ReturnType<typeof toon>>, foto: number) => {
   await eind(c, 2);
   await act(async () => c.root.unmount());
 }
-// Handmatige overname rekent direct met de positie, ook vóór de scrollmeting.
+// Handmatige overname rekent direct met de positie, ook vóór het scroll-event.
 for (const invoer of ["onTouchStart", "onWheel"]) {
   const c = await toon(urls);
   await c.klik("Volgende foto");
   await act(async () => {
     props(c.track())[invoer]?.();
     c.track().scrollLeft = 200;
-    props(c.track()).onScroll();
     props(c.knop("Vorige foto")).onClick({ stopPropagation() {}, preventDefault() {} });
   });
   assert.equal(c.track().scrolls.at(-1), 100);
