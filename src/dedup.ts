@@ -132,7 +132,8 @@ function sameUitgever(a: DVideo, b: DVideo): boolean {
 export function popNum(p?: string): number {
   const m = /([\d.,]+)\s*([kKmM]?)/.exec(p || "");
   if (!m) return 0;
-  const n = parseFloat(m[1].replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
+  // Met k/m-suffix is . of , een decimaalteken (1.234k = 1234); zonder suffix is een punt voor drie cijfers een duizendtalscheiding.
+  const n = parseFloat((m[2] ? m[1].replace(",", ".") : m[1].replace(/\.(?=\d{3}\b)/g, "").replace(",", ".")));
   return (Number.isFinite(n) ? n : 0) * (m[2].toLowerCase() === "m" ? 1e6 : m[2].toLowerCase() === "k" ? 1e3 : 1) * (/likes|kudos/i.test(p || "") ? 20 : 1);
 }
 function quality(v: DVideo): number {
