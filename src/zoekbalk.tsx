@@ -10,6 +10,8 @@ const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 // scope: zichtbare zoekscope; verborgen: treffers die filters wegnemen; wisFilters alleen als er beperkende filters zijn.
 export type ZoekScope = { tekst: string; verborgen: number; wisFilters?: () => void; herstel?: () => void };
 const scopeId = "zoek-scope";
+const hintId = "zoek-hint";
+const uitsluitTip = "Tip: zet een minteken voor een woord om het uit te sluiten, bijv. verkiezing -amerika.";
 // Het feedgebied in App.tsx; de link "Ga naar resultaten" focust daarbinnen de eerste kaartlink.
 export const resultatenId = "zoek-resultaten";
 type FocusDoc = { getElementById(id: string): { focus(): void; querySelector(s: string): { focus(): void; querySelector(s: string): { focus(): void } | null } | null } | null };
@@ -69,7 +71,7 @@ export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aanta
   const [ingekort, setIngekort] = useState(false);
   const wijzig = (tekst: string) => { const begrensd = begrensZoekterm(tekst); setIngekort(begrensd !== tekst); onChange(begrensd); };
   return <form id={id} className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); if (!compositie.current && touchNu()) invoer.current?.blur(); }}>
-        <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws"{...(scope ? { "aria-describedby": scopeId } : {})} value={query} onChange={(e) => wijzig(e.target.value)} onCompositionStart={() => { compositie.current = true; }} onCompositionEnd={() => { compositie.current = false; }} onBlur={() => { compositie.current = false; }} onKeyDown={(e) => {
+        <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws" aria-describedby={scope ? scopeId : hintId} value={query} onChange={(e) => wijzig(e.target.value)} onCompositionStart={() => { compositie.current = true; }} onCompositionEnd={() => { compositie.current = false; }} onBlur={() => { compositie.current = false; }} onKeyDown={(e) => {
           if (e.key === "Enter" && (compositie.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)) { e.preventDefault(); return; }
           if (e.key === "Escape") {
             e.stopPropagation();
@@ -80,10 +82,12 @@ export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aanta
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
         <span className="zoek-scope" role="status">{ingekort && query ? `Zoekopdracht ingekort tot ${MAX_ZOEKTEKENS} tekens` : ""}</span>
         {aantal > 0 && !!normaliseer(query) && <a href={`#${resultatenId}`} className="zoek-wis-filters zoek-naar-resultaten" onClick={(e) => { e.preventDefault(); focusResultaten(document); }}>Ga naar resultaten ({aantal})</a>}
+        {!scope && <span id={hintId} className="zoek-scope">{uitsluitTip}</span>}
         {scope && <div id={scopeId} className="zoek-scope">
           <span>{scope.tekst}{scope.verborgen && query.trim() ? ` · ${verborgenTekst(scope.verborgen)}` : ""}</span>
           {scope.herstel && <button type="button" className="zoek-wis-filters" onClick={scope.herstel}>Terug naar eerdere selectie</button>}
           {scope.wisFilters && <button type="button" className="zoek-wis-filters" onClick={scope.wisFilters}>Wis filters</button>}
+          <span>{uitsluitTip}</span>
         </div>}
       </form>;
 }

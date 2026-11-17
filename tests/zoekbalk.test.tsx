@@ -32,6 +32,7 @@ for (const aantal of [0, 1, 2]) {
   assert.equal(scope.tekst, "Zoekt in Home (zonder Politiek) · Vandaag · 3 bronnen uit");
   const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>(), scope }));
   assert.match(balk, /aria-describedby="zoek-scope"/);
+  assert.match(balk, /id="zoek-scope"[\s\S]*Tip: zet een minteken voor een woord om het uit te sluiten/);
   assert.match(balk, /id="zoek-scope"[^>]*><span>Zoekt in Home \(zonder Politiek\) · Vandaag · 3 bronnen uit · 2 treffers verborgen door filters<\/span><button[^>]*>Wis filters<\/button>/);
   const zonder = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>(), scope: { tekst: scope.tekst, verborgen: 0 } }));
   assert.doesNotMatch(zonder, /Wis filters|verborgen/);
