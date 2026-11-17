@@ -41,9 +41,10 @@ class Knoop {
   removeEventListener() {}
   contains(n: Knoop | null): boolean { return !!n && (n === this || this.children.some((c) => c.contains(n))); }
   focus() {}
-  scrollTo(o: { left: number }) {
+  scrollTo(o: { left: number; behavior?: ScrollBehavior }) {
     this.scrolls.push(o.left);
     clearTimeout(this.animatie);
+    if (o.behavior === "auto") { this.positie = o.left; props(this)?.onScroll?.(); return; }
     this.animatie = setTimeout(() => { this.positie = o.left; props(this)?.onScroll?.(); }, 10);
   }
   getBoundingClientRect() { return { left: 0, width: 100 }; }
@@ -193,8 +194,10 @@ for (const invoer of ["onTouchStart", "onWheel"]) {
 {
   g.window.matchMedia = (q: string) => ({ matches: q.includes("reduce"), addEventListener() {}, removeEventListener() {} });
   const c = await toon(urls);
-  await c.toets("ArrowRight");
-  await c.toets("ArrowRight");
+  await act(async () => {
+    props(c.track()).onKeyDown({ key: "ArrowRight", preventDefault() {} });
+    props(c.track()).onKeyDown({ key: "ArrowRight", preventDefault() {} });
+  });
   assert.deepEqual(c.track().scrolls, [100, 200]);
   await eind(c, 2);
   await act(async () => c.root.unmount());
