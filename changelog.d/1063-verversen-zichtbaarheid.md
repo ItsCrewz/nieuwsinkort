@@ -1,0 +1,1 @@
+- Ververs nieuws niet periodiek zolang het tabblad verborgen is; bij terugkeer worden actuele gegevens opgehaald (#1063).
