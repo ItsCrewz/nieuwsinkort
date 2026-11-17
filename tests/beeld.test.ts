@@ -14,6 +14,15 @@ t("goedBeeld accepteert bruikbare URLs en weigert ongeldige afbeeldingen", () =>
   assert.equal(goedBeeld("https://youtube.com/watch?v=abc"), false);
 });
 
+t("afgebakende kleine afmetingen blokkeren geen grotere foto (#1183)", () => {
+  for (const url of ["https://nieuws.nl/2021x1234/foto.jpg", "https://nieuws.nl/foto.jpg?versie=2021x1234", "https://nieuws.nl/16x9/foto.jpg", "https://nieuws.nl/foto-4x3.jpg", "https://nieuws.nl/foto.jpg?ratio=16x9", "https://nieuws.nl/3x2/foto.jpg"]) {
+    assert.deepEqual(uniekeBeelden([url]), [url]);
+  }
+  for (const url of ["https://nieuws.nl/1x1/foto.jpg", "https://nieuws.nl/foto-1x1.jpg", "https://nieuws.nl/foto.jpg?resize=1x1", "https://nieuws.nl/100x100/foto.jpg", "https://nieuws.nl/foto.jpg?width=120", "https://nieuws.nl/foto.jpg?width=100x100","https://nieuws.nl/1X1/foto.jpg", "https://nieuws.nl/foto.jpg?size=1X1", "https://nieuws.nl/track/1X1.png", "https://nieuws.nl/img1x1.png", "https://nieuws.nl/t1x1.png", "https://nieuws.nl/beacon1x1.jpg"]) {
+    assert.equal(goedBeeld(url), false, url);
+  }
+});
+
 t("small als onderwerp blijft bruikbaar, als maatsuffix niet (#1164)", () => {
   for (const naam of ["small-business.jpg", "report-small-business.jpg"]) {
     assert.equal(goedBeeld(`https://example.org/news/${naam}`), true);

@@ -1,0 +1,1 @@
+- Foto’s met grotere afmetingen zoals 2021x1234 blijven beschikbaar; kleine placeholderbeelden worden nog steeds geweerd (#1183).
