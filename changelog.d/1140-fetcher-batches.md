@@ -1,0 +1,1 @@
+- Mislukte batches voor artikelfoto's en artikelteksten onderbreken andere batches niet meer en worden herkenbaar gelogd (#1140).

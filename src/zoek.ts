@@ -15,7 +15,13 @@ const LIGATUUR: Record<string, string> = { "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl"
 
 // Alleen letters en cijfers omzetten; andere betekenisvolle tekens behouden hun vorm.
 const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (teken) => String.fromCharCode(teken.charCodeAt(0) - 0xfee0));
-const zonderApostrof = (tekst: string) => tekst.replace(/(?<=\p{L})['’](?=\p{L})/gu, "");
+const ELISIE = /^(?:zo['’]n|z['’]n|d['’]r|m['’]n)$/iu;
+function apostrofWeg(tekst: string, index: number): boolean {
+  const links = tekst.slice(0, index).normalize("NFC").match(/\p{L}+$/u)?.[0] ?? "";
+  const rechts = tekst.slice(index + 1).normalize("NFC").match(/^\p{L}+/u)?.[0] ?? "";
+  return !!links && !!rechts && !ELISIE.test(links + tekst[index] + rechts);
+}
+const zonderApostrof = (tekst: string) => tekst.replace(/['’]/gu, (teken, index: number) => apostrofWeg(tekst, index) ? "" : teken);
 
 export function normaliseer(tekst: string): string {
   return zonderApostrof(gewoneBreedte(tekst).normalize("NFC")).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
@@ -189,7 +195,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   for (const teken of tekst) {
     const begin = offset;
     offset += teken.length;
-    if (/[’']/u.test(teken) && /\p{L}$/u.test(tekst.slice(0, begin)) && /^\p{L}/u.test(tekst.slice(offset))) continue;
+    if (/[’']/u.test(teken) && apostrofWeg(tekst, begin)) continue;
     const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]);
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {

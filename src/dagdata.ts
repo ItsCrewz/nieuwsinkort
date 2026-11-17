@@ -4,12 +4,12 @@
 // - nieuwere berichten van het uur komen erbovenop, weer en filmpjes worden ververst;
 // - geen of verouderde uur-data (of ?statisch=1) -> gewoon de statische data.json.
 import { normLink as norm } from "./linknorm";
-import { alleenVandaag, publicatieTijd, videoCacheMs } from "./vandaag";
+import { alleenVandaag, publicatieTijd, TOEKOMST_MARGE, videoCacheMs } from "./vandaag";
 import { schoon } from "./schoon";
 import { youtubeId } from "./slug";
 import { ams, vorigeDag } from "./tijd";
 import { normaliseerOptioneel } from "./valideer";
-import { ontdubbelVerhalen } from "./verhaaldubbel";
+import { ontdubbelVerhalen, zelfdeVerhaal } from "./verhaaldubbel";
 interface KV { get(key: string, opts: { type: "json" | "text"; cacheTtl?: number }): Promise<any> }
 interface Env { NIEUWS?: KV; ASSETS: { fetch(req: Request | string): Promise<Response> } }
 interface Ctx { request: Request; env: Env }
@@ -54,8 +54,9 @@ function etagPast(kop: string | null, tag: string) {
 }
 
 export function merge(S: any, H: any) {
-  const vandaag = dag();
-  if (!H || dag(H.gegenereerd) !== vandaag) return S; // uur-data van gisteren: niet gebruiken
+  const nu = Date.now(), vandaag = ams(nu).iso;
+  const uurTijd = typeof H?.gegenereerd === "string" ? Date.parse(H.gegenereerd) : NaN;
+  if (!Number.isFinite(uurTijd) || uurTijd > nu + TOEKOMST_MARGE || dag(H.gegenereerd) !== vandaag) return S;
   const sOk = S && dag(S.gegenereerd) === vandaag;
   const base = sOk ? { ...S } : { items: [], filmpjes: [], dumpert: [] };
   const geblokkeerd = new Set<string>(Array.isArray(H.ytGeblokkeerd) ? H.ytGeblokkeerd : []);
@@ -63,21 +64,49 @@ export function merge(S: any, H: any) {
     const id = youtubeId(v.embed || "") || youtubeId(v.href || "");
     return !id || !geblokkeerd.has(id);
   };
-  const sLinks = new Set<string>((base.items || []).flatMap((i: any) => (i.bronnen || []).map((b: any) => norm(b.href))));
+  const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
+  const routine = [...(base.items || [])];
+  const links = (i: any) => (i.bronnen || []).map((b: any) => typeof b?.href === "string" ? norm(b.href) : "").filter(Boolean);
+  const sLinks = routine.map((i: any) => new Set<string>(links(i)));
   // Eerst dagfilteren en op tijd ordenen, zodat oude berichten geen plek innemen.
   const uurItems = (H.items || []).length > 150 ? alleenVandaag(H, Date.now()).items : (H.items || []);
-  const nieuw = uurItems.filter((i: any) => !(i.bronnen || []).some((b: any) => sLinks.has(norm(b.href))));
+  const nieuw = uurItems.filter((i: any) => {
+    const uurLinks = links(i);
+    const matches = sLinks.map((set, n) => uurLinks.some((link: string) => set.has(link)) ? n : -1).filter((n) => n >= 0);
+    if (!matches.length) return true;
+    for (const n of matches) {
+      const bestaand = routine[n];
+      const bronnen = [...(bestaand.bronnen || [])];
+      const gezien = new Set<string>(links(bestaand));
+      for (const bron of i.bronnen || []) {
+        const link = typeof bron?.href === "string" ? norm(bron.href) : "";
+        if (link && !gezien.has(link)) { bronnen.push(bron); gezien.add(link); }
+      }
+      const samen = { ...bestaand, bronnen };
+      const verhaal = (x: any) => ({ kop: x.kop || "", tekst: `${x.ai || ""} ${x.samenvatting || ""}`, tijd: x.t || 0 });
+      const zelfde = !!i.kop && (i.kop === bestaand.kop || zelfdeVerhaal(verhaal(i), verhaal(bestaand)));
+      if (zelfde) for (const veld of ["ai", "samenvatting", "punten", "meer", "beeld", "beelden"]) {
+        const waarde = i[veld];
+        const bruikbaar = Array.isArray(waarde) ? waarde.length > 0 : typeof waarde === "string" && !!waarde.trim();
+        const oud = bestaand[veld];
+        const heeftOud = Array.isArray(oud) ? oud.length > 0 : typeof oud === "string" && !!oud.trim();
+        if (bruikbaar && (!heeftOud || (hNieuwer && (!i.ruw || bestaand.ruw)))) samen[veld] = waarde;
+      }
+      if (zelfde && hNieuwer && !i.ruw && (i.ai || i.samenvatting)) samen.ruw = i.ruw;
+      routine[n] = samen;
+      sLinks[n] = gezien;
+    }
+    return false;
+  });
   if (nieuw.length > 150) {
     nieuw.sort((a: any, b: any) => (b.t ?? 0) - (a.t ?? 0) || (b.tijd || "").localeCompare(a.tijd || ""));
     nieuw.length = 150;
   }
-  const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
   const geldigDumpert = (v: any) => {
     if (typeof v?.href !== "string") return false;
     try { return ["http:", "https:"].includes(new URL(v.href).protocol); } catch { return false; }
   };
   // Selecteer de dag vóór de keuze tussen routine en uurdata.
-  const nu = Date.now();
   for (const key of ["filmpjes", "dumpert"] as const) {
     const selectie = (lijst: any[]) => {
       const bekend = lijst.filter((v: any) => typeof v?.t === "number" || v?.gisteren);
@@ -119,7 +148,7 @@ export function merge(S: any, H: any) {
   if (tabSam && tabNieuw) for (const [rubriek, samenvatting] of Object.entries(tabNieuw)) {
     if (samenvatting != null) tabSam[rubriek] = samenvatting;
   }
-  const routineItems = (base.items || []).map(metMeer);
+  const routineItems = routine.map(metMeer);
   const [weerNieuw, weerOud] = hNieuwer ? [H.weer, base.weer] : [base.weer, H.weer];
   const bruikbaarWeer = (weer: any) => weer && typeof weer === "object" && !Array.isArray(weer) && (weer.nu || (Array.isArray(weer.dagen) && weer.dagen.length > 0));
   const weer = bruikbaarWeer(weerNieuw) ? weerNieuw : bruikbaarWeer(weerOud) ? weerOud : undefined;
