@@ -1,0 +1,1 @@
+- Filmpjes: populariteit met k- of m-suffix wordt goed gelezen; "1.234k" is nu 1234 in plaats van 1.234.000, zodat de echt populairste kopie wordt gekozen (#1185).

@@ -163,3 +163,22 @@ t("canonUrl houdt gecodeerde &/= in querywaarden gescheiden van echte parameters
   assert.equal(canonUrl("https://nos.nl/v?a=x&b=y&utm_source=z&si=1"), canonUrl("https://nos.nl/v?b=y&a=x&fbclid=q"));
   assert.equal(canonUrl("https://nos.nl/v?id=2&id=1"), "nos.nl/v?id=2&id=1");
 });
+
+t("popNum leest een punt met drie cijfers vóór k/m als decimaalteken (#1185)", () => {
+  assert.equal(popNum("1.234k"), 1234);
+  assert.equal(popNum("1.234K views"), 1234);
+  assert.equal(popNum("1,2k"), 1200);
+  assert.equal(popNum("1.234"), 1234);
+  assert.equal(popNum("1.234M"), 1234000);
+  assert.equal(popNum("k"), 0);
+  assert.equal(popNum("1.234k likes"), 24680);
+});
+
+t("dedupVideos kiest bij gelijke kwaliteit de populairste kopie (#1185)", () => {
+  const mk = (bron: string, populariteit: string): DVideo => ({ titel: "Zelfde filmpje van de week", href: `https://youtu.be/${bron}`, embed: `https://www.youtube.com/embed/${bron}`, bron, populariteit });
+  const klein = mk("a", "1.234k");
+  const groot = mk("b", "2k");
+  assert.equal(dedupVideos([klein, groot]).list[0].bron, "b");
+  assert.equal(dedupVideos([groot, klein]).list[0].bron, "b");
+  assert.equal(dedupVideos([mk("a", "900"), mk("b", "1.234k")]).list[0].bron, "b");
+});
