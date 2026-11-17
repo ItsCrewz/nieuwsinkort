@@ -71,9 +71,9 @@ t("maatmappen: ruime herkenning, maar geen echte mappen (#649)", () => {
   assert.equal(k("https://cdn.voorbeeld.nl/a/resize/q80/foto.jpg"), k("https://cdn.voorbeeld.nl/a/foto.jpg"));
   assert.equal(k("https://cdn.voorbeeld.nl/a/s640-c/foto.jpg"), k("https://cdn.voorbeeld.nl/a/thumb/foto.jpg"));
   assert.equal(k("https://cdn.voorbeeld.nl/a/large/foto.jpg"), k("https://cdn.voorbeeld.nl/a/medium/foto.jpg"));
-  // jaar-/maandmappen en hoofdletters
+  // jaar-/maandmappen; hoofdletters in het pad blijven onderscheiden (#1165)
   assert.notEqual(k("https://x.nl/uploads/2026/10/foto.jpg"), k("https://x.nl/uploads/2025/10/foto.jpg"));
-  assert.equal(k("https://x.nl/Artikel-A/foto.jpg"), k("https://x.nl/artikel-a/foto.jpg"));
+  assert.notEqual(k("https://x.nl/Artikel-A/foto.jpg"), k("https://x.nl/artikel-a/foto.jpg"));
   // generieke bestandsnamen in verschillende mappen
   assert.notEqual(k("https://x.nl/a/image.jpg"), k("https://x.nl/b/image.jpg"));
   assert.notEqual(k("https://x.nl/a/1.jpg"), k("https://x.nl/b/1.jpg"));
@@ -90,6 +90,15 @@ t("maatmappen: ruime herkenning, maar geen echte mappen (#649)", () => {
   assert.notEqual(k("https://i0.wp.com/x.nl/a/foto.jpg"), k("https://i0.wp.com/x.nl/a/ander.jpg"));
   // geen backtracking-explosie
   const t0 = Date.now(); k("https://x.nl/" + "a_".repeat(40) + ",,/foto.jpg"); assert.ok(Date.now() - t0 < 200);
+});
+
+t("hoofdlettergevoelige fotopaden blijven apart, formaatvarianten niet (#1165)", () => {
+  assert.notEqual(beeldKey("https://x.nl/a/FotoABC.jpg"), beeldKey("https://x.nl/a/fotoabc.jpg"));
+  assert.equal(beeldKey("https://X.nl/a/FotoABC.JPG"), beeldKey("https://x.nl/a/FotoABC.webp"));
+  assert.equal(beeldKey("https://x.nl/a/FotoABC-1200x675.jpg"), beeldKey("https://x.nl/a/FotoABC.jpg"));
+  for (const v of ["FotoABC-1200X675.jpg", "FotoABC_800W.jpg", "FotoABC@2X.jpg"]) assert.equal(beeldKey("https://x.nl/a/" + v), beeldKey("https://x.nl/a/FotoABC.jpg"), v);
+  assert.equal(beeldKey("https://x.nl/1200X675/FotoABC.jpg"), beeldKey("https://x.nl/FotoABC.jpg"));
+  assert.equal(uniekeBeelden(["https://x.nl/a/FotoABC.jpg", "https://x.nl/a/fotoabc.jpg", "https://x.nl/a/FotoABC.jpg"], 5).length, 2);
 });
 
 console.log(`\n${n} tests geslaagd`);

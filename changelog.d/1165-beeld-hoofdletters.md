@@ -1,0 +1,1 @@
+- Beelden: hoofdletters in fotopaden blijven onderscheiden, zodat `FotoABC.jpg` en `fotoabc.jpg` beide in de carrousel blijven (#1165).
