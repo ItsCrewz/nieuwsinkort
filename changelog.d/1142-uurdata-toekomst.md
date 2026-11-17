@@ -1,0 +1,1 @@
+- Voorkom dat uurdata met een te verre toekomstige generatietijd de actuele nieuwsstand vervangt (#1142).
