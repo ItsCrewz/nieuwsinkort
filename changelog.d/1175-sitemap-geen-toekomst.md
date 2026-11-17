@@ -1,0 +1,1 @@
+- SEO: de nieuwssitemap bevat geen berichten meer met een publicatietijd in de toekomst (#1175).
