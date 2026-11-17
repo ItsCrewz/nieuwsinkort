@@ -172,16 +172,17 @@ await t("terugvegen-hook: sluitveeg roept na de animatie onBack één keer aan",
   assert.equal(body.style.overflowX, "scroll");
   await h.unmount();
 });
-await t("terugvegen-hook: nieuw gebaar tijdens de sluitanimatie annuleert de sluiting en herstelt (#658)", async () => {
+await t("terugvegen-hook: nieuw gebaar tijdens de sluitanimatie laat de bevestigde veeg afronden (#1111)", async () => {
   let n = 0;
   const h = await maak(() => n++);
   veeg(200);
   touch("touchend", [], 50);
   touch("touchstart", [[100, 100]], 60);
+  assert.equal(h.art.style.transform, "translateX(400px)");
+  loop();
+  assert.equal(n, 1);
   assert.equal(h.art.style.transform, "");
   assert.equal(body.style.overflowX, "scroll");
-  loop();
-  assert.equal(n, 0);
   await h.unmount();
 });
 await t("terugvegen-hook: reduced motion sluit direct", async () => {
