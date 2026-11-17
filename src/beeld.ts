@@ -65,7 +65,7 @@ export function beeldKey(u: string): string {
   const pad = segs.filter((m) => !MAATMAP.test(m.toLowerCase()));
   file = file
     .replace(/\.(jpe?g|png|webp|avif)$/i, "")
-    .replace(/[@_-]\d{2,4}x\d{0,4}$/, "").replace(/[@_-]\d{2,4}w$/, "").replace(/@\dx$/, "")
+    .replace(/[@_-]\d{2,4}x\d{0,4}$/i, "").replace(/[@_-]\d{2,4}w$/i, "").replace(/@\dx$/i, "")
     .replace(/[-_](large|medium|small|thumb|full|orig|original|hd|sd|crop|cropped|scaled)$/i, "");
   // bestandsnaam is alleen een maat (NOS: /1234567/1024x576a.jpg): het id zit in de map
   file = /^\d{2,4}x\d{2,4}[a-z]?$|^w\d{2,4}$/.test(file.toLowerCase()) ? pad.join("/") : [...pad, file].join("/");

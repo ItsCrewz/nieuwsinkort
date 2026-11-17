@@ -96,6 +96,7 @@ t("hoofdlettergevoelige fotopaden blijven apart, formaatvarianten niet (#1165)",
   assert.notEqual(beeldKey("https://x.nl/a/FotoABC.jpg"), beeldKey("https://x.nl/a/fotoabc.jpg"));
   assert.equal(beeldKey("https://X.nl/a/FotoABC.JPG"), beeldKey("https://x.nl/a/FotoABC.webp"));
   assert.equal(beeldKey("https://x.nl/a/FotoABC-1200x675.jpg"), beeldKey("https://x.nl/a/FotoABC.jpg"));
+  for (const v of ["FotoABC-1200X675.jpg", "FotoABC_800W.jpg", "FotoABC@2X.jpg"]) assert.equal(beeldKey("https://x.nl/a/" + v), beeldKey("https://x.nl/a/FotoABC.jpg"), v);
   assert.equal(beeldKey("https://x.nl/1200X675/FotoABC.jpg"), beeldKey("https://x.nl/FotoABC.jpg"));
   assert.equal(uniekeBeelden(["https://x.nl/a/FotoABC.jpg", "https://x.nl/a/fotoabc.jpg", "https://x.nl/a/FotoABC.jpg"], 5).length, 2);
 });
