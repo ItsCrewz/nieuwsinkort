@@ -12,6 +12,13 @@ const bedrag = (s: string): number | undefined => {
 export function wedstrijdTeams(kop: string): string[] {
   return [...kop.matchAll(/\b([A-Z][a-z]{3,})\s+(?:verliest|verloor)\s+(?:(?:ruim|thuis|uit|opnieuw|nipt|met\s+[0-9]+[-–][0-9]+)\s+)*(?:van|tegen)\s+([A-Z][a-z]{3,})/g)].flatMap((m) => [m[1], m[2]].map((x) => x.toLowerCase().replace(/^internazionale$/, "inter")));
 }
+// De score tussen verlieswerkwoord en tegenstander volgt de genoemde teamvolgorde.
+const wedstrijdScore = (kop: string): number[] | undefined => {
+  const m = kop.match(/\b[A-Z][a-z]{3,}\s+(?:verliest|verloor)\s+(?:(?:ruim|thuis|uit|opnieuw|nipt)\s+)*met\s+(\d+)[-–](\d+)\s+(?:(?:ruim|thuis|uit|opnieuw|nipt)\s+)*(?:van|tegen)\s+[A-Z][a-z]{3,}\b/g);
+  if (m?.length !== 1) return undefined;
+  const score = m[0].match(/\bmet\s+(\d+)[-–](\d+)\b/);
+  return score ? [Number(score[1]), Number(score[2])] : undefined;
+};
 const KOSTEN = /advocaatkosten|advocatenkosten|verdedigingskosten/i;
 // alleen een hoofdclaim telt: "eist/vraagt/claimt ... kosten of bedrag ... terug / van de staat" of "voor de rechter over advocaatkosten"; kosten als achtergrond ("terug op podium na hoge advocaatkosten") niet
 export function kostenclaim(v: Verhaal): boolean {
@@ -44,7 +51,9 @@ export function zelfdeVerhaal(a: Verhaal, b: Verhaal): boolean {
   if (kostenclaim(a) && kostenclaim(b)) return kostenGelijk(a, b);
   const wedstrijd = (kop: string) => /\b(?:verliest|verloor)\s+(?:(?:ruim|thuis|uit|opnieuw|nipt|met\s+[0-9]+[-–][0-9]+)\s+)*(?:van|tegen)\s+[A-Z]/.test(kop) && !/transfer|trainer|ontslag/i.test(kop);
   const wa = wedstrijdTeams(a.kop), wb = wedstrijdTeams(b.kop);
-  return /wedstrijd|voetbal|champions league|eredivisie|premier league/i.test(ta) && /wedstrijd|voetbal|champions league|eredivisie|premier league/i.test(tb) && wedstrijd(a.kop) && wedstrijd(b.kop) && wa.length === 2 && wb.length === 2 && wa.every((x) => wb.includes(x));
+  if (!/wedstrijd|voetbal|champions league|eredivisie|premier league/i.test(ta) || !/wedstrijd|voetbal|champions league|eredivisie|premier league/i.test(tb) || !wedstrijd(a.kop) || !wedstrijd(b.kop) || wa.length !== 2 || wb.length !== 2 || !wa.every((x) => wb.includes(x))) return false;
+  const sa = wedstrijdScore(a.kop), sb = wedstrijdScore(b.kop);
+  return !sa || !sb || wa.every((team, i) => sa[i] === sb[wb.indexOf(team)]);
 
 }
 
