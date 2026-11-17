@@ -98,7 +98,8 @@ export interface GrensOmgeving {
 /** Eén timer op de eerstvolgende 10:00 Amsterdam i.p.v. een controle per seconde; `ruim` verwijdert de gisteren-items. Plant opnieuw na een klokwisseling en ruimt direct op bij terugkeer in het tabblad. Geeft de opruimfunctie terug. */
 export function bewaakGrens(ruim: () => void, o: GrensOmgeving = {}): () => void {
   const nu = o.nu ?? Date.now, setT = o.setT ?? ((f, ms) => setTimeout(f, ms)), clearT = o.clearT ?? ((id) => clearTimeout(id as any));
-  const doc = o.doc ?? (typeof document !== "undefined" ? document : undefined), win = o.win ?? (typeof window !== "undefined" ? window : undefined);
+  const g = globalThis as any; // geen dom-lib in de Worker-tsconfig; daar zijn document/window undefined
+  const doc: GrensOmgeving["doc"] = o.doc ?? g.document, win: GrensOmgeving["win"] = o.win ?? g.window;
   let id: unknown, weg = false;
   const plan = () => {
     if (id != null) clearT(id);
