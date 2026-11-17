@@ -100,9 +100,25 @@ test("terug uit een artikel: doelkaart speelt de entree niet opnieuw", async ({ 
   const id = await page.locator(".nc").nth(2).getAttribute("data-id");
   await page.locator(".nc").nth(2).locator(".nc-title a").click();
   await expect(page.locator("article.detail")).toBeVisible();
+  // Ook zonder reduced motion mag herstel geen vloeiende scroll starten.
+  await page.evaluate(() => {
+    window.herstelScrolls = [];
+    const scrollTo = Element.prototype.scrollTo;
+    Element.prototype.scrollTo = function (...args) {
+      if (this.classList.contains("nf")) window.herstelScrolls.push(args[0]);
+      return scrollTo.apply(this, args);
+    };
+  });
   await page.goBack();
   const kaart = page.locator(`.nc[data-id="${id}"]`);
   await expect(kaart).toBeVisible();
+  const herstel = await page.evaluate((kaartId) => {
+    const feed = document.querySelector(".nf");
+    const doel = [...feed.querySelectorAll(".nc")].find((c) => c.dataset.id === kaartId);
+    return { afstand: Math.abs(feed.scrollTop - doel.offsetTop), scrolls: window.herstelScrolls };
+  }, id);
+  expect(herstel.afstand).toBeLessThanOrEqual(1);
+  expect(herstel.scrolls.every((s) => typeof s !== "object" || s.behavior !== "smooth")).toBe(true);
   await expect(kaart).not.toHaveClass(/wacht|\bin\b/);
   expect(await kaartAnimaties(page)).toBe(0);
 });
