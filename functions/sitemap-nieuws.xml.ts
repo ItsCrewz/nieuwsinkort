@@ -13,12 +13,13 @@ const HDR = { "Content-Type": "application/xml; charset=utf-8", "X-Content-Type-
 const esc = (s: unknown) => String(s ?? "").replace(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 const leeg = (items: string) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${items}</urlset>\n`;
 type Item = { id?: string; kop: string; ruw?: boolean; cat?: string; t?: number | string; bronnen?: { href: string }[] };
-export function nieuwsSitemap(items: Item[], dag: string): string {
+export function nieuwsSitemap(items: Item[], dag: string, nu: number = Date.now()): string {
   const regels: string[] = [];
   for (const i of items) {
     if (regels.length >= 1000) break;
     const ms = i.t ? new Date(i.t).getTime() : NaN;
     if (!heeftArtikelId(i) || !indexeerbaar(i) || !i.kop || !Number.isFinite(ms)) continue; // news:publication_date is verplicht; zonder geldige tijd overslaan
+    if (ms > nu) continue; // foutieve brontijd: nog niet gepubliceerd, geen toekomstige publication_date aanbieden (#1175)
     // Geen <lastmod>: de dagdata kent per bericht alleen de publicatietijd `t`, geen werkelijke wijzigingstijd; die als lastmod opgeven is misleidend (#712).
     const datum = new Date(ms).toISOString();
     regels.push(`<url><loc>https://nieuwsinkort.nl${esc(artikelPad(i, dag))}</loc><news:news><news:publication><news:name>Nieuws in het kort</news:name><news:language>nl</news:language></news:publication><news:publication_date>${datum}</news:publication_date><news:title>${esc(i.kop)}</news:title></news:news></url>`);

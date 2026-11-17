@@ -23,6 +23,18 @@ try {
   assert.equal((nieuwsSitemap(veel, dag).match(/<url>/g) || []).length, 1000, "max 1000");
   assert.equal(nieuwsSitemap([], dag), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"></urlset>\n');
 
+  // toekomstige tijden (#1175): grens rond nu en rond de Amsterdamse dagwisseling (gewoon en DST), geïnjecteerde klok
+  for (const [d, nu] of [["2026-11-04", "2026-11-04T23:00:00Z"], ["2026-10-25", "2026-10-25T23:00:00Z"], ["2026-03-29", "2026-03-28T23:00:00Z"]]) {
+    const ms = Date.parse(nu);
+    const met = (tt: number | undefined) => nieuwsSitemap([{ ...a, t: tt }], d, ms);
+    assert.ok(met(ms - 1).includes(`<news:publication_date>${new Date(ms - 1).toISOString()}</news:publication_date>`), `${d}: nu-1ms erin`);
+    assert.ok(met(ms).includes(`<news:publication_date>${nu.replace("Z", ".000Z")}</news:publication_date>`), `${d}: precies nu erin`);
+    assert.ok(!met(ms + 1).includes("<url>"), `${d}: nu+1ms eruit`);
+    assert.ok(!met(undefined).includes("<url>"), `${d}: zonder t eruit`);
+    assert.ok(met(ms - 1).includes(`<loc>https://nieuwsinkort.nl${artikelPad({ ...a, t: ms - 1 }, d)}</loc>`), `${d}: canonieke URL`);
+  }
+  assert.ok(!nieuwsSitemap([{ ...a, t: "2026-11-05T09:00:00Z" }], dag).includes("<url>"), "ISO-tekst in de toekomst eruit (standaardklok)");
+
   const data = (gegenereerd: string, items: unknown[]) => ({ ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify({ gegenereerd, items })}` } });
   const vraag = (env: any) => onRequestGet({ request: new Request("https://nieuwsinkort.nl/sitemap-nieuws.xml?x=1"), env, waitUntil: () => {} });
   let r = await vraag(data("2026-11-04T10:00:00Z", [a]));
