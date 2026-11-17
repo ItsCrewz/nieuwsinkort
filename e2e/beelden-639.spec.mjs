@@ -7,7 +7,7 @@ const bundel = await build({ entryPoints: ["e2e/fixtures/beelden-639.tsx"], bund
 
 async function open(page, multi) {
   await page.goto("about:blank");
-  await page.setContent('<div id="root"></div>');
+  await page.setContent('<style>.bl-track { display: flex; overflow: auto; width: 300px; } .bl-slide { flex: 0 0 300px; }</style><div id="root"></div>');
   await page.evaluate((m) => { window.__meerBeelden = m; }, multi);
   await page.addScriptTag({ content: bundel.outputFiles[0].text });
   await expect(page.locator(".bl img").first()).toBeVisible();
@@ -17,6 +17,7 @@ test("één decoratief beeld heeft geen bediening of tabstop", async ({ page }) 
   await open(page, false);
   await expect(page.getByRole("group", { name: "Foto's" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /foto/i })).toHaveCount(0);
+  await expect(page.getByRole("img")).toHaveCount(0);
   await page.getByRole("button", { name: "Voor" }).focus();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Na" })).toBeFocused();
@@ -25,10 +26,15 @@ test("één decoratief beeld heeft geen bediening of tabstop", async ({ page }) 
 for (const focus of ["track", "knop"]) test(`meerdere beelden en laadfout met focus op ${focus}`, async ({ page }) => {
   await open(page, true);
   const track = page.getByRole("group", { name: "Foto's" });
+  await expect(track).toHaveAccessibleDescription("Gebruik de pijltjestoetsen links en rechts om van foto te wisselen.");
+  await expect(page.getByText("Foto 1 van 2", { exact: true })).toHaveAttribute("aria-live", "polite");
   await page.getByRole("button", { name: "Voor" }).focus();
   await page.keyboard.press("Tab");
   await expect(track).toBeFocused();
   await page.keyboard.press("ArrowRight");
+  await expect(page.getByText("Foto 2 van 2", { exact: true })).toBeAttached();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByText("Foto 1 van 2", { exact: true })).toBeAttached();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Vorige foto" })).toBeFocused();
   await page.keyboard.press("Tab");
