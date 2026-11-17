@@ -1,0 +1,1 @@
+- Berichten over dezelfde teams met verschillende duidelijke uitslagen blijven aparte verhalen (#1174).

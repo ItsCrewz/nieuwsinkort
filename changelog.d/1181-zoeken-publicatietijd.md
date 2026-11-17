@@ -1,0 +1,1 @@
+- Zoeken op een volledige zichtbare publicatietijd vindt de bijbehorende berichten (#1181).

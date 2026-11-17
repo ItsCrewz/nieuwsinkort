@@ -166,6 +166,8 @@ function termenVan(query: string): string[][] {
 
 export function zoekItems(items: Item[], query: string): Item[] {
   query = begrensZoekterm(query);
+  const kloktijd = query.trim();
+  if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
   const { plus, min } = splitsUitsluiting(query);
   const termen = termenVan(plus);
   if (!termen.length && !min.length) return query.trim() ? [] : items;
