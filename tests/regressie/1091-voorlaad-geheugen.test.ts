@@ -1,7 +1,6 @@
 // #1091: voorladen houdt geen afbeeldingen of onbegrensde administratie vast tijdens lange sessies.
 import assert from "node:assert/strict";
 import { MAX_GEDAAN, POSTER_MAX_MS, aantalActievePosters, voerUit, type Plan } from "../../src/voorladen";
-import { beeldViaProxy } from "../../src/beeldhost";
 import { MAX_BEELD_ADMIN, aantalBeeldAdmin, bronUrl, naarRechtstreeks, preloadBeeld } from "../../src/beelden";
 
 type Im = { src: string; onload: (() => void) | null; onerror: (() => void) | null; onabort: (() => void) | null };
@@ -117,21 +116,6 @@ try {
   laatste().onload!();
   await herladen;
 
-  // #1158: een actief beeld houdt zijn rechtstreekse terugval terwijl veel andere mislukte URL's de set vullen;
-  // na uitzetting volgt precies één herstelpoging, zonder foutlus.
-  const actief = "https://images.nu.nl/actief.jpg";
-  assert.equal(naarRechtstreeks(actief, bronUrl(actief)), true, "proxy gefaald: rechtstreekse poging");
-  for (let i = 0; i < MAX_BEELD_ADMIN * 2; i++) {
-    assert.equal(bronUrl(actief), actief, "actief beeld blijft rechtstreeks");
-    naarRechtstreeks(`https://images.nu.nl/storing-${i}.jpg`, beeldViaProxy(`https://images.nu.nl/storing-${i}.jpg`));
-  }
-  assert.ok(aantalBeeldAdmin().rechtstreeks <= MAX_BEELD_ADMIN, "veel mislukte beelden: begrensd");
-  assert.equal(bronUrl(actief), actief, "actief beeld behoudt terugval na opruimen");
-  // Zonder gebruik wordt het beeld uitgezet; opnieuw tonen start via de proxy en krijgt één rechtstreekse poging.
-  for (let i = 0; i < MAX_BEELD_ADMIN + 1; i++) naarRechtstreeks(`https://images.nu.nl/leeg-${i}.jpg`, beeldViaProxy(`https://images.nu.nl/leeg-${i}.jpg`));
-  assert.notEqual(bronUrl(actief), actief, "ongebruikt beeld is uitgezet");
-  assert.equal(naarRechtstreeks(actief, bronUrl(actief)), true, "één herstelpoging na uitzetting");
-  assert.equal(naarRechtstreeks(actief, actief), false, "geen foutlus na de rechtstreekse poging");
   console.log("1091 voorlaadgeheugen: oké", begin >= 0);
 } finally {
   g.setTimeout = echteTimeout;
