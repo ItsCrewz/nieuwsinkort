@@ -13,7 +13,7 @@ function tooSmall(u: string): boolean {
   if (q && +q[1] < 300) return true;
   const h = /[?&](?:h|height)=(\d+)(?=&|#|$)/i.exec(u);
   if (h && +h[1] < 160) return true;
-  const d = /[/_=-](\d{1,4})x(\d{1,4})(?:[/_.?&#-]|$)/i.exec(u);
+  const d = /[/_=-](\d{2,4})x(\d{2,4})(?:[/_.?&#-]|$)/i.exec(u);
   if (d && (+d[1] < 300 || +d[2] < 160)) return true;
   if (/(?<!\d)1x1(?!\d)/i.test(u)) return true; // tracking-pixel ook zonder scheidingsteken (img1x1.png); 2021x1234 blijft vrij
   if (/\/s(\d{2,3})(-c)?\//.test(u) && +(/\/s(\d{2,3})/.exec(u)![1]) < 300) return true;
