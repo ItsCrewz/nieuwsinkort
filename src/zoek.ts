@@ -128,6 +128,8 @@ export function begrensZoekterm(tekst: string): string {
 
 export function zoekItems(items: Item[], query: string): Item[] {
   query = begrensZoekterm(query);
+  const kloktijd = query.trim();
+  if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
   // Alleen gekoppelde woorddelen vormen een reeks; andere leestekens scheiden zoekwoorden.
   const termen: string[][] = [];
   // Woordgroepen tussen aanhalingstekens (#634): één term met meerdere delen, dus aaneengesloten in één veld. Een ongesloten teken blijft scheidingsteken.
