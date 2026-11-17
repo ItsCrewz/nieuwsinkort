@@ -34,7 +34,7 @@ import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
-import { kiesNieuweData, verwijderGisteren } from "./vandaag";
+import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
 import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
@@ -573,14 +573,15 @@ export function useData() {
     const onVis = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onVis);
     const t = window.setInterval(load, 15 * 60 * 1000);
-    const grens = window.setInterval(() => setData((d) => d && verwijderGisteren(d, Date.now())), 1000);
     return () => {
       volgnummer.current++;
       document.removeEventListener("visibilitychange", onVis);
       window.clearInterval(t);
-      window.clearInterval(grens);
     };
   }, [load]);
+  // Gisteren-video's weg rond de eerstvolgende 10:00 (één timer, geen controle per seconde); een nieuwe `data` herplant, zonder gisteren-items stopt het (#1125)
+  const metGisteren = heeftGisteren(data);
+  useEffect(() => (metGisteren ? bewaakGrens(() => setData((d) => d && verwijderGisteren(d, Date.now()))) : undefined), [metGisteren, data]);
   return { data, error, reload: load };
 }
 

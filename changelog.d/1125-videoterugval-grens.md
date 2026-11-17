@@ -1,0 +1,1 @@
+- Videoterugval: één timer op de eerstvolgende Amsterdamse 10:00-grens in plaats van een controle per seconde; herplant na terugkeer in het tabblad en na dataverversing (#1125).
