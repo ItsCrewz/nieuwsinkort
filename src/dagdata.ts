@@ -62,15 +62,40 @@ export function merge(S: any, H: any) {
     const id = youtubeId(v.embed || "") || youtubeId(v.href || "");
     return !id || !geblokkeerd.has(id);
   };
-  const sLinks = new Set<string>((base.items || []).flatMap((i: any) => (i.bronnen || []).map((b: any) => norm(b.href))));
+  const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
+  const routine = [...(base.items || [])];
+  const links = (i: any) => (i.bronnen || []).map((b: any) => typeof b?.href === "string" ? norm(b.href) : "").filter(Boolean);
+  const sLinks = routine.map((i: any) => new Set<string>(links(i)));
   // Eerst dagfilteren en op tijd ordenen, zodat oude berichten geen plek innemen.
   const uurItems = (H.items || []).length > 150 ? alleenVandaag(H, Date.now()).items : (H.items || []);
-  const nieuw = uurItems.filter((i: any) => !(i.bronnen || []).some((b: any) => sLinks.has(norm(b.href))));
+  const nieuw = uurItems.filter((i: any) => {
+    const uurLinks = links(i);
+    const matches = sLinks.map((set, n) => uurLinks.some((link: string) => set.has(link)) ? n : -1).filter((n) => n >= 0);
+    if (matches.length !== 1) return matches.length === 0;
+    const n = matches[0], bestaand = routine[n];
+    const bronnen = [...(bestaand.bronnen || [])];
+    const gezien = new Set<string>(links(bestaand));
+    for (const bron of i.bronnen || []) {
+      const link = typeof bron?.href === "string" ? norm(bron.href) : "";
+      if (link && !gezien.has(link)) { bronnen.push(bron); gezien.add(link); }
+    }
+    const samen = { ...bestaand, bronnen };
+    for (const veld of ["ai", "samenvatting", "punten", "meer", "beeld", "beelden"]) {
+      const waarde = i[veld];
+      const bruikbaar = Array.isArray(waarde) ? waarde.length > 0 : typeof waarde === "string" && !!waarde.trim();
+      const oud = bestaand[veld];
+      const heeftOud = Array.isArray(oud) ? oud.length > 0 : typeof oud === "string" && !!oud.trim();
+      if (bruikbaar && (!heeftOud || (hNieuwer && (!i.ruw || bestaand.ruw)))) samen[veld] = waarde;
+    }
+    if (hNieuwer && !i.ruw && (i.ai || i.samenvatting)) samen.ruw = i.ruw;
+    routine[n] = samen;
+    sLinks[n] = gezien;
+    return false;
+  });
   if (nieuw.length > 150) {
     nieuw.sort((a: any, b: any) => (b.t ?? 0) - (a.t ?? 0) || (b.tijd || "").localeCompare(a.tijd || ""));
     nieuw.length = 150;
   }
-  const hNieuwer = !sOk || Date.parse(H.gegenereerd) > Date.parse(S.gegenereerd);
   const geldigDumpert = (v: any) => {
     if (typeof v?.href !== "string") return false;
     try { return ["http:", "https:"].includes(new URL(v.href).protocol); } catch { return false; }
@@ -118,7 +143,7 @@ export function merge(S: any, H: any) {
   if (tabSam && tabNieuw) for (const [rubriek, samenvatting] of Object.entries(tabNieuw)) {
     if (samenvatting != null) tabSam[rubriek] = samenvatting;
   }
-  const routineItems = (base.items || []).map(metMeer);
+  const routineItems = routine.map(metMeer);
   const [weerNieuw, weerOud] = hNieuwer ? [H.weer, base.weer] : [base.weer, H.weer];
   const bruikbaarWeer = (weer: any) => weer && typeof weer === "object" && !Array.isArray(weer) && (weer.nu || (Array.isArray(weer.dagen) && weer.dagen.length > 0));
   const weer = bruikbaarWeer(weerNieuw) ? weerNieuw : bruikbaarWeer(weerOud) ? weerOud : undefined;
