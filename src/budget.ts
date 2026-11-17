@@ -30,12 +30,18 @@ export const isDagQuota = (e: any) => /\b4006\b|daily free allocation|free alloc
 export const isTijdelijk = (e: any) => !isDagQuota(e) && /\b429\b|rate.?limit|too many requests|capacity|overloaded|temporar|\b3040\b|time.?out|timed out/i.test(tekst(e));
 export const aiFout = (e: any): "dagquota" | "tijdelijk" | "overig" => (isDagQuota(e) ? "dagquota" : isTijdelijk(e) ? "tijdelijk" : "overig");
 
-/** Aanroep geslaagd: echte `usage` gebruiken, anders schatten uit tekens en `geschat` ophogen. */
+/** Alleen eindige, niet-negatieve getallen (0 mag) tellen als geldig verbruik; negatief, NaN, Infinity en strings niet. */
+const geldig = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x) && x >= 0;
+
+/** Aanroep geslaagd: echte `usage` gebruiken, anders (of bij ongeldige waarden) schatten uit tekens en `geschat` ophogen. */
 export function meetChat(u: Meting, tarief: [number, number], prompt: string, uit: string, usage?: any) {
-  const pt = usage?.prompt_tokens ?? schatTokens(prompt);
-  const ct = usage?.completion_tokens ?? schatTokens(uit);
+  const p = usage?.prompt_tokens, c = usage?.completion_tokens;
+  // een aanwezig maar ongeldig tokenveld telt als geschat; een ontbrekend veld blijft zoals voorheen zonder vlag
+  const slecht = (p != null && !geldig(p)) || (c != null && !geldig(c));
+  const pt = geldig(p) ? p : schatTokens(prompt);
+  const ct = geldig(c) ? c : schatTokens(uit);
   u.inTok += pt; u.outTok += ct;
-  if (typeof usage?.neurons === "number") u.neurons += usage.neurons;
+  if (geldig(usage?.neurons)) { u.neurons += usage.neurons; if (slecht) u.geschat = (u.geschat || 0) + 1; }
   else { u.neurons += (pt * tarief[0] + ct * tarief[1]) / 1e6; u.geschat = (u.geschat || 0) + 1; }
 }
 /** Mislukte aanroep telt toch mee: invoer volledig, uitvoer half max_tokens; een afgewezen aanroep (dagquota/tijdelijk) kost geen uitvoer. */
