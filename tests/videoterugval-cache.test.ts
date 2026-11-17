@@ -1,7 +1,7 @@
 // #1047: een respons met gisteren-filmpjes mag niet voorbij 10:00 Amsterdam gecachet blijven.
 import assert from "node:assert/strict";
 import { dagdata } from "../src/dagdata";
-import { volgende10, videoCacheMs } from "../src/vandaag";
+import { bewaakGrens, volgende10, videoCacheMs, verwijderGisteren } from "../src/vandaag";
 
 let n = 0;
 const t = async (naam: string, fn: () => void | Promise<void>) => { await fn(); n++; console.log("✓", naam); };
@@ -22,6 +22,44 @@ await t("videoCacheMs: onbegrensd zonder terugval, anders tot 10:00", () => {
   assert.equal(videoCacheMs({ filmpjes: [{ t: 1 }], dumpert: [] }, nu), Infinity);
   assert.equal(videoCacheMs({ filmpjes: [{ gisteren: true }] }, nu), 120e3);
   assert.equal(videoCacheMs({ dumpert: [{ gisteren: true }] }, nu), 120e3);
+});
+
+await t("videoCacheMs: 09:59:59 en wisseldagen", () => {
+  assert.equal(videoCacheMs({ filmpjes: [{ gisteren: true }] }, iso("2026-07-01T09:59:59+02:00")), 1000);
+  assert.equal(videoCacheMs({ filmpjes: [{ gisteren: true }] }, iso("2026-03-29T09:00:00+02:00")), 3600e3);
+  assert.equal(videoCacheMs({ filmpjes: [{ gisteren: true }] }, iso("2026-10-25T09:00:00+01:00")), 3600e3);
+});
+
+await t("verwijderGisteren ruimt na de grens op en geeft daarna dezelfde referentie", () => {
+  const d = { filmpjes: [{ gisteren: true }, { gisteren: false }], dumpert: [] as { gisteren?: boolean }[] };
+  assert.equal(verwijderGisteren(d, iso("2026-07-01T09:59:59+02:00")), d);
+  const na = verwijderGisteren(d, iso("2026-07-01T10:00:00+02:00"));
+  assert.equal(na.filmpjes.length, 1);
+  assert.equal(verwijderGisteren(na, iso("2026-07-01T10:00:01+02:00")), na);
+});
+
+await t("bewaakGrens: één timer op de grens, geen interval, zichtbaar-na-verborgen, unmount", () => {
+  let klok = iso("2026-07-01T09:00:00+02:00"), ruimt = 0, nextId = 1;
+  const timers = new Map<number, { f: () => void; ms: number }>();
+  const luis = new Map<string, Set<() => void>>();
+  const doel = { visibilityState: "visible",
+    addEventListener: (n: string, f: () => void) => { (luis.get(n) ?? luis.set(n, new Set()).get(n)!).add(f); },
+    removeEventListener: (n: string, f: () => void) => { luis.get(n)?.delete(f); } };
+  const stop = bewaakGrens(() => { ruimt++; }, { nu: () => klok, doc: doel, win: doel,
+    setT: (f, ms) => { timers.set(nextId, { f, ms }); return nextId++; }, clearT: (id) => { timers.delete(id as number); } });
+  assert.equal(timers.size, 1);
+  assert.equal([...timers.values()][0].ms, 3600e3);
+  assert.equal(ruimt, 1);
+  // tab verborgen over de grens heen, daarna zichtbaar: direct opruimen en herplannen op morgen
+  doel.visibilityState = "hidden"; (luis.get("visibilitychange")!).forEach((f) => f()); assert.equal(ruimt, 1);
+  klok = iso("2026-07-01T10:30:00+02:00"); doel.visibilityState = "visible";
+  luis.get("visibilitychange")!.forEach((f) => f());
+  assert.equal(ruimt, 2);
+  assert.equal(timers.size, 1);
+  assert.equal([...timers.values()][0].ms, iso("2026-07-02T10:00:00+02:00") - klok);
+  stop();
+  assert.equal(timers.size, 0);
+  assert.equal(luis.get("visibilitychange")!.size + luis.get("focus")!.size, 0);
 });
 
 const origineel = Date.now;

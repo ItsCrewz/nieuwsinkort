@@ -86,3 +86,28 @@ export function volgende10(now: number): number {
 export const heeftGisteren = (data: any) => ["filmpjes", "dumpert"].some((k) => Array.isArray(data?.[k]) && data[k].some((v: any) => v?.gisteren));
 // Hoe lang (ms) een respons met deze data gecachet mag blijven: zonder gisteren-video's onbegrensd, anders tot 10:00.
 export const videoCacheMs = (data: any, now: number) => heeftGisteren(data) ? volgende10(now) - now : Infinity;
+
+const MAX_TIMER = 2 ** 31 - 1;
+export interface GrensOmgeving {
+  nu?: () => number;
+  setT?: (f: () => void, ms: number) => unknown;
+  clearT?: (id: unknown) => void;
+  doc?: { visibilityState?: string; addEventListener: (n: string, f: () => void) => void; removeEventListener: (n: string, f: () => void) => void };
+  win?: { addEventListener: (n: string, f: () => void) => void; removeEventListener: (n: string, f: () => void) => void };
+}
+/** Eén timer op de eerstvolgende 10:00 Amsterdam i.p.v. een controle per seconde; `ruim` verwijdert de gisteren-items. Plant opnieuw na een klokwisseling en ruimt direct op bij terugkeer in het tabblad. Geeft de opruimfunctie terug. */
+export function bewaakGrens(ruim: () => void, o: GrensOmgeving = {}): () => void {
+  const nu = o.nu ?? Date.now, setT = o.setT ?? ((f, ms) => setTimeout(f, ms)), clearT = o.clearT ?? ((id) => clearTimeout(id as any));
+  const doc = o.doc ?? (typeof document !== "undefined" ? document : undefined), win = o.win ?? (typeof window !== "undefined" ? window : undefined);
+  let id: unknown, weg = false;
+  const plan = () => {
+    if (id != null) clearT(id);
+    id = setT(tik, Math.min(Math.max(volgende10(nu()) - nu(), 0), MAX_TIMER));
+  };
+  const tik = () => { if (weg) return; ruim(); plan(); };
+  const terug = () => { if (!weg && doc?.visibilityState !== "hidden") tik(); };
+  doc?.addEventListener("visibilitychange", terug);
+  win?.addEventListener("focus", terug);
+  tik();
+  return () => { weg = true; if (id != null) clearT(id); doc?.removeEventListener("visibilitychange", terug); win?.removeEventListener("focus", terug); };
+}
