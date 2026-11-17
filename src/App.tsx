@@ -582,7 +582,7 @@ export function useData() {
     // ververs als je terugkomt op het tabblad, en elk kwartier
     const onVis = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onVis);
-    const t = window.setInterval(load, 15 * 60 * 1000);
+    const t = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 15 * 60 * 1000);
     return () => {
       volgnummer.current++;
       document.removeEventListener("visibilitychange", onVis);
