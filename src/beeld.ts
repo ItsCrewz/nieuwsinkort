@@ -5,7 +5,7 @@
 
 const LOGO = /(?:^|[^\p{L}\p{N}])logo(?:s|type|\d+)?(?=$|[^\p{L}\p{N}])|\/(?!catalogo\.)[^/?#]*logo(?=\.[^/?#]+(?:[?#]|$))/iu;
 const MERK = /(?:^|[/_.-])brand[-_]?(?:logo|mark|asset|kit|watermark)(?=$|[/_.?#-])|\/brands?\//i;
-const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|1x1|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
+const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
 
 /** Klein plaatje volgens de URL zelf (?w=120, /100x100/, _thumb, s72-c …). */
 function tooSmall(u: string): boolean {
@@ -13,7 +13,7 @@ function tooSmall(u: string): boolean {
   if (q && +q[1] < 300) return true;
   const h = /[?&](?:h|height)=(\d+)(?=&|#|$)/i.exec(u);
   if (h && +h[1] < 160) return true;
-  const d = /[/_-](\d{2,4})x(\d{2,4})(?:[/_.-]|$)/.exec(u);
+  const d = /[/_=-](\d{1,4})x(\d{1,4})(?:[/_.?&#-]|$)/.exec(u);
   if (d && (+d[1] < 300 || +d[2] < 160)) return true;
   if (/\/s(\d{2,3})(-c)?\//.test(u) && +(/\/s(\d{2,3})/.exec(u)![1]) < 300) return true;
   return /[_-](thumb|thumbnail|mini|tiny)\b/i.test(u) || /[_-]small(?=\.[^/?#]+(?:[?#]|$)|[?#]|$)/i.test(u);
