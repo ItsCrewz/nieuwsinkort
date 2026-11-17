@@ -16,7 +16,7 @@ function tooSmall(u: string): boolean {
   const d = /[/_-](\d{2,4})x(\d{2,4})(?:[/_.-]|$)/.exec(u);
   if (d && (+d[1] < 300 || +d[2] < 160)) return true;
   if (/\/s(\d{2,3})(-c)?\//.test(u) && +(/\/s(\d{2,3})/.exec(u)![1]) < 300) return true;
-  return /[_-](thumb|thumbnail|small|mini|tiny)\b/i.test(u);
+  return /[_-](thumb|thumbnail|mini|tiny)\b/i.test(u) || /[_-]small(?=\.[^/?#]+(?:[?#]|$)|[?#]|$)/i.test(u);
 }
 
 /** Geladen foto bruikbaar? Iconen (<200×120) en brede banners (b/h > 4) niet; staand tot h/b 3,5 wel (400×1000 is een echte staande foto, #996). */
