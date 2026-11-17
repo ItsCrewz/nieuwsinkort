@@ -36,7 +36,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
+import { zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
 import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
@@ -937,13 +937,13 @@ export default function App() {
   const zoekBasis = isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [];
   const zoekFilter = isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null;
   // Koptreffers eerst (#1010); bij sortering "nieuw" eerst op tijd, want NewsFeed sorteert dan niet meer zelf.
-  const zoekUitkomst = zoekFilter ? rangschikKoptreffers(zoekItems(zoekAlles && raw ? raw.items : zoekFilter.items, zoekterm), zoekterm) : [];
+  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm), zoekterm) : [];
   // Zonder tijd-, regio-, video- en samengevoegd-filter: wat de filters aan treffers verbergen (#613).
   const zoekBeperkt = !!zoekFilter && (zoekFilter.tijd !== "alles" || flt.f.video || flt.f.samen || flt.f.regio.length > 0);
   const wisZoekFilters = () => flt.set({ tijd: "alles", video: false, samen: false, regio: [] });
   const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm).length - zoekUitkomst.length) : 0;
   const zoekScope: ZoekScope | undefined = zoekFilter ? {
-    tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video-, samenvoeg- en bronfilters zijn verruimd." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
+    tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video- en samenvoegfilters zijn verruimd. Het bronfilter blijft actief." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
     verborgen: zoekVerborgen,
     wisFilters: !zoekAlles && zoekBeperkt ? wisZoekFilters : undefined,
     herstel: zoekAlles ? () => { setZoekAllesSelectie(null); zoekInvoer.current?.focus(); } : undefined,
