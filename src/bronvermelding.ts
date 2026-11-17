@@ -20,6 +20,7 @@ export function stripBronvermelding(tekst: string, sites: string[]): string {
     if (/\b(?:kijken|luisteren|uitzending\w*|livestream\w*|aflevering\w*|programma(?:'s|’s|s)?|wedstrijd\w*|live|volgen|te zien|te horen)\b/iu.test(zin)) return match;
     // Ontkenning, beperking of onzekerheid: weghalen van de bron zou de bewering veranderen ("niet te koop via NOS" → "niet te koop").
     if (/\b(?:niet|geen|nooit|mogelijk|misschien|wellicht|eventueel|waarschijnlijk|vermoedelijk|onduidelijk|zou(?:den)?|naar verluidt|uitsluitend|alleen|enkel|exclusief|slechts|vraag|twijfel\w*|onzeker\w*|onbekend)\b/iu.test(zin)) return match;
+    if (/\b(?:kan|kunnen)\s+verkrijgbaar\s+zijn\b/iu.test(vooraf)) return match;
     return /\b(?:te koop|verkrijgbaar|te bestellen|verkocht|kopen|in de winkel|prijs)\b/iu.test(vooraf) || /\bkomt\s+(?:er\s+)?[^.!?…;\n]*\bbeschikbaar\s*$/iu.test(vooraf) ? "" : match;
   });
 }
