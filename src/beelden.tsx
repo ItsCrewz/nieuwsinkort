@@ -234,9 +234,9 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   const ga = (stap: number) => {
     const el = track.current;
     if (!el) return;
-    const basis = Math.max(0, Math.min(zichtbare.length - 1, doel.current ?? iRef.current));
+    const basis = Math.max(0, Math.min(zichtbare.length - 1, doel.current ?? (el.clientWidth ? Math.round(el.scrollLeft / el.clientWidth) : iRef.current)));
     const n = (basis + stap + zichtbare.length) % zichtbare.length;
-    doel.current = el.scrollLeft === n * el.clientWidth ? null : n;
+    doel.current = n;
     el.scrollTo({ left: n * el.clientWidth, behavior: scrollGedrag() });
   };
   if (!list.length) return null;
