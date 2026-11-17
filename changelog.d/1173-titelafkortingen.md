@@ -1,0 +1,1 @@
+- Titelafkortingen (dr., mr., prof., ...) kappen de overzichtsinvoer voor de samenvatting niet meer te vroeg af.

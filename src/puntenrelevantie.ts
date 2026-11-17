@@ -20,7 +20,7 @@ export function invoerBijKop(tekst: string, url: string): string {
   const zinnen = tekst.matchAll(/[.!?]\s+/gu);
   for (const grens of zinnen) {
     const begin = tekst.slice(0, grens.index + 1);
-    if (!/(?:\b(?:bijv|o\.a|n\.v)\.)$/iu.test(begin)) return begin;
+    if (!/(?:\b(?:bijv|o\.a|n\.v|dr|mr|drs|ir|ing|prof|dhr|mevr|mw|ds|sr|jr)\.)$/iu.test(begin)) return begin;
   }
   return tekst;
 }

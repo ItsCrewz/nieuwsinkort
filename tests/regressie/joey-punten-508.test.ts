@@ -25,3 +25,14 @@ for (const tekst of ["Ahold Delhaize N.V. verloor geld. Delft organiseert een fe
   assert.equal(invoerBijKop(tekst, ahold.bronnen[0].href), tekst.slice(0, tekst.indexOf(". Delft") + 1));
 }
 console.log("ok - URL-pad en afkortingen begrenzen de invoer correct");
+
+// #1173: titelafkortingen midden in de eerste zin kappen die zin niet af.
+const kort = ahold.bronnen[0].href;
+assert.equal(invoerBijKop("Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.", kort), "Dr. Jansen onderzoekt de zaak.");
+assert.equal(invoerBijKop("Advocaat mr. De Vries pleit voor vrijspraak. Daarna ander nieuws.", kort), "Advocaat mr. De Vries pleit voor vrijspraak.");
+assert.equal(invoerBijKop("Prof. dr. ir. Bakker waarschuwt. Delft organiseert een festival.", kort), "Prof. dr. ir. Bakker waarschuwt.");
+assert.equal(invoerBijKop("Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.", "https://voorbeeld.nl/nieuws/artikel"), "Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.");
+// Worker-invoer (worker/src/index.ts): per clusterlid begrensd, samengevoegd met " // ".
+const workerTekst = [["Dr. Jansen onderzoekt de zaak. Daarna ander nieuws.", kort], ["Gewoon artikel. Tweede zin.", "https://voorbeeld.nl/a"]].map(([s, h]) => invoerBijKop(s, h)).join(" // ");
+assert.equal(workerTekst, "Dr. Jansen onderzoekt de zaak. // Gewoon artikel. Tweede zin.");
+console.log("ok - titelafkortingen kappen de invoer niet af");
