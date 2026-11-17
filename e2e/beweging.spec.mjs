@@ -183,8 +183,81 @@ test("trek-om-te-verversen: reduced motion toont statisch 'Loslaten om te verver
   await blokkeer(page);
   await page.goto("#/");
   await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const l = dataVerzoeken(page);
   const g = await trek(page, 300);
   await expect(page.locator(".ptr-t")).toHaveText("Loslaten om te verversen");
   expect(await traag(page)).toEqual([]);
   await g.los();
+  await expect(page.locator(".ptr-t")).toHaveText(/Bijgewerkt om \d\d:\d\d|Je bent bij|Verversen/);
+  await expect.poll(() => l.length).toBe(1);
+  expect(await traag(page)).toEqual([]); // alleen de .01ms-tokenovergangen blijven over, geen echte animatie
+});
+
+// Licht/donker en Focus lezen: de indicator blijft leesbaar (WCAG AA, 4.5:1) en is nooit focusbaar of voor hulpsoftware verstopt.
+const lum = (c) => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map(Number).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+for (const schema of ["light", "dark"]) {
+  test(`trek-om-te-verversen: indicator leesbaar en niet focusbaar (${schema})`, async ({ page }, info) => {
+    await page.emulateMedia({ colorScheme: schema });
+    await blokkeer(page);
+    await page.goto("#/");
+    await expect(page.locator(".nc-title a").first()).toBeVisible();
+    await page.evaluate((s) => document.documentElement.setAttribute("data-theme", s), schema);
+    const g = await trek(page, 300);
+    await g.los();
+    await expect(page.locator(".ptr-t")).toHaveText(/Bijgewerkt om \d\d:\d\d|Je bent bij|Verversen/);
+    const m = await page.evaluate(() => {
+      const el = document.querySelector(".ptr"); const t = el.querySelector(".ptr-t");
+      const cs = getComputedStyle(el);
+      return { kleur: getComputedStyle(t).color, achtergrond: cs.backgroundColor, tabindex: el.getAttribute("tabindex"), knoppen: el.querySelectorAll("a,button,[tabindex]").length, pe: cs.pointerEvents, live: el.getAttribute("role") || el.getAttribute("aria-live") };
+    });
+    expect(contrast(m.kleur, m.achtergrond)).toBeGreaterThanOrEqual(4.5);
+    expect(m.knoppen).toBe(0);
+    expect(m.tabindex).toBeNull();
+    expect(m.pe).toBe("none");
+    expect(m.live).toBeTruthy();
+    await page.screenshot({ path: info.outputPath(`ptr-${schema}.png`) });
+    // Focus lezen: de toetsenbordfocus belandt nooit op de indicator.
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => !!document.activeElement?.closest(".ptr"))).toBe(false);
+  });
+}
+
+// Smooth scrolling blijft beperkt: snap tussen kaarten en scrollherstel bij terug zijn direct (geen glijdende scroll).
+test("verticaal swipen tussen kaarten snapt op een kaartgrens", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  await blokkeer(page);
+  await page.goto("#/tech");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  const cdp = await ctx.newCDPSession(page);
+  const stuur = (type, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x: 195, y }] });
+  await stuur("touchStart", 700);
+  for (let i = 1; i <= 12; i++) await stuur("touchMove", 700 - i * 35); // 420 px omhoog, ruim voorbij de helft
+  await stuur("touchEnd", 280);
+  await expect.poll(() => page.evaluate(() => { const f = document.querySelector(".nf"); const t = [...f.querySelectorAll(".nc")].map((c) => c.offsetTop); return f.scrollTop > 100 && t.some((o) => Math.abs(o - f.scrollTop) < 2); }), { timeout: 4000 }).toBe(true);
+  await ctx.close();
+});
+
+test("terug uit een artikel: scrollherstel is direct, zonder reduced motion", async ({ page }) => {
+  await blokkeer(page);
+  await page.goto("#/tech");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await naarKaart(page, 2);
+  const id = await page.locator(".nc").nth(2).getAttribute("data-id");
+  await page.locator(".nc").nth(2).locator(".nc-title a").click();
+  await expect(page.locator("article.detail")).toBeVisible();
+  await page.evaluate(() => {
+    window.__st = [];
+    const tik = () => { const f = document.querySelector(".nf"); if (f) window.__st.push(f.scrollTop); requestAnimationFrame(tik); };
+    tik();
+  });
+  await page.goBack();
+  await expect(page.locator(`.nc[data-id="${id}"]`)).toBeVisible();
+  await page.waitForTimeout(500);
+  const r = await page.evaluate((id) => { const f = document.querySelector(".nf"); const o = f.querySelector(`.nc[data-id="${id}"]`).offsetTop; return { o, st: window.__st }; }, id);
+  expect(r.st.length).toBeGreaterThan(0);
+  // elke gemeten stand is al de doelstand of 0 (vóór herstel): nooit een tussenstand van een glijdende scroll
+  expect(r.st.every((v) => v === 0 || Math.abs(v - r.o) < 3)).toBe(true);
+  expect(Math.abs(r.st[r.st.length - 1] - r.o)).toBeLessThan(3);
 });
