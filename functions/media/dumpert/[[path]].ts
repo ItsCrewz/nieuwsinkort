@@ -18,7 +18,7 @@ export const onRequest = async ({ request, params }: Ctx): Promise<Response> => 
   if (!ALLOWED.test(p)) return new Response("Not found", { status: 404, headers: HDR });
 
   const upstream = `https://media.dumpert.nl/${p}`;
-  const isList = p.endsWith(".m3u8");
+  const isList = /\.m3u8$/i.test(p);
   const headers: Record<string, string> = { "User-Agent": "Mozilla/5.0 (nieuwsinkort.nl)" };
   const range = request.headers.get("Range");
   if (range) headers["Range"] = range;

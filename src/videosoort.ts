@@ -1,6 +1,6 @@
 // Pure videohelpers (speler kiezen, soort Short/Journaal, proxy-URL); apart van video.tsx zodat het hoofdscherm en het voorladen niet de hele videogrid laden.
 import type { Soort, Video } from "./types";
-import { youtubeId } from "./slug";
+import { videoSlug, youtubeId } from "./slug";
 export { youtubeId } from "./slug";
 
 export type Player =
@@ -53,4 +53,10 @@ export const SOORTEN: { id: Soort; label: string; leeg: string }[] = [
 /** Eerste soort met filmpjes (Shorts eerst, zoals een TikTok-feed). */
 export function startSoort(list: Video[]): Soort {
   return list.some((v) => soortVan(v) === "short") || !list.length ? "short" : "journaal";
+}
+
+/** Kies het tabblad van de herstelde route, of anders de eerste beschikbare soort. */
+export function startSoortRoute(list: Video[], start: string | null): Soort {
+  const hit = start ? list.find((v) => videoSlug(v) === start) : null;
+  return hit ? soortVan(hit) : startSoort(list);
 }

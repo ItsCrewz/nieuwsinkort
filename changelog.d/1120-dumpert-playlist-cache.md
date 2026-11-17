@@ -1,0 +1,1 @@
+- Dumpert-playlists krijgen ook bij hoofdletters in de extensie de korte cacheduur (#1120).

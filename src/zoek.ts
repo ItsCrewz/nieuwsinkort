@@ -10,12 +10,15 @@ export function zelfdeZoekselectie(a: Zoekselectie | null, b: Zoekselectie): boo
 // Letters die NFD niet ontleedt: beperkte transliteratie zodat "Soren" ook "Søren" vindt (#735).
 const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "ß": "ss" };
 
+// Typografische ligaturen (#1132): NFD laat ze heel, dus expliciet ontleden; NFKD is te breed.
+const LIGATUUR: Record<string, string> = { "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st" };
+
 // Alleen letters en cijfers omzetten; andere betekenisvolle tekens behouden hun vorm.
 const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (teken) => String.fromCharCode(teken.charCodeAt(0) - 0xfee0));
 const zonderApostrof = (tekst: string) => tekst.replace(/(?<=\p{L})['’](?=\p{L})/gu, "");
 
 export function normaliseer(tekst: string): string {
-  return zonderApostrof(gewoneBreedte(tekst).normalize("NFC")).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
+  return zonderApostrof(gewoneBreedte(tekst).normalize("NFC")).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
     .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
@@ -36,7 +39,7 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
   const woorden: string[] = [], lijm: boolean[] = [];
   for (const veld of velden) {
     let vorige = false;
-    for (const stuk of afkortingen(veld).normalize("NFC").replace(koppel, MARKER).split(MARKER)) {
+    for (const stuk of afkortingen(veld).normalize("NFC").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(koppel, MARKER).split(MARKER)) {
       const delen = normaliseer(stuk).split(" ").filter(Boolean);
       if (!delen.length) { vorige = false; continue; }
       if (vorige) lijm[lijm.length - 1] = true;
@@ -187,7 +190,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
     const begin = offset;
     offset += teken.length;
     if (/[’']/u.test(teken) && /\p{L}$/u.test(tekst.slice(0, begin)) && /^\p{L}/u.test(tekst.slice(offset))) continue;
-    const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".");
+    const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]);
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
       vlak += letter;

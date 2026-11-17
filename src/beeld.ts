@@ -41,10 +41,14 @@ const MAATMAP = new RegExp(`^(\\d{2,4}x\\d{2,4}[a-z]?|w\\d{2,4}|h\\d{2,4}|s\\d{2
 export function beeldKey(u: string): string {
   let x: URL;
   try { x = new URL(u); } catch { return u; }
-  // Alleen bekende resizers gebruiken een querywaarde als adres van het beeld.
-  if (x.pathname === "/_next/image" || /^(?:wsrv\.nl|images\.weserv\.nl)$/.test(x.hostname) || /(?:^|\.)imgix\.net$/.test(x.hostname)) {
+  // Begrens externe proxyketens; bij herhaling of een te diepe keten blijft de buitenste URL de sleutel.
+  const gezien = new Set<string>();
+  for (let diepte = 0; x.pathname === "/_next/image" || /^(?:wsrv\.nl|images\.weserv\.nl)$/.test(x.hostname) || /(?:^|\.)imgix\.net$/.test(x.hostname); diepte++) {
     const inner = x.searchParams.get("url") || x.searchParams.get("src") || x.searchParams.get("u");
-    if (inner && /^https?:\/\//i.test(inner)) return beeldKey(inner);
+    if (!inner || !/^https?:\/\//i.test(inner)) break;
+    gezien.add(x.href);
+    if (diepte >= 8 || gezien.has(inner)) return u;
+    try { x = new URL(inner); } catch { return inner; }
   }
   // WordPress-Jetpack (i0.wp.com/<site>/<pad>): de echte site staat in het pad
   // Alleen uitpakken als het eerste segment een echte hostnaam is; anders blijft de oorspronkelijke URL de identiteit

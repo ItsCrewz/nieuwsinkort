@@ -5,7 +5,7 @@ import { BionicText } from "./ui";
 import { Icon } from "./icons";
 import { videoSlug } from "./slug";
 import { groepeer, heeftGroepen } from "./filmgroep";
-import { SOORTEN, playerFor, soortVan, startSoort, viaProxy } from "./videosoort";
+import { SOORTEN, playerFor, soortVan, startSoortRoute, viaProxy } from "./videosoort";
 import { veiligeUrl } from "./url";
 import { tabToets } from "./tabs";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
@@ -160,10 +160,7 @@ export function VideoGrid({
   const enter = first && !touched;
   const split = cat === "filmpjes";
   // Filmpjes: Shorts en Journaals apart. Een deep link naar een journaal opent meteen het tabje Journaals.
-  const [soort, setSoort] = useState<Soort>(() => {
-    const hit = video ? list.find((v) => videoSlug(v) === video) : null;
-    return hit ? soortVan(hit) : startSoort(list);
-  });
+  const [soort, setSoort] = useState<Soort>(() => startSoortRoute(list, start));
   const [bron, setBron] = useState("alle");
   const perSoort = (s: Soort) => (split ? list.filter((v) => soortVan(v) === s) : list);
   const sub = perSoort(soort);
