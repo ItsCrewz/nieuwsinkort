@@ -230,7 +230,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
       if (el && el.clientWidth) setI(Math.max(0, Math.min(zichtbare.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
     });
   }, [zichtbare.length]);
-  const handmatig = () => { doel.current = null; }; // aanraken/wiel/muis: de echte positie bepaalt weer de basis
+  const handmatig = () => { doel.current = null; }; // aanraken of wiel: de echte positie bepaalt weer de basis
   const ga = (stap: number) => {
     const el = track.current;
     if (!el) return;
