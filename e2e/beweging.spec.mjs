@@ -100,9 +100,25 @@ test("terug uit een artikel: doelkaart speelt de entree niet opnieuw", async ({ 
   const id = await page.locator(".nc").nth(2).getAttribute("data-id");
   await page.locator(".nc").nth(2).locator(".nc-title a").click();
   await expect(page.locator("article.detail")).toBeVisible();
+  // Ook zonder reduced motion mag herstel geen vloeiende scroll starten.
+  await page.evaluate(() => {
+    window.herstelScrolls = [];
+    const scrollTo = Element.prototype.scrollTo;
+    Element.prototype.scrollTo = function (...args) {
+      if (this.classList.contains("nf")) window.herstelScrolls.push(args[0]);
+      return scrollTo.apply(this, args);
+    };
+  });
   await page.goBack();
   const kaart = page.locator(`.nc[data-id="${id}"]`);
   await expect(kaart).toBeVisible();
+  const herstel = await page.evaluate((kaartId) => {
+    const feed = document.querySelector(".nf");
+    const doel = [...feed.querySelectorAll(".nc")].find((c) => c.dataset.id === kaartId);
+    return { afstand: Math.abs(feed.scrollTop - doel.offsetTop), scrolls: window.herstelScrolls };
+  }, id);
+  expect(herstel.afstand).toBeLessThanOrEqual(1);
+  expect(herstel.scrolls.every((s) => typeof s !== "object" || s.behavior !== "smooth")).toBe(true);
   await expect(kaart).not.toHaveClass(/wacht|\bin\b/);
   expect(await kaartAnimaties(page)).toBe(0);
 });
@@ -138,4 +154,27 @@ test("reduced motion: geen lopende animaties bij rubriekwissel", async ({ page }
     expect(await page.evaluate(() => document.getElementById("rubriek-paneel").getAnimations().length)).toBe(0);
     expect(await traag(page)).toEqual([]);
   }
+});
+
+test("trekken ververst eenmaal en werkt met verminderde beweging", async ({ page, context }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await blokkeer(page);
+  let verzoeken = 0;
+  page.on("request", (r) => { if (new URL(r.url()).pathname === "/data.json") verzoeken++; });
+  await page.goto("#/tech");
+  await expect(page.locator(".nc-title a").first()).toBeVisible();
+  await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; document.querySelector(".nf").scrollTop = 0; });
+  const voor = verzoeken;
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+  const box = await page.locator(".nf").boundingBox();
+  const x = box.x + box.width / 2, y = box.y + 40;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y + 140 }] });
+  await expect(page.locator(".ptr")).toContainText("Loslaten om te verversen");
+  expect(await traag(page)).toEqual([]);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(page.locator(".ptr")).toContainText(/Je bent bij|Bijgewerkt om/);
+  expect(verzoeken - voor).toBe(1);
+  await expect(page.locator(".ptr")).not.toContainText(/Je bent bij|Bijgewerkt om/, { timeout: 3000 });
 });

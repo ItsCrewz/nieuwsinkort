@@ -22,6 +22,8 @@ try {
   assert.match(uitgesteld[0], /^uitgesteld-[\w-]{8}-s419\.css$/, "gehashte asset (immutable cache via /assets/*)");
   const lees = (f: string) => readFileSync(join(dir, "assets", f), "utf8");
   const k = lees(kritiek[0]), u = lees(uitgesteld[0]);
+  assert.match(u, /\.ptr\{[^}]*transition:transform/);
+  assert.match(u, /\.ptr\.trekt\{[^}]*transition:none/);
   const gz = (s: string) => gzipSync(s, { level: 9 }).length;
   assert.ok(gz(k) <= 12288, `kritieke CSS ${gz(k)} B gzip > 12288`);
   assert.ok(gz(u) <= 8192, `uitgestelde CSS ${gz(u)} B gzip > 8192`);

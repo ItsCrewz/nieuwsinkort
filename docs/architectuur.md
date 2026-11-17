@@ -457,3 +457,7 @@ De nieuwsfeed bewaart per rubriek in sessionStorage het zichtbare artikel en de 
 ## Zoeken: normalisatie (#735)
 
 `normaliseer()` in `src/zoek.ts` maakt zoekterm en artikeltekst gelijk: NFD zonder accenten, kleine letters, en een beperkte transliteratie voor letters die NFD niet ontleedt (ø→o, ł→l, æ→ae, œ→oe, đ→d, ß→ss), zodat `Soren` ook `Søren` vindt. Woordbegin-matching en meerwoordzoeken zijn ongewijzigd. Tests: `tests/zoek.test.ts`.
+
+Trek bovenaan de nieuwsfeed om te verversen: `src/trekverversen.ts` bevat de
+weerstand, drempel, verversrem en touchhook. Die gebruikt de bestaande
+`load()` voor `/data.json`; er komt geen aparte opslag- of AI-aanroep bij.

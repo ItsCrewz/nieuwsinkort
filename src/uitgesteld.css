@@ -9,6 +9,8 @@
 .tab,.tab-m{transition:color var(--f) var(--e),transform var(--f) var(--e)}
 .more-btn .ic{transition:transform var(--bs) var(--e)}
 .seg-ind{transition:transform var(--dur-3) var(--ease-in)}
+.ptr{transition:transform var(--dur-3) var(--ease-uit)}
+.ptr.trekt{transition:none}
 .menu{animation:mni 160ms var(--e) both}
 .chip{transition:transform var(--f) var(--e)}
 .lead::before,.row::before{transition:opacity var(--f) var(--e)}
