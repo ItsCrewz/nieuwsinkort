@@ -20,6 +20,9 @@ for (const aantal of [0, 1, 2]) {
   const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "tekst", onChange: () => {}, aantal, invoer: createRef<HTMLInputElement>() }));
   assert.match(balk, /aria-expanded="true"/);
   assert.match(balk, /value="tekst"/);
+  const verwijzing = /aria-controls="([^"]+)"/.exec(balk)?.[1];
+  assert.ok(verwijzing);
+  assert.ok(balk.includes(`<form id="${verwijzing}"`));
   assert.ok(balk.includes(`aria-live="polite"></span>`));
 }
 // Zoekscope (#613): zichtbaar, gekoppeld aan het veld, en filters wissen vanuit de zoekinterface.
@@ -43,6 +46,7 @@ for (const aantal of [0, 1, 2]) {
 const geslotenBalk = renderToStaticMarkup(createElement(Zoekbalk, { query: "", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>() }));
 assert.match(geslotenBalk, /aria-expanded="false"/);
 assert.match(geslotenBalk, /aria-label="Zoeken"/);
+assert.doesNotMatch(geslotenBalk, /aria-controls/);
 assert.match(geslotenBalk, /<button type="button" class="zoek-knop"[^>]*><svg[^>]*><use href="#i-search"><\/use><\/svg><\/button>/);
 assert.ok(!/>Zoek</.test(geslotenBalk));
 // De dispatcher maakt de compositieref beschikbaar zonder browser-DOM.

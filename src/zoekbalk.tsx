@@ -1,6 +1,6 @@
 import { Icon } from "./icons";
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { staatFocusInInvoer } from "./zoekfocus";
 import { begrensZoekterm, MAX_ZOEKTEKENS, normaliseer, resultaatTekst, verborgenTekst } from "./zoek";
 import { touchNu } from "./invoer";
@@ -21,6 +21,7 @@ export function focusResultaten(doc: FocusDoc) {
 
 export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
   const [open, setOpen] = useState(!!query);
+  const formId = useId();
   useEffect(() => { if (query) setOpen(true); }, [query]);
   const [melding, setMelding] = useState<{ query: string; aantal: number } | null>(null);
   const verborgen = scope?.verborgen ?? 0;
@@ -52,22 +53,22 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope }: { query: st
     return () => document.removeEventListener("keydown", toets);
   }, [open, sluit]);
   // Buiten .shell renderen (container-type:inline-size), anders scrolt de vaste knop mee, net als de deelknop.
-  const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} aria-label="Zoeken" title="Zoeken" onClick={() => { if (open) sluit(); else { focusBijOpenen.current = true; setOpen(true); } }}><Icon name="search" /></button>;
+  const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} {...(open ? { "aria-controls": formId } : {})} aria-label="Zoeken" title="Zoeken" onClick={() => { if (open) sluit(); else { focusBijOpenen.current = true; setOpen(true); } }}><Icon name="search" /></button>;
   return (
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
-      {open && <ZoekFormulier query={query} onChange={onChange} sluit={sluit} invoer={invoer} scope={scope} aantal={aantal} />}
+      {open && <ZoekFormulier id={formId} query={query} onChange={onChange} sluit={sluit} invoer={invoer} scope={scope} aantal={aantal} />}
       <span className="zoek-status" aria-live="polite">{query.trim() && !normaliseer(query) ? zoekAanwijzing : open && query.trim() && melding?.query === query && melding.aantal === aantal ? resultaatTekst(aantal) + scopeMelding : ""}</span>
     </div>
   );
 }
 
-export function ZoekFormulier({ query, onChange, sluit, invoer, scope, aantal = 0 }: { query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope; aantal?: number }) {
+export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aantal = 0 }: { id?: string; query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope; aantal?: number }) {
   const compositie = useRef(false);
   // Geen maxLength: dat kapt plakken stil af en kan IME-invoer storen; hier melden we het wel, alleen als er echt tekst is weggegooid.
   const [ingekort, setIngekort] = useState(false);
   const wijzig = (tekst: string) => { const begrensd = begrensZoekterm(tekst); setIngekort(begrensd !== tekst); onChange(begrensd); };
-  return <form className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); if (!compositie.current && touchNu()) invoer.current?.blur(); }}>
+  return <form id={id} className="zoek-formulier" role="search" onSubmit={(e) => { e.preventDefault(); if (!compositie.current && touchNu()) invoer.current?.blur(); }}>
         <input ref={invoer} className="zoek-invoer" type="search" enterKeyHint="search" aria-label="Zoek in het nieuws"{...(scope ? { "aria-describedby": scopeId } : {})} value={query} onChange={(e) => wijzig(e.target.value)} onCompositionStart={() => { compositie.current = true; }} onCompositionEnd={() => { compositie.current = false; }} onBlur={() => { compositie.current = false; }} onKeyDown={(e) => {
           if (e.key === "Enter" && (compositie.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)) { e.preventDefault(); return; }
           if (e.key === "Escape") {
