@@ -1,0 +1,1 @@
+- Probeer de beeldproxy na een tijdelijke storing opnieuw, zodat ontbrekende foto's later kunnen herstellen (#725).
