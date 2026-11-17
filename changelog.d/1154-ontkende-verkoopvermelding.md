@@ -1,0 +1,1 @@
+- Artikel: een bronvermelding bij een ontkende of onzekere verkoopzin ("niet te koop via NOS", "mogelijk verkrijgbaar via NOS") blijft staan, zodat de bewering niet verandert (#1154).
