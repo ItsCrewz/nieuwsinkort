@@ -1,0 +1,1 @@
+- Vastgelopen videoverzoeken bij het voorladen geven de wachtrij weer vrij; late responsen worden afgebroken (#1113).
