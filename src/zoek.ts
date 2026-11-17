@@ -55,8 +55,16 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
 type Zoektekst = { velden: (string | undefined)[]; woorden: string[]; lijm: boolean[] };
 const index = new WeakMap<Item, Zoektekst>();
 
+// Alleen de hostnaam van een geldige http(s)-bronlink (#1167): geen pad, query of hash in de index.
+function hostVan(href: string | undefined): string | undefined {
+  try {
+    const u = new URL(href ?? "");
+    return u.protocol === "http:" || u.protocol === "https:" ? u.hostname.replace(/^www\./, "") || undefined : undefined;
+  } catch { return undefined; }
+}
+
 function zoektekst(item: Item): Zoektekst {
-  const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).map((bron) => bron.site), CAT_LABEL[item.cat]];
+  const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).flatMap((bron) => [bron.site, hostVan(bron.href)]), CAT_LABEL[item.cat]];
   const bewaard = index.get(item);
   if (bewaard && velden.length === bewaard.velden.length && velden.every((veld, i) => veld === bewaard.velden[i])) return bewaard;
   const resultaat = { velden, ...woordenVan(velden.filter(Boolean) as string[], KOPPEL) };

@@ -1,0 +1,1 @@
+- Zoeken: vind berichten ook via de hostnaam van een zichtbare bronlink, zonder pad of query te indexeren (#1167).
