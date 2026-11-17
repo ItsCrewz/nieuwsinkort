@@ -1,0 +1,1 @@
+- Terugvegen: een bevestigde veeg sluit het artikel nu altijd precies eenmaal, ook als er tijdens de animatie een nieuwe aanraking volgt (#1111).
