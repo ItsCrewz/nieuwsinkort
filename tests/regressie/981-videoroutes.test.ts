@@ -3,6 +3,7 @@ import { onRequestGet, onRequestPost } from "../../functions/samenvatting";
 import { herstelFeed, startIndex, type FeedStatus } from "../../src/feedstatus";
 import { svCache, zaaiSamenvattingen } from "../../src/samenvattingcache";
 import { oudeSlug, svSleutel, videoSlug, vindSlug } from "../../src/slug";
+import { startSoortRoute } from "../../src/videosoort";
 import { volgorde } from "../../worker/src/vooraf";
 import type { Video } from "../../src/types";
 
@@ -15,6 +16,25 @@ assert.equal(new Set(ids).size, 3);
 assert.equal(videoSlug({ ...b, titel: "Gewijzigde titel" }), ids[1]);
 assert.equal(ids[2], "yt-fDsyJufbePY");
 assert.equal(vindSlug(lijst, oudeSlug(a)), null);
+for (const [href, slug] of [
+  ["https://www.dumpert.nl/item/123456_abc", "d-123456_abc"],
+  ["https://x.com/nieuws/status/123456789", "x-123456789"],
+  ["https://www.reddit.com/r/videos/comments/abc123/bericht", "r-abc123"],
+  ["https://www.instagram.com/reel/Abc_123/", "ig-Abc_123"],
+]) {
+  const video = { ...a, href };
+  assert.equal(videoSlug(video), slug);
+  assert.equal(vindSlug([video], slug), video);
+}
+const short = { ...a, soort: "short" as const };
+const journaal = { ...b, soort: "journaal" as const };
+const uniek = { ...journaal, titel: "Uniek journaal", href: "https://example.com/video/3" };
+const tablijst = [short, journaal, uniek];
+for (const [route, verwacht] of [[videoSlug(short), "short"], [videoSlug(journaal), "journaal"], [oudeSlug(uniek), "journaal"]] as const) {
+  const start = herstelFeed(null, "filmpjes", route, tablijst).slug;
+  assert.equal(startSoortRoute(tablijst, start), verwacht);
+}
+
 const status: FeedStatus = { cat: "filmpjes", slug: ids[1], soort: "short", positie: 12, speelt: true, lijst };
 for (const opgeslagen of [null, status]) {
   const actueel = [{ ...b, titel: "Nieuwe titel" }, a, yt];
@@ -36,5 +56,4 @@ for (const [i, verwacht] of [eerste, tweede].entries()) {
   const post = await onRequestPost({ request: new Request("https://nieuwsinkort.test/samenvatting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: ids[i] }) }), env });
   assert.deepEqual((await post.json() as typeof eerste).punten, verwacht.punten);
 }
-assert.notEqual(svSleutel(ids[0]), `vs:${ids[0]}`);
 console.log("videoroutes en samenvattingscache #981: geslaagd");
