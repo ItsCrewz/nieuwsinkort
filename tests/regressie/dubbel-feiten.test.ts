@@ -23,6 +23,8 @@ for (const [eerste, tweede] of [
   ["Het aantal steeg met meer dan 10 procent.", "Het aantal steeg met minder dan 10 procent."],
   ["De temperatuur veranderde met -10 graden.", "De temperatuur veranderde met +10 graden."],
   ["De temperatuur veranderde met -10 graden.", "De temperatuur veranderde met 10 graden."],
+  ["De temperatuur veranderde met −10 graden.", "De temperatuur veranderde met +10 graden."],
+  ["De temperatuur veranderde met −10 graden.", "De temperatuur veranderde met 10 graden."],
 ]) {
   for (const [bron, nieuw] of [[eerste, tweede], [tweede, eerste]]) {
     assert.deepEqual(nieuwePunten([nieuw], bron, ""), [nieuw]);
@@ -33,6 +35,7 @@ for (const [eerste, tweede] of [
   }
 }
 assert.deepEqual(nieuwePunten(["De temperatuur veranderde met +10 graden."], "De temperatuur veranderde met 10 graden.", ""), []);
+assert.deepEqual(nieuwePunten(["De temperatuur veranderde met −10 graden."], "De temperatuur veranderde met -10 graden.", ""), []);
 
 for (const woord of ["nu", "nog", "al", "pas", "weer", "niet meer", "nooit"]) {
   const gewoon = "De verkoop start in Haarlem.";
