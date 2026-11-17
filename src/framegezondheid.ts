@@ -47,9 +47,13 @@ export class FrameGezondheid {
       this.reset(t);
       return "ok";
     }
-    // Alleen gewone voorwaartse voortgang telt; loops en sprongen niet (die resetten alleen het ijkpunt).
+    // Een loop of sprong begint een nieuw meetvenster, zonder oude klokvoortgang.
     const d = t.currentTime - this.vorigeT;
     const maxD = ((t.now - this.vorigeNu) / 1000) * 2 + 0.25;
+    if (d < 0 || d > maxD) {
+      this.reset(t);
+      return "ok";
+    }
     if (d > 0 && d <= maxD) {
       this.klokSindsFrame += d;
       this.klokSindsStart += d;

@@ -1,0 +1,1 @@
+- Voorkom onnodig videoherstel door de beeldmeting bij een loop of grote mediakloksprong te resetten (#1155).
