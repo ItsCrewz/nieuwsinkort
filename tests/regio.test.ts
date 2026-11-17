@@ -80,6 +80,20 @@ t("BUITEN_WOORD: nieuwe eigennamen, hoofdlettergevoelig, ë-eindes", () => {
     assert.equal(isBuitenland({ kop, bronnen: [b("https://x.nl/nieuws/1")] }), false, kop);
   }
 });
+t("hoofdletters maken niet uit voor plaatsnamen (#1156)", () => {
+  const neutraal = [b("https://x.nl/nieuws/1")];
+  for (const kop of ["Beschietingen in israël gaan door", "Beschietingen in Israël gaan door", "duitsland sluit grens", "Duitsland sluit grens", "brand in los angeles", "Rellen in KYIV", "Het kabinet stuurt hulp naar israël"]) {
+    const verwacht = !kop.includes("kabinet");
+    assert.equal(isBuitenland({ kop, bronnen: neutraal }), verwacht, kop);
+  }
+  // Neutrale bron (sport) beslist niet op landnaam, ook niet in kleine letters
+  assert.equal(isBuitenland({ kop: "wedstrijd in duitsland", bronnen: [b("https://x.nl/sport/1")] }), false);
+  // Woorden die in kleine letters iets anders zijn, en deelwoorden, geven geen land
+  for (const kop of ["pools gebak in de winkel", "de polen van de aarde", "turkoois sieraad gestolen", "indiaan in het museum", "wij vs. zij", "frans bakt brood", "congres van de partij"]) {
+    assert.equal(isBuitenland({ kop, bronnen: neutraal }), false, kop);
+  }
+  for (const kop of ["Polen sluit grens", "Turkije kiest", "India wint", "VS dreigt met tarieven"]) assert.equal(isBuitenland({ kop, bronnen: neutraal }), true, kop);
+});
 t("buitenlandse economie zonder landnaam en Nederlandse uitzonderingen", () => {
   for (const kop of ["Binance krijgt boete voor cryptohandel", "Wall Street sluit met winst", "Aziatische beurzen dalen"]) {
     assert.equal(herindeel({ cat: "nl", kop }).cat, "buitenland", kop);

@@ -1,0 +1,1 @@
+- Regio: buitenlandse plaatsnamen worden nu ook in kleine letters herkend ("israël", "duitsland"); woorden als "pools", "polen" en "vs" blijven hoofdlettergevoelig (#1156).
