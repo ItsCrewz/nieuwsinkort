@@ -101,6 +101,10 @@ assert.equal(bronUrl(urls[0]), urls[0], "fixture-hosts lopen niet via de proxy: 
   const t = c.track();
   await act(async () => props(c.knop("Volgende foto")).onClick({ stopPropagation() {}, preventDefault() {} }));
   assert.equal(t.scrolls.at(-1), 100);
+  await c.scrollNaar(1); // de nep-scrollanimatie is aangekomen (#1182: een snelle tweede actie rekent vanaf het doel)
+  await act(async () => props(c.knop("Vorige foto")).onClick({ stopPropagation() {}, preventDefault() {} }));
+  assert.equal(t.scrolls.at(-1), 0, "vorige vanaf de tweede van twee gaat terug naar de eerste");
+  await c.scrollNaar(0);
   await act(async () => props(c.knop("Vorige foto")).onClick({ stopPropagation() {}, preventDefault() {} }));
   assert.equal(t.scrolls.at(-1), 100, "vorige vanaf eerste wikkelt naar laatste van twee");
   await act(async () => c.root.unmount());

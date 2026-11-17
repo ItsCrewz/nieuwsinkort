@@ -178,6 +178,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   }, [near]);
   const listRef = useRef(urls);
   const iRef = useRef(0);
+  const doel = useRef<number | null>(null); // gekozen foto zolang een eigen scrollanimatie loopt (snelle opeenvolgende acties, #1182)
   useEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -190,6 +191,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     if (vorigeUrls.current.length === urls.length && vorigeUrls.current.every((url, k) => url === urls[k])) return;
     vorigeUrls.current = urls;
     cancelAnimationFrame(raf.current);
+    doel.current = null;
     // Track direct op de juiste foto zetten (breekt ook een lopende smooth-scroll af), niet pas na de volgende render.
     const el = track.current;
     if (el) el.scrollLeft = 0;
@@ -209,6 +211,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     if (weg < 0) return;
     if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus(); // bediening verdwijnt: focus naar de strook
     const rest = listRef.current.filter((x) => x !== u);
+    doel.current = null;
     listRef.current = rest; // direct bijwerken: meerdere drops in één batch rekenen op de actuele lijst
     setList(rest);
     setI((v) => indexNaVerwijderen(v, weg, rest.length));
@@ -219,16 +222,21 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     if (el && el.clientWidth && list.length > 1 && Math.round(el.scrollLeft / el.clientWidth) !== i) el.scrollLeft = i * el.clientWidth;
   }, [list.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const onScroll = useCallback(() => {
+    const t = track.current;
+    if (doel.current !== null && t && t.clientWidth && Math.abs(t.scrollLeft - doel.current * t.clientWidth) < 1) doel.current = null; // doel bereikt
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
       const el = track.current;
       if (el && el.clientWidth) setI(Math.max(0, Math.min(zichtbare.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
     });
   }, [zichtbare.length]);
-  const go = (k: number) => {
+  const handmatig = () => { doel.current = null; }; // aanraken/wiel/muis: de echte positie bepaalt weer de basis
+  const ga = (stap: number) => {
     const el = track.current;
     if (!el) return;
-    const n = (k + zichtbare.length) % zichtbare.length;
+    const basis = Math.max(0, Math.min(zichtbare.length - 1, doel.current ?? iRef.current));
+    const n = (basis + stap + zichtbare.length) % zichtbare.length;
+    doel.current = el.scrollLeft === n * el.clientWidth ? null : n;
     el.scrollTo({ left: n * el.clientWidth, behavior: scrollGedrag() });
   };
   if (!list.length) return null;
@@ -245,15 +253,17 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
         onKeyDown={multi ? (e) => {
           if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
             e.preventDefault();
-            go(e.key === "ArrowRight" ? i + 1 : i - 1);
+            ga(e.key === "ArrowRight" ? 1 : -1);
           }
         } : undefined}
         onScroll={multi ? onScroll : undefined}
+        onTouchStart={multi ? handmatig : undefined}
+        onWheel={multi ? handmatig : undefined}
         onClick={multi ? (e) => {
           const r = e.currentTarget.getBoundingClientRect();
           e.preventDefault();
           e.stopPropagation();
-          go(e.clientX - r.left > r.width * 0.35 ? i + 1 : i - 1);
+          ga(e.clientX - r.left > r.width * 0.35 ? 1 : -1);
         } : undefined}
       >
         {zichtbare.map((u, k) => (
@@ -287,8 +297,8 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
           <div className="bl-dots" aria-hidden="true">
             {zichtbare.map((u, k) => <span key={u} className={k === i ? "on" : ""} />)}
           </div>
-          <button type="button" className="bl-nav prev" aria-label="Vorige foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(i - 1); }}>‹</button>
-          <button type="button" className="bl-nav next" aria-label="Volgende foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); go(i + 1); }}>›</button>
+          <button type="button" className="bl-nav prev" aria-label="Vorige foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); ga(-1); }}>‹</button>
+          <button type="button" className="bl-nav next" aria-label="Volgende foto" onClick={(e) => { e.stopPropagation(); e.preventDefault(); ga(1); }}>›</button>
           <span className="sr-only" aria-live="polite">Foto {i + 1} van {zichtbare.length}</span>
         </>
       ) : null}
