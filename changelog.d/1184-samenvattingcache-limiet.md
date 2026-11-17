@@ -1,0 +1,1 @@
+- Samenvattingcache is begrensd tot 200 resultaten (langst ongebruikte valt af), zodat lange sessies niet blijven groeien (#1184).
