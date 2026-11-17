@@ -29,7 +29,7 @@ try {
       assert.equal(r.headers.get("cache-control"), "no-store");
     }
   }
-  for (const q of [query, ""]) {
+  for (const q of [query, "?q=%2F%2Fextern.example%2Fpad&volgende=https%3A%2F%2Fextern.example", ""]) {
     const r = await bezoek(`${canoniek}${q}`);
     assert.equal(r.status, 302);
     assert.equal(r.headers.get("location"), `/${q}#/bericht/${artikelId(item)}`);

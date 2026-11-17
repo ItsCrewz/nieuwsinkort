@@ -184,11 +184,13 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     return register({ el, wake: () => setNear(true), first: () => listRef.current[0], second: () => listRef.current[iRef.current + 1] });
   }, []);
   const [, herlaad] = useState(0);
+  const directeFotos = useRef(new Set<string>());
   const raf = useRef(0);
   const vorigeUrls = useRef(urls);
   useLayoutEffect(() => {
     if (vorigeUrls.current.length === urls.length && vorigeUrls.current.every((url, k) => url === urls[k])) return;
     vorigeUrls.current = urls;
+    directeFotos.current = new Set([...directeFotos.current].filter((u) => urls.includes(u)));
     cancelAnimationFrame(raf.current);
     // Track direct op de juiste foto zetten (breekt ook een lopende smooth-scroll af), niet pas na de volgende render.
     const el = track.current;
@@ -208,6 +210,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     const weg = listRef.current.indexOf(u);
     if (weg < 0) return;
     if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus(); // bediening verdwijnt: focus naar de strook
+    directeFotos.current.delete(u);
     const rest = listRef.current.filter((x) => x !== u);
     listRef.current = rest; // direct bijwerken: meerdere drops in één batch rekenen op de actuele lijst
     setList(rest);
@@ -260,7 +263,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
           <div className="bl-slide" key={u} aria-hidden={k !== i || undefined}>
             {toonBeeld(bespaar, inBeeld, near, k === i, k <= i + 1 || k === zichtbare.length - 1 && i === 0) ? (
               <img
-                src={bronUrl(u)}
+                src={directeFotos.current.has(u) ? u : bronUrl(u)}
                 alt=""
                 aria-hidden="true"
                 draggable={false}
@@ -269,7 +272,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
                 className={klaar.has(u) ? "in" : undefined}
                 decoding="async"
                 referrerPolicy="no-referrer"
-                onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : drop(u))}
+                onError={(e) => { if (naarRechtstreeks(u, e.currentTarget.getAttribute("src"))) { directeFotos.current.add(u); herlaad((n) => n + 1); } else drop(u); }}
                 onLoad={(e) => {
                   const im = e.currentTarget;
                   const w = im.naturalWidth, h = im.naturalHeight;
@@ -326,12 +329,13 @@ export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
     return () => { io.disconnect(); setInBeeld(false); };
   }, [bespaar, Boolean(urls[k])]);
   const [, herlaad] = useState(0);
+  const directeFoto = useRef<string>();
   const u = urls[k];
   if (!u) return null;
   return (
     <span ref={box} className={`row-img ${urls.length - k > 1 ? "multi" : ""}`} aria-hidden="true">
-      {toonBeeld(bespaar, inBeeld, true, true, true) && <img src={bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
-        onError={(e) => (naarRechtstreeks(u, e.currentTarget.getAttribute("src")) ? herlaad((n) => n + 1) : setK(k + 1))}
+      {toonBeeld(bespaar, inBeeld, true, true, true) && <img src={directeFoto.current === u ? u : bronUrl(u)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
+        onError={(e) => { if (naarRechtstreeks(u, e.currentTarget.getAttribute("src"))) { directeFoto.current = u; herlaad((n) => n + 1); } else { directeFoto.current = undefined; setK(k + 1); } }}
         onLoad={(e) => { const im = e.currentTarget; if (im.naturalWidth < 160 || im.naturalHeight < 100 || im.naturalWidth / im.naturalHeight > 4) setK(k + 1); else im.classList.add("in"); }} />}
     </span>
   );

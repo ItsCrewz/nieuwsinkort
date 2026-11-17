@@ -1,0 +1,1 @@
+- Artikelverdieping behoudt tegengestelde vergelijkingen en getaltekens bij ontdubbelen (#1172).

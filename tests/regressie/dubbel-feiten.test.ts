@@ -18,6 +18,25 @@ assert.deepEqual(nieuweAlineas(["De verkoop start vandaag.", "Dit gebeurt in Haa
 assert.deepEqual(nieuwePunten(["De verkoop start op 18 februari 2027."], "De verkoop start in februari 2027.", ""), ["De verkoop start op 18 februari 2027."]);
 console.log("ok - unieke feiten en verwijszinnen blijven behouden");
 
+// Tegenstellingen en getaltekens zijn feiten, ongeacht welke zin al bekend is (#1172).
+for (const [eerste, tweede] of [
+  ["Het aantal steeg met meer dan 10 procent.", "Het aantal steeg met minder dan 10 procent."],
+  ["De temperatuur veranderde met -10 graden.", "De temperatuur veranderde met +10 graden."],
+  ["De temperatuur veranderde met -10 graden.", "De temperatuur veranderde met 10 graden."],
+  ["De temperatuur veranderde met −10 graden.", "De temperatuur veranderde met +10 graden."],
+  ["De temperatuur veranderde met −10 graden.", "De temperatuur veranderde met 10 graden."],
+]) {
+  for (const [bron, nieuw] of [[eerste, tweede], [tweede, eerste]]) {
+    assert.deepEqual(nieuwePunten([nieuw], bron, ""), [nieuw]);
+    assert.deepEqual(nieuwePunten([bron, nieuw], "", ""), [bron, nieuw]);
+    assert.deepEqual(nieuweAlineas([nieuw], [bron]), [nieuw]);
+    assert.deepEqual(nieuwePunten([bron], bron, ""), []);
+    assert.deepEqual(nieuweAlineas([bron], [bron]), []);
+  }
+}
+assert.deepEqual(nieuwePunten(["De temperatuur veranderde met +10 graden."], "De temperatuur veranderde met 10 graden.", ""), []);
+assert.deepEqual(nieuwePunten(["De temperatuur veranderde met −10 graden."], "De temperatuur veranderde met -10 graden.", ""), []);
+
 for (const woord of ["nu", "nog", "al", "pas", "weer", "niet meer", "nooit"]) {
   const gewoon = "De verkoop start in Haarlem.";
   const bijzonder = `De verkoop start ${woord} in Haarlem.`;
