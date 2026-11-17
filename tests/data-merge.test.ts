@@ -18,6 +18,12 @@ const t = (name: string, fn: () => void | Promise<void>, nu = MIDDAG) => {
   } catch (e) { Date.now = origineel; throw e; }
 };
 
+t("schoon: NU-miniatuur met toegangsparameters blijft op het oorspronkelijke adres (#1084)", () => {
+  const b = "https://images.nu.nl/m/abc123_sqr256/foto.jpg";
+  const r: any = schoon({ gegenereerd: new Date(Date.now()).toISOString(), items: [{ cat: "nl", kop: "A", bronnen: [{ site: "NU.nl", href: "https://nu.nl/1" }], beeld: `${b}?token=a&sig=z`, beelden: [`${b}?token=a&sig=z`] }] } as any);
+  assert.deepEqual(r.items[0].beelden, [`${b}?token=a&sig=z`]);
+});
+
 t("merge + schoon: uur-filmpjes en statische filmpjes ontdubbeld, foto's per bericht uniek", () => {
   const now = new Date(Date.now()).toISOString();
   const S = { gegenereerd: new Date(Date.now() - 3600e3).toISOString(), items: [{ cat: "nl", kop: "A", bronnen: [{ site: "NOS", href: "https://nos.nl/1" }], beeld: "https://cdn.nos.nl/a-1200x675.jpg", beelden: ["https://cdn.nos.nl/a-600x338.jpg"] }],

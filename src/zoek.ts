@@ -1,6 +1,12 @@
 import { CAT_LABEL } from "./tabs";
 import type { Item } from "./types";
 
+export type Zoekselectie = { term: string; rubriek: string; filters: object; bronnen: object };
+
+export function zelfdeZoekselectie(a: Zoekselectie | null, b: Zoekselectie): boolean {
+  return !!a && a.term === b.term && a.rubriek === b.rubriek && a.filters === b.filters && a.bronnen === b.bronnen;
+}
+
 // Letters die NFD niet ontleedt: beperkte transliteratie zodat "Soren" ook "Søren" vindt (#735).
 const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "ß": "ss" };
 
@@ -108,7 +114,17 @@ function alleTermenPassen(kand: [number, number][][], aantal: number): boolean {
   return kies(0, []);
 }
 
+// Grens op de te verwerken zoektekst (#1051): een geplakte tekst van megabytes mag de hoofdthread niet vastzetten.
+export const MAX_ZOEKTEKENS = 200;
+export function begrensZoekterm(tekst: string): string {
+  if (tekst.length <= MAX_ZOEKTEKENS) return tekst;
+  const laatste = tekst.charCodeAt(MAX_ZOEKTEKENS - 1);
+  // Splits geen surrogaatpaar: een los hoog surrogaat aan het eind valt weg.
+  return tekst.slice(0, laatste >= 0xd800 && laatste <= 0xdbff ? MAX_ZOEKTEKENS - 1 : MAX_ZOEKTEKENS);
+}
+
 export function zoekItems(items: Item[], query: string): Item[] {
+  query = begrensZoekterm(query);
   // Alleen gekoppelde woorddelen vormen een reeks; andere leestekens scheiden zoekwoorden.
   const termen: string[][] = [];
   // Woordgroepen tussen aanhalingstekens (#634): één term met meerdere delen, dus aaneengesloten in één veld. Een ongesloten teken blijft scheidingsteken.
@@ -132,6 +148,23 @@ export function zoekItems(items: Item[], query: string): Item[] {
   });
 }
 
+// Alleen-kop-kopie per item, zodat de bestaande matching ook op de kop apart werkt (#1010).
+const kopKopie = new WeakMap<Item, Item>();
+const alleenKop = (item: Item): Item => {
+  let k = kopKopie.get(item);
+  if (!k || k.kop !== item.kop) { k = { kop: item.kop } as Item; kopKopie.set(item, k); }
+  return k;
+};
+
+// Koptreffers vóór treffers alleen in de tekst; binnen elke groep blijft de volgorde van de invoer (stabiel).
+export function rangschikKoptreffers(items: Item[], query: string): Item[] {
+  if (!query.trim() || items.length < 2) return items;
+  const kop = new Set(zoekItems(items.map(alleenKop), query));
+  const voor: Item[] = [], rest: Item[] = [];
+  for (const item of items) (kop.has(alleenKop(item)) ? voor : rest).push(item);
+  return voor.length && rest.length ? [...voor, ...rest] : items;
+}
+
 export function resultaatTekst(aantal: number): string {
   return `${aantal} ${aantal === 1 ? "resultaat" : "resultaten"}`;
 }
@@ -146,7 +179,7 @@ export function verborgenTekst(aantal: number): string {
 
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
 export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
-  const woorden = normaliseer(query).split(" ").filter(Boolean);
+  const woorden = normaliseer(begrensZoekterm(query)).split(" ").filter(Boolean);
   const posities: { begin: number; eind: number }[] = [];
   let vlak = "", offset = 0;
   for (const teken of tekst) {
@@ -186,7 +219,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
 }
 
 export function leesZoekterm(zoek: string): string {
-  return new URLSearchParams(zoek).get("q") ?? "";
+  return begrensZoekterm(new URLSearchParams(zoek).get("q") ?? "");
 }
 
 export function schrijfZoekterm(url: string, term: string): string {

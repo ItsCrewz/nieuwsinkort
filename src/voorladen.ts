@@ -2,6 +2,7 @@
 // Pure keuzelogica (plan) + een kleine browser-runner. Alleen na de load-event, in idle-tijd, alles met lage
 // prioriteit en hooguit 3 requests tegelijk. Geen AI, geen /samenvatting, geen /meer.
 import type { Video } from "./types";
+import { LruSet } from "./lruset";
 
 export type Speler = { kind: "youtube" | "hls" | "mp4"; src: string } | null;
 export type Hulp = { playerFor: (v: Video) => Speler; viaProxy: (src: string) => string };
@@ -17,6 +18,7 @@ const THUMBS = 6;
 const KIJK = 3; // zoveel items per tab telt als "eerste"
 const HLS_MAX = 2;
 export const MP4_BYTES = 256 * 1024;
+export const PLAYLIST_BYTES = 256 * 1024; // per master- of mediaplaylist
 export const HLS_BYTES = 256 * 1024; // totaal over de voorgeladen segmenten van één stream
 export const GELIJK = 3;
 export const NETWERK_TIMEOUT = 10000;
@@ -63,7 +65,16 @@ export function laagsteVariant(txt: string, base: string): string {
     const attrs = l.slice("#EXT-X-STREAM-INF:".length).matchAll(/(?:^|,)([A-Z0-9-]+)=("[^"]*"|[^,]*)/g);
     const waarde = Array.from(attrs).find((m) => m[1] === "BANDWIDTH")?.[2] ?? "";
     const getal = /^\d+$/.test(waarde) ? Number(waarde) : 0;
-    const u = lines[i + 1];
+    // Lege regels en gewone commentaarregels tussen tag en URI overslaan; een volgende #EXT-X-STREAM-INF (of einde) = geen URI
+    let u = "";
+    for (let j = i + 1; j < lines.length; j++) {
+      const r = lines[j];
+      if (!r) continue;
+      if (r.startsWith("#EXT-X-STREAM-INF:")) break;
+      if (r.startsWith("#")) continue;
+      u = r;
+      break;
+    }
     if (Number.isSafeInteger(getal) && getal > 0 && u && !u.startsWith("#") && getal < bw) {
       bw = getal;
       best = u;
@@ -116,7 +127,8 @@ export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
 export const segmenten = (txt: string, base: string, max = 2): string[] => segmentenBereik(txt, base, max).map((s) => s.url);
 
 // ------------------------------------------------------------- browser-runner
-const gedaan = new Set<string>(); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
+export const MAX_GEDAAN = 300; // begrensd (#1091): de langst ongebruikte sleutel valt weg en kan later opnieuw voorladen
+const gedaan = new LruSet<string>(MAX_GEDAAN); // met succes opgewarmd in deze sessie (ook over data-verversingen heen)
 const bezig = new Set<string>(); // lopend of in de wachtrij: gelijktijdige verzoeken voor dezelfde URL delen die ene taak
 export const POSTER_MAX_MS = 8000; // langste wachttijd per poster-taak
 const vast = new Set<HTMLImageElement>(); // alleen lopende afbeeldingen vasthouden
@@ -153,9 +165,50 @@ const taak = (k: string, f: () => Promise<unknown>) => {
   };
 };
 
+async function leesPlaylist(r: Response, signal: AbortSignal): Promise<string> {
+  if (!r.ok) {
+    r.body?.cancel().catch(() => {});
+    throw new Error("hls");
+  }
+  const lengte = r.headers.get("Content-Length");
+  if (lengte && /^\d+$/.test(lengte) && Number(lengte) > PLAYLIST_BYTES) {
+    r.body?.cancel().catch(() => {});
+    throw new Error("playlist te groot");
+  }
+  const rd = r.body?.getReader();
+  if (!rd) throw new Error("lege playlist");
+  const stop = () => { rd.cancel().catch(() => {}); };
+  signal.addEventListener("abort", stop, { once: true });
+  const decoder = new TextDecoder();
+  let tekst = "";
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await rd.read();
+      signal.throwIfAborted();
+      if (done) return tekst + decoder.decode();
+      bytes += value.byteLength;
+      if (bytes > PLAYLIST_BYTES) throw new Error("playlist te groot");
+      tekst += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    stop();
+    signal.removeEventListener("abort", stop);
+  }
+}
+
+async function videoFetch(url: string, signal: AbortSignal, headers?: HeadersInit): Promise<Response> {
+  const r = await fetch(url, { ...LOW, signal, ...(headers ? { headers } : {}) });
+  if (signal.aborted) {
+    r.body?.cancel().catch(() => {});
+    signal.throwIfAborted();
+  }
+  return r;
+}
+
 async function warmHls(master: string, signal: AbortSignal) {
   // Basis voor relatieve verwijzingen is de uiteindelijke respons-URL: fetch volgt redirects naar andere mappen.
-  const get = (u: string) => fetch(u, { ...LOW, signal }).then(async (r) => (r.ok ? { txt: await r.text(), base: r.url || u } : Promise.reject(new Error("hls"))));
+  const get = (u: string) => videoFetch(u, signal).then(async (r) => ({ txt: await leesPlaylist(r, signal), base: r.url || u }));
   let { txt, base: b } = await get(master);
   if (!b.includes("://")) b = new URL(b, location.href).href;
   signal.throwIfAborted();
@@ -175,7 +228,7 @@ async function warmHls(master: string, signal: AbortSignal) {
 
 // Bytebereik-segment: alleen dat bereik. Antwoordt de server met 200 (Range genegeerd = heel bestand), dan stoppen we meteen.
 async function warmBereik(url: string, van: number, tot: number, signal: AbortSignal, strikt: boolean): Promise<number> {
-  const r = await fetch(url, { ...LOW, signal, headers: { Range: `bytes=${van}-${tot}` } });
+  const r = await videoFetch(url, signal, { Range: `bytes=${van}-${tot}` });
   signal.throwIfAborted();
   if (r.status >= 400 || r.ok === false) {
     r.body?.cancel?.().catch(() => {});
@@ -208,7 +261,7 @@ async function warmBereik(url: string, van: number, tot: number, signal: AbortSi
 
 async function warmMp4(src: string, signal: AbortSignal) {
   // Alleen het begin: een Range-aanvraag (Instagram-CDN: CORS *, Range ok). Geeft de server toch 200, dan stoppen we zelf.
-  const r = await fetch(src, { ...LOW, signal, headers: { Range: `bytes=0-${MP4_BYTES - 1}` } });
+  const r = await videoFetch(src, signal, { Range: `bytes=0-${MP4_BYTES - 1}` });
   signal.throwIfAborted();
   if (!r.ok) throw new Error("mp4");
   const rd = r.body?.getReader();
@@ -242,15 +295,30 @@ async function netwerktaak(taak: (signal: AbortSignal) => Promise<void>) {
   }
 }
 
+// Preconnect-links begrensd (#1073): oudste eerst; een hint weghalen breekt geen lopende fetch af.
+export const MAX_PRECONNECT = 8;
+const verbonden = new Map<string, HTMLLinkElement>();
+export const aantalPreconnects = () => verbonden.size;
+
 export function voerUit(p: Plan) {
   for (const o of p.preconnect) {
-    if (gedaan.has(`pc:${o}`)) continue;
-    gedaan.add(`pc:${o}`);
+    const bestaand = verbonden.get(o);
+    if (bestaand) { // al aanwezig: alleen als recent markeren, geen duplicaat
+      verbonden.delete(o);
+      verbonden.set(o, bestaand);
+      continue;
+    }
     const l = document.createElement("link");
     l.rel = "preconnect";
     l.href = o;
     l.crossOrigin = "";
     document.head.appendChild(l);
+    verbonden.set(o, l);
+    while (verbonden.size > MAX_PRECONNECT) {
+      const [oud, el] = verbonden.entries().next().value!;
+      verbonden.delete(oud);
+      el.remove?.();
+    }
   }
   const taken: (() => Promise<unknown>)[] = [];
   for (const t of p.thumbs) {
@@ -284,7 +352,7 @@ export function voerUit(p: Plan) {
     );
   }
   // zelfde specifier als feed.tsx: Vite deelt de chunk, de eerste speler vindt hem dus al in de cache
-  if (p.hlsChunk && mag("hls.js")) taken.push(taak("hls.js", () => import("hls.js")));
+  if (p.hlsChunk && mag("hls.js")) taken.push(taak("hls.js", () => netwerktaak(() => import("hls.js").then(() => {}))));
   for (const m of p.hls) if (mag(`hls:${m}`)) taken.push(taak(`hls:${m}`, () => netwerktaak((signal) => warmHls(m, signal))));
   if (p.mp4 && mag(`mp4:${p.mp4}`)) taken.push(taak(`mp4:${p.mp4}`, () => netwerktaak((signal) => warmMp4(p.mp4!, signal))));
   // Eén pool voor alle aanroepen, in volgorde van binnenkomst.

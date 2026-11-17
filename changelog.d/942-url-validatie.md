@@ -1,0 +1,1 @@
+- Valideer externe links als volledige URL (#942): `veiligeUrl` accepteert alleen parseerbare absolute http(s)-URL's met host en geeft de opgeschoonde URL terug.

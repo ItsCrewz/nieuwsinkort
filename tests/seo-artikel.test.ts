@@ -19,7 +19,8 @@ assert.ok(!berichtHtml(sjabloon, { kop: "Ruw", ruw: true, bronnen: [] }, dag).in
 const html = berichtHtml(sjabloon, item, dag, [ander]);
 const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)![1]);
 assert.equal(ld.image[0], "https://nieuwsinkort.nl/media/beeld/images.nu.nl/a/b_wd1280.jpg");
-assert.ok(ld.publisher.logo.url && ld.author.name && ld.datePublished && ld.dateModified && ld.headline);
+assert.ok(ld.publisher.logo.url && ld.author.name && ld.datePublished && ld.headline);
+assert.ok(!("dateModified" in ld));
 assert.ok(html.includes('<meta property="og:image" content="https://nieuwsinkort.nl/media/beeld/images.nu.nl/a/b_wd1280.jpg"'));
 assert.ok(!html.includes("og:image:width"), "geen 1200×630 bij artikelfoto");
 assert.ok(html.includes(`href="${artikelPad(ander, dag)}"`) && html.includes('href="/vandaag"'), "interne links");

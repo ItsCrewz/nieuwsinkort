@@ -42,7 +42,8 @@ class TestElement { parentElement = null; matches() { return false; } scrollWidt
 g.Element = TestElement;
 const doel = new TestElement();
 const maak = async (terug: () => void) => {
-  const art = { style: { transform: "", transition: "" }, classList: { add() {}, remove() {} }, parentElement: null, contains: (el: unknown) => el === doel };
+  const klassen = new Set<string>();
+  const art = { style: { transform: "", transition: "" }, classList: { add: (naam: string) => klassen.add(naam), remove: (naam: string) => klassen.delete(naam), contains: (naam: string) => klassen.has(naam) }, parentElement: null, contains: (el: unknown) => el === doel };
   const ref = { current: art as unknown as HTMLElement };
   function C() { useTerugvegen(ref, terug); return null; }
   const root = createRoot(container());
@@ -65,12 +66,14 @@ await t("terugvegen-hook: tweede vinger midden in een veeg herstelt stijl en bod
   veeg(80);
   assert.equal(body.style.overflowX, "hidden");
   assert.equal(h.art.style.transform, "translateX(80px)");
+  assert.equal(h.art.classList.contains("veegt"), true);
   touch("touchstart", [[100, 100], [200, 100]]);
-  loop();
+  touch("touchend", [[100, 100]], 40);
+  touch("touchend", [], 50);
   assert.equal(h.art.style.transform, "");
   assert.equal(h.art.style.transition, "");
+  assert.equal(h.art.classList.contains("veegt"), false);
   assert.equal(body.style.overflowX, "scroll");
-  touch("touchend", [], 50);
   loop();
   assert.equal(n, 0);
   await h.unmount();
@@ -79,8 +82,10 @@ await t("terugvegen-hook: tweede vinger via touchmove herstelt ook", async () =>
   const h = await maak(() => {});
   veeg(80);
   touch("touchmove", [[180, 100], [250, 100]], 20);
-  loop();
+  touch("touchend", [], 30);
   assert.equal(h.art.style.transform, "");
+  assert.equal(h.art.style.transition, "");
+  assert.equal(h.art.classList.contains("veegt"), false);
   assert.equal(body.style.overflowX, "scroll");
   await h.unmount();
 });
@@ -89,8 +94,10 @@ await t("terugvegen-hook: selectie midden in een veeg herstelt", async () => {
   veeg(80);
   selectieAan = true;
   touch("touchmove", [[190, 100]], 20);
-  loop();
+  touch("touchend", [], 30);
   assert.equal(h.art.style.transform, "");
+  assert.equal(h.art.style.transition, "");
+  assert.equal(h.art.classList.contains("veegt"), false);
   assert.equal(body.style.overflowX, "scroll");
   await h.unmount();
 });

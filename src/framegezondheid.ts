@@ -121,7 +121,13 @@ export function frameTeller(s: { gepresenteerd: number; gedecodeerd: number; rvf
 
 /** Beste beschikbare beeldteller zonder rVFC: getVideoPlaybackQuality, anders webkitDecodedFrameCount. */
 export function decodeTeller(video: { getVideoPlaybackQuality?: () => { totalVideoFrames: number }; webkitDecodedFrameCount?: number }): number | null {
-  const q = video.getVideoPlaybackQuality?.();
-  if (q && typeof q.totalVideoFrames === "number") return q.totalVideoFrames;
-  return typeof video.webkitDecodedFrameCount === "number" ? video.webkitDecodedFrameCount : null;
+  const geldig = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
+  try {
+    const n = video.getVideoPlaybackQuality?.()?.totalVideoFrames;
+    if (geldig(n)) return n;
+  } catch {
+    // Sommige browsers bieden de API aan maar kunnen de kwaliteit niet uitlezen.
+  }
+  const n = video.webkitDecodedFrameCount;
+  return geldig(n) ? n : null;
 }

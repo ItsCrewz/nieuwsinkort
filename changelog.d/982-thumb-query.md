@@ -1,0 +1,1 @@
+- Onderscheid miniaturen op hetzelfde pad met een andere identificerende query; alleen trackingparameters tellen niet mee (#982).

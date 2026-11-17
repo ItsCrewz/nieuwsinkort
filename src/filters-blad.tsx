@@ -6,11 +6,16 @@ import { Icon } from "./icons";
 import { rustig } from "./beweging";
 import { CAT_OPT, REGIO_LABEL, STANDAARD, TIJD_LABEL, heeftVideo, regioVan, samengevoegd, type Filters, type Uitkomst } from "./filters";
 
-function Chip({ on, onClick, children, n }: { on: boolean; onClick: () => void; children: React.ReactNode; n?: number }) {
+export function Chip({ on, onClick, children, n }: { on: boolean; onClick: () => void; children: React.ReactNode; n?: number }) {
   return (
     <button type="button" className={`fchip ${on ? "on" : ""}`} aria-pressed={on} onClick={onClick}>
       <span>{children}</span>
-      {n != null ? <span className="tnum fchip-n">{n}</span> : null}
+      {n != null ? (
+        <>
+          <span className="tnum fchip-n" aria-hidden="true">{n}</span>
+          <span className="sr-only">{`, ${n} ${n === 1 ? "bericht" : "berichten"}`}</span>
+        </>
+      ) : null}
     </button>
   );
 }

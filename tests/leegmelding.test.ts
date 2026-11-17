@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
 import { LeegMelding } from "../src/leegmelding";
 
-const meld = (aantal: number) => renderToStaticMarkup(createElement(LeegMelding, { aantal, onAanpassen: () => {}, onReset: () => {} }));
+const meld = (aantal: number) => renderToStaticMarkup(createElement(LeegMelding, { aantal, ruwAantal: aantal, onAanpassen: () => {}, onReset: () => {}, onBronnen: () => {}, onBronnenReset: () => {} }));
 const leeg = meld(0);
 assert.match(leeg, /Nog geen berichten in deze rubriek/);
 assert.doesNotMatch(leeg, /<button|Geen berichten met deze filters/);

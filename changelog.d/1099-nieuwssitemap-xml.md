@@ -1,0 +1,1 @@
+- Controleer met een XML-parser dat ongeldige tekens in nieuwskoppen de nieuwssitemap niet onleesbaar maken (#1099).

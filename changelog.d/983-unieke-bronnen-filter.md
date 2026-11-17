@@ -1,0 +1,1 @@
+- Het filter voor nieuws uit meerdere bronnen telt alleen verschillende, niet-lege bronnamen (#983).

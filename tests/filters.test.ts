@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import "./tabs.test";
-import { aantalExtra, filterNieuws, filterVideos, tijdstip, STANDAARD, type Filters } from "../src/filters";
+import { aantalExtra, filterNieuws, filterVideos, samengevoegd, sites, tijdstip, STANDAARD, type Filters } from "../src/filters";
 import { midnight } from "../src/tijd";
 import type { Item } from "../src/types";
 
@@ -42,9 +42,73 @@ const bericht = (kop: string, tijd: string): Item => ({
   kop, tijd, cat: "nl", ai: "", samenvatting: "", punten: [], bronnen: [],
 });
 
+t("meerdere bronnen telt unieke niet-lege uitgevers en behoudt de sortering", () => {
+  const met = (kop: string, tijd: string, namen: string[]): Item => ({ ...bericht(kop, tijd), bronnen: namen.map((site) => ({ site, href: "https://example.nl/" })) });
+  const dubbel = met("dubbel", "11:00", ["NOS", "NOS"]);
+  const leeg = met("leeg", "10:00", ["NOS", "", "   "]);
+  const twee = met("twee", "09:00", ["NOS", "RTL"]);
+  const ontbreekt = { ...bericht("ontbreekt", "08:00"), bronnen: undefined } as unknown as Item;
+  const items = [dubbel, leeg, twee, ontbreekt];
+  assert.deepEqual(items.map(sites), [1, 1, 2, 0]);
+  assert.deepEqual(items.map(samengevoegd), [false, false, true, false]);
+  const filter = (extra: Partial<Filters>) => filterNieuws(items, { ...STANDAARD, tijd: "alles", ...extra }, 0, "2026-10-30T12:00:00+01:00", true);
+  assert.deepEqual(filter({ samen: true }).items, [twee]);
+  assert.equal(filter({ samen: true }).per.alles, 1);
+  assert.deepEqual(filter({}).items, items);
+  assert.deepEqual(filter({ sort: "bronnen" }).items, [twee, dubbel, leeg, ontbreekt]);
+  assert.equal(dubbel.bronnen.length, 2);
+});
+
 t("middernacht gebruikt de offset van middernacht op beide wisseldagen", () => {
   assert.equal(midnight(Date.parse("2026-10-25T10:00:00+01:00")), Date.parse("2026-10-24T22:00:00Z"));
   assert.equal(midnight(Date.parse("2026-03-29T10:00:00+02:00")), Date.parse("2026-03-28T23:00:00Z"));
+});
+
+t("lokale berichttijden volgen beide klokwisselingen en de vorige kalenderdag", () => {
+  const gevallen = [
+    ["2026-03-29T01:50:00+01:00", "01:30", "2026-03-29T01:30:00+01:00"],
+    ["2026-03-29T04:00:00+02:00", "01:30", "2026-03-29T01:30:00+01:00"],
+    ["2026-03-29T04:00:00+02:00", "03:30", "2026-03-29T03:30:00+02:00"],
+    ["2026-03-30T00:10:00+02:00", "23:30", "2026-03-29T23:30:00+02:00"],
+    ["2026-10-25T01:50:00+02:00", "01:30", "2026-10-25T01:30:00+02:00"],
+    ["2026-10-25T04:00:00+01:00", "01:30", "2026-10-25T01:30:00+02:00"],
+    ["2026-10-25T04:00:00+01:00", "03:30", "2026-10-25T03:30:00+01:00"],
+    ["2026-10-26T00:10:00+01:00", "23:30", "2026-10-25T23:30:00+01:00"],
+    ["2026-10-30T00:10:00+01:00", "23:30", "2026-10-29T23:30:00+01:00"],
+    ["2026-10-30T10:00:00+01:00", "10:20", "2026-10-30T10:20:00+01:00"],
+    ["2026-10-30T10:00:00+01:00", "10:21", "2026-10-29T10:21:00+01:00"],
+    ["2026-10-25T04:00:00+01:00", "02:30", "2026-10-25T02:30:00+01:00"],
+    ["2026-10-25T02:45:00+02:00", "02:40", "2026-10-25T02:40:00+02:00"],
+    ["2026-10-25T02:45:00+01:00", "02:40", "2026-10-25T02:40:00+01:00"],
+    ["2026-10-25T02:10:00+02:00", "02:30", "2026-10-25T02:30:00+02:00"],
+    ["2026-10-25T02:10:00+01:00", "02:50", "2026-10-25T02:50:00+02:00"],
+  ];
+  for (const [gen, klok, verwacht] of gevallen) assert.equal(tijdstip(klok, Date.parse(gen)), Date.parse(verwacht), `${gen} ${klok}`);
+  assert.equal(tijdstip("02:30", Date.parse("2026-03-29T04:00:00+02:00")), null);
+});
+
+t("tweede winteruur blijft binnen het laatste uur", () => {
+  metNu("2026-10-25T02:10:00+01:00", () => {
+    const items = [bericht("ouder", "01:50"), bericht("vers", "02:50")];
+    assert.deepEqual(filterNieuws(items, { ...STANDAARD, tijd: "1u" }, 0, new Date(Date.now()).toISOString(), true).items.map((it) => it.kop), ["vers"]);
+  });
+  metNu("2026-10-25T02:45:00+01:00", () => {
+    const items = [bericht("vers", "02:40")];
+    assert.deepEqual(filterNieuws(items, { ...STANDAARD, tijd: "1u" }, 0, new Date(Date.now()).toISOString(), true).items.map((it) => it.kop), ["vers"]);
+  });
+});
+
+t("nieuwsfilters en sortering gebruiken de offset van het bericht", () => {
+  for (const [nu, oud, nieuw] of [
+    ["2026-03-29T04:00:00+02:00", "01:50", "03:10"],
+    ["2026-10-25T04:00:00+01:00", "02:50", "03:10"],
+  ]) {
+    metNu(nu, () => {
+      const items = [bericht("oud", oud), bericht("nieuw", nieuw)];
+      assert.deepEqual(filterNieuws(items, { ...STANDAARD, tijd: "alles" }, 0, nu, true).items.map((it) => it.kop), ["nieuw", "oud"]);
+      assert.deepEqual(filterNieuws(items, { ...STANDAARD, tijd: "1u" }, 0, nu, true).items.map((it) => it.kop), ["nieuw"]);
+    });
+  }
 });
 
 t("vijf minuten vooruit blijft nieuwste en valt binnen Laatste uur en Vandaag", () => {

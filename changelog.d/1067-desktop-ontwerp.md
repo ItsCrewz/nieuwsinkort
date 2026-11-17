@@ -1,0 +1,1 @@
+- Ontwerpvoorstel en statische mockup voor een klassiek desktopnieuwsoverzicht (vanaf 1024px), met toetsenbord- en CLS-afspraken getest (#1067, fase 1; nog niet gebouwd).

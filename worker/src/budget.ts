@@ -10,7 +10,7 @@ interface BudgetEnv { NIEUWS: KVNamespace }
 export class Budget extends DurableObject<BudgetEnv> {
   private l = new BudgetLogica({
     get: (k: string) => this.ctx.storage.get(k), put: (k: string, v: unknown) => this.ctx.storage.put(k, v), delete: (k: string | string[]) => this.ctx.storage.delete(k as any),
-    list: (o: { prefix: string }) => this.ctx.storage.list(o), putMany: (o: Record<string, unknown>) => this.ctx.storage.put(o), // putMany: één atomaire write
+    list: (o: { prefix: string; limit?: number }) => this.ctx.storage.list(o), putMany: (o: Record<string, unknown>) => this.ctx.storage.put(o), // putMany: één atomaire write
   } as any, {
     spiegel: async (datum, n) => {
       try { await this.env.NIEUWS.put(`vid-neurons:${datum}`, String(n), { expirationTtl: 3 * 86400 }); return true; }
@@ -18,7 +18,7 @@ export class Budget extends DurableObject<BudgetEnv> {
     },
     zaad: async (datum) => { try { return +((await this.env.NIEUWS.get(`vid-neurons:${datum}`)) || 0) || 0; } catch { console.error("budget: KV-spiegel lezen mislukt"); return null; } },
   }, Date.now, {
-    zaad: async (datum) => { try { return JSON.parse((await this.env.NIEUWS.get(`groq-chat:${datum}`)) || "{}"); } catch { console.error("budget: Groq KV-spiegel lezen mislukt"); return {}; } },
+    zaad: async (datum) => { try { return JSON.parse((await this.env.NIEUWS.get(`groq-chat:${datum}`)) || "{}"); } catch { console.error("budget: Groq KV-spiegel lezen mislukt"); return null; } },
     spiegel: async (datum, stand) => {
       try { await this.env.NIEUWS.put(`groq-chat:${datum}`, JSON.stringify(stand), { expirationTtl: 3 * 86400 }); return true; }
       catch { console.error("budget: Groq KV-spiegel schrijven mislukt"); return false; }

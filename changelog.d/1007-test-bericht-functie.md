@@ -1,0 +1,1 @@
+- Tests: functions/bericht/[[pad]].ts heeft nu een eigen test (#1007).

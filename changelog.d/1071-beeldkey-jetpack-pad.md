@@ -1,0 +1,1 @@
+- Beelden: een Jetpack-adres (`i0.wp.com`) zonder geldig ingepakt hostpad behoudt zijn oorspronkelijke URL als identiteit, zodat het niet meer met andere foto's botst (#1071).

@@ -26,7 +26,7 @@ import { maxBufferSeconden, niveauVan, planVoor } from "./buffer";
 import { debug as DEBUG, debugEvent, videoEvents } from "./debug";
 import { balkTijden, DebugOverlay, frameTijden } from "./debug-overlay";
 
-import { soundOn, saveSound, geluidTik, onthoudGeluidTik } from "./geluid";
+import { soundOn, saveSound, geluidTik, onthoudGeluidTik, volgGeluid } from "./geluid";
 import { posterVerborgen } from "./poster";
 import { svCache } from "./samenvattingcache";
 import { useSamenvatting } from "./usesamenvatting";
@@ -374,15 +374,17 @@ function NativePlayer({ v, kind, src, pool, slot, active, preload, paused, muted
       const stand = barStand.current;
       const balkTijd = stand.tijd + (stand.loopt ? (now - stand.sinds) / 1000 : 0);
       let bufferVooruit = 0;
+      let bufferEinde: number | undefined;
       for (let i = 0; i < video.buffered.length; i++) {
         if (video.buffered.start(i) <= video.currentTime && video.buffered.end(i) > video.currentTime) {
-          bufferVooruit = video.buffered.end(i) - video.currentTime;
+          bufferEinde = video.buffered.end(i);
+          bufferVooruit = bufferEinde - video.currentTime;
           break;
         }
       }
       const besluit = stall.tik({ now, currentTime: video.currentTime, paused: video.paused,
         hidden: document.hidden, ended: video.ended, seeking: video.seeking, herstelSeek, balkTijd,
-        bufferVooruit, readyState: video.readyState, networkState: video.networkState });
+        bufferVooruit, bufferEinde, readyState: video.readyState, networkState: video.networkState });
       if (besluit === "balk-stop") zetBar(video.currentTime, video.duration, false);
       if (besluit === "balk-sync") zetBar(video.currentTime, video.duration, true);
       if (besluit === "balk-stop" || besluit === "balk-sync" || besluit === "nudge" || besluit === "herlaad") debugEvent(besluit);
@@ -767,7 +769,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
           echteFout.current = true; foutCode.current = d.info; setVangnet(false);
           if (ytEchteFout(d.info)) setShown(true);
           onYtFout(d.info);
-        } else if (!echteFout.current && state.current.active && autoplayGeblokkeerd(d.event, d.info)) {
+        } else if (!echteFout.current && state.current.active && !state.current.paused && autoplayGeblokkeerd(d.event, d.info)) {
           blokkade.current = d.event; diagnose();
           if (!state.current.muted) { onAutoplayBlocked(); post("mute"); post("playVideo"); }
         }
@@ -876,7 +878,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         listening();
       }}
     />
-    {active && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
+    {active && !paused && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
     </>
   );
 }
@@ -1235,9 +1237,13 @@ export function Feed({
     [gs, gi, onGroup]
   );
   const [paused, setPaused] = useState(false);
+  const [verborgen, setVerborgen] = useState(() => document.hidden);
+  const verborgenRef = useRef(document.hidden);
+  const zichtGeneratie = useRef(0);
   // want = jouw keuze (onthouden); nativeBlocked = de browser weigerde geluid op een poolvideo (Dumpert, Instagram);
   // ytBlok = YouTube-slides die geluid weigerden (per slide, dempt nooit een native slide).
   const [want, setWant] = useState(soundOn);
+  useEffect(() => volgGeluid(setWant), []);
   const [nativeBlocked, setBlocked] = useState(false);
   const [getikt, setGetikt] = useState(geluidTik);
   const [ytBlok, setYtBlok] = useState<ReadonlySet<number>>(() => new Set());
@@ -1247,6 +1253,8 @@ export function Feed({
   const muted = !geluidVoorSlide(activeKind, want, getikt, nativeBlocked, ytBlok.has(active));
   const unmutedAt = useRef(0);
   const [closing, setClosing] = useState(false);
+  const closingRef = useRef(closing);
+  closingRef.current = closing;
   const scroller = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
@@ -1262,6 +1270,32 @@ export function Feed({
     for (let i = active; i <= active + 1; i++) if (i >= 0 && i < items.length && playerFor(items[i])?.kind === "youtube") next.add(i);
     return next;
   }, [active, items]);
+  useEffect(() => {
+    const verberg = () => {
+      verborgenRef.current = true;
+      zichtGeneratie.current++;
+      swipeStart.current = null;
+      pool.els.forEach((el) => el.pause());
+      root.current?.querySelectorAll<HTMLIFrameElement>("iframe.f-yt").forEach((frame) =>
+        frame.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), YT_ORIGIN)
+      );
+      flushSync(() => setVerborgen(true));
+    };
+    const toon = () => {
+      if (document.hidden) return;
+      verborgenRef.current = false;
+      setVerborgen(false);
+    };
+    const zicht = () => document.hidden ? verberg() : toon();
+    document.addEventListener("visibilitychange", zicht);
+    window.addEventListener("pagehide", verberg);
+    window.addEventListener("pageshow", toon);
+    return () => {
+      document.removeEventListener("visibilitychange", zicht);
+      window.removeEventListener("pagehide", verberg);
+      window.removeEventListener("pageshow", toon);
+    };
+  }, [pool]);
   // Geparkeerde pool-elementen blijven in het document (overlay, iOS-gebruiksstatus); weg als de feed sluit.
   useLayoutEffect(() => {
     const r = root.current;
@@ -1287,7 +1321,7 @@ export function Feed({
     const poging = swipeStart.current;
     if (!poging) return;
     swipeStart.current = null;
-    if (!herstelSwipe(poging.van, poging.naar, activeRef.current)) return;
+    if (verborgenRef.current || closingRef.current || !herstelSwipe(poging.van, poging.naar, activeRef.current)) return;
     const volgend = pool.els[slotVan(poging.naar)];
     if (Number(volgend.closest<HTMLElement>(".fslide")?.dataset.i) === poging.naar) {
       volgend.pause();
@@ -1297,6 +1331,8 @@ export function Feed({
     if (poging.speelde && !pausedRef.current && Number(huidig.closest<HTMLElement>(".fslide")?.dataset.i) === poging.van) huidig.play().catch(() => {});
   }, [pool]);
   const startDirect = useCallback((i: number) => {
+    if (verborgenRef.current || closingRef.current) return;
+    const generatie = zichtGeneratie.current;
     const video = pool.els[slotVan(i)];
     const slide = video.closest<HTMLElement>(".fslide");
     if (!slide || Number(slide.dataset.i) !== i || !video.getAttribute("src")) return;
@@ -1313,11 +1349,11 @@ export function Feed({
     video.play().catch((err: DOMException) => {
       if (err?.name === "NotAllowedError") {
         video.dataset.autoplayBlokkade = "NotAllowedError";
-        if (!video.muted) { setBlocked(true); video.muted = true; video.play().catch(() => {}); }
+        if (!video.muted && !verborgenRef.current && !closingRef.current && generatie === zichtGeneratie.current) { setBlocked(true); video.muted = true; video.play().catch(() => {}); }
       }
     });
     if (i !== vorige && swipeStart.current?.naar !== i) window.setTimeout(() => {
-      if (i === activeRef.current) return;
+      if (verborgenRef.current || closingRef.current || generatie !== zichtGeneratie.current || i === activeRef.current) return;
       if (video.closest<HTMLElement>(".fslide") === slide) video.pause();
       // Swipe ging niet door: de vorige speelt verder.
       if (uitIframe && activeRef.current === vorige && !pausedRef.current) uitIframe.contentWindow?.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), YT_ORIGIN);
@@ -1432,7 +1468,7 @@ export function Feed({
   const vrijgegeven = useRef(new WeakSet<HTMLVideoElement>());
   const unmuteNow = useCallback(() => {
     const r = root.current;
-    if (!r) return;
+    if (!r || verborgenRef.current) return;
     const cur = r.querySelector<HTMLElement>(`.fslide[data-i="${activeRef.current}"]`);
     let huidig: HTMLVideoElement | null = null;
     pool.els.forEach((el) => {
@@ -1603,7 +1639,7 @@ export function Feed({
               active={i === active}
               mount={mounted.has(i)}
               preload={i === active + 1 ? 1 : 0}
-              paused={i === active && paused}
+              paused={verborgen || (i === active && paused)}
               want={want}
               getikt={getikt}
               nativeBlocked={nativeBlocked}

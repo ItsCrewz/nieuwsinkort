@@ -19,10 +19,16 @@ try {
   const json = JSON.parse(blokken[0][1]);
   assert.equal(json["@context"], "https://schema.org"); assert.equal(json["@type"], "NewsArticle");
   assert.equal(json.headline, gevaarlijkeKop.slice(0, 110)); assert.ok(json.headline.length <= 110);
-  for (const datum of [json.datePublished, json.dateModified]) {
-    assert.match(datum, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/);
-    assert.ok(Number.isFinite(Date.parse(datum)));
-  }
+  const iso = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/;
+  assert.match(json.datePublished, iso); assert.ok(Number.isFinite(Date.parse(json.datePublished)));
+  assert.ok(!("dateModified" in json)); // zonder bekende wijzigingstijd geen dateModified
+  const ldVan = (i: object) => JSON.parse(berichtHtml(sjabloon, i as typeof item, dag).match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]);
+  const nu = Date.now();
+  assert.equal(ldVan({ ...item, gewijzigd: nu + 60000 }).dateModified, new Date(nu + 60000).toISOString());
+  for (const gewijzigd of [undefined, "", "ongeldig", nu - 3600000, nu + 3600000]) assert.ok(!("dateModified" in ldVan({ ...item, gewijzigd })), String(gewijzigd));
+  const nieuw = { ...item, samenvatting: "Aangepaste samenvatting" }, a = berichtHtml(sjabloon, item, dag), b = berichtHtml(sjabloon, nieuw, dag);
+  assert.ok(b.includes("Aangepaste samenvatting") && !ldVan(nieuw).dateModified);
+  for (const re of [/<link rel="canonical"[^>]*>/, /<meta name="robots"[^>]*>/]) assert.equal(a.match(re)![0], b.match(re)![0]);
   assert.equal(json.mainEntityOfPage, `https://nieuwsinkort.nl${artikelPad({ ...item, kop: gevaarlijkeKop }, dag)}`);
   assert.equal(json.inLanguage, "nl-NL"); assert.equal(new URL(json.image).protocol, "https:");
   const indexJson = JSON.parse(sjabloon.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]);

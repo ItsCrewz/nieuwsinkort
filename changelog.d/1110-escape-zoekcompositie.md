@@ -1,0 +1,1 @@
+- Escape tijdens tekstcompositie sluit het zoekveld niet meer en laat de zoekopdracht staan (#1110).

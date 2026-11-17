@@ -4,14 +4,19 @@ import type { View } from "./types";
 export type Route = { view: View; selected: string | null; video: string | null };
 
 export function parseHash(hash: string): Route {
-  let h: string;
-  try { h = decodeURIComponent(hash.replace(/^#\/?/, "")); }
-  catch { return { view: "alles", selected: null, video: null }; }
-  if (h.startsWith("bericht/")) return { view: "alles", selected: h.slice(8), video: null };
-  const c = CATS.find((c) => c.slug === h);
+  const delen = hash.replace(/^#\/?/, "").split(/\/(.*)/s);
+  let pad: string;
+  let parameter: string | undefined;
+  try {
+    pad = decodeURIComponent(delen[0]);
+    parameter = delen[1] === undefined ? undefined : decodeURIComponent(delen[1]);
+  } catch { return { view: "alles", selected: null, video: null }; }
+  if (pad === "bericht" && parameter !== undefined) return { view: "alles", selected: parameter, video: null };
+  const c = parameter === undefined && CATS.find((c) => c.slug === pad);
   if (c) return { view: c.id, selected: null, video: null };
-  const m = /^(filmpjes|dumpert)(?:\/(.+))?$/.exec(h);
-  if (m) return { view: m[1] as View, selected: null, video: m[2] || null };
+  if ((pad === "filmpjes" || pad === "dumpert") && parameter !== "") {
+    return { view: pad, selected: null, video: parameter ?? null };
+  }
   return { view: "alles", selected: null, video: null };
 }
 

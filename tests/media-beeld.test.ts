@@ -253,7 +253,7 @@ await t("cachesleutel verschilt per emmer en bevat host, pad en query", () => {
   const u = new URL("https://images.nu.nl/m/a%20b.jpg?w=1");
   const k = (["avif", "webp", "basis"] as const).map((e) => cacheSleutel(e, u));
   assert.equal(new Set(k).size, 3);
-  assert.equal(k[0], "https://nieuwsinkort.nl/__beeldcache/avif/images.nu.nl/m/a%20b.jpg?w=1");
+  assert.equal(k[0], "https://nieuwsinkort.nl/__beeldcache/v2/avif/images.nu.nl/m/a%20b.jpg?w=1");
   assert.notEqual(cacheSleutel("avif", u), cacheSleutel("avif", new URL("https://images.nu.nl/m/a%20b.jpg?w=2")));
 });
 
@@ -267,7 +267,7 @@ await t("Cache API: per emmer apart opgeslagen, hit geeft dezelfde headers zonde
     const a = await onRequest(ctx(AVIF));
     assert.equal(await a.text(), "AVIFBYTES");
     await Promise.all(wacht);
-    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/avif/images.nu.nl/a.jpg?w=1"]);
+    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/v2/avif/images.nu.nl/a.jpg?w=1"]);
     // andere emmer: geen hit, eigen upstream-fetch en eigen sleutel
     mock(bron("JPEGBYTES"));
     const b = await onRequest(ctx(BASIS));
@@ -319,7 +319,7 @@ await t("zonder waitUntil wordt inline opgeslagen; zonder Cache API werkt de pro
     mock(jpg());
     const r = await vraag("images.nu.nl/a.jpg", "GET", { Accept: WEBP });
     assert.equal(await r.text(), "jpgbytes");
-    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/webp/images.nu.nl/a.jpg"]);
+    assert.deepEqual([...c.m.keys()], ["https://nieuwsinkort.nl/__beeldcache/v2/webp/images.nu.nl/a.jpg"]);
   } finally { zonderCache(); }
   mock(jpg());
   assert.equal(await (await vraag("images.nu.nl/a.jpg")).text(), "jpgbytes");
