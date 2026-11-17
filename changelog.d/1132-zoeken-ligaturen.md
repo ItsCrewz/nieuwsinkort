@@ -1,0 +1,1 @@
+- Zoeken vindt woorden met typografische ligaturen (ﬁ, ﬂ, ﬃ ...) ook met gewone letters, en andersom (#1132).
