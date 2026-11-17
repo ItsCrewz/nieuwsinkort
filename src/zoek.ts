@@ -7,6 +7,10 @@ export function zelfdeZoekselectie(a: Zoekselectie | null, b: Zoekselectie): boo
   return !!a && a.term === b.term && a.rubriek === b.rubriek && a.filters === b.filters && a.bronnen === b.bronnen;
 }
 
+export function zoekBereik(alles: boolean, alleActieveItems: Item[], gefilterdeItems: Item[]): Item[] {
+  return alles ? alleActieveItems : gefilterdeItems;
+}
+
 // Letters die NFD niet ontleedt: beperkte transliteratie zodat "Soren" ook "Søren" vindt (#735).
 const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "ß": "ss" };
 

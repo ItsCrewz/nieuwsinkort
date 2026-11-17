@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { zoekItems } from "../../src/zoek";
+import { zoekBereik, zoekItems } from "../../src/zoek";
 import { buildSources, filterArtikelBronnen, sourceKey } from "../../src/sources";
 import type { Item } from "../../src/types";
 
@@ -20,3 +20,8 @@ const twee = { ...nu, bronnen: [...nu.bronnen, { site: "NOS", href: "https://nos
 const rest = filterArtikelBronnen(twee, buildSources(null, { items: [twee] } as never).index, new Set([sourceKey(index, "nl", "Redactie", nu.bronnen[0].href)]));
 assert.deepEqual(zoekItems([rest!], "nu.nl"), []);
 assert.equal(zoekItems([rest!], "nos.nl").length, 1);
+// Ook bij verruiming naar alle rubrieken blijft het bronfilter van kracht.
+const verruimd = zoekBereik(true, [rest!], []);
+assert.deepEqual(zoekItems(verruimd, "nu.nl"), []);
+assert.deepEqual(zoekItems(verruimd, "nos.nl"), [rest]);
+assert.deepEqual(zoekItems(zoekBereik(false, [rest!], []), "nos.nl"), []);

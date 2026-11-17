@@ -1,1 +1,2 @@
 - Zoeken: vind berichten ook via de hostnaam van een zichtbare bronlink, zonder pad of query te indexeren (#1167).
+- Ook bij zoeken in alle beschikbare berichten blijven uitgeschakelde bronnen buiten de zoekresultaten (#1167).
