@@ -83,7 +83,8 @@ const datumNL = (t = Date.now()) => new Intl.DateTimeFormat("nl-NL", { timeZone:
 type Job = { url: string; kind: "feed" | "json" | "text" | "dumpert" | "reddit" | "insta" | "og" | "x" | "art" | "artj" | "ytembed" | "ytoembed"; label?: string; sub?: string; max?: number; pad?: string; alleenVideo?: boolean };
 type Res = { code?: Broncode; url: string; ok: boolean; status: number; err?: string; xFout?: { fx: string; syn: string }; ms: number; via?: string; cachedAt?: number; terugvalFout?: string; ytPad?: "primair" | "fallback"; entries?: Entry[]; newest?: number | null; total?: number; videos?: Video[]; json?: any; text?: string };
 
-export async function haalArtikelBatches(env: Env, fase: "og" | "art", batches: Job[][], since: number): Promise<Res[]> {
+export async function haalArtikelBatches(env: Env, fase: "og" | "art", batches: Job[][], since: number): Promise<{ uit: Res[]; mislukt: number[] }> {
+  const mislukt: number[] = [];
   const resultaten = await Promise.all(batches.map(async (jobs, i) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -97,12 +98,13 @@ export async function haalArtikelBatches(env: Env, fase: "og" | "art", batches: 
       return await Promise.race([ophalen(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 180000); })]);
     } catch {
       console.error(`fetcher-batch mislukt: fase=${fase} batch=${i}`);
+      mislukt.push(i);
       return [];
     } finally {
       if (timer !== undefined) clearTimeout(timer);
     }
   }));
-  return resultaten.flat();
+  return { uit: resultaten.flat(), mislukt: mislukt.sort((a, b) => a - b) };
 }
 
 const IG_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
@@ -848,7 +850,7 @@ export class Runner extends DurableObject<Env> {
     for (let i = 0; i < ogOnbekend.length; i += 30) ogB.push(ogOnbekend.slice(i, i + 30).map((url) => ({ url, kind: "og" as const })));
     voegYtToe(ogB);
     try {
-      const rs = await haalArtikelBatches(env, "og", ogB, since);
+      const { uit: rs } = await haalArtikelBatches(env, "og", ogB, since);
       verwerkYt(rs);
       // zelfde regels als voorheen: gelukt, 404 en 403 worden gecachet
       const ogSet = new Set(ogOnbekend);
@@ -911,7 +913,12 @@ export class Runner extends DurableObject<Env> {
     let artOk = 0, artFout = 0, artJina = 0;
     const artErr: Record<string, string> = {};
     try {
-      const rs = await haalArtikelBatches(env, "art", artB, since);
+      const { uit: rs, mislukt } = await haalArtikelBatches(env, "art", artB, since);
+      for (const i of mislukt) {
+        const aantal = artB[i].filter((j) => j.kind === "art").length;
+        artFout += aantal;
+        artErr[`batch${i}`] = `fetcher-batch mislukt (${aantal} artikelen)`;
+      }
       verwerkYt(rs);
       const artRs = rs.filter((r) => !r.url.startsWith("https://www.youtube-nocookie.com/embed/") && !r.url.startsWith("https://www.youtube.com/oembed?"));
       const mis: string[] = [];
@@ -922,7 +929,7 @@ export class Runner extends DurableObject<Env> {
         if (al.join(" ").length >= 300) artOk++;
         else { mis.push(r.url); const h = hp(r.url).split("/")[0].replace(/^www\./, ""); artErr[h] = r.ok ? "geen tekst (betaalmuur?)" : r.err || `HTTP ${r.status}`; }
       }
-      artFout = artRs.length - artOk;
+      artFout += artRs.length - artOk;
     } catch (e: any) { artErr._run = String(e?.message || e).slice(0, 80); }
     // tweede poging via r.jina.ai voor links zonder tekst (geweigerd/betaalmuur), elk maar één keer;
     // max 15 per run (gratis limiet 20/min), nieuwste/meeste bronnen eerst
