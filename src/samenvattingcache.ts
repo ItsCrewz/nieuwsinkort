@@ -1,6 +1,22 @@
 // Cache van video-samenvattingen, los van feed.tsx zodat het hoofdscherm ze kan zaaien zonder de spelerchunk te laden.
 export type Sv = { ok: true; punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number; model?: string; neuronen?: number; cached?: boolean } | { ok: false; code: string; fout: string };
-export const svCache = new Map<string, Sv>();
+/** Maximumomvang van de cache (ingezaaid en opgehaald samen); daarboven verdwijnt het langst ongebruikte resultaat. */
+export const SV_MAX = 200;
+// Map met LRU-beleid: set/get zetten de sleutel achteraan, de voorste (oudste) valt af boven SV_MAX.
+class SvCache extends Map<string, Sv> {
+  override get(k: string) {
+    const v = super.get(k);
+    if (v !== undefined) { super.delete(k); super.set(k, v); }
+    return v;
+  }
+  override set(k: string, v: Sv) {
+    super.delete(k);
+    super.set(k, v);
+    while (this.size > SV_MAX) super.delete(this.keys().next().value as string);
+    return this;
+  }
+}
+export const svCache = new SvCache();
 /** Vooraf gemaakte samenvattingen uit /data.json in de cache zetten (knop toont dan "klaar"). Een nieuwe geldige vervangt een oudere; identieke blijft ongemoeid, een ongeldige wist niets. */
 export function zaaiSamenvattingen(m?: Record<string, { punten: string[]; bron: "ondertiteling" | "spraak"; sec?: number }>) {
   for (const [id, x] of Object.entries(m || {})) {

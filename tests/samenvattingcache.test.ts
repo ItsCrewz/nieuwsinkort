@@ -24,3 +24,28 @@ assert.ok(a2?.ok);
 assert.deepEqual(a2.punten, ["Ander punt"]);
 assert.equal(svCache.get("b"), b);
 console.log("✓ identieke data zonder wijziging, ongeldige of ontbrekende data wist niets");
+
+// Begrensde omvang (#1184): oudste valt af, recent gelezen blijft, verwijderd id wordt opnieuw geladen.
+{
+  const { SV_MAX, haalSamenvatting } = await import("../src/samenvattingcache");
+  svCache.clear();
+  const sv = (n: number) => ({ ok: true as const, punten: ["p" + n], bron: "spraak" as const });
+  for (let i = 0; i < SV_MAX; i++) svCache.set("v" + i, sv(i));
+  svCache.get("v0");
+  for (let i = SV_MAX; i < SV_MAX + 50; i++) svCache.set("v" + i, sv(i));
+  assert.equal(svCache.size, SV_MAX);
+  assert.equal(svCache.has("v0"), true);
+  assert.equal(svCache.has("v1"), false);
+  assert.equal(svCache.has("v" + (SV_MAX + 49)), true);
+  const oud = globalThis.fetch;
+  let n = 0;
+  globalThis.fetch = (async () => { n++; return new Response(JSON.stringify(sv(1))); }) as typeof fetch;
+  try {
+    const r = await haalSamenvatting("v1", new AbortController().signal);
+    assert.equal(r.ok, true);
+    assert.equal(n, 1);
+    assert.equal(svCache.has("v1"), true);
+    assert.equal(svCache.size, SV_MAX);
+  } finally { globalThis.fetch = oud; }
+  svCache.clear();
+}
