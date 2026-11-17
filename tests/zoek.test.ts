@@ -208,3 +208,24 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.deepEqual(zoekItems([item], "café ajax"), [item]);
   assert.deepEqual(zoekItems([item], '"ajax" nos'), [item]);
 }
+
+// Uitsluitterm (#1166)
+{
+  const a = { cat: "nl", kop: "Verkiezing in Nederland" } as Item;
+  const b = { cat: "nl", kop: "Verkiezing in Amerika" } as Item;
+  const c = { cat: "nl", kop: "Verkiezingen in Ámerikaanse staat" } as Item;
+  const d = { cat: "nl", kop: "Zomer in Amerika" } as Item;
+  const e = { cat: "nl", kop: "Verkiezing Noord-Amerika" } as Item;
+  assert.deepEqual(zoekItems([a, b, c, d, e], "verkiezing -amerika"), [a]);
+  assert.deepEqual(zoekItems([a, b, c, d], "VERKIEZING -ÁMERIKA"), [a]);
+  assert.deepEqual(zoekItems([a, b], "verkiezing -merika"), [a, b]);
+  assert.deepEqual(zoekItems([a, b], "verkiezing -"), [a, b]);
+  assert.deepEqual(zoekItems([a, b], "- verkiezing"), [a, b]);
+  assert.deepEqual(zoekItems([a, b, d], "-amerika"), [a]);
+  assert.deepEqual(zoekItems([a, b], "-"), []);
+  assert.deepEqual(zoekItems([a, b], "-!!!"), []);
+  const vs = { cat: "nl", kop: "Reis naar de V-S" } as Item;
+  assert.deepEqual(zoekItems([vs, a], "v-s"), [vs]);
+  assert.deepEqual(zoekItems([{ cat: "nl", kop: "Corona-maatregelen" } as Item], "corona-maatregelen").length, 1);
+  assert.equal(markeerDelen("Verkiezing in Amerika", "verkiezing -amerika").filter((x) => x.markeer).map((x) => x.tekst).join(), "Verkiezing");
+}

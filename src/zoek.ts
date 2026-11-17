@@ -138,10 +138,15 @@ export function begrensZoekterm(tekst: string): string {
   return tekst.slice(0, laatste >= 0xd800 && laatste <= 0xdbff ? MAX_ZOEKTEKENS - 1 : MAX_ZOEKTEKENS);
 }
 
-export function zoekItems(items: Item[], query: string): Item[] {
-  query = begrensZoekterm(query);
-  const kloktijd = query.trim();
-  if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
+// Uitsluitterm (#1166): een minteken aan het begin of na witruimte, direct gevolgd door een letter of cijfer. "v-s" en een los "-" tellen niet.
+const UITSLUIT = /(?<![^\s])-(?=[\p{L}\p{N}])([^\s"“”„]+)/gu;
+function splitsUitsluiting(query: string): { plus: string; min: string[][] } {
+  const min: string[][] = [];
+  const plus = query.replace(UITSLUIT, (_, term) => { min.push(...termenVan(term)); return " "; });
+  return { plus, min };
+}
+
+function termenVan(query: string): string[][] {
   // Alleen gekoppelde woorddelen vormen een reeks; andere leestekens scheiden zoekwoorden.
   const termen: string[][] = [];
   // Woordgroepen tussen aanhalingstekens (#634): één term met meerdere delen, dus aaneengesloten in één veld. Een ongesloten teken blijft scheidingsteken.
@@ -156,9 +161,20 @@ export function zoekItems(items: Item[], query: string): Item[] {
     const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
   }
-  if (!termen.length) return query.trim() ? [] : items;
+  return termen;
+}
+
+export function zoekItems(items: Item[], query: string): Item[] {
+  query = begrensZoekterm(query);
+  const kloktijd = query.trim();
+  if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
+  const { plus, min } = splitsUitsluiting(query);
+  const termen = termenVan(plus);
+  if (!termen.length && !min.length) return query.trim() ? [] : items;
   return items.filter((item) => {
     const { woorden, lijm } = zoektekst(item);
+    // Een uitsluitterm die op een woordbegin past laat het item afvallen.
+    if (min.some((delen) => kandidaten(delen, woorden, lijm).length)) return false;
     // Woordbegin: elke term moet op een eigen woord (of eigen reeks) vallen ("mark markt" vraagt twee woorden).
     const kand = termen.map((delen) => kandidaten(delen, woorden, lijm));
     return kand.every((k) => k.length) && alleTermenPassen(kand, woorden.length);
@@ -196,7 +212,7 @@ export function verborgenTekst(aantal: number): string {
 
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
 export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
-  const woorden = normaliseer(begrensZoekterm(query)).split(" ").filter(Boolean);
+  const woorden = normaliseer(splitsUitsluiting(begrensZoekterm(query)).plus).split(" ").filter(Boolean);
   const posities: { begin: number; eind: number }[] = [];
   let vlak = "", offset = 0;
   for (const teken of tekst) {
