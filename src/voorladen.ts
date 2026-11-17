@@ -65,7 +65,16 @@ export function laagsteVariant(txt: string, base: string): string {
     const attrs = l.slice("#EXT-X-STREAM-INF:".length).matchAll(/(?:^|,)([A-Z0-9-]+)=("[^"]*"|[^,]*)/g);
     const waarde = Array.from(attrs).find((m) => m[1] === "BANDWIDTH")?.[2] ?? "";
     const getal = /^\d+$/.test(waarde) ? Number(waarde) : 0;
-    const u = lines[i + 1];
+    // Lege regels en gewone commentaarregels tussen tag en URI overslaan; een volgende #EXT-X-STREAM-INF (of einde) = geen URI
+    let u = "";
+    for (let j = i + 1; j < lines.length; j++) {
+      const r = lines[j];
+      if (!r) continue;
+      if (r.startsWith("#EXT-X-STREAM-INF:")) break;
+      if (r.startsWith("#")) continue;
+      u = r;
+      break;
+    }
     if (Number.isSafeInteger(getal) && getal > 0 && u && !u.startsWith("#") && getal < bw) {
       bw = getal;
       best = u;

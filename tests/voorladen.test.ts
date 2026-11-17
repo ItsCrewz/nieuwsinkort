@@ -63,6 +63,15 @@ t("zonder video (Home): alleen thumbs, geen chunk/hls/mp4/preconnect; met video 
   assert.ok(met.mp4);
   assert.deepEqual(met.thumbs, zonder.thumbs);
 });
+t("playlist: tussenregels tussen varianttag en URI", () => {
+  const b = "https://s.nl/a/master.m3u8";
+  const tus = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=2000000\nhi/index.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=500000\n\n# commentaar\n  \nlo/index.m3u8\n";
+  assert.equal(laagsteVariant(tus, b), "https://s.nl/a/lo/index.m3u8");
+  // ontbrekende URI: volgende tag of einde; die variant telt niet mee
+  const mis = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\n#EXT-X-STREAM-INF:BANDWIDTH=900\nhi/index.m3u8\n";
+  assert.equal(laagsteVariant(mis, b), "https://s.nl/a/hi/index.m3u8");
+  assert.equal(laagsteVariant("#EXT-X-STREAM-INF:BANDWIDTH=10\n\n#c\n", b), "");
+});
 t("lege lijsten", () => {
   assert.deepEqual(planVoorladen([], [], false, h), { thumbs: [], preconnect: [], hlsChunk: false, hls: [], mp4: null });
 });
