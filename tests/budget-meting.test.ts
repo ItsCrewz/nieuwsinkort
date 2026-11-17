@@ -62,6 +62,52 @@ await t("meetChat/meetFout tellen op over meerdere aanroepen", () => {
   assert.deepEqual([u.inTok, u.outTok, u.geschat, u.calls], [30, 25, 2, 1]);
   assert.ok(Math.abs(u.neurons - 2.04) < 1e-9 && Math.abs(u.foutN! - 0.02) < 1e-9);
 });
+await t("meetChat: negatieve en niet-eindige usage-waarden worden geschat en tellen als geschat (#1143)", () => {
+  const tar: [number, number] = [1000, 1000];
+  for (const slecht of [-5, NaN, Infinity, -Infinity, "7", null]) {
+    const u = nieuw();
+    meetChat(u, tar, "p".repeat(35), "u".repeat(35), { prompt_tokens: 10, completion_tokens: 5, neurons: slecht });
+    assert.deepEqual([u.inTok, u.outTok, u.geschat], [10, 5, 1], String(slecht));
+    assert.ok(Math.abs(u.neurons - 0.015) < 1e-9, String(slecht));
+    for (const veld of ["prompt_tokens", "completion_tokens"]) {
+      const v = nieuw();
+      meetChat(v, tar, "p".repeat(35), "u".repeat(35), { prompt_tokens: 10, completion_tokens: 5, neurons: 2, [veld]: slecht });
+      assert.ok(v.inTok >= 0 && v.outTok >= 0 && Number.isFinite(v.inTok + v.outTok), `${veld} ${String(slecht)}`);
+      assert.equal(v.neurons, 2); assert.equal(v.geschat, 1);
+    }
+  }
+});
+await t("meetChat: ontbrekend of null tokenveld met geldige neurons telt als geschat (#1143)", () => {
+  for (const usage of [{ neurons: 2 }, { neurons: 2, prompt_tokens: null, completion_tokens: 5 }, { neurons: 2, prompt_tokens: 10, completion_tokens: undefined }]) {
+    const u = nieuw();
+    meetChat(u, [1000, 1000], "p".repeat(35), "u".repeat(35), usage);
+    assert.equal(u.neurons, 2); assert.equal(u.geschat, 1); assert.ok(u.inTok > 0 && u.outTok > 0);
+  }
+});
+await t("meetChat: extreme eindige waarden geven geen oneindige tellers (#1143)", () => {
+  const u = nieuw();
+  let vorige = 0;
+  for (const usage of [{ neurons: Number.MAX_VALUE }, { neurons: Number.MAX_VALUE }, { prompt_tokens: Number.MAX_VALUE, completion_tokens: Number.MAX_VALUE }, { prompt_tokens: 1e300, completion_tokens: 1e300, neurons: 1 }]) {
+    meetChat(u, [1e6, 1e6], "p", "u", usage);
+    for (const x of [u.neurons, u.inTok, u.outTok]) assert.ok(Number.isFinite(x));
+    assert.ok(u.neurons >= vorige); vorige = u.neurons;
+  }
+});
+await t("meetChat: geldige nulwaarden blijven nul en zijn niet geschat (#1143)", () => {
+  const u = nieuw();
+  meetChat(u, [1000, 1000], "p".repeat(35), "u".repeat(35), { prompt_tokens: 0, completion_tokens: 0, neurons: 0 });
+  assert.deepEqual([u.neurons, u.inTok, u.outTok, u.geschat || 0], [0, 0, 0, 0]);
+});
+await t("meetChat: een reeks metingen met ongeldige waarden blijft eindig en niet-dalend (#1143)", () => {
+  const u = nieuw();
+  let vorige = 0;
+  for (const usage of [{ neurons: 1.5 }, { neurons: -9 }, { neurons: NaN, prompt_tokens: -1 }, { neurons: Infinity }, { neurons: 0 }, undefined, { neurons: 2, prompt_tokens: 3, completion_tokens: 1 }]) {
+    meetChat(u, [1000, 1000], "p".repeat(35), "u".repeat(35), usage);
+    assert.ok(Number.isFinite(u.neurons) && u.neurons >= vorige);
+    assert.ok(Number.isFinite(u.inTok) && Number.isFinite(u.outTok));
+    vorige = u.neurons;
+  }
+});
 
 await t("foutclassificatie: alleen een echte dagquota-fout is dagquota", () => {
   for (const m of [DAG_FOUT, "AiError: 4006: daily free allocation exceeded", "You have exceeded your daily neurons quota"]) {

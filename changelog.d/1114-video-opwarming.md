@@ -1,0 +1,1 @@
+- Leg vast dat tijdelijk mislukte video-opwarming opnieuw kan worden geprobeerd (#1114).

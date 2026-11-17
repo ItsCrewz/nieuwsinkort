@@ -1,0 +1,1 @@
+- Begrens het uitpakken van geneste afbeeldings-URL's om overmatig werk en stackfouten te voorkomen (#1129).

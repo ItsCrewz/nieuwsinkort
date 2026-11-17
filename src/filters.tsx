@@ -84,12 +84,12 @@ export function maakVorigBezoek() {
     if (vast !== undefined) return vast;
     try {
       const ref = sessionStorage.getItem(BEZOEK_SESSIE);
-      if (ref !== null && Number.isFinite(Number(ref)) && Number(ref) >= 0 && ref.trim() !== "") return vast = Number(ref);
+      if (ref !== null && Number.isFinite(Number(ref)) && Number(ref) >= 0 && ref.trim() !== "") return vast = Number(ref) <= Date.now() ? Number(ref) : 0;
     } catch { /* sessieopslag niet beschikbaar */ }
     let prev = 0;
     try {
       const waarde = Number(localStorage.getItem(BEZOEK));
-      if (Number.isFinite(waarde) && waarde > 0) prev = waarde;
+      if (Number.isFinite(waarde) && waarde > 0 && waarde <= Date.now()) prev = waarde;
     } catch { /* lokale opslag niet beschikbaar */ }
     vast = prev;
     try { sessionStorage.setItem(BEZOEK_SESSIE, String(prev)); } catch { /* geheugenfallback */ }
@@ -169,7 +169,8 @@ const genVan = (gen?: string) => Date.parse(gen || "") || Date.now();
 // ------------------------------------------------------------- regio / video / samengevoegd
 const BUITEN_SITE = /techcrunch|the verge|ars technica|wired|mit technology|hacker news|engadget|bleeping|reuters|bbc|guardian/i;
 const BUITEN_URL = /\/(buitenland|world|wereld|internationaal|international)\//i;
-const HAARLEM = /haarlem|bloemendaal|heemstede|zandvoort|velsen|ijmuiden|kennemerland|spaarndam|schalkwijk/i;
+// Plaatsnaam moet aan het begin van een woord staan; "Haarlemmerolie" is geen Haarlem (Haarlemmermeer wel, zoals eerder).
+const HAARLEM = /(?<!\p{L})(?:haarlem(?!mer(?!meer|s?(?!\p{L})))|bloemendaal|heemstede|zandvoort|velsen|ijmuiden|kennemerland|spaarndam|schalkwijk)/iu;
 export function regioVan(it: Item): Regio {
   const tekst = `${it.kop} ${it.ai || ""} ${it.samenvatting || ""}`;
   if (it.cat === "haarlem" || HAARLEM.test(tekst)) return "haarlem";
@@ -204,6 +205,7 @@ function zonderTijd(items: Item[], f: Filters, alles: boolean) {
 export type Uitkomst = { items: Item[]; tijd: Exclude<Tijd, "auto">; auto: boolean; per: Record<Exclude<Tijd, "auto">, number>; nieuwSinds: number };
 export const TIJDEN: Exclude<Tijd, "auto">[] = ["sinds", "vandaag", "3u", "1u", "alles"];
 export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: string | undefined, alles: boolean): Uitkomst {
+  if (!Number.isFinite(vorig) || vorig < 0 || vorig > Date.now()) vorig = 0;
   const g = genVan(gen);
   const basis = zonderTijd(items, f, alles);
   const ts = basis.map((it) => typeof it.t === "number" && it.t > 0 && Number.isFinite(new Date(it.t).getTime()) ? it.t : tijdstip(it.tijd, g));

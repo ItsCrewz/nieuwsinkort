@@ -1,0 +1,1 @@
+- AI-verbruiksteller: negatieve of niet-eindige `usage`-waarden (neuronen, tokens) worden genegeerd en vervangen door de schatting, die als `geschat` wordt geteld (#1143).
