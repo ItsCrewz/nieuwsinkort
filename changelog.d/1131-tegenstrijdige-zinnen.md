@@ -1,0 +1,1 @@
+- Behoud tegenstrijdige standpunten bij het ontdubbelen van artikelpunten en uitgebreide tekst (#1131).
