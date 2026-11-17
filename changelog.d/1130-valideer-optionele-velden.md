@@ -1,0 +1,1 @@
+- Valideer de optionele velden `id`, `t` en `gisteren` bij de datagrens: ongeldige waarden worden weggelaten, oudere data blijft geldig (#1130).

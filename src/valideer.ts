@@ -34,9 +34,19 @@ function weer(v: Record<string, any>) {
   return w;
 }
 
+// Optionele velden die routes en dagselectie gebruiken: een ongeldige waarde weglaten, het bericht blijft (oude data zonder deze velden blijft geldig).
+const OPTIONEEL: [string, (x: unknown) => boolean][] = [["id", (x) => tekst(x) && /^[a-z0-9]{8}$/.test(x as string)], ["t", getal], ["gisteren", (x) => typeof x === "boolean"]];
+function optioneel<T extends object>(b: T): T {
+  const r: Record<string, any> = b;
+  if (!OPTIONEEL.some(([k, ok]) => k in r && !ok(r[k]))) return b;
+  const c = { ...r };
+  for (const [k, ok] of OPTIONEEL) if (k in c && !ok(c[k])) delete c[k];
+  return c as T;
+}
+
 /** Ongeldige berichten overslaan; een onbruikbare hoofdstructuur geeft een laadfout. */
 export function valideer(v: unknown): { data: Data; afgewezen: number } {
   if (!obj(v) || !tekst(v.gegenereerd) || !Number.isFinite(Date.parse(v.gegenereerd)) || !tekst(v.datum) || !tekst(v.dag_samenvatting) || !obj(v.weer) || !Array.isArray(v.items) || !Array.isArray(v.filmpjes) || !Array.isArray(v.dumpert)) throw new Error("Ongeldige data.json");
-  const items = v.items.filter(item), filmpjes = v.filmpjes.filter(video), dumpert = v.dumpert.filter(video);
+  const items = v.items.filter(item).map(optioneel), filmpjes = v.filmpjes.filter(video).map(optioneel), dumpert = v.dumpert.filter(video).map(optioneel);
   return { data: { ...v, weer: weer(v.weer), items, filmpjes, dumpert } as Data, afgewezen: v.items.length + v.filmpjes.length + v.dumpert.length - items.length - filmpjes.length - dumpert.length };
 }
