@@ -115,6 +115,7 @@ try {
   assert.equal(laatste().src, oud);
   laatste().onload!();
   await herladen;
+
   console.log("1091 voorlaadgeheugen: oké", begin >= 0);
 } finally {
   g.setTimeout = echteTimeout;

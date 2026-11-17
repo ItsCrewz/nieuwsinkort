@@ -1,0 +1,1 @@
+- Beelden: regressietest voor de begrensde rechtstreekse terugval in lange sessies; een actief beeld behoudt zijn terugval en na opruimen volgt één herstelpoging zonder foutlus (#1158).
