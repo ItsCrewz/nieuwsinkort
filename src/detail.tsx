@@ -137,6 +137,8 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
   );
 }
 
+export { escapeSluit } from "./kopfocus";
+
 export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string; meerBronnen?: Bron[] }) {
   const url = artikelUrl(item, dag);
   const kopRef = useRef<HTMLHeadingElement>(null);

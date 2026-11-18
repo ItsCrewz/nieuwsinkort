@@ -1,0 +1,1 @@
+- Artikel: Escape tijdens tekstcompositie (IME) sluit het bericht niet meer; een al afgehandelde Escape in onderliggende bediening ook niet (#1208).
