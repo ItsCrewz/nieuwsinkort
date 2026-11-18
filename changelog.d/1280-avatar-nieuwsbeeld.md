@@ -1,0 +1,1 @@
+- Artikelbeelden: een nieuwsfoto met "avatar" als onderwerp in de bestandsnaam blijft beschikbaar; duidelijke profielavatars blijven geweerd (#1280).

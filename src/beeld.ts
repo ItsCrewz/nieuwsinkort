@@ -5,7 +5,22 @@
 
 const LOGO = /(?:^|[^\p{L}\p{N}])logo(?:s|type|\d+)?(?=$|[^\p{L}\p{N}])|\/(?!catalogo\.)[^/?#]*logo(?=\.[^/?#]+(?:[?#]|$))/iu;
 const MERK = /(?:^|[/_.-])brand[-_]?(?:logo|mark|asset|kit|watermark)(?=$|[/_.?#-])|\/brands?\//i;
-const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
+const SKIP = /placeholder|default[-_.]|fallback|favicon|icon[-_.]|sprite|blank|spacer|pixel|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
+
+/** Profielavatar of placeholder? Alleen op duidelijke kenmerken (host/map avatar(s), profielwoord, of bijna alleen "avatar" in de bestandsnaam);
+ *  een beschrijvende slug als avatar-fire-and-ash-premiere.jpg is een nieuwsfoto (#1280). Korte namen als avatar-3.jpg blijven bewust geweerd. */
+const PROFIELWOORD = /^(?:user|users|profile|profiel|author|member|comment|default|gravatar|thumb|small|mini|tiny|placeholder)$/;
+function avatarPlaceholder(hostEnPad: string): boolean {
+  const l = hostEnPad.toLowerCase().replace(/^https?:\/\//, "");
+  if (!l.includes("avatar")) return false;
+  const delen = l.split("/");
+  const naam = delen.pop()!.replace(/\.[a-z0-9]+$/, "");
+  if (delen[0].includes("avatar") || delen.some((d) => /^avatars?$/.test(d))) return true;
+  const tokens = naam.split(/[^a-z0-9]+/).filter(Boolean);
+  if (tokens.some((t) => t.includes("avatar") && !/^avatars?$/.test(t))) return true;
+  if (tokens.some((t) => PROFIELWOORD.test(t))) return true;
+  return tokens.filter((t) => !/^avatars?$/.test(t) && !/^\d+$/.test(t)).length <= 1;
+}
 
 /** Effectieve breedte: alleen imgix (*.imgix.net) levert w × dpr pixels (dpr 1–5). De bonus geldt alleen bij precies één w/width-parameter,
  *  zonder andere breedteparameters (resize, imwidth, im_w) en zonder beperkende parameters (fit, hoogte, ar, max/min, rect, crop):
@@ -45,7 +60,7 @@ export function goedBeeld(u?: string | null): u is string {
   if (!u || typeof u !== "string" || !/^https?:\/\//i.test(u) || u.length > 1200) return false;
   if (/youtube\.com\/(v|embed|watch)\b|youtu\.be\//i.test(u)) return false; // video-link, geen foto
   const hostEnPad = u.split(/[?#]/, 1)[0];
-  return !LOGO.test(hostEnPad) && !MERK.test(hostEnPad) && !SKIP.test(hostEnPad) && !tooSmall(u);
+  return !LOGO.test(hostEnPad) && !MERK.test(hostEnPad) && !SKIP.test(hostEnPad) && !avatarPlaceholder(hostEnPad) && !tooSmall(u);
 }
 
 /** Mapsegment dat alleen een maat/transformatie is ('1200x675', 'w800', '640', 's640-c', 'w_800,h_450,c_fill', 'large'): hoort niet bij de identiteit.
