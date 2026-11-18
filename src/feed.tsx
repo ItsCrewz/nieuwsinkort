@@ -783,12 +783,12 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       if (status !== null) {
         if (!state.current.active) { if (status === 1 || status === 3) post("pauseVideo"); return; }
         start.current.status = status;
-        const tijd = info && typeof info === "object" ? (info as { currentTime?: number }).currentTime : undefined;
-        if (!bufferBewaking.current.meld(status, state.current.active, state.current.paused, performance.now(), tijd)) setBufferVast(false);
         if (status === 1 || status === 3) { gespeeld.current = true; setVangnet(false); setShown(true); }
         if (status === 1) onYtSpeelt();
         diagnose();
       }
+      const tijd = info && typeof info === "object" ? (info as { currentTime?: number }).currentTime : undefined;
+      if ((status !== null || typeof tijd === "number") && !bufferBewaking.current.meld(start.current.status, state.current.active, state.current.paused, performance.now(), tijd)) setBufferVast(false);
       if (info && typeof info === "object") {
         const t = info as { playerState?: number; currentTime?: number; duration?: number };
         if (typeof t.duration === "number") dur.current = t.duration;
@@ -893,7 +893,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       bufferBewaking.current.reset();
       setBufferVast(false);
       post("playVideo");
-    }}>Video buffert. Probeer opnieuw</button> : active && !paused && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
+    }}>Video buffert. Hervat afspelen</button> : active && !paused && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
     </>
   );
 }
