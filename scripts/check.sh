@@ -16,6 +16,7 @@ stap() {
 
 stap "Lint" npm run lint
 stap "Tests" npm test
+stap "Browsercontrole bufferherstel" npx playwright test e2e/bufferherstel-1243.spec.mjs --project=chromium
 stap "Build" npm run build
 stap "CSS-lint" npm run lint:css
 stap "HTML-lint" npm run lint:html
