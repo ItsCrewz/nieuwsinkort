@@ -20,8 +20,12 @@ const LIGATUUR: Record<string, string> = { "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl"
 // Alleen letters en cijfers omzetten; andere betekenisvolle tekens behouden hun vorm.
 const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (teken) => String.fromCharCode(teken.charCodeAt(0) - 0xfee0));
 
+// Duizendtal (#1215): 1–3 cijfers en groepen van precies 3, gescheiden door punt, NBSP, smalle NBSP of dunne spatie, met optionele decimaalstaart. Versies (1.2.3) en decimalen (1.5) vallen erbuiten; een gewone spatie telt bewust niet.
+const DUIZENDTAL = /(?<!\p{N}|\p{N}[.,])\p{N}{1,3}(?:[.\u00a0\u202f\u2009]\p{N}{3})+(?:,\p{N}+)?(?!\p{N}|[.,]\p{N})/gu;
+const duizendtallen = (tekst: string) => tekst.replace(DUIZENDTAL, (getal) => getal.replace(/[^\p{N},]/gu, "").replace(",", "."));
+
 export function normaliseer(tekst: string): string {
-  return gewoneBreedte(tekst).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
+  return duizendtallen(gewoneBreedte(tekst)).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
     .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
@@ -51,6 +55,8 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
     }
     // Een iOS-versie is ook op het hoofdversienummer vindbaar.
     for (const match of veld.matchAll(/\bios\s+(\p{N}+)\.\p{N}+(?![\p{N}.])/giu)) { woorden.push(match[1]); lijm.push(false); }
+    // Een duizendtal blijft ook op zijn delen vindbaar ("500" vindt "2.500", #788).
+    for (const match of veld.matchAll(DUIZENDTAL)) for (const d of match[0].split(",")[0].split(/[^\p{N}]/u)) { woorden.push(d); lijm.push(false); }
     woorden.push(""); lijm.push(false);
   }
   return { woorden, lijm };
@@ -157,7 +163,7 @@ function termenVan(query: string): string[][] {
   });
   // Het stuurteken \u0001 is bewust de markering voor termkoppeltekens (#811).
   // eslint-disable-next-line no-control-regex
-  for (const token of afkortingen(rest).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
+  for (const token of afkortingen(duizendtallen(rest)).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
     const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
   }
@@ -215,9 +221,16 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   const woorden = normaliseer(splitsUitsluiting(begrensZoekterm(query)).plus).split(" ").filter(Boolean);
   const posities: { begin: number; eind: number }[] = [];
   let vlak = "", offset = 0;
+  // Scheidingstekens van duizendtallen overslaan, zodat "1000" de zichtbare "1.000" markeert.
+  const scheiding = new Set<number>();
+  for (const m of tekst.matchAll(DUIZENDTAL)) {
+    const komma = m[0].indexOf(",");
+    for (let j = 0; j < (komma < 0 ? m[0].length : komma); j++) if (!/\p{N}/u.test(m[0][j])) scheiding.add(m.index! + j);
+  }
   for (const teken of tekst) {
     const begin = offset;
     offset += teken.length;
+    if (scheiding.has(begin)) { posities[posities.length - 1].eind = offset; continue; }
     const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]);
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
