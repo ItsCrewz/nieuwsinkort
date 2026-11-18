@@ -1,0 +1,1 @@
+- Videovoorladen behandelt impliciete HLS-bytebereiken alleen als ze op het vorige segment aansluiten, zodat geen verkeerd deel van een groot bestand wordt opgewarmd (#1255).
