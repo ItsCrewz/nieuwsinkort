@@ -144,14 +144,16 @@ export function merge(S: any, H: any) {
   };
   // Rubriektekst per rubriek van de recentste bron; ontbrekende rubrieken vallen terug op de andere.
   const [tabNieuw, tabOud] = hNieuwer ? [H.tab_samenvatting, base.tab_samenvatting] : [base.tab_samenvatting, H.tab_samenvatting];
-  const tabSam = tabNieuw || tabOud ? { ...tabOud } : undefined;
-  if (tabSam && tabNieuw) for (const [rubriek, samenvatting] of Object.entries(tabNieuw)) {
+  const isObj = (x: any) => !!x && typeof x === "object" && !Array.isArray(x);
+  const tabSam = isObj(tabNieuw) || isObj(tabOud) ? { ...(isObj(tabOud) ? tabOud : {}) } : undefined;
+  if (tabSam && isObj(tabNieuw)) for (const [rubriek, samenvatting] of Object.entries(tabNieuw)) {
     if (samenvatting != null) tabSam[rubriek] = samenvatting;
   }
   const routineItems = routine.map(metMeer);
   const [weerNieuw, weerOud] = hNieuwer ? [H.weer, base.weer] : [base.weer, H.weer];
   const bruikbaarWeer = (weer: any) => weer && typeof weer === "object" && !Array.isArray(weer) && (weer.nu || (Array.isArray(weer.dagen) && weer.dagen.length > 0));
-  const weer = bruikbaarWeer(weerNieuw) ? weerNieuw : bruikbaarWeer(weerOud) ? weerOud : undefined;
+  // Nieuwste bruikbare weer wint; ontbrekende velden vult de oudere (bruikbare) dataset aan.
+  const weer = bruikbaarWeer(weerNieuw) ? (bruikbaarWeer(weerOud) ? { ...weerOud, ...Object.fromEntries(Object.entries(weerNieuw).filter(([, v]) => v != null)) } : weerNieuw) : bruikbaarWeer(weerOud) ? weerOud : undefined;
   const dumpertGezien = new Set<string>();
   const dumpert = (hNieuwer ? [...H.dumpert, ...base.dumpert] : [...base.dumpert, ...H.dumpert]).filter((v: any) => {
     const id = norm(v.href);
