@@ -1,0 +1,1 @@
+- Filters: even naar een ander tabblad gaan verschuift de bezoekreferentie van een gelijktijdige nieuwstab niet meer; alleen weggaan (`pagehide`), laden en de minuutinterval werken `nieuwsinkort-laatste-bezoek` bij (#1246).

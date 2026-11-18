@@ -110,8 +110,9 @@ export function useFilters() {
   const [vorig] = useState(vorigBezoek);
   useEffect(() => {
     bewaarBezoek();
-    const onHide = () => document.visibilityState === "hidden" && bewaarBezoek();
-    document.addEventListener("visibilitychange", onHide);
+    // Alleen echt weggaan telt als afgerond bezoek; even naar een ander tabblad (visibilitychange) mag de referentie van een gelijktijdige tab niet verschuiven (#1246).
+    const onWeg = () => bewaarBezoek();
+    try { window.addEventListener("pagehide", onWeg); } catch { /* geen window */ }
     // Lang open tabblad: houd de bezoektijd vers (alleen opslag; `vorig` is een vaste sessiereferentie en verschuift niet).
     const timer = setInterval(() => document.visibilityState === "visible" && bewaarBezoek(), BEZOEK_INTERVAL);
     const stopOpslag = volgOpslag(setF);
@@ -122,7 +123,7 @@ export function useFilters() {
     });
     return () => {
       stopOpslag();
-      document.removeEventListener("visibilitychange", onHide);
+      try { window.removeEventListener("pagehide", onWeg); } catch { /* geen window */ }
       clearInterval(timer);
     };
   }, []);
