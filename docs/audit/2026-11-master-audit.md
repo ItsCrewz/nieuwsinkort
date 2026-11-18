@@ -6,11 +6,11 @@ Leeswijzer: **Bevestigd** = in de code of docs aangetoond (met bestandsverwijzin
 
 ## 1. Executive summary
 
-Nieuwsinkort is een Vite/React-SPA op Cloudflare Pages met Pages Functions, plus een aparte cron-Worker (`nieuwsinkort-uur`, elke 15 min tussen 04 en 22 uur) die feeds ophaalt, clustert en met AI samenvat. Techniek en testdekking zijn sterk: 219 testbestanden, 151 regressietests, Playwright e2e, een prestatiebudget, strakke CSP en netwerkbeveiliging (SSRF-allowlists). De server levert aan crawlers `/vandaag`, per-bericht HTML met NewsArticle-JSON-LD, `sitemap.xml` en `sitemap-nieuws.xml`.
+Nieuwsinkort is een Vite/React-SPA op Cloudflare Pages met Pages Functions, plus een aparte cron-Worker (`nieuwsinkort-uur`, elke 15 min tussen 04 en 22 uur) die feeds ophaalt, clustert en met AI samenvat. Techniek en testdekking zijn sterk: 206 testbestanden in `tests/` en 148 in `tests/regressie` (354 in totaal; telling: `ls tests/*.test.ts | wc -l` en `find tests/regressie -name '*.test.ts' | wc -l`), Playwright e2e, een prestatiebudget, strakke CSP en netwerkbeveiliging (SSRF-allowlists). De server levert aan crawlers `/vandaag`, per-bericht HTML met NewsArticle-JSON-LD, `sitemap.xml` en `sitemap-nieuws.xml`.
 
 De belangrijkste zwaktes zijn niet technisch maar juridisch, redactioneel en structureel:
 
-1. **Auteursrecht en bronbeheer (P0).** Er is geen bronrechtenregister. De uitspraak ECLI:NL:GHAMS:2026:2977 komt nergens in repo of docs voor. De Worker leest volledige artikeltekst, onder meer via de externe dienst r.jina.ai, en gebruikt bronbeelden via een eigen proxy. De juridische toets ontbreekt.
+1. **Auteursrecht en bronbeheer (P0).** Er is geen bronrechtenregister. De uitspraak ECLI:NL:GHAMS:2026:2977 komt nergens in repo of docs voor. De Worker leest volledige artikeltekst, onder meer via de externe dienst r.jina.ai, gebruikt bronbeelden via een eigen proxy en neemt Instagram-content over via een derde-partij-scraper (`kg.meowing.de`, zie B16). De juridische toets ontbreekt.
 2. **Uitgeversinformatie (P0/P1).** `/over` bestaat met uitleg, fouten/correcties en privacy, maar bevat geen contactgegevens, uitgever/verantwoordelijke, redactioneel beleid of correctielog. Dat is vereist voor Google News en AdSense.
 3. **Geen archief.** Berichtpagina's bestaan alleen voor vandaag (en gisteren tot 06:00) en geven daarna een 301 naar `/`. De site bouwt dus geen indexeerbare inhoud op.
 4. **Geen CI.** `.github/` bevat alleen een issue-template. Tests en build draaien alleen lokaal via `npm run check`.
@@ -25,7 +25,7 @@ De belangrijkste zwaktes zijn niet technisch maar juridisch, redactioneel en str
 |---|---|---|---|---|---|---|
 | B1 | Auteursrecht | Geen bronrechtenregister; ECLI:NL:GHAMS:2026:2977 niet in repo | grep in `docs/`, `src/`, `worker/src/`: geen treffer op de ECLI; `public/bronnen.json` bevat alleen feeds/hosts | Juridisch risico onbekend en niet vastgelegd | P0 | Register per bron (rechtenstatus, voorwaarden, uitsluiting); menselijke juridische beoordeling |
 | B2 | Auteursrecht | Volledige artikeltekst wordt gelezen, deels via derde partij r.jina.ai | `worker/src/index.ts:180-186`, `worker/src/artikel.ts:71` | Mogelijk gebruik van beschermde tekst buiten feedvoorwaarden; privacy/voorwaarden van Jina | P0 | Per bron vastleggen of volledige tekst gebruikt mag worden; anders alleen feedtekst |
-| B3 | Auteursrecht | Bronbeelden worden via eigen proxy en als og:image gebruikt | `src/beeldhost.ts` (allowlist uitgeversbeeldhosts), `src/berichthtml.ts` `deelbeeld()` | Beeldrechten zijn nergens vastgelegd | P0 | Beeldrechten per host beoordelen; per bron uitzetbaar maken |
+| B3 | Auteursrecht | Bronbeelden worden via eigen proxy en als og:image gebruikt | `src/beeldhost.ts` (allowlist uitgeversbeeldhosts), `src/berichthtml.ts` `deelbeeld()` | Beeldrechten zijn nergens vastgelegd | P0 | Beeldrechten per host beoordelen; per bron uitzetbaar maken (Instagram-beelden via de scraper: zie B16) |
 | B4 | Uitgeversinfo | `/over` zonder contact, uitgever, redactioneel beleid, correctielog | `public/over.html` (secties: Wat, Hoe, Bronnen, Fouten en correcties, Privacy); docs: "zonder persoonsnaam of verzonnen contactadres" | Blokkeert Google News en AdSense; geen meldroute voor rechthebbenden | P0 | Contactadres, uitgeversgegevens en beleid door Joey laten aanleveren; tekst toevoegen |
 | B5 | Privacy | Cloudflare Web Analytics laadt zonder toestemmingsstap (alleen opt-out via `?nietmeten=1`) | `src/analytics.ts`; `docs/architectuur.md` "Bezoekersstatistieken" | Cookieloze meting is vermoedelijk toegestaan, maar niet juridisch getoetst (docs zeggen dat zelf); privacytekst vermeldt de meting niet | P1 | Privacyverklaring uitbreiden met meting, AI-aanbieders en bewaartermijnen; juridische toets |
 | B6 | Privacy | Privacytekst is één zin ("geen trackingcookies") | `public/over.html` | Onvoldoende voor AVG-informatieplicht (AI-aanbieders Groq/Mistral, Cloudflare, YouTube-embeds) | P1 | Volledige privacyverklaring |
@@ -38,10 +38,11 @@ De belangrijkste zwaktes zijn niet technisch maar juridisch, redactioneel en str
 | B13 | SEO | Homepage `/` heeft in de HTML alleen `<noscript>`-inhoud; de feed zelf is client-side | `functions/index.ts`, `src/homehtml.ts`, `index.html` | Crawlers zonder JS zien alleen de noscript-lijst; berichtpagina's en `/vandaag` compenseren dat | P2 | Meten of dit volstaat (Search Console), pas daarna eventueel uitbreiden |
 | B14 | Beveiliging | CSP heeft `style-src 'unsafe-inline'` en brede `img-src https:`, `connect-src https:` | `public/_headers` | Bewuste keuze (voorladen, beelden); beperkt de bescherming | P3 | Alleen aanpassen met aantoonbare winst; niet nu |
 | B15 | Bronnen | `bronnen.json` is gegenereerd op 2026-11-01; actuele bronstatus is niet te toetsen zonder live data | `public/bronnen.json` (`gegenereerd`) | Mogelijk verouderd of kapotte bronnen | P2 | `npm run check:bronlinks` live draaien (Joey/orchestrator) |
+| B16 | Auteursrecht / voorwaarden | Instagram-content komt binnen via de derde-partij-scraper `kg.meowing.de` (Kittygram-atomfeeds, `https://kg.meowing.de/<account>/atom.xml`, `ua: "bot"`), naast de profiel-embed in de Worker (R1). Het gaat om 27 unieke accounts, onder meer nieuwsorganisaties, politieke partijen en politici, en lokale media | `public/bronnen.json` (zoek op `kg.meowing.de`); `worker/src/index.ts:113-121` (embed) | Keten Instagram → onbekende derde partij → Nieuwsinkort: auteursrecht, Instagram-voorwaarden, privacy (persoonsgegevens van politici/burgers) en afhankelijkheid van een dienst zonder afspraken of continuïteitsgarantie | P0 | Opnemen in het register (V1); per account uitzetbaar (V2); juridische beoordeling door Joey/jurist; fallback of verwijderen als de dienst wegvalt |
 
 ### 2.2 Waarschijnlijke risico's
 
-- **R1.** Instagram wordt uitgelezen via profiel-embed en MP4's van derden (`worker/src/index.ts:113-121`). Dat valt vermoedelijk buiten de voorwaarden van Instagram en kan zonder waarschuwing breken. De beoordeling is juridisch, niet technisch.
+- **R1.** Instagram wordt uitgelezen via profiel-embed en MP4's van derden (`worker/src/index.ts:113-121`) en daarnaast via de scraper `kg.meowing.de` (bevestigd, zie B16). Dat valt vermoedelijk buiten de voorwaarden van Instagram en kan zonder waarschuwing breken. De beoordeling is juridisch, niet technisch.
 - **R2.** Het gebruik van meerdere externe AI-aanbieders (Cloudflare, Groq, Mistral; `docs/ai-aanbieders.md`) betekent dat bron- en artikeltekst naar derden gaat. Verwerkersafspraken zijn niet in de repo terug te vinden.
 - **R3.** `dateModified` ontbreekt tenzij `gewijzigd` gevuld is; een inhoudelijke herziening wordt dus mogelijk niet doorgegeven. Hoe vaak `gewijzigd` gevuld wordt, is hier niet gemeten.
 - **R4.** Het Free-plan (50 subrequests, 1.000 KV-writes/dag, 10.000 neuronen/dag) is krap bij groei. De bestaande maatregelen (#452, `BUDGET`) zijn goed, maar er is weinig marge voor promotieverkeer en nieuwsbrief.
@@ -78,12 +79,12 @@ Geen Issues aangemaakt; dat doet de orchestrator.
 
 ### P0 — Kritieke basis
 
-- **V1. Bronrechtenregister (alleen data en doc).** Nieuw `docs/bronrechten.md` of `public`-onafhankelijk bestand met per bron: voorwaarden-URL, rechtenstatus (onbekend/toegestaan/beperkt/uitgesloten), beeldrechten, gebruik volledige tekst ja/nee, datum laatste beoordeling. Vermeldt ECLI:NL:GHAMS:2026:2977 als open juridische vraag, zonder uitspraken over de inhoud.
-  *Acceptatie:* elke bron uit `bronnen.json` komt voor; status "onbekend" tot Joey/jurist beoordeelt; test dat bron-id's in register en `bronnen.json` overeenkomen.
-- **V2. Uitsluitoptie per bron.** Vlag `uitgesloten` in de bronconfiguratie die ophalen, samenvatten en tonen stopt (geen nieuwe bronnen, alleen uitzetten).
-  *Acceptatie:* test dat een uitgesloten bron niet in `data.json` komt en niet in sitemaps; bestaande tests groen.
-- **V3. Volledige tekst en Jina per bron regelbaar.** Vlag per bron "alleen feedtekst" die `r.jina.ai` en artikelfetch overslaat.
-  *Acceptatie:* mock-test zonder netwerk; neuronen- en subrequestbudget onveranderd of lager.
+- **V1. Bronrechtenregister (alleen data en doc).** Nieuw `docs/bronrechten.md` of `public`-onafhankelijk bestand met per bron: voorwaarden-URL, rechtenstatus (onbekend/toegestaan/beperkt/uitgesloten), beeldrechten, gebruik volledige tekst ja/nee, datum laatste beoordeling. Vermeldt ECLI:NL:GHAMS:2026:2977 als open juridische vraag, zonder uitspraken over de inhoud. Het register bevat ook de 27 `kg.meowing.de`-accounts (B16) en de Instagram-profielembed, elk per account met eigen status.
+  *Acceptatie:* elke bron uit `bronnen.json` komt voor (ook elk meowing-account en elk Instagram-embedaccount apart); status "onbekend" tot Joey/jurist beoordeelt; test dat bron-id's in register en `bronnen.json` overeenkomen.
+- **V2. Uitsluitoptie per bron.** Vlag `uitgesloten` in de bronconfiguratie die ophalen, samenvatten en tonen stopt (geen nieuwe bronnen, alleen uitzetten). Eis: zowel de `kg.meowing.de`-feeds als de Instagram-embed zijn per account uitzetbaar.
+  *Acceptatie:* test dat een uitgesloten bron niet in `data.json` komt en niet in sitemaps, met een aparte test voor een meowing-account en voor een embed-account; bestaande tests groen.
+- **V3. Volledige tekst en Jina per bron regelbaar.** Vlag per bron "alleen feedtekst" die `r.jina.ai` en artikelfetch overslaat. Eis: ook voor de meowing-feeds en de Instagram-embed per account instelbaar (alleen feedtekst, geen scraper-MP4's of -beelden).
+  *Acceptatie:* mock-test zonder netwerk, ook voor de meowing- en embed-route; neuronen- en subrequestbudget onveranderd of lager.
 - **V4. Uitgeversinformatie op `/over` (of `/redactie`).** Contactadres, verantwoordelijke, redactioneel beleid en correctiebeleid, met meldroute voor rechthebbenden. Gegevens levert Joey aan; geen verzonnen adres.
   *Acceptatie:* pagina in sitemap, `OVER_LASTMOD` bijgewerkt, link in footer, bestaande `seo-meta`-test groen; zonder script.
 - **V5. Bereikbaarheidscontrole (live, door Joey of orchestrator).** Draai de checklist uit sectie 6 en leg de uitkomst vast in een Issue-comment.
@@ -130,7 +131,8 @@ Geen Issues aangemaakt; dat doet de orchestrator.
 5. Search Console: dekking, sitemapstatus, handmatige acties, Google News-opname.
 6. Let op: de externe controle van 18-11 kan ook door de `Retry-After`/503-paden of een mislukte run komen. Controleer `run-status` en `/data.json` (autorisatie niet nodig voor `/data.json`).
 7. Lighthouse (mobiel) en Cloudflare Web Analytics (CWV) bekijken.
-8. Echte iPhone: videofeed en geluid (nog niet geverifieerd).
+8. Controleer of `kg.meowing.de` bereikbaar is, wie de dienst beheert en wat de voorwaarden zijn (B16).
+9. Echte iPhone: videofeed en geluid (nog niet geverifieerd).
 
 ## 7. Groeiplan (30/60/90 dagen, voorwaardelijk)
 
@@ -154,4 +156,4 @@ Ontbreekt nog: uitgeversgegevens en contact (V4), privacyverklaring (V11), bronr
 
 ## 10. Uitgevoerde wijzigingen en validatie
 
-Alleen dit rapport en `changelog.d/1236-master-audit.md`. Er is geen code gewijzigd. De resultaten van `npm test` en `npm run build` staan in de samenvatting van de PR.
+Alleen dit rapport en `changelog.d/1236-master-audit.md`. Er is geen code gewijzigd. Validatie (18-11-2026, na herwerk): `npm test` eindigt met exitcode 0 (alle testbestanden "geslaagd") en `npm run build` slaagt (build-bronnen, `tsc --noEmit`, `vite build`).
