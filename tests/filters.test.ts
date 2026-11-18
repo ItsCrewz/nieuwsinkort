@@ -171,3 +171,7 @@ t("schoonFilters: ongeldige opgeslagen waarden herstellen, geldige behouden", ()
   assert.deepEqual(schoonFilters(goed), goed);
   assert.deepEqual(schoonFilters({ ...goed, cats: ["f1", "onbekend"], extra: 1 }), { ...goed, cats: ["f1"] });
 });
+
+t("schoonFilters: voorbeeld uit #1204 geeft een bruikbaar overzicht", () => {
+  assert.deepEqual(schoonFilters({ tijd: "onbekend", video: "false", regio: ["onbekend"] }), STANDAARD);
+});
