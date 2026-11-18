@@ -30,6 +30,7 @@ export function useVoorladen(vids: Lijsten, gegenereerd: string | undefined, opV
     };
     // video (chunk, playlists, segmenten, mp4) pas bij intentie; op Home blijft het bij thumbs
     const intent = (e: Event) => {
+      if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
       if (gegenereerd === laatsteVideo || !opTab(e.target) || !run(true)) return;
       laatsteVideo = gegenereerd;
       ruim();

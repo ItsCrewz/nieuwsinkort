@@ -181,7 +181,7 @@ t("unmount vóór idle annuleert het voorladen", async () => {
   await wacht();
   assert.equal(plaatjes.length, 0);
 });
-t("mobiele data en Save-Data veranderen niets (sinds #142)", async () => {
+t("Save-Data voorkomt videoverzoeken en preconnects, maar niet posters", async () => {
   reset();
   const verbinding = { effectiveType: "2g", saveData: true, type: "cellular" };
   const bewaard = Object.getOwnPropertyDescriptor(g, "navigator")!;
@@ -189,11 +189,18 @@ t("mobiele data en Save-Data veranderen niets (sinds #142)", async () => {
   const h = maakHook();
   h.render(lijsten("i"), "2026-01-09T10:00", false);
   await wacht();
-  intentie();
+  intentie("focusin");
+  intentie("mouseover");
   await wacht();
   assert.ok(plaatjes.includes("https://img.example/if0.jpg"));
   assert.ok(plaatjes.includes("https://img.example/id0.jpg"));
-  assert.ok(fetches.some((u) => u.includes("/media/dumpert/")), "HLS via de proxy ook op mobiele data");
+  assert.equal(fetches.length, 0);
+  assert.equal(links.length, 0);
+  verbinding.saveData = false;
+  intentie("focusin");
+  await wacht();
+  assert.ok(fetches.some((u) => u.includes("/media/dumpert/")), "HLS na uitschakelen van Save-Data");
+  assert.ok(fetches.some((u) => u.includes("if0.mp4")), "MP4 na uitschakelen van Save-Data");
   Object.defineProperty(g, "navigator", bewaard);
   h.unmount();
 });

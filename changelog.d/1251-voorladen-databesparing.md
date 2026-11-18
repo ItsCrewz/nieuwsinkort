@@ -1,0 +1,1 @@
+- Bij databesparing worden video's niet meer speculatief voorgeladen door een videotab aan te wijzen of te focussen (#1251).
