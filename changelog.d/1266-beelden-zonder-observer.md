@@ -1,0 +1,1 @@
+- Beelden: zonder IntersectionObserver laden afbeeldingen buiten beeld niet meer allemaal tegelijk, maar pas binnen 200% schermhoogte (#1266).
