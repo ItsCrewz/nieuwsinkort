@@ -142,3 +142,54 @@ t("opruimen gebeurt hooguit één keer", () => {
   pool.geefVrij(2, g, () => {});
   assert.equal(n, 1);
 });
+
+t("maakBronvrij: gooiende destroy laat pauze, src weg en load() alsnog doorlopen", () => {
+  const log: string[] = [];
+  const [el] = maakEls(log);
+  el.setSrc("x");
+  log.length = 0;
+  assert.doesNotThrow(() => maakBronvrij(el, { destroy() { log.push("0:hls-destroy"); throw new Error("kapot"); } }));
+  assert.deepEqual(log, ["0:pause", "0:hls-destroy", "0:rm-src", "0:load"]);
+  assert.equal(el.src, null);
+});
+
+t("maakBronvrij: elke gooiende stap afzonderlijk laat de rest doorlopen", () => {
+  for (const stap of ["pause", "removeAttribute", "load"] as const) {
+    const log: string[] = [];
+    const [el] = maakEls(log);
+    const orig = el[stap].bind(el);
+    (el as any)[stap] = (...a: any[]) => { (orig as any)(...a); throw new Error("kapot"); };
+    el.setSrc("x");
+    log.length = 0;
+    assert.doesNotThrow(() => maakBronvrij(el, { destroy: () => log.push("0:hls-destroy") }));
+    assert.deepEqual(log, ["0:pause", "0:hls-destroy", "0:rm-src", "0:load"], stap);
+  }
+});
+
+t("slot met gooiende destroy is via claim en zetOpruim opnieuw bruikbaar", () => {
+  const log: string[] = [];
+  const [el] = maakEls(log);
+  const pool = new PoolEigenaars();
+  const g1 = pool.claim(0);
+  pool.zetOpruim(0, g1, () => maakBronvrij(el, { destroy() { throw new Error("kapot"); } }));
+  el.setSrc("oud");
+  const g2 = pool.claim(0);
+  assert.equal(el.src, null);
+  assert.equal(pool.zetOpruim(0, g2, () => maakBronvrij(el)), true);
+  el.setSrc("nieuw");
+  assert.equal(el.src, "nieuw");
+  assert.equal(pool.actueel(0, g2), true);
+});
+
+t("een defecte speler houdt het opruimen van de andere poolspelers niet tegen", () => {
+  const log: string[] = [];
+  const els = maakEls(log);
+  const pool = new PoolEigenaars();
+  els.forEach((el, slot) => {
+    const g = pool.claim(slot);
+    el.setSrc(`v${slot}`);
+    pool.zetOpruim(slot, g, () => maakBronvrij(el, slot === 0 ? { destroy() { throw new Error("kapot"); } } : null));
+  });
+  assert.doesNotThrow(() => els.forEach((_, slot) => pool.ruimOp(slot)));
+  assert.ok(els.every((e) => e.src === null));
+});

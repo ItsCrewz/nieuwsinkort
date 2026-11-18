@@ -23,12 +23,13 @@ export function bronIndexen(active: number, lengte: number): Set<number> {
 /** Minimale <video>-interface voor bronwissels, testbaar zonder DOM. */
 export type PoolVideo = { pause(): void; load(): void; removeAttribute(naam: string): void };
 
-/** Synchroon bronvrij maken in vaste volgorde: pauzeren, hls.js weg, src weg, load(). Pas daarna verplaatsen. */
+/** Synchroon bronvrij maken in vaste volgorde: pauzeren, hls.js weg, src weg, load(). Pas daarna verplaatsen.
+ *  Elke stap staat apart in try/catch en de functie gooit nooit: een defecte speler mag het slot niet vasthouden. */
 export function maakBronvrij(el: PoolVideo, hls?: { destroy(): void } | null) {
   try { el.pause(); } catch { /* negeer */ }
-  hls?.destroy();
-  el.removeAttribute("src");
-  el.load();
+  try { hls?.destroy(); } catch { /* negeer: rest moet doorlopen */ }
+  try { el.removeAttribute("src"); } catch { /* negeer */ }
+  try { el.load(); } catch { /* negeer */ }
 }
 
 // Per slot een bron-generatie en één opruimfunctie: een oude eigenaar (late cleanup, async import, timer)

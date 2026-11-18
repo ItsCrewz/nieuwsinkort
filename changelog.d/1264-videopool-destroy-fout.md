@@ -1,0 +1,1 @@
+- Videopool: een speler wordt nu ook opgeruimd als `hls.destroy()` een fout geeft; pauzeren, src verwijderen en `load()` lopen alsnog door en het slot komt weer vrij (#1264).
