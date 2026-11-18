@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Cat, Item, Video } from "./types";
 import { ams, amsTijdstip, midnight } from "./tijd";
 import { publicatieTijd } from "./vandaag";
-import { BUITEN_WOORD } from "./regio";
+import { BUITEN_WOORD, heeftNlAnker } from "./regio";
 import { Icon } from "./icons";
 import { bronSleutel } from "./uitgever";
 
@@ -176,7 +176,10 @@ export function regioVan(it: Item): Regio {
   if (it.cat === "haarlem" || HAARLEM.test(tekst)) return "haarlem";
   if (it.cat === "buitenland") return "wereld";
   const b = it.bronnen || [];
-  if (b.some((x) => BUITEN_SITE.test(x.site) || BUITEN_URL.test(x.href)) || BUITEN_WOORD.test(`${it.kop} ${it.ai || ""}`)) return "wereld";
+  if (b.some((x) => BUITEN_SITE.test(x.site) || BUITEN_URL.test(x.href))) return "wereld";
+  // Een landnaam alleen telt niet als kop of ai een Nederlands anker heeft (zelfde afweging als isBuitenland).
+  const kopAi = `${it.kop} ${it.ai || ""}`;
+  if (!heeftNlAnker(kopAi) && BUITEN_WOORD.test(kopAi)) return "wereld";
   return "nl";
 }
 const VIDEO_PAD = /\/videos?\/|\/video-|\.mp4\b|\/kijk\/|\/tv\//i;
