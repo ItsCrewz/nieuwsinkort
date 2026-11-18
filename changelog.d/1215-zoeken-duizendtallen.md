@@ -1,0 +1,1 @@
+- Zoeken: duizendtallen met punt of niet-afbrekende spatie (1.000, 1 000) en zonder scheidingsteken (1000) vinden elkaar (#1215).
