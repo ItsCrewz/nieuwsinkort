@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { startAnalytics } from "../../src/analytics";
 
-function proef(adres: string, begin: string | null, opslagWerkt: boolean | "stil" = true, bestaand = false) {
+function proef(adres: string, begin: string | null, opslagWerkt: boolean | "stil" = true, bestaand = false, vensternaam = "") {
   let waarde = begin;
   let nieuwAdres = "";
   const scripts: { src: string; defer: boolean; attrs: Record<string, string> }[] = [];
   const meldingen: string[] = [];
   Object.assign(globalThis, {
-    window: { location: { href: adres }, setTimeout: () => 0 },
+    window: { name: vensternaam, location: { href: adres }, setTimeout: () => 0 },
     history: { state: null, replaceState: (_: unknown, __: string, url: string) => { nieuwAdres = url; } },
     localStorage: {
       getItem: () => { if (opslagWerkt === false) throw Error(); return waarde; },
@@ -26,7 +26,7 @@ function proef(adres: string, begin: string | null, opslagWerkt: boolean | "stil
     },
   });
   startAnalytics("test-token");
-  return { waarde, nieuwAdres, scripts, meldingen };
+  return { waarde, nieuwAdres, scripts, meldingen, vensternaam: window.name };
 }
 
 assert.equal(proef("https://voorbeeld.nl/", "1").scripts.length, 0);
@@ -49,7 +49,7 @@ assert.equal(proef("https://voorbeeld.nl/", null, true, true).scripts.length, 0)
 const geblokkeerd = proef("https://voorbeeld.nl/?nietmeten=1#/sport", null, false);
 assert.equal(geblokkeerd.nieuwAdres, "");
 assert.equal(geblokkeerd.scripts.length, 0);
-assert.match(geblokkeerd.meldingen[0], /Opslag is geblokkeerd.*andere pagina/);
+assert.match(geblokkeerd.meldingen[0], /Opslag is geblokkeerd.*tabblad/);
 assert.equal(proef("https://voorbeeld.nl/?nietmeten=1#/filmpjes", null, false).scripts.length, 0);
 assert.equal(proef("https://voorbeeld.nl/?nietmeten=0#/sport", null, false).scripts.length, 1);
 // #1254: stille opslag (bewaart niets) en gooiende opslag houden de opt-out in de URL.
@@ -64,3 +64,18 @@ for (const modus of ["stil", false] as const) {
 const nietBevestigd = proef("https://voorbeeld.nl/?nietmeten=0#/sport", "1", "stil");
 assert.equal(nietBevestigd.scripts.length, 0);
 assert.ok(nietBevestigd.meldingen.every((m) => !/weer meegeteld/.test(m)));
+
+// De statische /over-pagina behoudt de vensternaam ook bij herladen en terugkeer.
+for (const modus of ["stil", false] as const) {
+  const start = proef("https://voorbeeld.nl/?nietmeten=1", null, modus);
+  const bestemming = new URL("/over", "https://voorbeeld.nl");
+  const herladen = new URL(bestemming.href);
+  assert.equal(herladen.pathname, "/over");
+  const terug = proef(new URL("/", herladen).href, null, modus, false, start.vensternaam);
+  assert.equal(terug.scripts.length, 0);
+  const opnieuw = proef("https://voorbeeld.nl/", null, modus, false, terug.vensternaam);
+  assert.equal(opnieuw.scripts.length, 0);
+  const aanzetten = proef("https://voorbeeld.nl/?nietmeten=0", null, modus, false, opnieuw.vensternaam);
+  assert.equal(aanzetten.vensternaam, "");
+  assert.equal(aanzetten.scripts.length, 1);
+}
