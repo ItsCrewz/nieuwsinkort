@@ -1,0 +1,1 @@
+- Nieuwe huisstijlversie van `og-image.png` (1200x630) voor deelkaarten (#1201).
