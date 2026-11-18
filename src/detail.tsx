@@ -110,8 +110,13 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
   const [deelTeller, setDeelTeller] = useState(0);
   const actie = useRef(0);
+  const geselecteerd = useRef(false);
   const focusInvoer = useCallback((el: HTMLInputElement | null) => {
-    if (el) { el.focus(); el.select(); }
+    // Eenmaal per verschijning; een herhaalde ref-aanroep steelt de focus niet terug
+    if (!el) { geselecteerd.current = false; return; }
+    if (geselecteerd.current) return;
+    geselecteerd.current = true;
+    el.focus(); el.select();
   }, []);
   useEffect(() => {
     return () => { actie.current++; };

@@ -59,6 +59,18 @@ try {
   const opnieuw = render()[2];
   assert.equal(opnieuw.ref, invoer.ref);
   assert.equal(actief, "volgend element");
+  // Een tweede ref-aanroep met hetzelfde veld steelt de focus niet terug.
+  (invoer.ref as (el: unknown) => void)(veld);
+  assert.equal(actief, "volgend element");
+  // Her-render met gewijzigde item/url: zelfde ref-identiteit, geen focus.
+  index = 0;
+  const gewijzigd = (DeelBlok({ item: { kop: "Ander" } as Item, url: url + "2" }).props.children as (React.ReactElement & { ref: (el: unknown) => void })[])[2];
+  assert.equal(gewijzigd.ref, invoer.ref);
+  assert.equal(actief, "volgend element");
+  // Veld verdwijnt en komt terug: opnieuw selecteren.
+  (invoer.ref as (el: unknown) => void)(null);
+  (invoer.ref as (el: unknown) => void)(veld);
+  assert.equal(actief, "invoer");
 } finally {
   dispatcher.current = vorig;
   if (oudeNavigator) Object.defineProperty(globalThis, "navigator", oudeNavigator);
