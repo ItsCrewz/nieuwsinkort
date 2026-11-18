@@ -61,9 +61,47 @@ for (const sleutel of ["uur", "state", "meer"]) {
   });
 }
 
-await t("alarmfout wordt doorgegeven", async () => {
+const vangFouten = async <T>(f: () => Promise<T>) => {
+  const fouten: unknown[][] = [];
+  const origineel = console.error;
+  try { console.error = (...args: unknown[]) => { fouten.push(args); }; return { uitkomst: await f(), fouten }; }
+  finally { console.error = origineel; }
+};
+
+await t("alarmfout na geslaagde uur-write: gelogd, publicatie telt als gelukt", async () => {
   const fout = new Error("gesimuleerde alarmfout");
-  await assert.rejects(schrijfRun({ put: async () => {} }, {}, {}, {}, async () => { throw fout; }), (ontvangen) => ontvangen === fout);
+  const { uitkomst, fouten } = await vangFouten(() => schrijfRun({ put: async () => {} }, {}, {}, {}, async () => { throw fout; }));
+  assert.equal(uitkomst, true);
+  assert.deepEqual(fouten, [["Video-alarm plannen mislukt", fout]]);
+});
+
+await t("uur-write en alarm falen allebei: mislukking en beide fouten gelogd", async () => {
+  const putFout = new Error("put stuk");
+  const alarmFout = new Error("alarm stuk");
+  const { uitkomst, fouten } = await vangFouten(() => schrijfRun({ put: async (key) => { if (key === "uur") throw putFout; } }, {}, {}, {}, async () => { throw alarmFout; }));
+  assert.equal(uitkomst, false);
+  assert.deepEqual(fouten, [["KV-schrijffout uur", putFout], ["Video-alarm plannen mislukt", alarmFout]]);
+});
+
+await t("volgende run plant het alarm opnieuw na eerdere planningsfout", async () => {
+  let alarmen = 0;
+  const alarm = async () => { alarmen++; if (alarmen === 1) throw new Error("eerste keer stuk"); };
+  const eerste = await vangFouten(() => schrijfRun({ put: async () => {} }, {}, {}, {}, alarm));
+  const tweede = await vangFouten(() => schrijfRun({ put: async () => {} }, {}, {}, {}, alarm));
+  assert.equal(eerste.fouten.length, 1);
+  assert.equal(tweede.fouten.length, 0);
+  assert.equal(tweede.uitkomst, true);
+  assert.equal(alarmen, 2);
+});
+
+await t("normaal pad: precies 3 KV-writes, 1 alarm, geen fouten", async () => {
+  const puts: string[] = [];
+  let alarmen = 0;
+  const { uitkomst, fouten } = await vangFouten(() => schrijfRun({ put: async (key) => { puts.push(key); } }, {}, {}, {}, async () => { alarmen++; }));
+  assert.equal(uitkomst, true);
+  assert.deepEqual(puts, ["uur", "state", "meer"]);
+  assert.equal(alarmen, 1);
+  assert.equal(fouten.length, 0);
 });
 
 console.log(`\n${n} tests geslaagd`);

@@ -8,6 +8,9 @@ export async function schrijfRun(kv: { put(key: string, value: string): Promise<
   };
   const uurGelukt = await schrijf("uur", uur);
   await Promise.all([schrijf("state", state), schrijf("meer", meer)]);
-  await alarm();
+  // Video-voorbereiding is optioneel: een planningsfout mag de afhandeling van de al gepubliceerde run niet afbreken.
+  // Elke volgende run roept alarm() opnieuw aan, dus herstel gaat vanzelf.
+  try { await alarm(); }
+  catch (e) { console.error("Video-alarm plannen mislukt", e); }
   return uurGelukt;
 }

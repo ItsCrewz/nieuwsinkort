@@ -1,0 +1,1 @@
+- Nieuwsrun: een fout bij het plannen van het video-alarm breekt de afhandeling van de al gepubliceerde run niet meer af; de fout wordt gelogd en een volgende run plant opnieuw (#1223).
