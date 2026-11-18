@@ -45,6 +45,9 @@ function afkortingen(tekst: string): string {
 const TERMKOPPEL = /(?<=[\p{L}\p{N}])[-\u2010\u2011](?=[\p{L}\p{N}])/gu;
 const MARKER = "\u0001";
 
+// Korte aaneengeschreven paren rond & (AT&T, H&M, R&D, Q&A, #1209): ook als "ATT" vindbaar. Spaties ("Rock & Roll") en langere delen ("Tom&Jerry") blijven gescheiden.
+const AMPERSAND = /(?<![\p{L}\p{N}])([\p{L}\p{N}]{1,3})&([\p{L}\p{N}]{1,3})(?![\p{L}\p{N}])/gu;
+
 // Woorden van de velden (leeg woord als veldgrens) en welke woorden met een koppelteken aan het volgende vastzitten.
 function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm: boolean[] } {
   const woorden: string[] = [], lijm: boolean[] = [];
@@ -57,6 +60,7 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
       for (const d of delen) { woorden.push(d); lijm.push(false); }
       vorige = true;
     }
+    for (const match of veld.matchAll(AMPERSAND)) { const samen = normaliseer(match[1] + match[2]); if (samen && !samen.includes(" ")) { woorden.push(samen); lijm.push(false); } }
     // Een iOS-versie is ook op het hoofdversienummer vindbaar.
     for (const match of veld.matchAll(/\bios\s+(\p{N}+)\.\p{N}+(?![\p{N}.])/giu)) { woorden.push(match[1]); lijm.push(false); }
     // Een duizendtal blijft ook op zijn delen vindbaar ("500" vindt "2.500", #788).
@@ -167,7 +171,7 @@ function termenVan(query: string): string[][] {
   });
   // Het stuurteken \u0001 is bewust de markering voor termkoppeltekens (#811).
   // eslint-disable-next-line no-control-regex
-  for (const token of afkortingen(duizendtallen(rest)).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
+  for (const token of afkortingen(duizendtallen(rest.replace(AMPERSAND, "$1$2"))).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
     const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
   }
@@ -222,7 +226,10 @@ export function verborgenTekst(aantal: number): string {
 
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
 export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
-  const woorden = normaliseer(splitsUitsluiting(begrensZoekterm(query)).plus).split(" ").filter(Boolean);
+  const plus = splitsUitsluiting(begrensZoekterm(query)).plus;
+  // Zoekopdracht "AT&T" markeert zowel "ATT" als "AT&T" in de tekst.
+  const paren = [...plus.matchAll(AMPERSAND)].map((m) => normaliseer(m[1]) + "&" + normaliseer(m[2]));
+  const woorden = [...normaliseer(plus.replace(AMPERSAND, "$1$2")).split(" ").filter(Boolean), ...paren];
   const posities: { begin: number; eind: number }[] = [];
   let vlak = "", offset = 0;
   // Scheidingstekens van duizendtallen overslaan, zodat "1000" de zichtbare "1.000" markeert.

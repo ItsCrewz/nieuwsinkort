@@ -1,0 +1,1 @@
+- Zoeken: een zoekopdracht met of zonder ampersand (ATT, AT&T, H&M) vindt beide schrijfwijzen; langere of gespatieerde delen blijven gescheiden (#1209).
