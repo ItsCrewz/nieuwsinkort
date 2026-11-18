@@ -30,7 +30,7 @@ import { soundOn, saveSound, geluidTik, onthoudGeluidTik, volgGeluid } from "./g
 import { posterVerborgen } from "./poster";
 import { svCache } from "./samenvattingcache";
 import { useSamenvatting } from "./usesamenvatting";
-import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
+import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytBufferBewaking } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -702,6 +702,9 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
   const blokkade = useRef("-");
   const handdruk = useRef(0);
   const geladen = useRef(false);
+  const bufferBewaking = useRef(ytBufferBewaking());
+  const bufferTijd = useRef<number | null>(null);
+  const [bufferVast, setBufferVast] = useState(false);
   const [shown, setShown] = useState(false);
   useEffect(() => {
     onBeeld(shown);
@@ -788,8 +791,9 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       if (info && typeof info === "object") {
         const t = info as { playerState?: number; currentTime?: number; duration?: number };
         if (typeof t.duration === "number") dur.current = t.duration;
-        if (typeof t.currentTime === "number") cur.current = t.currentTime;
+        if (typeof t.currentTime === "number") { cur.current = t.currentTime; bufferTijd.current = t.currentTime; }
       }
+      setBufferVast(bufferBewaking.current(state.current.active && !state.current.paused && !echteFout.current, start.current.status, bufferTijd.current, performance.now()));
       if (status !== null) {
         const playing = status === 1;
         if (status !== ps.current || (playing && typeof (info as { currentTime?: number })?.currentTime === "number" && Math.abs(cur.current - expect()) > 1)) {
@@ -829,6 +833,9 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
 
   useEffect(() => {
     start.current = { status: null, pogingen: 0, sinds: performance.now() };
+    bufferBewaking.current(false, null, null, performance.now());
+    bufferTijd.current = null;
+    setBufferVast(false);
     gespeeld.current = false;
     blokkade.current = "-";
     setVangnet(false);
@@ -839,12 +846,16 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
     diagnose();
   }, [active, apply, diagnose, post, setVangnet, onYtFout]);
 
-  useEffect(() => { apply(); }, [muted, paused, apply]);
+  useEffect(() => {
+    if (paused) { bufferBewaking.current(false, null, null, performance.now()); setBufferVast(false); }
+    apply();
+  }, [muted, paused, apply]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (geladen.current && !klaar.current && handdruk.current < 10) { listening(); handdruk.current++; }
       const s = state.current;
+      setBufferVast(bufferBewaking.current(s.active && !s.paused && !echteFout.current, start.current.status, bufferTijd.current, performance.now()));
       const besluit = ytStartBesluit({ actief: s.active, gepauzeerd: s.paused, klaar: klaar.current, ...start.current, gespeeld: gespeeld.current, fout: echteFout.current, nu: performance.now() });
       if (besluit === "probeer") { start.current.pogingen++; apply(); diagnose(); }
       else if (besluit === "vangnet") {
@@ -878,7 +889,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         listening();
       }}
     />
-    {active && !paused && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
+    {active && !paused && (bufferVast || vangnet) ? <div className="f-yt-start">{bufferVast ? "Laden duurt lang. Veeg verder." : "Tik om af te spelen"}</div> : null}
     </>
   );
 }

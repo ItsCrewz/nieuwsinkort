@@ -1,0 +1,1 @@
+- Toon bij langdurig bufferen van een YouTube-filmpje hoe je verder kunt naar het volgende filmpje (#1243).

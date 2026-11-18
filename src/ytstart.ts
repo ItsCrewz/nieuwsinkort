@@ -1,5 +1,17 @@
 type YtStart = { actief: boolean; gepauzeerd: boolean; klaar: boolean; status: number | null; pogingen: number; sinds: number; nu: number; gespeeld?: boolean; fout?: boolean };
 
+// Alleen ononderbroken bufferen zonder voortgang telt mee.
+export function ytBufferBewaking() {
+  let sinds: number | null = null;
+  let tijd: number | null = null;
+  return (actief: boolean, status: number | null, voortgang: number | null, nu: number): boolean => {
+    if (!actief || status !== 3) { sinds = null; tijd = null; return false; }
+    if (sinds === null || (voortgang !== null && tijd !== null && voortgang > tijd)) sinds = nu;
+    if (voortgang !== null) tijd = voortgang;
+    return nu - sinds >= 10000;
+  };
+}
+
 export function ytEmbedUrl(id: string, actief: boolean, origin: string): string {
   const params = new URLSearchParams({ autoplay: actief ? "1" : "0", cc_load_policy: "0", mute: "1", playsinline: "1", enablejsapi: "1", controls: "1", rel: "0", modestbranding: "1", iv_load_policy: "3", loop: "1", playlist: id, origin });
   return `https://www.youtube-nocookie.com/embed/${id}?${params}`;
