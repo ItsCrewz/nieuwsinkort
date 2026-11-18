@@ -1,0 +1,1 @@
+- Zoeken: Arabisch-Indische en Perzische cijfers worden gelijkgesteld aan westerse cijfers, dus 2026 en ٢٠٢٦ vinden elkaar (#1230).

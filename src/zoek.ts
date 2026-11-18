@@ -18,7 +18,11 @@ const LETTERVARIANT: Record<string, string> = { "ø": "o", "ł": "l", "æ": "ae"
 const LIGATUUR: Record<string, string> = { "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st" };
 
 // Alleen letters en cijfers omzetten; andere betekenisvolle tekens behouden hun vorm.
-const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (teken) => String.fromCharCode(teken.charCodeAt(0) - 0xfee0));
+// Arabisch-Indische (U+0660) en Perzische (U+06F0) decimale cijfers gaan één-op-één naar 0-9 (#1230).
+const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]|[٠-٩]|[۰-۹]/g, (teken) => {
+  const c = teken.charCodeAt(0);
+  return String.fromCharCode(c >= 0xff00 ? c - 0xfee0 : c >= 0x06f0 ? c - 0x06f0 + 48 : c - 0x0660 + 48);
+});
 
 // Onzichtbare scheidingstekens (#1203): soft hyphen, zero-width space/(non-)joiner, word joiner en BOM horen niet bij een woordgrens.
 const ONZICHTBAAR = /[\u00ad\u200b-\u200d\u2060\ufeff]/g;
