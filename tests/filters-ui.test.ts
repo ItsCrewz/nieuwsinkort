@@ -48,9 +48,16 @@ tik!();
 assert.equal(opslag.get("nieuwsinkort-laatste-bezoek"), String(nu));
 assert.equal(hook.vorig, 123); // sessiereferentie blijft vast
 g.document.visibilityState = "hidden";
-Date.now = echteNu;
+const voorWissel = opslag.get("nieuwsinkort-laatste-bezoek");
+nu += 30_000;
 g.document.dispatchEvent(new Event("visibilitychange"));
-assert.ok(Number(opslag.get("nieuwsinkort-laatste-bezoek")) > 123);
+assert.equal(opslag.get("nieuwsinkort-laatste-bezoek"), voorWissel, "tabwissel schrijft geen bezoektijd");
+venster.dispatchEvent(new Event("pagehide"));
+assert.equal(opslag.get("nieuwsinkort-laatste-bezoek"), voorWissel, "pagehide van een verborgen tab schrijft niets");
+g.document.visibilityState = "visible";
+venster.dispatchEvent(new Event("pagehide"));
+assert.equal(opslag.get("nieuwsinkort-laatste-bezoek"), String(nu), "pagehide van een zichtbare tab sluit het bezoek af");
+Date.now = echteNu;
 hook.set({ video: true });
 assert.equal(JSON.parse(opslag.get("nieuwsinkort-filters")!).video, true);
 hook.reset();
