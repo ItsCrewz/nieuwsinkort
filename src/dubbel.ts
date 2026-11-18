@@ -11,8 +11,8 @@ const stam = (w: string) => (w.length >= 5 ? w.replace(/(en|e|s|n|t|d)$/, "") : 
 
 // Korte namen en afkortingen tellen mee bij het vergelijken van de volgorde.
 function volgordewoorden(s: string): string[] {
-  const t = (s || "").normalize("NFD").replace(/\p{M}/gu, "").match(/(?<![\p{L}\p{N}])[+\-−]?\p{N}+(?:[.,]\p{N}+)*|\p{L}+/gu) || [];
-  return t.filter((w) => w.length >= 3 || /\d/.test(w) || (w.length >= 2 && /^\p{Lu}/u.test(w)))
+  const t = (s || "").normalize("NFD").replace(/\p{M}/gu, "").match(/(?<![\p{L}\p{N}])[+\-−]?\p{N}+(?:[.,]\p{N}+)*|\p{L}+|\p{Sc}/gu) || [];
+  return t.filter((w) => w.length >= 3 || /\d|\p{Sc}/u.test(w) || (w.length >= 2 && /^\p{Lu}/u.test(w)))
     .map((w) => w.replace(/[.,]/g, "").replace(/^\+/, "").replace(/^−/, "-").toLowerCase()).filter((w) => !STOP.has(w)).map(stam);
 }
 
