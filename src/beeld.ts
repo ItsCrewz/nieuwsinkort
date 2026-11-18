@@ -7,11 +7,16 @@ const LOGO = /(?:^|[^\p{L}\p{N}])logo(?:s|type|\d+)?(?=$|[^\p{L}\p{N}])|\/(?!cat
 const MERK = /(?:^|[/_.-])brand[-_]?(?:logo|mark|asset|kit|watermark)(?=$|[/_.?#-])|\/brands?\//i;
 const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
 
-/** Effectieve breedte: alleen imgix (*.imgix.net) levert w × dpr pixels (dpr 1–5, documentatie imgix); elders of bij een ontbrekende/ongeldige/dubbele dpr geldt w zelf. */
+/** Effectieve breedte: alleen imgix (*.imgix.net) levert w × dpr pixels (dpr 1–5). De bonus geldt alleen bij precies één w/width-parameter,
+ *  zonder andere breedteparameters (resize, imwidth, im_w) en zonder beperkende parameters (fit, hoogte, ar, max/min, rect, crop):
+ *  die kunnen de echte breedte onder w × dpr houden. Anders, of bij een ontbrekende/ongeldige/dubbele dpr, geldt w zelf. */
+const BEPERKT = /^(?:fit|h|height|ar|max-w|max-h|min-w|min-h|rect|crop|resize|imwidth|im_w)$/i;
 function effBreedte(u: string, w: number): number {
   let host = "";
   try { host = new URL(u).hostname; } catch { return w; }
   if (!/(?:^|\.)imgix\.net$/i.test(host)) return w;
+  const q = (u.split("#", 1)[0].split("?")[1] || "").split("&").map((p) => p.split("=", 1)[0]);
+  if (q.filter((k) => /^(?:w|width)$/i.test(k)).length !== 1 || q.some((k) => BEPERKT.test(k))) return w;
   const dpr = [...u.split("#", 1)[0].matchAll(/[?&]dpr=([^&]*)/gi)];
   if (dpr.length !== 1 || !/^\d+(?:\.\d+)?$/.test(dpr[0][1])) return w;
   const f = +dpr[0][1];

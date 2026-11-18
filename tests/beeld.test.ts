@@ -79,6 +79,8 @@ t("imgix: w × dpr telt als effectieve breedte; andere hosts en slechte dpr niet
   const i = "https://voorbeeld.imgix.net/foto.jpg";
   for (const q of ["w=200&dpr=2", "w=150&dpr=2", "width=300&dpr=1", "w=100&dpr=3"]) assert.equal(goedBeeld(`${i}?${q}`), true, q);
   for (const q of ["w=100&dpr=2", "w=200", "w=200&dpr=1", "w=200&dpr=0", "w=200&dpr=-2", "w=200&dpr=99", "w=200&dpr=abc", "w=200&dpr=", "w=200&dpr=2&dpr=3", "w=200&dpr=2&h=100", "w=50&dpr=5"]) assert.equal(goedBeeld(`${i}?${q}`), false, q);
+  assert.equal(goedBeeld(`${i}?dpr=2&w=200`), true);
+  for (const q of ["w=100&imwidth=200&dpr=2", "imwidth=200&w=100&dpr=2", "resize=200&dpr=2", "im_w=200&dpr=2", "w=200&dpr=2&fit=max", "w=200&dpr=2&fit=clip&h=400", "w=200&dpr=2&ar=1:1", "w=200&dpr=2&max-w=100", "w=200&dpr=2&w=400", "w=200&dpr=2&rect=0,0,50,50", "w=200&dpr=2&crop=faces"]) assert.equal(goedBeeld(`${i}?${q}`), false, q);
   assert.equal(goedBeeld("https://nieuws.nl/foto.jpg?w=200&dpr=2"), false);
   assert.equal(goedBeeld("https://imgix.net.evil.nl/foto.jpg?w=200&dpr=2"), false);
   assert.equal(goedBeeld(`${i.replace("https", "ftp")}?w=200&dpr=2`), false);
