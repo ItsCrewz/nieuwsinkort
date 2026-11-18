@@ -1,0 +1,1 @@
+- Behoud toetsenbordfocus bij een carrouselfoto die wegvalt (#1265).
