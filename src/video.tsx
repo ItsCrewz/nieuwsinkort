@@ -11,6 +11,7 @@ import { tabToets } from "./tabs";
 import { bewaarFeed, herstelFeed, leesFeed, wisFeed } from "./feedstatus";
 import { touchNu, volgTouch } from "./invoer";
 import { ytGereedLijst, ytOndertitelsBijBericht } from "./ytstart";
+import { parseHash } from "./route";
 
 // De volledige videofeed (spelers, hls.js-glue, debug-overlay) is een eigen chunk: pas laden op touch + videoroute.
 const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
@@ -87,7 +88,8 @@ export function volgFeedHerstel(video: string, cat: "filmpjes" | "dumpert", feed
   const frame = () => actief()?.querySelector<HTMLIFrameElement>('iframe.f-yt');
   const stuur = (func: string, args: unknown[] = []) => frame()?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "https://www.youtube-nocookie.com");
   const update = () => {
-    const slug = decodeURIComponent(location.hash.split("/").slice(2).join("/")) || start || video;
+    const route = parseHash(location.hash);
+    const slug = (route.view === cat && route.video) || vorigeSlug || start || video;
     if (slug !== vorigeSlug) { vorigeSlug = slug; positie = 0; hersteld = false; }
     const el = actief()?.querySelector<HTMLVideoElement>("video");
     if (!hersteld && slug === saved?.slug && saved.cat === cat) {

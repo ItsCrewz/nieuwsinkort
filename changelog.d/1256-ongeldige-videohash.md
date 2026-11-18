@@ -1,0 +1,1 @@
+- Voorkom een fout bij het bewaren van de videopositie als de adresbalk een ongeldig gecodeerde hash bevat (#1256).
