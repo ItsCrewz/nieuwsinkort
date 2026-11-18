@@ -1,0 +1,1 @@
+- Deelactie: een laat resultaat van een eerdere deelpoging, na artikelwissel of sluiten overschrijft de melding niet meer; regressietest toegevoegd (#1231).
