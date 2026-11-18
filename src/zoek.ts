@@ -20,12 +20,16 @@ const LIGATUUR: Record<string, string> = { "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl"
 // Alleen letters en cijfers omzetten; andere betekenisvolle tekens behouden hun vorm.
 const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (teken) => String.fromCharCode(teken.charCodeAt(0) - 0xfee0));
 
+// Onzichtbare scheidingstekens (#1203): soft hyphen, zero-width space/(non-)joiner, word joiner en BOM horen niet bij een woordgrens.
+const ONZICHTBAAR = /[\u00ad\u200b-\u200d\u2060\ufeff]/g;
+const zonderOnzichtbaar = (tekst: string) => tekst.replace(ONZICHTBAAR, "");
+
 // Duizendtal (#1215): 1–3 cijfers en groepen van precies 3, gescheiden door punt, NBSP, smalle NBSP of dunne spatie, met optionele decimaalstaart. Versies (1.2.3) en decimalen (1.5) vallen erbuiten; een gewone spatie telt bewust niet.
 const DUIZENDTAL = /(?<!\p{N}|\p{N}[.,])\p{N}{1,3}(?:[.\u00a0\u202f\u2009]\p{N}{3})+(?:,\p{N}+)?(?!\p{N}|[.,]\p{N})/gu;
 const duizendtallen = (tekst: string) => tekst.replace(DUIZENDTAL, (getal) => getal.replace(/[^\p{N},]/gu, "").replace(",", "."));
 
 export function normaliseer(tekst: string): string {
-  return duizendtallen(gewoneBreedte(tekst)).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
+  return duizendtallen(gewoneBreedte(zonderOnzichtbaar(tekst))).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
     .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
@@ -46,7 +50,7 @@ function woordenVan(velden: string[], koppel: RegExp): { woorden: string[]; lijm
   const woorden: string[] = [], lijm: boolean[] = [];
   for (const veld of velden) {
     let vorige = false;
-    for (const stuk of afkortingen(veld).normalize("NFC").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(koppel, MARKER).split(MARKER)) {
+    for (const stuk of afkortingen(zonderOnzichtbaar(veld)).normalize("NFC").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(koppel, MARKER).split(MARKER)) {
       const delen = normaliseer(stuk).split(" ").filter(Boolean);
       if (!delen.length) { vorige = false; continue; }
       if (vorige) lijm[lijm.length - 1] = true;
@@ -171,7 +175,7 @@ function termenVan(query: string): string[][] {
 }
 
 export function zoekItems(items: Item[], query: string): Item[] {
-  query = begrensZoekterm(query);
+  query = zonderOnzichtbaar(begrensZoekterm(query));
   const kloktijd = query.trim();
   if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
   const { plus, min } = splitsUitsluiting(query);
@@ -231,7 +235,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
     const begin = offset;
     offset += teken.length;
     if (scheiding.has(begin)) { posities[posities.length - 1].eind = offset; continue; }
-    const genormaliseerd = gewoneBreedte(teken).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]);
+    const genormaliseerd = gewoneBreedte(zonderOnzichtbaar(teken)).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]);
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
       vlak += letter;

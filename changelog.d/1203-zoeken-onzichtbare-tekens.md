@@ -1,0 +1,1 @@
+- Zoeken: onzichtbare tekens (soft hyphen, zero-width space e.d.) binnen een woord worden genegeerd, in zoekterm en tekst (#1203).
