@@ -1,0 +1,1 @@
+- Ongeldige beeldtellers worden genegeerd, zodat videobewaking betrouwbare tellers gebruikt (#1233).

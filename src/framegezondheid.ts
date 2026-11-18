@@ -12,6 +12,7 @@ export type FrameTik = {
   readyState: number;
 };
 export type TellerBron = "presentatie" | "decode" | null;
+const geldigeTeller = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
 type FrameBesluit = "ok" | "frame-vast" | "geen-eerste-frame";
 
 /** Zonder nieuw beeld ten minste zo lang (wandklok) én zoveel klokvoortgang: beeld staat vast. */
@@ -43,6 +44,7 @@ export class FrameGezondheid {
   }
 
   tik(t: FrameTik): FrameBesluit {
+    if (!geldigeTeller(t.frames)) t = { ...t, frames: null };
     if (t.paused || t.hidden || t.seeking || t.ended || t.seekRecent || this.vorigeT === null) {
       this.reset(t);
       return "ok";
@@ -60,7 +62,7 @@ export class FrameGezondheid {
     }
     this.vorigeT = t.currentTime;
     this.vorigeNu = t.now;
-    if (t.bron !== this.vorigeBron) {
+    if (t.bron !== this.vorigeBron || (t.frames === null) !== (this.vorigeFrames === null)) {
       // De wisseling decode -> presentatie gebeurt alleen doordat rVFC net vuurde: dat is zelf bewijs van een gepresenteerd beeld.
       // De twee tellers zijn niet vergelijkbaar; gelijke waarden (1 -> 1) zijn toeval en mogen geen "geen nieuw beeld" geven.
       // De timer herstart dus; een echte stilstand wordt hooguit één keer uitgesteld en dan exact VAST_MS na de wisseling gemeld.
@@ -111,10 +113,11 @@ export class HerstelBudget {
  * alleen rVFC en nog niet gevuurd = "presentatie" (waarde 0); geen teller = null.
  * Enige plek met deze keuze; `frameTeller` leidt zijn waarde hiervan af.
  */
-export function frameTellerBron(s: { gepresenteerd: number; rvfc: boolean; decode: boolean }): TellerBron {
-  if (s.rvfc && s.gepresenteerd > 0) return "presentatie";
-  if (s.decode) return "decode";
-  return s.rvfc ? "presentatie" : null;
+export function frameTellerBron(s: { gepresenteerd: number; gedecodeerd: number; rvfc: boolean; decode: boolean }): TellerBron {
+  const presentatie = s.rvfc && geldigeTeller(s.gepresenteerd);
+  if (presentatie && s.gepresenteerd > 0) return "presentatie";
+  if (s.decode && geldigeTeller(s.gedecodeerd)) return "decode";
+  return presentatie ? "presentatie" : null;
 }
 
 /** Waarde van de teller die `frameTellerBron` kiest; null = geen teller beschikbaar. */
@@ -125,13 +128,12 @@ export function frameTeller(s: { gepresenteerd: number; gedecodeerd: number; rvf
 
 /** Beste beschikbare beeldteller zonder rVFC: getVideoPlaybackQuality, anders webkitDecodedFrameCount. */
 export function decodeTeller(video: { getVideoPlaybackQuality?: () => { totalVideoFrames: number }; webkitDecodedFrameCount?: number }): number | null {
-  const geldig = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
   try {
     const n = video.getVideoPlaybackQuality?.()?.totalVideoFrames;
-    if (geldig(n)) return n;
+    if (geldigeTeller(n)) return n;
   } catch {
     // Sommige browsers bieden de API aan maar kunnen de kwaliteit niet uitlezen.
   }
   const n = video.webkitDecodedFrameCount;
-  return geldig(n) ? n : null;
+  return geldigeTeller(n) ? n : null;
 }
