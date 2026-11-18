@@ -1,1 +1,1 @@
-- De vandaag-index houdt bij het verlopen van artikellinks rekening met de Amsterdamse 06.00-grens, ook tijdens het ophalen van de data (#1232).
+- De vandaag-index verwijdert verlopen artikellinks ook als de Amsterdamse 06.00-grens tijdens het opbouwen van de pagina valt (#1232).

@@ -38,8 +38,11 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
     items = dag.items;
   } catch { console.error("vandaag: data lezen mislukt"); return fout(); }
   const nu = Date.now();
-  const html = vandaagHtml(datasetVerlopen(gegenereerd, nu) ? [] : items, ams(Date.parse(gegenereerd)).iso);
-  const beleid = overzichtBeleid(start, nu, gegenereerd, true); // swr alleen voor zover de grens het toelaat
+  const dag = ams(Date.parse(gegenereerd)).iso;
+  let html = vandaagHtml(datasetVerlopen(gegenereerd, nu) ? [] : items, dag);
+  const klaar = Date.now();
+  if (!datasetVerlopen(gegenereerd, nu) && datasetVerlopen(gegenereerd, klaar)) html = vandaagHtml([], dag);
+  const beleid = overzichtBeleid(start, klaar, gegenereerd, true); // swr alleen voor zover de grens het toelaat
   if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
   const response = new Response(html, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));

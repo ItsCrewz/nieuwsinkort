@@ -37,6 +37,13 @@ try {
     r = await vraag(gen); await Promise.all(wachten.splice(0));
     assert.ok(!(await r.text()).includes(pad), "verlopen artikellinks verdwijnen om 06:00");
   }
+  opslag.clear();
+  const grens = Date.parse("2026-10-25T05:00:00Z");
+  let metingen = 0;
+  Date.now = () => ++metingen < 3 ? grens - 1 : grens;
+  const overgang = await vraag("2026-10-24T12:00:00Z");
+  assert.equal(overgang.headers.get("cache-control"), "no-store");
+  assert.ok(!(await overgang.text()).includes(artikelPad(item, "2026-10-24")), "geen verlopen links als 06:00 tijdens HTML-opbouw valt");
   opslag.clear(); Date.now = () => Date.parse("2026-11-04T12:00:00Z");
   const vers = await vraag("2026-11-04T10:00:00Z"); await Promise.all(wachten.splice(0));
   assert.equal(vers.headers.get("cache-control"), "public, max-age=300, stale-while-revalidate=600");
