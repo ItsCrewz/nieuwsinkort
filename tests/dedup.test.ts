@@ -155,7 +155,7 @@ t("caption: verschillende video's over hetzelfde onderwerp blijven apart", () =>
 t("caption-cache: zelfde uitkomst bij herhaling en na wijziging van titel/ai (#404)", () => {
   const ai = "Bekijk hier de beelden van het laatste nieuws vandaag. De politie hield een verdachte aan in de binnenstad.";
   const a: any = { bron: "YouTube", titel: "Eerste opname", href: "https://youtu.be/aaaaaaaaaaa", tijd: "10:00", ai };
-  const b: any = { bron: "TikTok", titel: "Tweede opname", href: "https://youtu.be/bbbbbbbbbbb", tijd: "10:05", ai };
+  const b: any = { bron: "TikTok", titel: "Tweede opname", href: "https://www.tiktok.com/@x/video/2", tijd: "10:05", ai };
   assert.equal(dedupVideos([a, b]).list.length, 1);
   assert.equal(dedupVideos([a, b]).list.length, 1);
   b.ai = "Totaal andere tekst over de brandweer die een grote brand bluste in het centrum van de stad vandaag.";
@@ -167,7 +167,7 @@ t("caption-cache: zelfde uitkomst bij herhaling en na wijziging van titel/ai (#4
 t("middernacht: kloktijden zonder datum worden cyclisch vergeleken (#986)", () => {
   const ai = "Bekijk hier de beelden van het laatste nieuws vandaag. De politie hield een verdachte aan in de binnenstad.";
   const a: any = { bron: "YouTube", titel: "Eerste opname", href: "https://youtu.be/aaaaaaaaaaa", tijd: "23:55", ai };
-  const b: any = { bron: "TikTok", titel: "Tweede opname", href: "https://youtu.be/bbbbbbbbbbb", tijd: "00:05", ai };
+  const b: any = { bron: "TikTok", titel: "Tweede opname", href: "https://www.tiktok.com/@x/video/2", tijd: "00:05", ai };
   assert.equal(dedupVideos([a, b]).list.length, 1);
   assert.equal(dedupVideos([b, a]).list.length, 1);
   // Vergelijking met de andere lijst (Dumpert).
@@ -212,8 +212,8 @@ t("platformdubbel: andere filmpjes, andere uitgever, ander tijdvenster of onbeke
   assert.equal(dedupVideos([f429[0], f429[2]]).list.length, 2); // NU.nl: huisdier vs Littler
   assert.equal(dedupVideos([f429[4], f429[5]]).list.length, 2); // twee NOS Stories
   assert.equal(dedupVideos([f429[6], f429[7]]).list.length, 2); // ESPN NL: short vs journaal
-  assert.equal(dedupVideos([f429[6], { ...f429[7], bron: "Instagram", _k: "ESPN NL", duur: 900 }]).list.length, 2); // IG-journaal: duur 900 vs 45
-  assert.equal(dedupVideos([f429[6], { ...f429[7], bron: "Instagram", _k: "ESPN NL", duur: 44 }]).list.length, 1); // zelfde duur: wél hetzelfde (beschrijving bevat de titel)
+  assert.equal(dedupVideos([f429[6], { ...f429[7], bron: "Instagram", href: "https://www.instagram.com/reel/ESPN77/", _k: "ESPN NL", duur: 900 }]).list.length, 2); // IG-journaal: duur 900 vs 45
+  assert.equal(dedupVideos([f429[6], { ...f429[7], bron: "Instagram", href: "https://www.instagram.com/reel/ESPN77/", _k: "ESPN NL", duur: 44 }]).list.length, 1); // zelfde duur: wél hetzelfde (beschrijving bevat de titel)
   assert.equal(dedupVideos([f429[6], f429[7]]).list.length, 2); // zelfde platform: nooit via deze regel
   assert.equal(dedupVideos([f429[0], f429[8]]).list.length, 2); // andere uitgever (RTL Nieuws)
   assert.equal(dedupVideos([f429[0], { ...f429[1], _pub: f429[1]._pub + 7 * 3600000 }]).list.length, 2); // > 6 uur

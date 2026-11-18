@@ -1,0 +1,1 @@
+- Dedup: zwakke tekstmatches (titel, caption, uitgever) voegen video's met aantoonbaar verschillende id's niet meer samen via een brug (#1222).
