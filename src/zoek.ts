@@ -184,7 +184,7 @@ function termenVan(query: string): string[][] {
   return termen;
 }
 
-export function zoekItems(items: Item[], query: string): Item[] {
+export function zoekItems(items: Item[], query: string, alleenKoppen = false): Item[] {
   query = zonderOnzichtbaar(begrensZoekterm(query));
   const kloktijd = query.trim();
   if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
@@ -192,7 +192,7 @@ export function zoekItems(items: Item[], query: string): Item[] {
   const termen = termenVan(plus);
   if (!termen.length && !min.length) return query.trim() ? [] : items;
   return items.filter((item) => {
-    const { woorden, lijm } = zoektekst(item);
+    const { woorden, lijm } = zoektekst(alleenKoppen ? alleenKop(item) : item);
     // Een uitsluitterm die op een woordbegin past laat het item afvallen.
     if (min.some((delen) => kandidaten(delen, woorden, lijm).length)) return false;
     // Woordbegin: elke term moet op een eigen woord (of eigen reeks) vallen ("mark markt" vraagt twee woorden).
