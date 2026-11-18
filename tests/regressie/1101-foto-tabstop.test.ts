@@ -7,7 +7,7 @@ import { Beelden } from "../../src/beelden";
 const bericht = JSON.parse(readFileSync("tests/fixtures/joey/nu-geheugen.json", "utf8"));
 const html = renderToStaticMarkup(createElement(Beelden, { urls: bericht.beelden, eager: true }));
 assert.match(html, /class="bl-track"[^>]*tabindex="-1"/);
-assert.doesNotMatch(html, /aria-label="Foto's"|<button/);
+assert.doesNotMatch(html, /role="group"|aria-label="Foto's"|<button/);
 assert.match(html, /alt="" aria-hidden="true"/);
 const meer = renderToStaticMarkup(createElement(Beelden, { urls: [...bericht.beelden, ...bericht.beelden.map((u: string) => u + "?b")], eager: true }));
 if (/class="bl multi/.test(meer)) {

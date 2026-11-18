@@ -242,8 +242,8 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
         className="bl-track"
         ref={track}
         tabIndex={multi ? 0 : -1}
-        role="group"
-        aria-label={multi ? "Foto's" : "Foto"}
+        role={multi ? "group" : undefined}
+        aria-label={multi ? "Foto's" : undefined}
         aria-describedby={multi ? instructieId : undefined}
         onKeyDown={multi ? (e) => {
           if (e.key === "ArrowRight" || e.key === "ArrowLeft") {

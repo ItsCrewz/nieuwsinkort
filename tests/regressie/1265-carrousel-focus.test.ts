@@ -88,7 +88,8 @@ for (const naam of ["Vorige foto", "Volgende foto"]) {
   c.knop(naam).focus();
   await c.laadfout(urls[0]);
   assert.equal(doc.activeElement, c.track(), `${naam}: focus blijft bij de foto`);
-  assert.equal(c.track().attrs["aria-label"], "Foto");
+  assert.equal(c.track().attrs.role, undefined);
+  assert.equal(c.track().attrs["aria-label"], undefined);
   assert.deepEqual(c.knoppen(), []);
   await act(async () => c.root.unmount());
 }

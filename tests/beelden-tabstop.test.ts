@@ -61,11 +61,11 @@ async function mount(n: number) {
   return { track, knoppen, slides, fout, laad, klassen, container };
 }
 
-await t("één beeld: geen tabstop of knoppen", async () => {
+await t("één beeld: geen tabstop, rol of knoppen", async () => {
   const m = await mount(1);
   assert.equal(props(m.track()).tabIndex, -1);
-  assert.equal(props(m.track()).role, "group");
-  assert.equal(props(m.track())["aria-label"], "Foto");
+  assert.equal(props(m.track()).role, undefined);
+  assert.equal(props(m.track())["aria-label"], undefined);
   assert.equal(m.knoppen().length, 0);
 });
 
@@ -82,8 +82,8 @@ await t("laadfout 2→1: focus naar de fotostrook, bediening weg, overgebleven b
   await m.fout(1);
   assert.equal(doc.activeElement, m.track());
   assert.equal(m.knoppen().length, 0);
-  assert.equal(props(m.track()).role, "group");
-  assert.equal(props(m.track())["aria-label"], "Foto");
+  assert.equal(props(m.track()).role, undefined);
+  assert.equal(props(m.track())["aria-label"], undefined);
   assert.equal(m.slides().length, 1);
   assert.equal(props(m.slides()[0])["aria-hidden"], undefined);
 });
