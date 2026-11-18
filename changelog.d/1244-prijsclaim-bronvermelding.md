@@ -1,0 +1,1 @@
+- Artikel: een inhoudelijke prijsclaim als "De prijs stijgt via NOS" behoudt de bronvermelding; alleen echte verkoopvermeldingen worden opgeschoond (#1244).
