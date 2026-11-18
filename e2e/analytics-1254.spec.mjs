@@ -11,6 +11,7 @@ for (const modus of ["geblokkeerd", "stil"]) {
     await page.locator('a[href="/over"]').click();
     await expect(page).toHaveURL(/\/over$/);
     await page.reload();
+    await expect.poll(() => page.evaluate(() => window.name)).toBe("nik_nietmeten=1");
     await page.getByRole("link", { name: "Naar Nieuws in het kort" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect.poll(() => page.evaluate(() => window.name)).toBe("nik_nietmeten=1");
