@@ -142,25 +142,44 @@ function quality(v: DVideo): number {
   return play * 100 + Math.log10(1 + popNum(v.populariteit));
 }
 
+// Bewezen video-identiteit: alleen id-sleutels (yt/ig/x/rd/vr/dp/xv), niet media:/url:/thumb:. Twee identiteitsverzamelingen
+// conflicteren als ze een prefix delen maar geen enkele waarde (yt:1 tegen yt:2). Een andere prefix is geen conflict (YouTube ↔ Instagram).
+type Ident = Map<string, Set<string>>;
+const ident = (ks: string[]): Ident => {
+  const m: Ident = new Map();
+  for (const k of ks) { const c = k.indexOf(":"), p = k.slice(0, c); if (/^(yt|ig|x|rd|vr|dp|xv)$/.test(p)) (m.get(p) || m.set(p, new Set()).get(p)!).add(k.slice(c + 1)); }
+  return m;
+};
+const conflict = (a: Ident, b: Ident) => { for (const [p, x] of a) { const y = b.get(p); if (y && ![...x].some((v) => y.has(v))) return true; } return false; };
+
 /** Ontdubbelt `list` (volgorde van de beste kopie blijft). Alles wat ook in `against` staat (bijv. Dumpert) valt weg. */
 export function dedupVideos<T extends DVideo>(list: T[], against: DVideo[] = []): { list: T[]; removed: number; groups: string[][] } {
   const blocked = new Set(against.flatMap(videoKeys));
+  const aids = against.map((v) => ident(videoKeys(v)));
   const blockedTitles = against.map((v) => titleTokens(v.titel));
   const parent = list.map((_, i) => i);
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-  const join = (a: number, b: number) => { const x = find(a), y = find(b); if (x !== y) parent[y] = x; };
-  const byKey = new Map<string, number>();
   const keys = list.map(videoKeys);
+  const ids = keys.map(ident); // per wortel: identiteit van de hele groep
+  const join = (a: number, b: number) => {
+    const x = find(a), y = find(b);
+    if (x === y) return;
+    parent[y] = x;
+    for (const [p, v] of ids[y]) { const t = ids[x].get(p); if (t) v.forEach((e) => t.add(e)); else ids[x].set(p, v); }
+  };
+  const byKey = new Map<string, number>();
   const toks = list.map((v) => titleTokens(v.titel));
   list.forEach((_, i) => { for (const k of keys[i]) { const j = byKey.get(k); if (j == null) byKey.set(k, i); else join(j, i); } });
-  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (find(i) !== find(j) && (sameTitle(toks[i], toks[j]) || sameCaption(list[i], list[j]) || sameUitgever(list[i], list[j]))) join(i, j);
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) if (find(i) !== find(j) && (sameTitle(toks[i], toks[j]) || sameCaption(list[i], list[j]) || sameUitgever(list[i], list[j])) && !conflict(ids[find(i)], ids[find(j)])) join(i, j); // zwakke (tekst)match nooit tussen aantoonbaar verschillende video's: geen brugmatch
   const groups = new Map<number, number[]>();
   list.forEach((_, i) => { const r = find(i); (groups.get(r) || groups.set(r, []).get(r)!).push(i); });
   const out: { i: number; v: T }[] = [];
   let removed = 0;
   const report: string[][] = [];
   for (const idx of groups.values()) {
-    if (idx.some((i) => keys[i].some((k) => blocked.has(k)) || blockedTitles.some((t) => sameTitle(toks[i], t)) || against.some((v) => sameCaption(list[i], v)))) { removed += idx.length; report.push(idx.map((i) => `${list[i].bron}: ${list[i].titel} (al bij Dumpert)`)); continue; }
+    const gid = ids[find(idx[0])];
+    const zwak = (i: number) => blockedTitles.some((t, n) => sameTitle(toks[i], t) && !conflict(gid, aids[n])) || against.some((v, n) => sameCaption(list[i], v) && !conflict(gid, aids[n]));
+    if (idx.some((i) => keys[i].some((k) => blocked.has(k)) || zwak(i))) { removed += idx.length; report.push(idx.map((i) => `${list[i].bron}: ${list[i].titel} (al bij Dumpert)`)); continue; }
     const best = idx.reduce((a, b) => (quality(list[b]) > quality(list[a]) ? b : a), idx[0]);
     const ook = [...(list[best].ook || [])];
     for (const i of idx) if (i !== best) {
