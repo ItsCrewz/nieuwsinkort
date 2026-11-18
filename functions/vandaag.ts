@@ -28,16 +28,18 @@ export async function onRequestGet(ctx: Ctx): Promise<Response> {
   const start = Date.now();
   if (bestaand && nogGeldig(bestaand, start)) return cacheHit(bestaand, start);
   const fout = () => new Response("Data tijdelijk niet beschikbaar", { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
-  let html: string, gegenereerd: string;
+  let items: Item[], gegenereerd: string;
   try {
     const data = await dagdata({ request: new Request(`${u.origin}/data.json`), env: ctx.env }, false);
     if (!data.ok) return fout();
     const dag = await data.json() as { gegenereerd?: unknown; items?: Item[] } | null;
     if (typeof dag?.gegenereerd !== "string" || !Number.isFinite(Date.parse(dag.gegenereerd)) || !Array.isArray(dag.items)) return fout();
     gegenereerd = dag.gegenereerd;
-    html = vandaagHtml(datasetVerlopen(gegenereerd, Date.now()) ? [] : dag.items, ams(Date.parse(gegenereerd)).iso);
+    items = dag.items;
   } catch { console.error("vandaag: data lezen mislukt"); return fout(); }
-  const beleid = overzichtBeleid(start, Date.now(), gegenereerd, true); // swr alleen voor zover de grens het toelaat
+  const nu = Date.now();
+  const html = vandaagHtml(datasetVerlopen(gegenereerd, nu) ? [] : items, ams(Date.parse(gegenereerd)).iso);
+  const beleid = overzichtBeleid(start, nu, gegenereerd, true); // swr alleen voor zover de grens het toelaat
   if (!beleid) return new Response(html, { headers: { ...HDR, "Cache-Control": "no-store" } });
   const response = new Response(html, { headers: { ...HDR, "Cache-Control": beleid.cc, [GELDIG_TOT]: beleid.tot } });
   if (cache) ctx.waitUntil(cache.put(sleutel, response.clone()).catch(() => {}));

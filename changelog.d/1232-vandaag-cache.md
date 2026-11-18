@@ -1,0 +1,1 @@
+- De vandaag-index houdt bij het verlopen van artikellinks rekening met de Amsterdamse 06.00-grens, ook tijdens het ophalen van de data (#1232).
