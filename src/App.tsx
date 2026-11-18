@@ -271,7 +271,8 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
       cancelAnimationFrame(raf);
     };
   }, [bionic, item, zoekterm]);
-  const click = useOpen(key, onOpen);
+  const pad = artikelId(item) || key; // #1278: eigen id i.p.v. kopsleutel, zodat dubbele koppen het eigen bericht openen
+  const click = useOpen(pad, onOpen);
   const beelden = useMemo(() => fotos(item), [item]);
   const refit = useCallback(() => {
     const el = cardRef.current;
@@ -299,7 +300,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
         </span>
       </div>
       <h2 className="nc-title">
-        <a href={`#/bericht/${key}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
+        <a href={`#/bericht/${pad}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
           <ZoekTekst tekst={item.kop} query={zoekterm} />
         </a>
       </h2>
@@ -320,7 +321,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
       <div className="nc-act">
         <div className="nc-act-row">
         {meer ? (
-          <a className="btn" href={`#/bericht/${key}`} aria-label={leesVerderNaam(item.kop)} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); voorlaadMeer(item); }}>
+          <a className="btn" href={`#/bericht/${pad}`} aria-label={leesVerderNaam(item.kop)} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); voorlaadMeer(item); }}>
             Lees verder
           </a>
         ) : null}

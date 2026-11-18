@@ -1,1 +1,2 @@
 - Lees verder-links krijgen een toegankelijke naam met de berichtkop.
+- Dubbele koppen openen het eigen bericht: kaartlinks gebruiken het artikel-id.
