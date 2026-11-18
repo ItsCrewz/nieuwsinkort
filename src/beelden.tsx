@@ -109,7 +109,7 @@ function vooruit() {
   });
 }
 const lastTop = new WeakMap<EventTarget, number>();
-function onNewsScroll(e: Event) {
+export function onNewsScroll(e: Event) {
   const t = e.target;
   if (!(t instanceof HTMLElement) || !t.classList.contains("nf")) return;
   const top = t.scrollTop;
