@@ -1,0 +1,1 @@
+- Zoeken: termen in schriften zonder woordspaties (Japans, Chinees, Thai e.d.) vinden nu ook tekst midden in een zin (#1221).
