@@ -1,0 +1,1 @@
+- Analytics: bij geblokkeerde opslag blijft de opt-out behouden tijdens navigatie en herladen in hetzelfde tabblad (#1254).

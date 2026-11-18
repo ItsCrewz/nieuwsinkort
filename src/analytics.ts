@@ -3,14 +3,19 @@ const SITE_TOKEN = "842ae4495adb4d36b6c6fdb5100e43c3";
 export function startAnalytics(token = SITE_TOKEN): void {
   const url = new URL(window.location.href);
   const keuze = url.searchParams.get("nietmeten");
-  let uit = keuze === "1";
+  const vensterKeuze = "nik_nietmeten=1";
+  let uit = keuze === "1" || (keuze !== "0" && window.name === vensterKeuze);
   let opgeslagen = false;
   try {
     if (keuze === "1") localStorage.setItem("nik_nietmeten", "1");
     if (keuze === "0") localStorage.removeItem("nik_nietmeten");
-    uit = localStorage.getItem("nik_nietmeten") === "1";
-    opgeslagen = true;
+    const gelezen = localStorage.getItem("nik_nietmeten");
+    // Opslag die stil niets bewaart telt niet als opgeslagen: de keuze blijft dan in de URL.
+    opgeslagen = keuze === "1" ? gelezen === "1" : keuze === "0" ? gelezen === null : true;
+    uit = keuze === "1" ? true : keuze === "0" ? gelezen === "1" : uit || gelezen === "1";
   } catch { /* De URL bewaart de keuze zolang opslag ontbreekt. */ }
+  if (keuze === "1" && !opgeslagen) window.name = vensterKeuze;
+  if (keuze === "0" && window.name === vensterKeuze) window.name = "";
   if (keuze === "1" || keuze === "0") {
     if (opgeslagen || keuze === "0") {
       url.searchParams.delete("nietmeten");
@@ -27,7 +32,7 @@ export function startAnalytics(token = SITE_TOKEN): void {
       const melding = document.createElement("div");
       melding.style.cssText = "position:fixed;z-index:1000;bottom:1rem;left:50%;transform:translateX(-50%);padding:.6rem 1rem;border-radius:.5rem;background:#222;color:#fff;font-size:.875rem;text-align:center";
       melding.setAttribute("role", "status");
-      melding.textContent = "Je bezoek wordt niet meegeteld. Opslag is geblokkeerd: op een andere pagina moet je de keuze opnieuw maken met ?nietmeten=1. ";
+      melding.textContent = "Je bezoek wordt niet meegeteld. Opslag is geblokkeerd: je keuze geldt in dit tabblad. ";
       const knop = document.createElement("button");
       knop.textContent = "Verder";
       knop.addEventListener("click", () => melding.remove());
