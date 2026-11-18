@@ -1,1 +1,2 @@
 - Nieuwsrun: een fout bij het plannen van het video-alarm breekt de afhandeling van de al gepubliceerde run niet meer af; de fout wordt gelogd en een volgende run plant opnieuw (#1223).
+- Nieuwsrun: een mislukte `uur`-write telt ook als het video-alarm faalt als mislukte run (500, `faalReeks`), zodat de runstatus niet ten onrechte op geslaagd springt (#1223).

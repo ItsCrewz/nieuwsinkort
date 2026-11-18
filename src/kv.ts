@@ -14,3 +14,6 @@ export async function schrijfRun(kv: { put(key: string, value: string): Promise<
   catch (e) { console.error("Video-alarm plannen mislukt", e); }
   return uurGelukt;
 }
+
+/** Een gewenste `uur`-write die mislukte telt als een mislukte run (anders ziet bewaakteRun een geslaagde run). */
+export const uurFout = (schrijfUur: boolean, uurGelukt: boolean) => schrijfUur && !uurGelukt ? new Error("KV-schrijffout uur") : null;
