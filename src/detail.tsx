@@ -108,6 +108,7 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
 
 export function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
+  const [deelTeller, setDeelTeller] = useState(0);
   const actie = useRef(0);
   const focusInvoer = useCallback((el: HTMLInputElement | null) => {
     if (el) { el.focus(); el.select(); }
@@ -119,7 +120,7 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
     if (deelStatus !== "gekopieerd") return;
     const t = setTimeout(() => setDeelStatus(""), 3000);
     return () => clearTimeout(t);
-  }, [deelStatus]);
+  }, [deelStatus, deelTeller]);
   return (
     <>
       <button type="button" className="deel-knop" aria-label="Deel dit bericht" disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
@@ -127,11 +128,13 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
         setDeelStatus("");
         if (!url) return;
         const status = await deel(navigator, item.kop, url);
-        if (actie.current === huidig) setDeelStatus(status);
+        if (actie.current !== huidig) return;
+        setDeelStatus(status);
+        if (status === "gekopieerd") setDeelTeller((n) => n + 1); // elke geslaagde actie start de timer van 3 s opnieuw
       }}>
         <Icon name="share" />
       </button>
-      <span id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
+      <span key={deelTeller} id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
       {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" aria-describedby="deel-instructie" readOnly value={url} ref={focusInvoer} /> : null}
     </>
   );

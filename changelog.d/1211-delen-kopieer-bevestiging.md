@@ -1,0 +1,1 @@
+- Delen: iedere geslaagde kopieeractie geeft opnieuw een zichtbare bevestiging "Link gekopieerd" die vanaf de laatste actie 3 seconden blijft staan (#1211).
