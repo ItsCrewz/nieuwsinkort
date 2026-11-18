@@ -1,0 +1,1 @@
+- Terugvegen: de flicksnelheid telt alleen de laatste 100 ms, zodat een snelle veeg na vasthouden of langzaam slepen het artikel wel sluit (#1216).

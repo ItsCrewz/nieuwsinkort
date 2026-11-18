@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { besluit, magStarten, sluit } from "../src/terugvegen";
+import { besluit, magStarten, recenteSnelheid, sluit } from "../src/terugvegen";
 
 const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
 
@@ -36,4 +36,18 @@ t("terugvegen: naar links of zonder beweging sluit nooit", () => {
   assert.equal(sluit(-200, 390, 100), false);
   assert.equal(sluit(0, 390, 100), false);
   assert.equal(sluit(100, 0, 100), false);
+});
+t("terugvegen: pauze en daarna snelle veeg sluit, even lang langzaam niet", () => {
+  const pauze = [{ dx: 0, t: 0 }, { dx: 12, t: 600 }, { dx: 50, t: 640 }, { dx: 80, t: 660 }];
+  assert.equal(sluit(80, 390, 660, recenteSnelheid(pauze, 670)), true);
+  assert.equal(sluit(80, 390, 660), false); // gemiddelde over de hele duur is te traag
+  const traag = [{ dx: 0, t: 0 }, { dx: 30, t: 300 }, { dx: 55, t: 600 }, { dx: 80, t: 900 }];
+  assert.equal(sluit(80, 390, 900, recenteSnelheid(traag, 910)), false);
+});
+t("terugvegen: snel maar onder FLICK_MIN of stilgehouden vinger sluit niet", () => {
+  const kort = [{ dx: 0, t: 0 }, { dx: 30, t: 40 }];
+  assert.equal(sluit(30, 390, 40, recenteSnelheid(kort, 45)), false);
+  const stil = [{ dx: 0, t: 0 }, { dx: 80, t: 50 }];
+  assert.equal(recenteSnelheid(stil, 400), undefined);
+  assert.equal(sluit(80, 390, 400, recenteSnelheid(stil, 400)), false);
 });
