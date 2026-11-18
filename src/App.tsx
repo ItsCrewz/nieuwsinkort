@@ -25,7 +25,7 @@ import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, TIJD_LABEL, filterNieuws, filterVideos, useFilters, useVideoKlok } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
-import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
+import { bronnenTekst, fotos, heeftLeesVerder, leesVerderNaam } from "./leesverder";
 import { touchNu } from "./invoer";
 import { volgGeluid } from "./geluid";
 import { laadData, neemVroegeData } from "./vroeg";
@@ -242,7 +242,7 @@ const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, 
   );
 });
 
-function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
+export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
   const key = itemKey(item);
   const cardRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -320,7 +320,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
       <div className="nc-act">
         <div className="nc-act-row">
         {meer ? (
-          <a className="btn" href={`#/bericht/${key}`} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); voorlaadMeer(item); }}>
+          <a className="btn" href={`#/bericht/${key}`} aria-label={leesVerderNaam(item.kop)} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); voorlaadMeer(item); }}>
             Lees verder
           </a>
         ) : null}
