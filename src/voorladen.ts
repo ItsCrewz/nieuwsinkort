@@ -87,12 +87,13 @@ export function laagsteVariant(txt: string, base: string): string {
   }
 }
 export type Segment = { url: string; bereik?: { van: number; tot: number } };
+const aansluitend = (vorig: { url: string; einde: number } | null, url: string) => vorig?.url === url ? vorig.einde : undefined;
 
 /** Eerste segmenten uit een mediaplaylist. Segmenten met #EXT-X-BYTERANGE krijgen hun bereik mee (zonder @offset: aansluitend
- *  op het vorige bereik van dezelfde URL); een kapot bereik slaat dat segment over, het hele bestand halen we nooit op. */
+ *  op het direct vorige segment van dezelfde URL); een kapot bereik slaat dat segment over, het hele bestand halen we nooit op. */
 export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
   const out: Segment[] = [];
-  const einde = new Map<string, number>(); // volgende offset per URL
+  let vorig: { url: string; einde: number } | null = null;
   let br: string | null = null;
   for (const l of txt.split("\n").map((x) => x.trim())) {
     if (!l) continue;
@@ -108,17 +109,21 @@ export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
     try {
       url = new URL(l, base).href;
     } catch {
+      vorig = null;
       continue;
     }
-    if (bereik === null) out.push({ url });
+    if (bereik === null) {
+      vorig = null;
+      out.push({ url });
+    }
     else {
       const m = /^(\d+)(?:@(\d+))?$/.exec(bereik);
       const len = m ? +m[1] : 0;
-      const van = m ? (m[2] !== undefined ? +m[2] : einde.get(url)) : undefined;
+      const van: number | undefined = m ? (m[2] !== undefined ? +m[2] : aansluitend(vorig, url)) : undefined;
       if (m && len > 0 && van !== undefined && Number.isSafeInteger(van + len)) {
-        einde.set(url, van + len);
+        vorig = { url, einde: van + len };
         out.push({ url, bereik: { van, tot: van + len - 1 } });
-      } else einde.delete(url); // onbekende positie: volgende zonder @ ook overslaan
+      } else vorig = null; // onbekende positie: volgende zonder @ ook overslaan
     }
     if (out.length >= max) break;
   }

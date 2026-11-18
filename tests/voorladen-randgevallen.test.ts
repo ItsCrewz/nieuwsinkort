@@ -303,6 +303,10 @@ try {
 
   await test("bytebereik zonder bekende positie of met 200-antwoord haalt niets binnen", async () => {
     assert.deepEqual(segmentenBereik("#EXT-X-BYTERANGE:50\na.mp4\n#EXT-X-BYTERANGE:x@y\nb.mp4", "https://s.example/"), []);
+    assert.deepEqual(segmentenBereik("#EXT-X-BYTERANGE:10@0\na.mp4\nb.ts\n#EXT-X-BYTERANGE:10\na.mp4", "https://s.example/", 3), [
+      { url: "https://s.example/a.mp4", bereik: { van: 0, tot: 9 } },
+      { url: "https://s.example/b.ts" },
+    ]);
     let gelezen = 0;
     let geannuleerd = false;
     installeer("fetch", async (url: string) => url.endsWith(".m3u8")
