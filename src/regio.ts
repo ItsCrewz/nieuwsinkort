@@ -19,6 +19,8 @@ export const BUITEN_WOORD = { test: (t: string) => BUITEN_ONGEVOELIG.test(t) || 
 export const BUITEN_LOCATIE =/\b(Verenigde Staten|Amerikaanse staat|Florida|Californi(?:ë|e)|Texas|Louisiana|Alabama|Arizona|Nevada|Ohio|Oklahoma|Minnesota|Michigan|Tennessee|Hawaii|Los Angeles|Chicago|Miami|Las Vegas|New York)(?![\p{L}\d])/iu;
 // Hoofdlettergevoelig: eigennamen; "NS" alleen als los woord.
 const NL_ANKER = /\b(Nederland\w*|Nederlander\w*|Nederlandse?|kabinet|Tweede Kamer|Eerste Kamer|Den Haag|Haagse|Amsterdam\w*|Rotterdam\w*|Utrecht\w*|Eindhoven|Groningen|Haarlem|Jetten|KNMI|ProRail|Rijkswaterstaat|Wekdienst|Schiphol|NS)\b/;
+// Ook gebruikt door het regiofilter (filters.tsx), zodat filter en indeling dezelfde afweging maken.
+export const heeftNlAnker = (tekst: string) => NL_ANKER.test(tekst);
 
 // Buitenlandse bedrijven en markten zijn alleen bij economisch nieuws een regio-aanwijzing.
 const BUITEN_ECONOMIE = /\b(Binance|Wall Street|Nasdaq|Dow Jones|S&P 500)\b/;

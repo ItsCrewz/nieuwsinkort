@@ -1,0 +1,1 @@
+- Regiofilter: een Nederlands anker in kop of intro wint van een terloopse buitenlandse naam, zoals bij de nieuwsindeling; Haarlem en buitenland-indeling houden voorrang (#1217).

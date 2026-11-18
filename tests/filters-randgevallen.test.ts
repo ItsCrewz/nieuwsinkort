@@ -177,3 +177,18 @@ t("filterVideos: lege lijst en tijdkeuzes", () => metNu(MIDDAG, () => {
   const veel = ["08:00", "09:00", "10:00", "11:00", "12:00", "23:00"].map((x, i) => video("v" + i, x));
   assert.deepEqual(filterVideos(veel, STANDAARD, 0, MIDDAG).map((v) => v.titel), ["v0", "v1", "v2", "v3", "v4"]);
 }));
+
+t("regioVan: Nederlands anker wint van een terloopse landnaam, maar niet van cat buitenland of buitenlandse bron", () => {
+  assert.equal(regioVan(item("Nederland overlegt met Duitsland", "13:00")), "nl");
+  assert.equal(regioVan(item("Trump bezoekt Duitsland", "13:00")), "wereld");
+  assert.equal(regioVan(item("Nederland overlegt met Duitsland", "13:00", { cat: "buitenland" })), "wereld");
+  assert.equal(regioVan(item("Nederland overlegt met Duitsland", "13:00", { bronnen: [{ site: "BBC News", href: "https://bbc.com/a" }] })), "wereld");
+  assert.equal(regioVan(item("Haarlem en Duitsland", "13:00")), "haarlem");
+});
+
+t("filterNieuws: regiofilter Nederland en Wereld volgen dezelfde afweging", () => {
+  const items = [item("Nederland overlegt met Duitsland", "13:00"), item("Trump bezoekt Duitsland", "13:00")];
+  const f = (regio: Filters["regio"]): Filters => ({ ...STANDAARD, regio });
+  assert.deepEqual(koppen(filterNieuws(items, f(["nl"]), 0, MIDDAG, true).items), ["Nederland overlegt met Duitsland"]);
+  assert.deepEqual(koppen(filterNieuws(items, f(["wereld"]), 0, MIDDAG, true).items), ["Trump bezoekt Duitsland"]);
+});
