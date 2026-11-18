@@ -17,6 +17,7 @@ import { CAT_LABEL } from "./tabs";
 import { useMeer } from "./meer";
 import { artikelUrl, deel } from "./delen";
 import { useTerugvegen } from "./terugvegen";
+import { useKopFocus } from "./kopfocus";
 
 function monoOf(site: string) {
   return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
@@ -142,12 +143,7 @@ export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: I
   const artRef = useRef<HTMLElement>(null);
   useTerugvegen(artRef, onBack);
   // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
-  useEffect(() => {
-    kopRef.current?.focus({ preventScroll: true });
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onBack();
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [item, onBack]);
+  useKopFocus(kopRef, item.id ?? url, onBack);
   // documenttitel zet App (zelfde vorm als de serverpagina, #622)
   // punten alleen als ze iets nieuws zeggen (#488)
   const tekst = zonderBronvermelding(toonBekendmaking(item));
