@@ -1,1 +1,2 @@
 - Beelden: zonder IntersectionObserver laden afbeeldingen buiten beeld niet meer allemaal tegelijk, maar pas binnen 200% schermhoogte (#1266).
+- Beelden: ook bij databesparing zonder IntersectionObserver laden alleen kaarten die in beeld zijn (scroll/resize-meting) (#1266).

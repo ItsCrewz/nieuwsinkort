@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { magVooruitladen, toonBeeld, dichtBij } from "../src/beelden";
+import { magVooruitladen, toonBeeld, dichtBij, inZicht } from "../src/beelden";
 
 assert.equal(magVooruitladen(true), false);
 assert.equal(magVooruitladen(false), true);
@@ -20,4 +20,12 @@ assert.ok(telNear(0) < 10, "bij een lange lijst laden niet alle kaarten");
 assert.ok(telNear(20000) < 15);
 assert.ok(dichtBij(50000 - 20000, 50400 - 20000, 800) === false);
 assert.equal(dichtBij(0, 400, 800) && telNear(0) > 0, true);
+// Databesparing zonder observer: alleen kaarten die het scherm raken tellen als in beeld
+assert.equal(inZicht(0, 400, 800), true);
+assert.equal(inZicht(799, 1200, 800), true);
+assert.equal(inZicht(800, 1200, 800), false);
+assert.equal(inZicht(-400, 0, 800), false);
+const telZicht = (scroll: number) => Array.from({ length: 200 }, (_, k) => k * 400 - scroll).filter((top) => inZicht(top, top + 400, 800)).length;
+assert.ok(telZicht(0) <= 3 && telZicht(0) > 0, "bij databesparing zonder observer geen downloadpiek");
+assert.ok(telZicht(20000) <= 3);
 console.log("Databesparing voor beelden: oké");

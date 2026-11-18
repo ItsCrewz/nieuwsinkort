@@ -94,6 +94,27 @@ export const toonBeeld = (bespaar: boolean, inBeeld: boolean, near: boolean, act
   bespaar ? inBeeld && actief : near && vooruit;
 /** Valt een bericht binnen 200% schermhoogte boven/onder het scherm (zelfde marge als de IntersectionObserver-route)? */
 export const dichtBij = (top: number, bottom: number, vh: number) => bottom >= -2 * vh && top <= 3 * vh;
+/** Raakt het element het scherm zelf (zonder marge)? */
+export const inZicht = (top: number, bottom: number, vh: number) => bottom > 0 && top < vh;
+/** Zonder IntersectionObserver: houd bij scroll/resize bij of het element in beeld is (databesparing). Geeft opruimfunctie terug. */
+const volgInBeeld = (el: Element, zet: (b: boolean) => void) => {
+  let raf = 0;
+  const meet = () => {
+    raf = 0;
+    const r = el.getBoundingClientRect();
+    zet(inZicht(r.top, r.bottom, window.innerHeight));
+  };
+  const plan = () => { if (!raf) raf = requestAnimationFrame(meet); };
+  window.addEventListener("scroll", plan, { capture: true, passive: true });
+  window.addEventListener("resize", plan);
+  meet();
+  return () => {
+    window.removeEventListener("scroll", plan, true);
+    window.removeEventListener("resize", plan);
+    if (raf) cancelAnimationFrame(raf);
+    zet(false);
+  };
+};
 function vooruit() {
   cancelAnimationFrame(plan);
   plan = requestAnimationFrame(() => {
@@ -166,7 +187,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   useEffect(() => {
     const el = box.current;
     if (!bespaar || !el) return;
-    if (!window.IntersectionObserver) { setInBeeld(true); return; }
+    if (!window.IntersectionObserver) return volgInBeeld(el, setInBeeld);
     const io = new IntersectionObserver((es) => setInBeeld(es.some((e) => e.isIntersecting)));
     io.observe(el);
     return () => { io.disconnect(); setInBeeld(false); };
@@ -344,7 +365,7 @@ export const Thumb = memo(function Thumb({ urls }: { urls: string[] }) {
   useEffect(() => {
     const el = box.current;
     if (!bespaar || !el) return;
-    if (!window.IntersectionObserver) { setInBeeld(true); return; }
+    if (!window.IntersectionObserver) return volgInBeeld(el, setInBeeld);
     const io = new IntersectionObserver((es) => setInBeeld(es.some((e) => e.isIntersecting)));
     io.observe(el);
     return () => { io.disconnect(); setInBeeld(false); };
