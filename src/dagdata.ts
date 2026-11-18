@@ -144,14 +144,17 @@ export function merge(S: any, H: any) {
   };
   // Rubriektekst per rubriek van de recentste bron; ontbrekende rubrieken vallen terug op de andere.
   const [tabNieuw, tabOud] = hNieuwer ? [H.tab_samenvatting, base.tab_samenvatting] : [base.tab_samenvatting, H.tab_samenvatting];
-  const tabSam = tabNieuw || tabOud ? { ...tabOud } : undefined;
-  if (tabSam && tabNieuw) for (const [rubriek, samenvatting] of Object.entries(tabNieuw)) {
+  const isObj = (x: any) => !!x && typeof x === "object" && !Array.isArray(x);
+  const tabSam = isObj(tabNieuw) || isObj(tabOud) ? { ...(isObj(tabOud) ? tabOud : {}) } : undefined;
+  if (tabSam && isObj(tabNieuw)) for (const [rubriek, samenvatting] of Object.entries(tabNieuw)) {
     if (samenvatting != null) tabSam[rubriek] = samenvatting;
   }
   const routineItems = routine.map(metMeer);
   const [weerNieuw, weerOud] = hNieuwer ? [H.weer, base.weer] : [base.weer, H.weer];
-  const bruikbaarWeer = (weer: any) => weer && typeof weer === "object" && !Array.isArray(weer) && (weer.nu || (Array.isArray(weer.dagen) && weer.dagen.length > 0));
-  const weer = bruikbaarWeer(weerNieuw) ? weerNieuw : bruikbaarWeer(weerOud) ? weerOud : undefined;
+  // Per veld: de oudere dataset is de basis, de nieuwere overschrijft met geldige velden (ongeldige overschrijven niets).
+  const weerVelden = (w: any): [string, any][] => !isObj(w) ? [] : Object.entries(w).filter(([k, v]) => k === "nu" ? isObj(v) : k === "dagen" ? Array.isArray(v) && v.length > 0 : k === "verwachting" ? typeof v === "string" : v != null);
+  const weerSamen: any = Object.fromEntries([...weerVelden(weerOud), ...weerVelden(weerNieuw)]);
+  const weer = weerSamen.nu || weerSamen.dagen ? weerSamen : undefined;
   const dumpertGezien = new Set<string>();
   const dumpert = (hNieuwer ? [...H.dumpert, ...base.dumpert] : [...base.dumpert, ...H.dumpert]).filter((v: any) => {
     const id = norm(v.href);
