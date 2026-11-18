@@ -158,8 +158,8 @@ t("tellerwisseling met gelijke waarde en daarna stilstand: melding exact 2,5 s n
 t("echte stilstand zonder wisseling en normale voortgang blijven gelijk; frameTellerBron", () => {
   assert.equal(speel(new FrameGezondheid(), 0, 3500, { frames: () => 7, extra: { bron: "decode" } }).b, "frame-vast");
   assert.equal(speel(new FrameGezondheid(), 0, 20000, { frames: (n) => n / 40, extra: { bron: "presentatie" } }).b, "ok");
-  assert.equal(frameTellerBron({ gepresenteerd: 3, rvfc: true, decode: true }), "presentatie");
-  assert.equal(frameTellerBron({ gepresenteerd: 0, rvfc: true, decode: true }), "decode");
-  assert.equal(frameTellerBron({ gepresenteerd: 0, rvfc: true, decode: false }), "presentatie");
-  assert.equal(frameTellerBron({ gepresenteerd: 0, rvfc: false, decode: false }), null);
+  assert.equal(frameTellerBron({ gepresenteerd: 3, gedecodeerd: 9, rvfc: true, decode: true }), "presentatie");
+  assert.equal(frameTellerBron({ gepresenteerd: 0, gedecodeerd: 9, rvfc: true, decode: true }), "decode");
+  assert.equal(frameTellerBron({ gepresenteerd: 0, gedecodeerd: 9, rvfc: true, decode: false }), "presentatie");
+  assert.equal(frameTellerBron({ gepresenteerd: 0, gedecodeerd: 9, rvfc: false, decode: false }), null);
 });
