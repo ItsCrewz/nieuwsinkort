@@ -82,7 +82,9 @@ function zoektekst(item: Item): Zoektekst {
 
 // Exact i.p.v. woordbegin: c++/c# en volledig numerieke termen (2024 vindt geen 20240, 20 geen 2026).
 const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+(?:\.\p{N}+)?$/u.test(term);
-const past = (term: string, woord: string) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : woord.startsWith(term);
+// Schriften zonder gebruikelijke woordspaties (#1221): een "woord" is daar een hele zin, dus de term mag overal in het woord vallen.
+const ZONDER_SPATIES = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}ー\p{M}]+$/u;
+const past = (term: string, woord: string) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : ZONDER_SPATIES.test(term) ? woord.includes(term) : woord.startsWith(term);
 
 // Reeksen [begin, eind] waarop een term past. Aaneengeschreven vorm: één woord, of woorden met koppelteken ("coronamaatregelen" = "corona-maatregelen").
 function kandidaten(delen: string[], woorden: string[], lijm: boolean[]): [number, number][] {
@@ -235,7 +237,7 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
     while ((index = vlak.indexOf(woord, vanaf)) !== -1) {
       const numeriek = /^\p{N}+(?:\.\p{N}+)?$/u.test(woord);
       const getal = numeriek ? vlak.slice(0, index).match(/[\p{N}.,]*$/u)![0] + vlak.slice(index).match(/^[\p{N}.,]*/u)![0] : "";
-      if ((index === 0 || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
+      if ((index === 0 || ZONDER_SPATIES.test(woord) || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
         bereiken.push({ begin: posities[index].begin, eind: posities[index + woord.length - 1].eind });
       }
       vanaf = index + 1;
