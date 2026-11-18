@@ -1,0 +1,1 @@
+- Voorkom dat een oudere animatie de richting van een nieuwe artikelovergang wist (#1245).

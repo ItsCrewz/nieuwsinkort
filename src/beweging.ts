@@ -25,6 +25,7 @@ export function animeer(el: Element, frames: Keyframe[] | PropertyIndexedKeyfram
 import type { Route } from "./route";
 
 type VT = { startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<unknown> } };
+const overgangen = new WeakMap<Element, object>();
 
 export function kanOvergang(van?: Route | null, naar?: Route, veeg = false): boolean {
   if (arguments.length && (!van || !naar || veeg || [van.view, naar.view].some((v) => v === "filmpjes" || v === "dumpert") || !!van.selected === !!naar.selected)) return false;
@@ -35,8 +36,16 @@ export function kanOvergang(van?: Route | null, naar?: Route, veeg = false): boo
 /** Voert update uit, met een View Transition als de browser die kent en reduced motion uit staat (anders direct). `soort` komt als data-overgang op <html> voor de ::view-transition-regels. */
 export async function metOvergang(update: () => void | Promise<void>, soort: Overgang = "wissel"): Promise<void> {
   const d = typeof document !== "undefined" ? (document as unknown as VT & Document) : null;
-  if (!d || !kanOvergang() || !d.startViewTransition) { await update(); return; }
+  if (!d) { await update(); return; }
   const root = d.documentElement;
+  if (!kanOvergang() || !d.startViewTransition) {
+    overgangen.delete(root);
+    delete root.dataset.overgang;
+    await update();
+    return;
+  }
+  const eigenaar = {};
+  overgangen.set(root, eigenaar);
   root.dataset.overgang = soort;
   let uitgevoerd = false;
   const voerUit = () => {
@@ -51,5 +60,10 @@ export async function metOvergang(update: () => void | Promise<void>, soort: Ove
     await overgang.finished;
   }
   catch { /* Een afgebroken overgang kan de update nog uitvoeren. */ }
-  finally { delete root.dataset.overgang; }
+  finally {
+    if (overgangen.get(root) === eigenaar) {
+      overgangen.delete(root);
+      delete root.dataset.overgang;
+    }
+  }
 }
