@@ -1,0 +1,1 @@
+- Nieuws: kostenclaims lezen decimale tonbedragen ("1,5 ton") nu correct en onderscheiden ze van "5 ton"; onduidelijke bedragen blijven apart (#1206).
