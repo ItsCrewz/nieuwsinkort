@@ -7,10 +7,21 @@ const LOGO = /(?:^|[^\p{L}\p{N}])logo(?:s|type|\d+)?(?=$|[^\p{L}\p{N}])|\/(?!cat
 const MERK = /(?:^|[/_.-])brand[-_]?(?:logo|mark|asset|kit|watermark)(?=$|[/_.?#-])|\/brands?\//i;
 const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
 
+/** Effectieve breedte: alleen imgix (*.imgix.net) levert w × dpr pixels (dpr 1–5, documentatie imgix); elders of bij een ontbrekende/ongeldige/dubbele dpr geldt w zelf. */
+function effBreedte(u: string, w: number): number {
+  let host = "";
+  try { host = new URL(u).hostname; } catch { return w; }
+  if (!/(?:^|\.)imgix\.net$/i.test(host)) return w;
+  const dpr = [...u.split("#", 1)[0].matchAll(/[?&]dpr=([^&]*)/gi)];
+  if (dpr.length !== 1 || !/^\d+(?:\.\d+)?$/.test(dpr[0][1])) return w;
+  const f = +dpr[0][1];
+  return f >= 1 && f <= 5 ? w * f : w;
+}
+
 /** Klein plaatje volgens de URL zelf (?w=120, /100x100/, _thumb, s72-c …). */
 function tooSmall(u: string): boolean {
   const q = /[?&](?:w|width|resize|imwidth|im_w)=(\d+)/i.exec(u);
-  if (q && +q[1] < 300) return true;
+  if (q && effBreedte(u, +q[1]) < 300) return true;
   const h = /[?&](?:h|height)=(\d+)(?=&|#|$)/i.exec(u);
   if (h && +h[1] < 160) return true;
   const d = /[/_=-](\d{2,4})x(\d{2,4})(?:[/_.?&#-]|$)/i.exec(u);

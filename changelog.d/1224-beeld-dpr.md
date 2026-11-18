@@ -1,0 +1,1 @@
+- Beelden: een imgix-URL (`*.imgix.net`) met `w=200&dpr=2` telt als 400 pixels breed en blijft behouden; ontbrekende, ongeldige of onredelijke `dpr` en andere hosts blijven op `w` beoordeeld (#1224).

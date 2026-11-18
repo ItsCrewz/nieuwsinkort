@@ -75,4 +75,14 @@ t("bruikbareAfmeting: staande foto blijft, icoon en banner niet (#996)", () => {
   assert.equal(bruikbareAfmeting(1200, 299), false);
 });
 
+t("imgix: w × dpr telt als effectieve breedte; andere hosts en slechte dpr niet (#1224)", () => {
+  const i = "https://voorbeeld.imgix.net/foto.jpg";
+  for (const q of ["w=200&dpr=2", "w=150&dpr=2", "width=300&dpr=1", "w=100&dpr=3"]) assert.equal(goedBeeld(`${i}?${q}`), true, q);
+  for (const q of ["w=100&dpr=2", "w=200", "w=200&dpr=1", "w=200&dpr=0", "w=200&dpr=-2", "w=200&dpr=99", "w=200&dpr=abc", "w=200&dpr=", "w=200&dpr=2&dpr=3", "w=200&dpr=2&h=100", "w=50&dpr=5"]) assert.equal(goedBeeld(`${i}?${q}`), false, q);
+  assert.equal(goedBeeld("https://nieuws.nl/foto.jpg?w=200&dpr=2"), false);
+  assert.equal(goedBeeld("https://imgix.net.evil.nl/foto.jpg?w=200&dpr=2"), false);
+  assert.equal(goedBeeld(`${i.replace("https", "ftp")}?w=200&dpr=2`), false);
+  assert.equal(goedBeeld("https://voorbeeld.imgix.net/logo.png?w=200&dpr=2"), false);
+});
+
 console.log(`\n${n} tests geslaagd`);
