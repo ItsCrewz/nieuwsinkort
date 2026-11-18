@@ -10,7 +10,7 @@ import { llmTimeoutMs } from "../../src/llm-aanroep";
 // en het ophalen wordt verdeeld over meerdere Fetcher-DO's (elk max 50 externe verzoeken).
 import { publicatieTijd, vanVandaag, nieuwsteTijd } from "../../src/vandaag";
 import { ams, midnight } from "../../src/tijd";
-import { begrensOg, schrijfRun } from "../../src/kv";
+import { begrensOg, schrijfRun, uurFout } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
 import { batchesOphalen, foutcode, type Broncode, type Bronfout } from "./bronfouten";
 import { maakTel, voegTellerToe, legeRun, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoudVandaag, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
@@ -1154,6 +1154,9 @@ export class Runner extends DurableObject<Env> {
       try { await kvPut("data-vooraf", voorafNieuw.waarde, voorafNieuw.h); } catch { console.error("KV-schrijffout data-vooraf"); }
     }
     await bewaarKvStand(opslag, wijz).catch(() => console.error("kvstand opslaan mislukt"));
+    // de afronding hierboven is gedaan; een mislukte nieuwswrite telt voor bewaakteRun toch als mislukte run (500, faalReeks)
+    const fout = uurFout(schrijfUur, uurGelukt);
+    if (fout) throw fout;
     return { ok: true, ...out.meta, gegenereerd: out.gegenereerd, kvWritesRun: tel.kvN(), kvWritesDag: out.meta.kvWritesDag, publiceerInterval: out.meta.publiceerInterval, kvSleutels: tel.kvSleutels(), doWritesRun: tel.doN() };
   }
 }
