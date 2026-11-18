@@ -88,6 +88,13 @@ await t("ontkenning na de bron en beperkende woorden behouden de bron (#1154)", 
   }
 });
 
+await t("inhoudelijke prijsclaim behoudt de bron; verkoopvermelding gaat eruit (#1244)", () => {
+  assert.equal(stripBronvermelding("De prijs stijgt via NOS.", ["NOS"]), "De prijs stijgt via NOS.");
+  assert.equal(stripBronvermelding("Het product is te koop via NOS.", ["NOS"]), "Het product is te koop.");
+  assert.equal(stripBronvermelding("De prijs stijgt niet via NOS.", ["NOS"]), "De prijs stijgt niet via NOS.");
+  assert.equal(stripBronvermelding("De prijs stijgt via Coolblue.", ["NOS"]), "De prijs stijgt via Coolblue.");
+});
+
 await t("uitzendingen en samengestelde bronnamen blijven intact", () => {
   for (const zin of ["De uitzending komt via NOS", "De livestream is beschikbaar via NOS", "De set is te koop via iCulture-shop", "De uitzending is te koop via NOS", "De wedstrijd is te koop via NOS om live te volgen."]) {
     assert.equal(stripBronvermelding(zin, ["NOS", "iCulture"]), zin);
