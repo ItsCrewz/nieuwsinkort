@@ -3,7 +3,7 @@ import { Foutgrens } from "./foutgrens";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bron, Item } from "./types";
 import { BionicText, host } from "./ui";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Icon } from "./icons";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
@@ -108,6 +108,7 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
 
 export function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
+  const [deelTeller, setDeelTeller] = useState(0);
   const actie = useRef(0);
   const focusInvoer = useCallback((el: HTMLInputElement | null) => {
     if (el) { el.focus(); el.select(); }
@@ -119,15 +120,17 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
     if (deelStatus !== "gekopieerd") return;
     const t = setTimeout(() => setDeelStatus(""), 3000);
     return () => clearTimeout(t);
-  }, [deelStatus]);
+  }, [deelStatus, deelTeller]);
   return (
     <>
       <button type="button" className="deel-knop" aria-label="Deel dit bericht" disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
         const huidig = ++actie.current;
-        setDeelStatus("");
+        flushSync(() => setDeelStatus("")); // live region eerst echt leeg committen, zodat de herbevestiging een DOM-wijziging is
         if (!url) return;
         const status = await deel(navigator, item.kop, url);
-        if (actie.current === huidig) setDeelStatus(status);
+        if (actie.current !== huidig) return;
+        setDeelStatus(status);
+        if (status === "gekopieerd") setDeelTeller((n) => n + 1); // elke geslaagde actie start de timer van 3 s opnieuw
       }}>
         <Icon name="share" />
       </button>

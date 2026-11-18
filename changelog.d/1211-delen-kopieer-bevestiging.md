@@ -1,0 +1,1 @@
+- Delen: iedere geslaagde kopieeractie leegt de statusmelding eerst en toont "Link gekopieerd" daarna opnieuw (zelfde live region, dus aangekondigd door schermlezers); de bevestiging blijft vanaf de laatste actie 3 seconden staan (#1211).
