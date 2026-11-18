@@ -1,0 +1,1 @@
+- Artikel: een dataverversing van hetzelfde bericht verplaatst de focus niet meer naar de kop; alleen een ander artikel focust de kop (#1207).
