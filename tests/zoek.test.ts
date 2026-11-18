@@ -229,3 +229,21 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.deepEqual(zoekItems([{ cat: "nl", kop: "Corona-maatregelen" } as Item], "corona-maatregelen").length, 1);
   assert.equal(markeerDelen("Verkiezing in Amerika", "verkiezing -amerika").filter((x) => x.markeer).map((x) => x.tekst).join(), "Verkiezing");
 }
+
+// Duizendtallen (#1215)
+{
+  const k = (kop: string) => ({ cat: "nl", kop }) as Item;
+  const vindt = (kop: string, q: string) => zoekItems([k(kop)], q).length === 1;
+  for (const v of ["1.000", "1 000", "1 000", "1 000", "1000"]) for (const q of ["1000", "1.000", "1 000", "1 000"]) assert.ok(vindt(`Prijs ${v} euro`, q), `${v} ~ ${q}`);
+  assert.equal(normaliseer("1.000.000"), "1000000");
+  assert.ok(vindt("Bedrag 1.000,50", "1000,50") && vindt("Bedrag 1000,50", "1.000,50"));
+  assert.ok(vindt("Aantal 1.000.000", "1000000"));
+  for (const q of ["1000", "1.000"]) for (const kop of ["10000", "1.0000", "1.5", "1.500", "1 000 000"]) assert.ok(!vindt(`Aantal ${kop}`, q), `${q} !~ ${kop}`);
+  assert.ok(!vindt("Aantal 1.500", "1.5") && !vindt("Aantal 1.5", "1.500") && vindt("Aantal 1.500", "1500"));
+  assert.ok(vindt("Router 192.168.1.1", "192.168.1.1") && vindt("Versie 1.2.3", "1.2.3") && vindt("iOS 17.2", "ios 17.2"));
+  assert.ok(vindt("Maar 3,5 procent", "3,5") && vindt("Er waren 1.000.", "1000"));
+  assert.ok(!vindt("Aantal 1.000", "-1000") && vindt("Aantal 1.000 en meer", "-2000") && vindt("Er waren 1.000 doden", '"1000 doden"'));
+  assert.equal(markeerDelen("Prijs 1.000 euro", "1000").filter((x) => x.markeer).map((x) => x.tekst).join(), "1.000");
+  assert.equal(markeerDelen("Prijs 1 000 euro", "1.000").filter((x) => x.markeer).map((x) => x.tekst).join(), "1 000");
+  assert.equal(markeerDelen("Prijs 10000 euro", "1000").filter((x) => x.markeer).length, 0);
+}

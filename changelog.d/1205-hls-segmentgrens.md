@@ -1,0 +1,1 @@
+- Voorladen: het ophalen van HLS-segmenten is begrensd in bytes en tijd; een vastgelopen of foutieve segmentrespons wordt geannuleerd en houdt de wachtrij niet vast (regressietests toegevoegd).
