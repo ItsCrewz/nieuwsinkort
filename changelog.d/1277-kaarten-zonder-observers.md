@@ -1,0 +1,1 @@
+- Nieuwskaarten blijven leesbaar en navigeerbaar als browser-observers ontbreken (#1277).

@@ -247,7 +247,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
   const cardRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const el = cardRef.current;
-    if (!el) return;
+    if (!el || typeof IntersectionObserver === "undefined" || typeof ResizeObserver === "undefined") return;
     // Alleen kaarten in/naast beeld passend maken: 150+ kaarten tegelijk meten blokkeert een iPhone seconden lang.
     let raf = 0, near = false, dirty = true;
     const run = () => {
@@ -275,7 +275,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
   const beelden = useMemo(() => fotos(item), [item]);
   const refit = useCallback(() => {
     const el = cardRef.current;
-    if (!el) return;
+    if (!el || typeof IntersectionObserver === "undefined" || typeof ResizeObserver === "undefined") return;
     const r = el.getBoundingClientRect();
     if (r.top < innerHeight * 3 && r.bottom > -innerHeight * 2) requestAnimationFrame(() => fitCard(el));
     else el.dispatchEvent(new Event("nc-dirty")); // wordt bij in-beeld-komen alsnog gepast (ResizeObserver/IO)
@@ -287,7 +287,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
   const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
   return (
-    <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
+    <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}${typeof IntersectionObserver === "undefined" || typeof ResizeObserver === "undefined" ? " fit-scroll" : ""}`}>
       <div className="nc-body">
       {beelden.length ? <Beelden urls={beelden} eager={i < 2} voorrang={false} /* eerste kaart ligt onder de kop, niet boven de vouw: geen hoge prioriteit */ className="nc-img" onChange={refit} /> : <span className="nc-rule" aria-hidden="true" />}
       <div className="nc-meta">
@@ -420,29 +420,29 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
     read();
     // Kaart-entree (DOM-klassen, geen React-render): kaarten die bij het mounten buiten beeld liggen krijgen 'wacht' en spelen eenmalig 'in' af als ze in beeld komen.
     // Kaarten die al in beeld staan (eerste kaart, LCP) of die bij terug-uit-artikel horen, en alles bij reduced motion, krijgen niets.
-    const io = new IntersectionObserver(
+    const io = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(
       (es) => es.forEach((e) => {
         if (!e.isIntersecting) return;
         const c = e.target as HTMLElement;
         if (c.classList.contains("wacht")) { c.classList.remove("wacht"); c.classList.add("in"); }
-        io.unobserve(c);
+        io?.unobserve(c);
       }),
       { root: el, threshold: 0.35 }
     );
     const cards = Array.from(el.querySelectorAll<HTMLElement>(".nc"));
-    const nieuw = cards.filter((c) => !c.dataset.b); // bij een herrun (nieuwe data) alleen nieuwe kaarten beoordelen
+    const nieuw = io ? cards.filter((c) => !c.dataset.b) : []; // bij een herrun (nieuwe data) alleen nieuwe kaarten beoordelen
     const vr = el.getBoundingClientRect();
     const rects = nieuw.map((c) => c.getBoundingClientRect()); // eerst alles meten, dan schrijven
     nieuw.forEach((c, k) => {
       c.dataset.b = "1";
       if (!rustig() && !(rects[k].bottom > vr.top && rects[k].top < vr.bottom)) c.classList.add("wacht");
     });
-    cards.forEach((c) => c.classList.contains("wacht") && io.observe(c));
+    cards.forEach((c) => c.classList.contains("wacht") && io?.observe(c));
     return () => {
       el.removeEventListener("scroll", onScroll);
       if (raf) { cancelAnimationFrame(raf); read(); }
       if (positie.current && positie.current !== opgeslagen) bewaarNieuwspositie(tab, positie.current);
-      io.disconnect();
+      io?.disconnect();
     };
   }, [sorted, tab]);
 
