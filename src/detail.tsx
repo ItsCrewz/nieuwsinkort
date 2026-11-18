@@ -3,7 +3,7 @@ import { Foutgrens } from "./foutgrens";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bron, Item } from "./types";
 import { BionicText, host } from "./ui";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Icon } from "./icons";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
@@ -125,7 +125,7 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
     <>
       <button type="button" className="deel-knop" aria-label="Deel dit bericht" disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
         const huidig = ++actie.current;
-        setDeelStatus("");
+        flushSync(() => setDeelStatus("")); // live region eerst echt leeg committen, zodat de herbevestiging een DOM-wijziging is
         if (!url) return;
         const status = await deel(navigator, item.kop, url);
         if (actie.current !== huidig) return;
@@ -134,7 +134,7 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
       }}>
         <Icon name="share" />
       </button>
-      <span key={deelTeller} id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
+      <span id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
       {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" aria-describedby="deel-instructie" readOnly value={url} ref={focusInvoer} /> : null}
     </>
   );
