@@ -109,10 +109,10 @@ function vooruit() {
   });
 }
 const lastTop = new WeakMap<EventTarget, number>();
-function onAnyScroll(e: Event) {
-  const t = e.target === document ? document.scrollingElement || document.documentElement : (e.target as HTMLElement);
-  if (!t || !(t as HTMLElement).scrollHeight) return;
-  const top = (t as HTMLElement).scrollTop;
+function onNewsScroll(e: Event) {
+  const t = e.target;
+  if (!(t instanceof HTMLElement) || !t.classList.contains("nf")) return;
+  const top = t.scrollTop;
   const prev = lastTop.get(t);
   lastTop.set(t, top);
   if (prev === undefined || Math.abs(top - prev) < 2) return;
@@ -129,8 +129,10 @@ function register(r: Reg) {
       }
       vooruit();
     }, { threshold: 0.01 });
-    window.addEventListener("scroll", onAnyScroll, { capture: true, passive: true });
+    window.addEventListener("scroll", onNewsScroll, { capture: true, passive: true });
   }
+  const lijst = r.el.closest?.<HTMLElement>(".nf");
+  if (lijst && !lastTop.has(lijst)) lastTop.set(lijst, lijst.scrollTop);
   regs.add(r);
   ordered = null;
   visIO?.observe(r.el);

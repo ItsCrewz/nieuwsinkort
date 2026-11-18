@@ -1,0 +1,1 @@
+- Een fotoswipe of andere afzonderlijke scroller verandert de voorlaadrichting van nieuwsbeelden niet meer (#1210).
