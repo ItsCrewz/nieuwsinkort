@@ -34,7 +34,7 @@ import { TabBriefing, kopKompact } from "./tabbriefing";
 import { parseHash, viewHash, viewTitel, type Route } from "./route";
 import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
-import { prefetchMeer, voorlaadMeer } from "./meer";
+import { prefetchMeer, voorlaadMeer, zetMeerVersie } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
 import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
@@ -743,6 +743,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
 
 export default function App() {
   const { data: raw, error, reload } = useData();
+  zetMeerVersie(raw?.gegenereerd); // synchroon, zodat useMeer in zijn effect al de nieuwe versie ziet (#1252)
   const laatstVerversd = useRef(0);
   // Rustige melding i.p.v. stil falen: bijwerken mislukt, of de AI-dagruimte is (bijna) op.
   const briefNote = [

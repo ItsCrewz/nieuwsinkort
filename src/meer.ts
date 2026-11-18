@@ -24,7 +24,13 @@ function geldigMeer(v: unknown): v is Meer {
 // Per sessie bewaard, maar na VERS ms hervalideerd (#840): de server kan de verdieping onder dezelfde sleutel wijzigen.
 // Eén aanvraag tegelijk per sleutel; een mislukte verversing houdt het laatste geldige antwoord en probeert later opnieuw.
 const VERS = 5 * 60e3;
-type Ingang = { p: Promise<Meer | null>; at: number; data: Meer | null; bezig: boolean };
+// Versie van de nieuwsdata (#1252): een nieuwe versie maakt bewaarde en lopende antwoorden onder dezelfde sleutel ongeldig.
+// `req` = versie waarvoor de aanvraag liep, `v` = versie waarvoor `data` geldt.
+type Ingang = { p: Promise<Meer | null>; at: number; data: Meer | null; bezig: boolean; req?: string; v?: string };
+let dataVersie: string | undefined;
+export function zetMeerVersie(v: string | undefined): void { dataVersie = v; }
+const hergebruik = (e: Ingang | undefined): boolean =>
+  !!e && (e.bezig ? e.req === dataVersie : e.v === dataVersie && Date.now() - e.at < VERS);
 const meerCache = new Map<string, Ingang>();
 // Cache begrenzen (#1035, #1082): minst recent gebruikte ingangen die niet bezig zijn gaan eruit; Map-volgorde = gebruiksvolgorde.
 function raak(k: string, ing: Ingang): void { meerCache.delete(k); meerCache.set(k, ing); }
@@ -38,8 +44,9 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
   const k = item.meer;
   if (!k || item.bronnen?.some((b) => verzamelUrl(b.href))) return Promise.resolve(null);
   const e = meerCache.get(k);
-  if (e && (e.bezig || Date.now() - e.at < VERS)) { raak(k, e); return e.p; }
-  const nieuw: Ingang = { p: Promise.resolve(null), at: e?.at ?? 0, data: e?.data ?? null, bezig: true };
+  if (e && hergebruik(e)) { raak(k, e); return e.p; }
+  const versie = dataVersie;
+  const nieuw: Ingang = { p: Promise.resolve(null), at: e?.at ?? 0, data: e?.data ?? null, bezig: true, req: versie, v: e?.v };
   // Een vastgelopen aanvraag stopt na 10 s (#742), zodat een volgende poging kan herstellen.
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
@@ -53,7 +60,7 @@ export function prefetchMeer(item: Item): Promise<Meer | null> {
   nieuw.p = Promise.race([aanvraag, timeout]).then((m) => {
     clearTimeout(timer);
     nieuw.bezig = false;
-    if (m) { nieuw.data = m; nieuw.at = Date.now(); } else if (!nieuw.data && meerCache.get(k) === nieuw) meerCache.delete(k);
+    if (m) { nieuw.data = m; nieuw.at = Date.now(); nieuw.v = versie; } else if (!nieuw.data && meerCache.get(k) === nieuw) meerCache.delete(k);
     if (meerCache.get(k) === nieuw) raak(k, nieuw); // alleen als deze aanvraag nog de actuele ingang is
     begrens(); // ook na afronding: bij een piek van lopende aanvragen blijft de cache anders te groot
     return m ?? nieuw.data;
@@ -71,7 +78,7 @@ export function voorlaadMeer(item: Item): void {
   const k = item.meer;
   if (!k || specBezig >= MAX_SPEC) return;
   const e = meerCache.get(k);
-  if (e && (e.bezig || Date.now() - e.at < VERS)) return;
+  if (hergebruik(e)) return;
   const nu = Date.now();
   if (nu - specLaatst < SPEC_PAUZE) return;
   specLaatst = nu;
