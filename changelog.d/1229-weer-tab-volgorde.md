@@ -1,1 +1,1 @@
-- Data: weer en rubriekbriefing volgen de recentste dataset; ontbrekende velden worden uit de andere aangevuld (#1229).
+- Data: weer en rubriekbriefing volgen de recentste dataset; het weer wordt per veld samengevoegd en ontbrekende velden worden uit de andere aangevuld (#1229).

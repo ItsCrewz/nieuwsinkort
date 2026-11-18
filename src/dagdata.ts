@@ -151,9 +151,10 @@ export function merge(S: any, H: any) {
   }
   const routineItems = routine.map(metMeer);
   const [weerNieuw, weerOud] = hNieuwer ? [H.weer, base.weer] : [base.weer, H.weer];
-  const bruikbaarWeer = (weer: any) => weer && typeof weer === "object" && !Array.isArray(weer) && (weer.nu || (Array.isArray(weer.dagen) && weer.dagen.length > 0));
-  // Nieuwste bruikbare weer wint; ontbrekende velden vult de oudere (bruikbare) dataset aan.
-  const weer = bruikbaarWeer(weerNieuw) ? (bruikbaarWeer(weerOud) ? { ...weerOud, ...Object.fromEntries(Object.entries(weerNieuw).filter(([, v]) => v != null)) } : weerNieuw) : bruikbaarWeer(weerOud) ? weerOud : undefined;
+  // Per veld: de oudere dataset is de basis, de nieuwere overschrijft met geldige velden (ongeldige overschrijven niets).
+  const weerVelden = (w: any): [string, any][] => !isObj(w) ? [] : Object.entries(w).filter(([k, v]) => k === "nu" ? isObj(v) : k === "dagen" ? Array.isArray(v) && v.length > 0 : k === "verwachting" ? typeof v === "string" : v != null);
+  const weerSamen: any = Object.fromEntries([...weerVelden(weerOud), ...weerVelden(weerNieuw)]);
+  const weer = weerSamen.nu || weerSamen.dagen ? weerSamen : undefined;
   const dumpertGezien = new Set<string>();
   const dumpert = (hNieuwer ? [...H.dumpert, ...base.dumpert] : [...base.dumpert, ...H.dumpert]).filter((v: any) => {
     const id = norm(v.href);
