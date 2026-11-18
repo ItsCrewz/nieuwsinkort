@@ -1,0 +1,1 @@
+- Docs: master-audit van nieuwsinkort.nl met geprioriteerd verbeterplan toegevoegd, inclusief de Instagram-scraper `kg.meowing.de` als P0-bevinding (`docs/audit/2026-11-master-audit.md`, #1236).
