@@ -40,8 +40,16 @@ const tabB = maakVorigBezoek(); // eigen module-cache per tab
 assert.equal(tabB(), 10_000_000);
 assert.ok(tabB() < nu);
 
+// Uren verborgen en dan sluiten: het sluitmoment verschuift de referentie niet.
+nu += 5 * 3_600_000;
+venster.dispatchEvent(new Event("pagehide"));
+assert.equal(lokaal.get(BEZOEK), "10000000", "sluiten van een verborgen tab laat de referentie staan");
+g.sessionStorage = maakOpslag(new Map());
+assert.equal(maakVorigBezoek()(), 10_000_000, "nieuwe tab ziet berichten van de verborgen uren");
+
 // Terugkeer en echt weggaan: latere nieuwe tab krijgt bijgewerkte referentie, nooit in de toekomst.
 nu += 60_000;
+g.document.visibilityState = "visible";
 venster.dispatchEvent(new Event("pagehide"));
 assert.equal(lokaal.get(BEZOEK), String(nu));
 g.sessionStorage = maakOpslag(new Map());

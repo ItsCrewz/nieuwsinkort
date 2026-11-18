@@ -110,8 +110,8 @@ export function useFilters() {
   const [vorig] = useState(vorigBezoek);
   useEffect(() => {
     bewaarBezoek();
-    // Alleen echt weggaan telt als afgerond bezoek; even naar een ander tabblad (visibilitychange) mag de referentie van een gelijktijdige tab niet verschuiven (#1246).
-    const onWeg = () => bewaarBezoek();
+    // Alleen echt weggaan telt als afgerond bezoek; even naar een ander tabblad (visibilitychange) mag de referentie van een gelijktijdige tab niet verschuiven (#1246). Sluit je een tab die verborgen stond, dan is het sluitmoment geen moment waarop nieuws bekeken werd: dan niets schrijven.
+    const onWeg = () => document.visibilityState === "visible" && bewaarBezoek();
     try { window.addEventListener("pagehide", onWeg); } catch { /* geen window */ }
     // Lang open tabblad: houd de bezoektijd vers (alleen opslag; `vorig` is een vaste sessiereferentie en verschuift niet).
     const timer = setInterval(() => document.visibilityState === "visible" && bewaarBezoek(), BEZOEK_INTERVAL);
