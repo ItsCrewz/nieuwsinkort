@@ -23,6 +23,6 @@ t("YouTube-iframe is niet uit de tabvolgorde gehaald", () => {
 t("artikel: focus op h1 (tabindex -1), Escape = terug, focus terug op de kaart", () => {
   assert.match(detail, /<h1 className="d-title" ref=\{kopRef\} tabIndex=\{-1\}>/);
   assert.match(detail, /kopRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
-  assert.match(detail, /e\.key === "Escape" && onBack\(\)/);
+  assert.match(detail, /escapeSluit\(e\) && onBack\(\)/);
   assert.match(app, /scrollIntoView\(\{ block: "center" \}\);[\s\S]{0,300}f\.focus\(\{ preventScroll: true \}\)/);
 });

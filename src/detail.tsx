@@ -136,6 +136,11 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
   );
 }
 
+// Escape sluit het artikel niet tijdens IME-compositie (die annuleert dan alleen de compositie) en niet als een onderliggende bediening de toets al afhandelde.
+export function escapeSluit(e: Pick<KeyboardEvent, "key" | "isComposing" | "keyCode" | "defaultPrevented">): boolean {
+  return e.key === "Escape" && !e.isComposing && e.keyCode !== 229 && !e.defaultPrevented;
+}
+
 export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string; meerBronnen?: Bron[] }) {
   const url = artikelUrl(item, dag);
   const kopRef = useRef<HTMLHeadingElement>(null);
@@ -144,7 +149,7 @@ export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: I
   // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
   useEffect(() => {
     kopRef.current?.focus({ preventScroll: true });
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onBack();
+    const key = (e: KeyboardEvent) => escapeSluit(e) && onBack();
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [item, onBack]);
