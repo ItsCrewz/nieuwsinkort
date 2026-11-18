@@ -1078,7 +1078,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
           />
         ) : null}
         {playable && p?.kind !== "youtube" ? (
-          <button type="button" className="ftap" aria-label={paused && active ? "Afspelen" : "Pauzeren"} onClick={tap} tabIndex={-1}>
+          <button type="button" className="ftap" aria-label={paused && active ? "Afspelen" : "Pauzeren"} onClick={tap} tabIndex={active ? 0 : -1}>
             {active && paused && !jump ? (
               <span className="fstate">
                 <Icon name="play" className="fill" />
