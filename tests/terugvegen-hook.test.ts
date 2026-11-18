@@ -198,4 +198,31 @@ await t("terugvegen-hook: reduced motion sluit direct", async () => {
   await h.unmount();
 });
 
+await t("terugvegen-hook: pauze en daarna snelle veeg sluit (#1216)", async () => {
+  let n = 0;
+  const h = await maak(() => n++);
+  touch("touchstart", [[100, 100]], 0);
+  touch("touchmove", [[115, 100]], 600);
+  touch("touchmove", [[150, 100]], 630);
+  touch("touchmove", [[180, 100]], 650);
+  touch("touchend", [], 655);
+  assert.equal(h.art.style.transform, "translateX(400px)");
+  loop();
+  assert.equal(n, 1);
+  await h.unmount();
+});
+await t("terugvegen-hook: langzaam slepen onder de drempel veert terug (#1216)", async () => {
+  let n = 0;
+  const h = await maak(() => n++);
+  touch("touchstart", [[100, 100]], 0);
+  touch("touchmove", [[130, 100]], 300);
+  touch("touchmove", [[155, 100]], 600);
+  touch("touchmove", [[180, 100]], 900);
+  touch("touchend", [], 905);
+  loop();
+  assert.equal(n, 0);
+  assert.equal(h.art.style.transform, "");
+  await h.unmount();
+});
+
 console.log("terugvegen-hook: tests geslaagd");

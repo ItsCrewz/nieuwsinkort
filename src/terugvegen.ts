@@ -8,6 +8,7 @@ export const RATIO = 1.5; // |dx| moet zoveel groter zijn dan |dy|
 export const DREMPEL = 0.3; // aandeel van de breedte om te sluiten
 export const FLICK = 0.5; // px/ms
 export const FLICK_MIN = 40; // px: een flick moet ook echt een eind opschuiven
+export const VENSTER = 100; // ms: de flicksnelheid telt alleen de laatste beweging voor loslaten
 
 export type Besluit = "wacht" | "veeg" | "nee";
 
@@ -21,11 +22,24 @@ export function besluit(dx: number, dy: number): Besluit {
   return dx > START && dx > ay * RATIO ? "veeg" : "nee";
 }
 
-// Sluiten bij ≥30% van de breedte of een snelle flick naar rechts.
-export function sluit(dx: number, breedte: number, ms: number): boolean {
+export type Punt = { dx: number; t: number };
+
+// Snelheid over het laatste venster voor loslaten (zodat vasthouden of langzaam slepen eerder niet meetelt); geen punt in het venster = vinger stond stil.
+export function recenteSnelheid(punten: Punt[], nu: number): { dx: number; ms: number } | undefined {
+  const i = punten.findIndex((p) => p.t >= nu - VENSTER);
+  const laatste = punten[punten.length - 1];
+  if (i < 0 || !laatste) return undefined;
+  const basis = punten[i < punten.length - 1 ? i : Math.max(0, i - 1)]; // eerste punt in het venster; bij één punt het vorige
+  const ms = laatste.t - basis.t;
+  return ms > 0 ? { dx: laatste.dx - basis.dx, ms } : undefined;
+}
+
+// Sluiten bij ≥30% van de breedte of een snelle flick naar rechts; `recent` (laatste beweging) vervangt de gemiddelde snelheid.
+export function sluit(dx: number, breedte: number, ms: number, recent?: { dx: number; ms: number }): boolean {
   if (dx <= 0 || breedte <= 0) return false;
   if (dx >= breedte * DREMPEL) return true;
-  return dx >= FLICK_MIN && ms > 0 && dx / ms >= FLICK;
+  if (dx < FLICK_MIN) return false;
+  return recent ? recent.ms > 0 && recent.dx / recent.ms >= FLICK : ms > 0 && dx / ms >= FLICK;
 }
 
 const ROLLEN = ["button", "checkbox", "switch", "tab", "menuitem", "menuitemcheckbox", "menuitemradio", "radio", "slider", "spinbutton", "scrollbar", "combobox", "option", "treeitem"];
@@ -54,7 +68,7 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
 }
 
 export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: { current: (opties?: { geveegd?: boolean }) => void }) {
-    let x0 = 0, y0 = 0, t0 = 0, dx = 0, stand: "uit" | "wacht" | "veeg" | "sluit" = "uit";
+    let x0 = 0, y0 = 0, t0 = 0, dx = 0, punten: Punt[] = [], stand: "uit" | "wacht" | "veeg" | "sluit" = "uit";
     let timer: ReturnType<typeof setTimeout> | undefined, overflowVoor: string | null = null;
     const el = () => ref.current;
     const zet = (x: number, anim: boolean, veer = false) => {
@@ -83,13 +97,15 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       if (ev.touches.length !== 1 || !t || !magStarten(t.clientX) || selectie()) return;
       const artikel = el();
       if (!magStartenOp(artikel, typeof Element !== "undefined" && ev.target instanceof Element ? ev.target : null)) return;
-      x0 = t.clientX; y0 = t.clientY; t0 = ev.timeStamp; dx = 0; stand = "wacht";
+      x0 = t.clientX; y0 = t.clientY; t0 = ev.timeStamp; dx = 0; punten = [{ dx: 0, t: t0 }]; stand = "wacht";
     };
     const beweeg = (ev: TouchEvent) => {
       if (stand === "uit" || stand === "sluit") return;
       const t = ev.touches[0];
       if (!t || ev.touches.length !== 1 || selectie()) { if (stand === "veeg") klaar(); stand = "uit"; return; }
       dx = t.clientX - x0;
+      punten.push({ dx, t: ev.timeStamp });
+      if (punten.length > 12) punten.shift();
       if (stand === "wacht") {
         const b = besluit(dx, t.clientY - y0);
         if (b === "wacht") return;
@@ -108,7 +124,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       stand = "uit";
       if (was !== "veeg") return;
       const breed = window.innerWidth;
-      if (ev.type !== "touchcancel" && !selectie() && sluit(dx, breed, ev.timeStamp - t0)) {
+      if (ev.type !== "touchcancel" && !selectie() && sluit(dx, breed, ev.timeStamp - t0, recenteSnelheid(punten, ev.timeStamp))) {
         if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
         stand = "sluit";
         zet(breed, true);
