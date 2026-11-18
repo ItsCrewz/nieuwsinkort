@@ -877,6 +877,8 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       className={`f-media f-yt ${isShort ? "short" : ""}`}
       src={src}
       title={v.titel}
+      data-yt-ready="false"
+      data-yt-status=""
       data-yt-vangnet={vangnet ? "ja" : "nee"}
       allow="autoplay; encrypted-media; picture-in-picture"
       referrerPolicy="strict-origin-when-cross-origin"
