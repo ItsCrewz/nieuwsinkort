@@ -36,6 +36,13 @@ assert.deepEqual(zoekItems([katten], "kat debat"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "20"), []);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 20 van 2026" } as Item], "20"), [{ cat: "nl", kop: "Top 20 van 2026" }]);
 assert.deepEqual(zoekItems([{ cat: "nl", kop: "Top 100 van 2026" } as Item], "00"), []);
+// Apostroffen binnen namen vervallen zonder woordgrenzen te verliezen.
+const namen = ["ONeill", "O'Neill", "O’Neill"].map((naam) => ({ cat: "nl", kop: `${naam} wint` } as Item));
+for (const term of ["oneill", "O'NEILL", "o’neill", '"o’neill wint"', "wint oneill"]) assert.deepEqual(zoekItems(namen, term), namen, term);
+for (const term of ["neill", "oneill oneill", "oneill verliest"]) assert.deepEqual(zoekItems(namen, term), [], term);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "MacO’Neill wint" } as Item], "oneill"), []);
+assert.deepEqual(zoekItems([{ cat: "nl", kop: "O Neill wint" } as Item], "oneill"), []);
+assert.deepEqual(markeerDelen("O’Neill wint", "oneill"), [{ tekst: "O’Neill", markeer: true }, { tekst: " wint", markeer: false }]);
 // Koppeltekenvarianten (#811)
 const corona = { cat: "nl", kop: "Nieuwe corona-maatregelen", samenvatting: "Het kabinet overlegt" } as Item;
 const coronaSamen = { cat: "nl", kop: "Coronamaatregelen verlengd" } as Item;

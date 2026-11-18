@@ -1,0 +1,1 @@
+- Zoeken vindt namen met en zonder apostrof op dezelfde manier (#1153).
