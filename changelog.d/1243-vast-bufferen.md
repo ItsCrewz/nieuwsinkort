@@ -1,0 +1,1 @@
+- Filmpjes bieden een herstelknop wanneer YouTube langdurig blijft bufferen (#1243).

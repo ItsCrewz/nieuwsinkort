@@ -79,3 +79,18 @@ export function ytVerwijderBesluit(code: unknown, i: number, actief: number, aan
   if (i > actief) return { verwijder: true, actief };
   return { verwijder: true, actief: richting === -1 ? i - 1 : Math.min(i, aantal - 2) };
 }
+
+// Alleen ononderbroken bufferen zonder voortgang telt mee.
+export function ytBufferBewaking() {
+  let sinds: number | null = null;
+  let tijd: number | null = null;
+  return {
+    reset() { sinds = null; tijd = null; },
+    meld(status: number | null, actief: boolean, gepauzeerd: boolean, nu: number, voortgang?: number) {
+      if (!actief || gepauzeerd || status !== 3) { sinds = null; tijd = null; return false; }
+      if (sinds === null || (voortgang !== undefined && tijd !== null && voortgang > tijd + 0.05)) sinds = nu;
+      if (voortgang !== undefined && Number.isFinite(voortgang)) tijd = voortgang;
+      return nu - sinds >= 10000;
+    },
+  };
+}
