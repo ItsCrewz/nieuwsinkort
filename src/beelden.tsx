@@ -186,6 +186,21 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   const [, herlaad] = useState(0);
   const directeFotos = useRef(new Set<string>());
   const raf = useRef(0);
+  const trackBreedte = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    trackBreedte.current = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      const breedte = el.clientWidth;
+      if (breedte === trackBreedte.current) return;
+      trackBreedte.current = breedte;
+      cancelAnimationFrame(raf.current);
+      if (breedte) el.scrollLeft = iRef.current * breedte;
+    });
+    observer.observe(el);
+    return () => { observer.disconnect(); trackBreedte.current = null; };
+  }, [list.length > 0]);
   const vorigeUrls = useRef(urls);
   useLayoutEffect(() => {
     if (vorigeUrls.current.length === urls.length && vorigeUrls.current.every((url, k) => url === urls[k])) return;
@@ -225,7 +240,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
       const el = track.current;
-      if (el && el.clientWidth) setI(Math.max(0, Math.min(zichtbare.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
+      if (el && el.clientWidth && (trackBreedte.current === null || el.clientWidth === trackBreedte.current)) setI(Math.max(0, Math.min(zichtbare.length - 1, Math.round(el.scrollLeft / el.clientWidth))));
     });
   }, [zichtbare.length]);
   const go = (k: number) => {
