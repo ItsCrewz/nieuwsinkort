@@ -4,8 +4,14 @@ import { eenPerUitgever } from "./uitgever";
 type Verhaal = { kop: string; tekst?: string; tijd: number };
 const namen = (s: string) => new Set((s.match(/\b[A-Z][a-z]{3,}\b/g) || []).map((w) => w.toLowerCase().replace(/^internazionale$/, "inter")));
 const bedrag = (s: string): number | undefined => {
-  const ton = s.match(/\b(een|twee|drie|vier|vijf|zes|zeven|acht|negen|\d+)\s+ton\b/i);
-  if (ton) return (Number(ton[1]) || ["een", "twee", "drie", "vier", "vijf", "zes", "zeven", "acht", "negen"].indexOf(ton[1].toLowerCase()) + 1) * 100000;
+  // Nederlandse decimalen ("1,5 ton"); onduidelijke notaties ("1.5 ton", ",5 ton") geven geen bedrag, zodat berichten bij twijfel apart blijven
+  const ton = s.match(/(?:[\d.,]*\d|\b(?:een|twee|drie|vier|vijf|zes|zeven|acht|negen))\s+ton\b/i);
+  if (ton) {
+    const x = ton[0].replace(/\s+ton$/i, "");
+    if (/^\d+(?:,\d+)?$/.test(x)) return Math.round(Number(x.replace(",", ".")) * 100000);
+    const w = ["een", "twee", "drie", "vier", "vijf", "zes", "zeven", "acht", "negen"].indexOf(x.toLowerCase());
+    return w < 0 ? undefined : (w + 1) * 100000;
+  }
   const n = s.match(/\b(\d{1,3}(?:[.]\d{3})+|\d{5,})\s*euro\b/i);
   return n ? Number(n[1].replace(/\./g, "")) : undefined;
 };

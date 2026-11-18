@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { GELIJK, MAX_PRECONNECT, aantalPreconnects,HLS_BYTES, PLAYLIST_BYTES, MP4_BYTES, POSTER_MAX_MS, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
+import { GELIJK, MAX_PRECONNECT, aantalPreconnects,HLS_BYTES, PLAYLIST_BYTES, MP4_BYTES, NETWERK_TIMEOUT, POSTER_MAX_MS, laagsteVariant, naIdle, planVoorladen, segmenten, segmentenBereik, voerUit, type Hulp, type Plan } from "../src/voorladen";
 import type { Video } from "../src/types";
 
 const test = async (naam: string, f: () => void | Promise<void>) => {
@@ -236,6 +236,51 @@ try {
     voerUit({ ...leeg(), hls: ["/wachtrij.m3u8"], mp4: "https://wachtrij.example/a.mp4" });
     await wacht();
     assert.deepEqual(verzoeken, ["/wachtrij.m3u8", "https://wachtrij.example/a.mp4", "https://site.example/1.ts", "https://site.example/2.ts"]);
+  });
+
+  await test("HLS-segment dat nooit antwoordt wordt na de time-out geannuleerd en houdt de wachtrij niet vast (#1205)", async () => {
+    const echt = globalThis.setTimeout;
+    const timers: { fn: () => void; ms: number; weg: boolean }[] = [];
+    installeer("setTimeout", (fn: () => void, ms: number) => { timers.push({ fn, ms, weg: false }); return timers.length - 1; });
+    installeer("clearTimeout", (id: number) => { if (timers[id]) timers[id].weg = true; });
+    let gestopt = false;
+    let leesPoging = 0;
+    const verzoeken: string[] = [];
+    installeer("fetch", async (url: string) => {
+      verzoeken.push(url);
+      if (url.endsWith(".m3u8")) return { ok: true, ...playlist("#EXTM3U\n1.ts") };
+      return { ok: true, status: 200, headers: new Headers(), body: { getReader: () => ({
+        read: () => { leesPoging++; return new Promise(() => {}); }, // lost nooit op
+        cancel: async () => { gestopt = true; },
+      }) } };
+    });
+    try {
+      voerUit({ ...leeg(), hls: ["/vast.m3u8"] });
+      await new Promise<void>((r) => echt(r, 0));
+      assert.equal(leesPoging, 1);
+      assert.equal(gestopt, false);
+      const t = timers.find((x) => x.ms === NETWERK_TIMEOUT)!;
+      assert.ok(t);
+      t.fn(); // time-out: abort annuleert de reader
+      await new Promise<void>((r) => echt(r, 0));
+      assert.equal(gestopt, true);
+      assert.deepEqual(verzoeken, ["/vast.m3u8", "https://site.example/1.ts"]);
+    } finally {
+      installeer("setTimeout", echt);
+      herstel(["clearTimeout"]);
+    }
+  });
+
+  await test("HLS-segment met status 500 en body wordt geannuleerd en niet gelezen (#1205)", async () => {
+    let geannuleerd = false;
+    let gelezen = 0;
+    installeer("fetch", async (url: string) => url.endsWith(".m3u8")
+      ? { ok: true, ...playlist("#EXTM3U\n1.ts") }
+      : { ok: false, status: 500, headers: new Headers(), body: { cancel: async () => { geannuleerd = true; }, getReader: () => ({ read: async () => { gelezen++; return { done: true }; }, cancel: async () => {} }) } });
+    voerUit({ ...leeg(), hls: ["/fout500.m3u8"] });
+    await wacht();
+    assert.equal(geannuleerd, true);
+    assert.equal(gelezen, 0);
   });
 
   await test("HLS met bytebereiken haalt alleen die bereiken op, nooit het hele bestand", async () => {

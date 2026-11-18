@@ -1,0 +1,1 @@
+- Filters: een beschadigd opgeslagen filterobject herstelt per veld naar de standaard (#1204).

@@ -17,6 +17,7 @@ import { CAT_LABEL } from "./tabs";
 import { useMeer } from "./meer";
 import { artikelUrl, deel } from "./delen";
 import { useTerugvegen } from "./terugvegen";
+import { useKopFocus } from "./kopfocus";
 
 function monoOf(site: string) {
   return site.replace(/[^A-Za-z0-9]/g, "").slice(0, 2) || "•";
@@ -136,10 +137,7 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
   );
 }
 
-// Escape sluit het artikel niet tijdens IME-compositie (die annuleert dan alleen de compositie) en niet als een onderliggende bediening de toets al afhandelde.
-export function escapeSluit(e: Pick<KeyboardEvent, "key" | "isComposing" | "keyCode" | "defaultPrevented">): boolean {
-  return e.key === "Escape" && !e.isComposing && e.keyCode !== 229 && !e.defaultPrevented;
-}
+export { escapeSluit } from "./kopfocus";
 
 export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: Item; onBack: (opties?: { geveegd?: boolean }) => void; bionic: boolean; dag: string; meerBronnen?: Bron[] }) {
   const url = artikelUrl(item, dag);
@@ -147,12 +145,7 @@ export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: I
   const artRef = useRef<HTMLElement>(null);
   useTerugvegen(artRef, onBack);
   // Focus naar de kop bij openen (scrollpositie blijft bovenaan); Escape = terug
-  useEffect(() => {
-    kopRef.current?.focus({ preventScroll: true });
-    const key = (e: KeyboardEvent) => escapeSluit(e) && onBack();
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [item, onBack]);
+  useKopFocus(kopRef, item.id ?? url, onBack);
   // documenttitel zet App (zelfde vorm als de serverpagina, #622)
   // punten alleen als ze iets nieuws zeggen (#488)
   const tekst = zonderBronvermelding(toonBekendmaking(item));
