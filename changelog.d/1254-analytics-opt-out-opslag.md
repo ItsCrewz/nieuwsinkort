@@ -1,0 +1,1 @@
+- Analytics: de opt-out `?nietmeten=1` blijft in de URL staan als opslag geblokkeerd is of niets bewaart, zonder succesmelding (#1254).

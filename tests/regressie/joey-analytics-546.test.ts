@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { startAnalytics } from "../../src/analytics";
 
-function proef(adres: string, begin: string | null, opslagWerkt = true, bestaand = false) {
+function proef(adres: string, begin: string | null, opslagWerkt: boolean | "stil" = true, bestaand = false) {
   let waarde = begin;
   let nieuwAdres = "";
   const scripts: { src: string; defer: boolean; attrs: Record<string, string> }[] = [];
@@ -10,9 +10,9 @@ function proef(adres: string, begin: string | null, opslagWerkt = true, bestaand
     window: { location: { href: adres }, setTimeout: () => 0 },
     history: { state: null, replaceState: (_: unknown, __: string, url: string) => { nieuwAdres = url; } },
     localStorage: {
-      getItem: () => { if (!opslagWerkt) throw Error(); return waarde; },
-      setItem: (_: string, v: string) => { if (!opslagWerkt) throw Error(); waarde = v; },
-      removeItem: () => { if (!opslagWerkt) throw Error(); waarde = null; },
+      getItem: () => { if (opslagWerkt === false) throw Error(); return waarde; },
+      setItem: (_: string, v: string) => { if (opslagWerkt === false) throw Error(); if (opslagWerkt === true) waarde = v; },
+      removeItem: () => { if (opslagWerkt === false) throw Error(); if (opslagWerkt === true) waarde = null; },
     },
     document: {
       querySelector: (selector: string) => {
@@ -52,3 +52,15 @@ assert.equal(geblokkeerd.scripts.length, 0);
 assert.match(geblokkeerd.meldingen[0], /Opslag is geblokkeerd.*andere pagina/);
 assert.equal(proef("https://voorbeeld.nl/?nietmeten=1#/filmpjes", null, false).scripts.length, 0);
 assert.equal(proef("https://voorbeeld.nl/?nietmeten=0#/sport", null, false).scripts.length, 1);
+// #1254: stille opslag (bewaart niets) en gooiende opslag houden de opt-out in de URL.
+for (const modus of ["stil", false] as const) {
+  const r = proef("https://voorbeeld.nl/?a=2&nietmeten=1#/sport", null, modus);
+  assert.equal(r.nieuwAdres, "", String(modus));
+  assert.equal(r.scripts.length, 0);
+  assert.equal(r.meldingen.length, 1);
+  assert.match(r.meldingen[0], /Opslag is geblokkeerd/);
+  assert.doesNotMatch(r.meldingen[0], /niet meer meegeteld/);
+}
+const nietBevestigd = proef("https://voorbeeld.nl/?nietmeten=0#/sport", "1", "stil");
+assert.equal(nietBevestigd.scripts.length, 0);
+assert.ok(nietBevestigd.meldingen.every((m) => !/weer meegeteld/.test(m)));

@@ -8,8 +8,10 @@ export function startAnalytics(token = SITE_TOKEN): void {
   try {
     if (keuze === "1") localStorage.setItem("nik_nietmeten", "1");
     if (keuze === "0") localStorage.removeItem("nik_nietmeten");
-    uit = localStorage.getItem("nik_nietmeten") === "1";
-    opgeslagen = true;
+    const gelezen = localStorage.getItem("nik_nietmeten");
+    // Opslag die stil niets bewaart telt niet als opgeslagen: de keuze blijft dan in de URL.
+    opgeslagen = keuze === "1" ? gelezen === "1" : keuze === "0" ? gelezen === null : true;
+    uit = keuze === "1" ? true : gelezen === "1";
   } catch { /* De URL bewaart de keuze zolang opslag ontbreekt. */ }
   if (keuze === "1" || keuze === "0") {
     if (opgeslagen || keuze === "0") {
