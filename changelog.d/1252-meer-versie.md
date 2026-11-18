@@ -1,1 +1,1 @@
-- Artikelverdieping: een nieuwe versie van de nieuwsdata haalt de verdieping onder dezelfde sleutel opnieuw op; late antwoorden van een oudere versie overschrijven de cache niet (#1252).
+- Artikelverdieping: gewijzigde nieuwsdata verversen de verdieping onder dezelfde sleutel, ook bij een gelijk tijdstip; een mogelijk verouderd serverantwoord blijft hooguit één minuut in de sessiecache (#1252).

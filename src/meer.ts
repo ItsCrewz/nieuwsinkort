@@ -23,12 +23,12 @@ function geldigMeer(v: unknown): v is Meer {
 
 // Per sessie bewaard, maar na VERS ms hervalideerd (#840): de server kan de verdieping onder dezelfde sleutel wijzigen.
 // Eén aanvraag tegelijk per sleutel; een mislukte verversing houdt het laatste geldige antwoord en probeert later opnieuw.
-const VERS = 5 * 60e3;
+const VERS = 60e3; // een serverantwoord kan zelf nog 60 seconden oude data bevatten
 // Versie van de nieuwsdata (#1252): een nieuwe versie maakt bewaarde en lopende antwoorden onder dezelfde sleutel ongeldig.
 // `req` = versie waarvoor de aanvraag liep, `v` = versie waarvoor `data` geldt.
-type Ingang = { p: Promise<Meer | null>; at: number; data: Meer | null; bezig: boolean; req?: string; v?: string };
-let dataVersie: string | undefined;
-export function zetMeerVersie(v: string | undefined): void { dataVersie = v; }
+type Ingang = { p: Promise<Meer | null>; at: number; data: Meer | null; bezig: boolean; req?: unknown; v?: unknown };
+let dataVersie: unknown;
+export function zetMeerVersie(v: unknown): void { dataVersie = v; }
 const hergebruik = (e: Ingang | undefined): boolean =>
   !!e && (e.bezig ? e.req === dataVersie : e.v === dataVersie && Date.now() - e.at < VERS);
 const meerCache = new Map<string, Ingang>();

@@ -743,7 +743,7 @@ function Frame({ children, top, feed }: { children: ReactNode; top: ReactNode; f
 
 export default function App() {
   const { data: raw, error, reload } = useData();
-  zetMeerVersie(raw?.gegenereerd); // synchroon, zodat useMeer in zijn effect al de nieuwe versie ziet (#1252)
+  zetMeerVersie(raw); // useData behoudt dezelfde referentie zolang de inhoud gelijk is (#1252)
   const laatstVerversd = useRef(0);
   // Rustige melding i.p.v. stil falen: bijwerken mislukt, of de AI-dagruimte is (bijna) op.
   const briefNote = [
