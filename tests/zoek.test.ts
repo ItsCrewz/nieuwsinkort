@@ -247,3 +247,18 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.equal(markeerDelen("Prijs 1 000 euro", "1.000").filter((x) => x.markeer).map((x) => x.tekst).join(), "1 000");
   assert.equal(markeerDelen("Prijs 10000 euro", "1000").filter((x) => x.markeer).length, 0);
 }
+
+// Rubriek Formule 1 is ook op de afkorting F1 vindbaar (#1304).
+{
+  const f1 = { cat: "f1", kop: "Verstappen wint in Monza" } as Item;
+  const sport = { cat: "sport", kop: "Ajax wint thuis" } as Item;
+  const nl = { cat: "nl", kop: "Kabinet overlegt" } as Item;
+  const alle = [f1, sport, nl];
+  assert.deepEqual(zoekItems(alle, "F1"), [f1]);
+  assert.deepEqual(zoekItems(alle, "f1"), [f1]);
+  assert.deepEqual(zoekItems(alle, "Formule 1"), [f1]);
+  assert.deepEqual(zoekItems(alle, "F1 verstappen"), [f1]);
+  assert.deepEqual(zoekItems(alle, "F1 onbekend"), []);
+  assert.deepEqual(zoekItems(alle, "formule"), [f1]);
+  assert.deepEqual(zoekItems(alle, "form"), [f1]);
+}

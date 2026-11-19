@@ -1,0 +1,1 @@
+- Zoeken: een bericht uit de rubriek Formule 1 is nu ook te vinden op de afkorting F1 (#1304).
