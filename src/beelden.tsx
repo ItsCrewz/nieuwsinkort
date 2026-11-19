@@ -224,7 +224,7 @@ export const Beelden = memo(function Beelden({ urls, eager = false, voorrang = e
   const drop = useCallback((u: string) => {
     const weg = listRef.current.indexOf(u);
     if (weg < 0) return;
-    if (listRef.current.length === 2 && box.current?.contains(document.activeElement)) track.current?.focus(); // bediening verdwijnt: focus naar de strook
+    if (listRef.current.length === 2 && document.activeElement?.tagName === "BUTTON" && box.current?.contains(document.activeElement)) track.current?.focus(); // bediening verdwijnt: focus naar de strook
     directeFotos.current.delete(u);
     const rest = listRef.current.filter((x) => x !== u);
     listRef.current = rest; // direct bijwerken: meerdere drops in één batch rekenen op de actuele lijst
