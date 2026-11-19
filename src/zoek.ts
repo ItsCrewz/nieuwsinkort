@@ -201,6 +201,39 @@ export function zoekItems(items: Item[], query: string): Item[] {
   });
 }
 
+// Eén invoeging, weglating, vervanging of verwisseling van aangrenzende letters.
+function kleineTikfout(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) > 1 || a === b) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length && a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2)) return true;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+}
+
+// Alleen eenvoudige zoekopdrachten corrigeren; speciale zoeksyntaxis blijft ongemoeid.
+export function zoeksuggesties(items: Item[], query: string): string[] {
+  if (query.length > 80 || !/^[\p{L}\p{M}\s]+$/u.test(query)) return [];
+  const delen = query.trim().split(/\s+/u);
+  if (delen.length > 5) return [];
+  const termen = delen.map(normaliseer);
+  const suggesties = new Set<string>();
+  // Begrens ook het werk bij uitzonderlijk veel of lange koppen.
+  for (const item of items.slice(0, 1000)) {
+    for (const woord of item.kop.slice(0, 300).match(/[\p{L}\p{M}]+/gu) ?? []) {
+      const kandidaat = normaliseer(woord);
+      if (kandidaat.length > 40) continue;
+      for (let i = 0; i < termen.length; i++) {
+        if (termen[i].length < 5 || termen[i].length > 40 || !kleineTikfout(termen[i], kandidaat)) continue;
+        const voorstel = delen.map((deel, n) => n === i ? woord : deel).join(" ");
+        if (zoekItems([item], voorstel).length) suggesties.add(voorstel);
+        if (suggesties.size === 3) return [...suggesties];
+      }
+    }
+  }
+  return [...suggesties];
+}
+
 // Alleen-kop-kopie per item, zodat de bestaande matching ook op de kop apart werkt (#1010).
 const kopKopie = new WeakMap<Item, Item>();
 const alleenKop = (item: Item): Item => {
