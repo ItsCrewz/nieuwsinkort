@@ -1,0 +1,1 @@
+- Behoud de bronvermelding bij een inhoudelijke prijsclaim; alleen verkoopvermeldingen worden opgeschoond (#1244).

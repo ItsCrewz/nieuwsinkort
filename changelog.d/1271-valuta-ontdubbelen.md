@@ -1,0 +1,1 @@
+- Behoud prijsverschillen in valuta bij het ontdubbelen van artikelpunten en uitgebreide tekst (#1271).

@@ -65,6 +65,7 @@ await t("één beeld: geen tabstop, rol of knoppen", async () => {
   const m = await mount(1);
   assert.equal(props(m.track()).tabIndex, -1);
   assert.equal(props(m.track()).role, undefined);
+  assert.equal(props(m.track())["aria-label"], undefined);
   assert.equal(m.knoppen().length, 0);
 });
 
@@ -82,6 +83,7 @@ await t("laadfout 2→1: focus naar de fotostrook, bediening weg, overgebleven b
   assert.equal(doc.activeElement, m.track());
   assert.equal(m.knoppen().length, 0);
   assert.equal(props(m.track()).role, undefined);
+  assert.equal(props(m.track())["aria-label"], undefined);
   assert.equal(m.slides().length, 1);
   assert.equal(props(m.slides()[0])["aria-hidden"], undefined);
 });
