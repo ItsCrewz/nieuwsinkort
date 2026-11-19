@@ -1,0 +1,1 @@
+- Artikelbeelden: nieuwsfoto's met `avatar` als onderwerp in de bestandsnaam blijven beschikbaar; profielavatars worden op aantoonbare URL-kenmerken geweerd (#1280).

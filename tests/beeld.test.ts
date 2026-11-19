@@ -1,5 +1,6 @@
 // Draai: npm test  (beeld-URL's en og:image, src/beeld.ts)
 import assert from "node:assert/strict";
+import { schoon } from "../src/schoon";
 import { beeldKey, beterBeeld, bruikbareAfmeting, goedBeeld, ogImage, uniekeBeelden } from "../src/beeld";
 
 let n = 0;
@@ -29,6 +30,46 @@ t("small als onderwerp blijft bruikbaar, als maatsuffix niet (#1164)", () => {
   }
   assert.equal(goedBeeld("https://example.org/news/report-small.jpg"), false);
   assert.equal(goedBeeld("https://example.org/news/report-small.jpg?v=1"), false);
+});
+
+t("avatar als onderwerp blijft bruikbaar, profielavatars niet (#1280)", () => {
+  for (const url of [
+    "https://nieuws.nl/media/avatar-fire-and-ash-trailer-1200x675.jpg",
+    "https://nieuws.nl/2025/12/nieuwe-avatar-film-recensie.jpg",
+    "https://nieuws.nl/avatar-the-way-of-water.webp",
+  ]) assert.equal(goedBeeld(url), true, url);
+  for (const url of [
+    "https://avatars.githubusercontent.com/u/1234.jpg",
+    "https://nieuws.nl/avatars/42/foto.jpg",
+    "https://nieuws.nl/uploads/avatar.png",
+    "https://nieuws.nl/uploads/avatar_42.jpg",
+    "https://nieuws.nl/img/user-avatar.jpg",
+    "https://nieuws.nl/img/default-avatar.jpg",
+    "https://nieuws.nl/foto.jpg?avatar=1",
+    "https://nieuws.nl/gravatar/abc.jpg",
+  ]) assert.equal(goedBeeld(url), false, url);
+});
+
+t("gedeelde selectie: nieuwsfoto blijft, avatars vallen weg (uniekeBeelden, schoon, ogImage) (#1280)", () => {
+  const foto = "https://nieuws.nl/media/avatar-fire-and-ash-trailer-1200x675.jpg";
+  const avatars = [
+    "https://avatars.githubusercontent.com/u/1234.jpg",
+    "https://nieuws.nl/uploads/avatar_42.jpg",
+    "https://nieuws.nl/foto.jpg?avatar=1",
+  ];
+  assert.deepEqual(uniekeBeelden([foto]), [foto]);
+  assert.deepEqual(uniekeBeelden(avatars), []);
+  assert.deepEqual(uniekeBeelden([avatars[0], foto, avatars[1], avatars[2]]), [foto]);
+  const bron = [{ site: "NU.nl", href: "https://nu.nl/1" }];
+  const d: any = schoon({ gegenereerd: new Date().toISOString(), items: [
+    { cat: "nl", kop: "A", bronnen: bron, beeld: avatars[0], beelden: [foto, avatars[1]] },
+    { cat: "nl", kop: "B", bronnen: bron, beeld: avatars[0] },
+  ] } as any);
+  assert.deepEqual(d.items[0].beelden, [foto]);
+  assert.equal("beelden" in d.items[1], false);
+  const og = (u: string) => `<meta property="og:image" content="${u}">`;
+  assert.equal(ogImage(og(foto), "https://nieuws.nl/a"), foto);
+  assert.equal(ogImage(og(avatars[0]), "https://nieuws.nl/a"), "");
 });
 
 t("beeldKey herkent varianten van hetzelfde beeld", () => {
