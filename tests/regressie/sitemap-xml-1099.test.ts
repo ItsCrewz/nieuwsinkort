@@ -9,7 +9,7 @@ const xml = nieuwsSitemap([
   { id: "abcdefgh", kop: "Overig nieuws", t },
   { id: "ijklmnop", kop: "Ruw bericht", ruw: true, t },
   { id: "qrstuvwx", kop: "Zonder tijd" },
-], "2026-11-04");
+], "2026-11-04", Date.parse("2026-11-04T12:00:00Z"));
 
 // Een echte XML-parser controleert ook of de hele sitemap leesbaar blijft.
 const parser = spawnSync("python3", ["-c", `

@@ -62,7 +62,7 @@ t("bronloze berichten zonder id: geen artikellink, delen en indexen slaan ze ove
   assert.match(artikelPad(metBron, "2026-01-01"), /^\/bericht\/2026-01-01\/[a-z0-9]{8}-met-bron$/);
   assert.match(artikelUrl(metBron, "2026-01-01"), /^https:\/\/nieuwsinkort\.nl\/bericht\//);
   const items = [a, b, metId, metBron];
-  for (const x of [nieuwsSitemap(items, "2026-01-01"), sitemap(items, "2026-01-01", "2026-01-01T14:00:00Z"), vandaagHtml(items, "2026-01-01")]) {
+  for (const x of [nieuwsSitemap(items, "2026-01-01", Date.parse("2026-01-01T14:00:00Z")), sitemap(items, "2026-01-01", "2026-01-01T14:00:00Z"), vandaagHtml(items, "2026-01-01")]) {
     assert.ok(!x.includes("Bericht A") && !x.includes("Bericht B") && !x.includes("/bericht/2026-01-01/-"));
     assert.ok(x.includes("abcd1234-met-id"));
   }

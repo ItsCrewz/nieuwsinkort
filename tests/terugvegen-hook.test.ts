@@ -41,9 +41,9 @@ const container = () =>
 class TestElement { parentElement = null; matches() { return false; } scrollWidth = 0; clientWidth = 0; }
 g.Element = TestElement;
 const doel = new TestElement();
-const maak = async (terug: () => void) => {
+const maak = async (terug: () => void, breedte?: number, links?: number) => {
   const klassen = new Set<string>();
-  const art = { style: { transform: "", transition: "" }, classList: { add: (naam: string) => klassen.add(naam), remove: (naam: string) => klassen.delete(naam), contains: (naam: string) => klassen.has(naam) }, parentElement: null, contains: (el: unknown) => el === doel };
+  const art = { style: { transform: "", transition: "" }, classList: { add: (naam: string) => klassen.add(naam), remove: (naam: string) => klassen.delete(naam), contains: (naam: string) => klassen.has(naam) }, parentElement: null, contains: (el: unknown) => el === doel, ...(breedte === undefined ? {} : { getBoundingClientRect: () => ({ width: breedte, ...(links === undefined ? {} : { left: links + (Number.parseFloat(/translateX\(([-\d.]+)px/.exec(art.style.transform)?.[1] ?? "0") || 0) }) }) }) };
   const ref = { current: art as unknown as HTMLElement };
   function C() { useTerugvegen(ref, terug); return null; }
   const root = createRoot(container());
@@ -223,6 +223,55 @@ await t("terugvegen-hook: langzaam slepen onder de drempel veert terug (#1216)",
   assert.equal(n, 0);
   assert.equal(h.art.style.transform, "");
   await h.unmount();
+});
+
+await t("terugvegen-hook: smal artikel (300) in breed venster (1000): drempel en eindpositie volgen het artikel", async () => {
+  g.window.innerWidth = 1000;
+  try {
+    let n = 0;
+    const h = await maak(() => n++, 300);
+    veeg(100); // 33% van 300, maar slechts 10% van 1000
+    touch("touchend", [], 900);
+    assert.equal(h.art.style.transform, "translateX(300px)");
+    loop();
+    assert.equal(n, 1);
+    const k = await maak(() => n++, 300);
+    veeg(80); // 27%: veert terug
+    touch("touchend", [], 900);
+    assert.equal(k.art.style.transform, "");
+    loop();
+    assert.equal(n, 1);
+    const f = await maak(() => n++, 300);
+    veeg(60); touch("touchend", [], 30); // snelle flick
+    assert.equal(f.art.style.transform, "translateX(300px)");
+    loop();
+    assert.equal(n, 2);
+    rustigAan = true;
+    const r = await maak(() => n++, 300);
+    veeg(100); touch("touchend", [], 900);
+    assert.equal(n, 3);
+    assert.equal(r.art.style.transform, "");
+    rustigAan = false;
+    const v = await maak(() => n++, 300);
+    touch("touchstart", [[100, 100]], 0); touch("touchmove", [[110, 200]], 10); touch("touchend", [], 900);
+    loop();
+    assert.equal(n, 3);
+    for (const x of [h, k, f, r, v]) await x.unmount(); // na elkaar: overlappende act()-aanroepen laten listeners te laat opruimen
+  } finally { g.window.innerWidth = 400; }
+});
+
+await t("terugvegen-hook: gecentreerd artikel (660 op x=170) in breed venster (1000) verdwijnt helemaal buiten beeld", async () => {
+  g.window.innerWidth = 1000;
+  try {
+    let n = 0;
+    const h = await maak(() => n++, 660, 170);
+    veeg(250); // 38% van 660
+    touch("touchend", [], 900);
+    assert.equal(h.art.style.transform, "translateX(830px)");
+    loop();
+    assert.equal(n, 1);
+    await h.unmount();
+  } finally { g.window.innerWidth = 400; }
 });
 
 console.log("terugvegen-hook: tests geslaagd");
