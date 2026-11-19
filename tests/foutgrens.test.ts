@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { act, createElement } from "react";
-import { Foutgrens, registreerClientfouten } from "../src/foutgrens";
+import { Foutgrens, lazyHerstel, registreerClientfouten } from "../src/foutgrens";
 
 const g = globalThis as any;
 g.IS_REACT_ACT_ENVIRONMENT = true;
@@ -61,5 +61,27 @@ try {
   win.dispatchEvent(new Event("unhandledrejection"));
   assert.ok(logs.some((args) => args[0] === "CLIENT_ONERROR"));
   assert.ok(logs.some((args) => args[0] === "CLIENT_UNHANDLED_REJECTION"));
+
+  // Eenmalig mislukte chunkimport: de herstelactie laadt het onderdeel alsnog.
+  let netwerk = false;
+  const Lui = lazyHerstel(() => netwerk ? Promise.resolve({ default: () => createElement("b", null, "geladen") }) : Promise.reject(new Error("chunk")));
+  const c2 = new NodeMock("div", doc);
+  const root3 = createRoot(c2 as unknown as Element);
+  const klik = (n: any) => n[Object.keys(n).find((k) => k.startsWith("__reactProps$"))!].onClick();
+  const toon = () => createElement(Foutgrens, { code: "CLIENT_LUI", herstel: Lui.herstel, children: createElement(Lui, {}) });
+  await act(async () => root3.render(toon()));
+  assert.equal(c2.children[0].children.length, 2, "alleen Opnieuw proberen na eerste fout");
+  // Aanhoudende fout: Pagina herladen verschijnt, geen automatische reload.
+  let herladen = 0;
+  g.window.location = { reload: () => { herladen++; } };
+  await act(async () => klik(c2.children[0].children[1]));
+  assert.equal(c2.children[0].children[2].textContent, "Pagina herladen");
+  assert.equal(herladen, 0);
+  await act(async () => klik(c2.children[0].children[2]));
+  assert.equal(herladen, 1);
+  netwerk = true;
+  await act(async () => klik(c2.children[0].children[1]));
+  assert.equal(c2.children[0].textContent, "geladen");
+  await act(async () => root3.unmount());
   await act(async () => root.unmount());
 } finally { console.error = oud; }

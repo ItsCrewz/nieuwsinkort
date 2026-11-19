@@ -1,0 +1,1 @@
+- Foutgrens: "Opnieuw proberen" laadt een mislukte lazy-chunk nu opnieuw (verse `lazy`), en biedt daarna "Pagina herladen" bij aanhoudende fouten (#1326).
