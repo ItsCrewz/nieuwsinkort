@@ -1,0 +1,1 @@
+- Nieuwsindeling: Nederlandse locatieankers (Nederland, Amsterdam, kabinet, enz.) worden nu ongeacht hoofdletters herkend, op echte woordgrenzen; "NS" blijft hoofdlettergevoelig (#1330).

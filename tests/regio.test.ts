@@ -1,6 +1,6 @@
 // Draai: npm run test  (rubriekindeling Nederland / Buitenland, src/regio.ts)
 import assert from "node:assert/strict";
-import { bronSignaal, herindeel, isBuitenland } from "../src/regio";
+import { bronSignaal, heeftNlAnker, herindeel, isBuitenland } from "../src/regio";
 import { detailInhoud, heeftLeesVerder } from "../src/leesverder";
 import type { Item } from "../src/types";
 
@@ -34,6 +34,28 @@ t("NL-anker wint van buitenlandse bronnen", () => {
   const it = { kop: "Zelensky op bezoek in Nederland", ai: "", bronnen: [b("https://a.nl/buitenland/1"), b("https://b.nl/buitenland/2")] };
   assert.equal(isBuitenland(it), false);
   assert.equal(herindeel({ cat: "nl", ...it }).cat, "nl");
+});
+t("NL-anker herkend bij kleine letters, hoofdletters en gemengde schrijfwijze (#1330)", () => {
+  const buiten = [b("https://a.nl/buitenland/1")];
+  for (const nl of ["Nederland", "nederland", "NEDERLAND", "nEdErLaNd", "amsterdamse", "KABINET", "den haag", "Knmi"]) {
+    assert.equal(isBuitenland({ kop: `Duitsland en ${nl} sluiten akkoord`, ai: "" }), false, nl);
+    assert.equal(isBuitenland({ kop: `Duitsland en ${nl} sluiten akkoord`, ai: "", bronnen: buiten }), false, nl);
+  }
+  assert.equal(isBuitenland({ kop: "Duitsland sluit akkoord", ai: "" }), true);
+  assert.equal(isBuitenland({ kop: "Duitsland sluit akkoord", ai: "", bronnen: buiten }), true);
+  assert.equal(isBuitenland({ kop: "Duitsland sluit akkoord", ai: "", bronnen: [b("https://a.nl/binnenland/1")] }), false);
+  assert.equal(isBuitenland({ kop: "Akkoord", ai: "het kabinet en duitsland praten" }), false);
+});
+t("NL-anker: eigen woordgrenzen en NS alleen in hoofdletters (#1330)", () => {
+  // Een deel van een langer woord is geen anker.
+  assert.equal(isBuitenland({ kop: "Duitsland: transnederlandse route", ai: "" }), true);
+  assert.equal(isBuitenland({ kop: "Duitsland en de Nederlandën", ai: "" }), false);
+  // "ns" is een gewoon woord, "NS" het spoorbedrijf.
+  assert.equal(isBuitenland({ kop: "Duitsland: ns staat voor niets", ai: "" }), true);
+  assert.equal(isBuitenland({ kop: "Duitsland en NS bouwen samen een trein", ai: "" }), false);
+  assert.equal(heeftNlAnker("de NS rijdt"), true);
+  assert.equal(heeftNlAnker("de ns rijdt"), false);
+  assert.equal(heeftNlAnker("amsterdam"), true);
 });
 t("sport (neutraal) beslist niet op landnaam", () => {
   assert.equal(isBuitenland({ kop: "Verstappen wint GP van Mexico", ai: "", bronnen: [b("https://www.nu.nl/sport/123/verstappen")] }), false);

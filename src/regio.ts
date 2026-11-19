@@ -17,10 +17,13 @@ export const BUITEN_WOORD = { test: (t: string) => BUITEN_ONGEVOELIG.test(t) || 
 // Alleen sterke plaatsaanduidingen, voor de feedomschrijving (#476): daar is een landnaam vaak terloops ("exporteert naar Duitsland"),
 // een Amerikaanse staat of de Verenigde Staten niet. Alleen VS, geen andere landen, wereldsteden of bijvoeglijke naamwoorden ("Amerikaanse investeerder").
 export const BUITEN_LOCATIE =/\b(Verenigde Staten|Amerikaanse staat|Florida|Californi(?:ë|e)|Texas|Louisiana|Alabama|Arizona|Nevada|Ohio|Oklahoma|Minnesota|Michigan|Tennessee|Hawaii|Los Angeles|Chicago|Miami|Las Vegas|New York)(?![\p{L}\d])/iu;
-// Hoofdlettergevoelig: eigennamen; "NS" alleen als los woord.
-const NL_ANKER = /\b(Nederland\w*|Nederlander\w*|Nederlandse?|kabinet|Tweede Kamer|Eerste Kamer|Den Haag|Haagse|Amsterdam\w*|Rotterdam\w*|Utrecht\w*|Eindhoven|Groningen|Haarlem|Jetten|KNMI|ProRail|Rijkswaterstaat|Wekdienst|Schiphol|NS)\b/;
+// Hoofdletterongevoelig (#1330): een feed die "nederland" schrijft telt gelijk. Echte woordgrenzen (ook voor ë/é), zodat een deel van een langer woord geen anker is.
+const NL_ANKER = /(?<![\p{L}\d])(Nederland\p{L}*|Nederlander\p{L}*|Nederlandse?|kabinet|Tweede Kamer|Eerste Kamer|Den Haag|Haagse|Amsterdam\p{L}*|Rotterdam\p{L}*|Utrecht\p{L}*|Eindhoven|Groningen|Haarlem|Jetten|KNMI|ProRail|Rijkswaterstaat|Wekdienst|Schiphol)(?![\p{L}\d])/iu;
+// "NS" blijft hoofdlettergevoelig: het woord "ns" is geen spoorbedrijf.
+const NL_ANKER_NS = /(?<![\p{L}\d])NS(?![\p{L}\d])/u;
+const nlAnker = (tekst: string) => NL_ANKER.test(tekst) || NL_ANKER_NS.test(tekst);
 // Ook gebruikt door het regiofilter (filters.tsx), zodat filter en indeling dezelfde afweging maken.
-export const heeftNlAnker = (tekst: string) => NL_ANKER.test(tekst);
+export const heeftNlAnker = nlAnker;
 
 // Buitenlandse bedrijven en markten zijn alleen bij economisch nieuws een regio-aanwijzing.
 const BUITEN_ECONOMIE = /\b(Binance|Wall Street|Nasdaq|Dow Jones|S&P 500)\b/;
@@ -47,9 +50,9 @@ export function bronSignaal(b: BronIn): Signaal {
 
 export function isBuitenland(it: { kop?: string; ai?: string; omschrijving?: string; bronnen?: BronIn[] }): boolean {
   const tekst = `${it.kop || ""} ${it.ai || ""}`;
-  if (NL_ANKER.test(tekst)) return false;
+  if (nlAnker(tekst)) return false;
   const oms = it.omschrijving || "";
-  const omsBuiten = !!oms && !NL_ANKER.test(oms) && BUITEN_LOCATIE.test(oms);
+  const omsBuiten = !!oms && !nlAnker(oms) && BUITEN_LOCATIE.test(oms);
   const s = (it.bronnen || []).map(bronSignaal);
   const b = s.filter((x) => x === "buiten").length, n = s.filter((x) => x === "binnen").length;
   if (b > n) return true;
