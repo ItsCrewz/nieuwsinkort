@@ -1,0 +1,1 @@
+- Bronlinks in de artikelverdieping en weerbronnen melden voor schermlezers dat ze een nieuw tabblad openen (#1329).
