@@ -9,7 +9,7 @@ for (const ontbreekt of [["IntersectionObserver"], ["ResizeObserver"], ["Interse
       const antwoord = await route.fetch();
       const data = await antwoord.json();
       data.gegenereerd = new Date().toISOString();
-      data.items = data.items.slice(0, 10).map((item, i) => ({ ...item, t: Date.now() - i * 60000, ai: i === 0 ? item.ai.repeat(15) : item.ai }));
+      data.items = data.items.slice(0, 10).map((item, i) => ({ ...item, t: Date.now() - i * 60000, ai: i === 0 ? (item.ai || item.titel || "Nieuwsbericht").repeat(15) : item.ai }));
       await route.fulfill({ response: antwoord, json: data });
     });
     const fouten = [];
