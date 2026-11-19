@@ -212,7 +212,7 @@ function kleineTikfout(a: string, b: string): boolean {
 }
 
 // Alleen eenvoudige zoekopdrachten corrigeren; speciale zoeksyntaxis blijft ongemoeid.
-export function zoeksuggesties(items: Item[], query: string): string[] {
+export function zoeksuggesties(items: Item[], query: string, alleenKoppen = false): string[] {
   if (query.length > 80 || !/^[\p{L}\p{M}\s]+$/u.test(query)) return [];
   const delen = query.trim().split(/\s+/u);
   if (delen.length > 5) return [];
@@ -227,7 +227,7 @@ export function zoeksuggesties(items: Item[], query: string): string[] {
       for (let i = 0; i < termen.length; i++) {
         if (termen[i].length < 5 || termen[i].length > 40 || !kleineTikfout(termen[i], kandidaat)) continue;
         const voorstel = delen.map((deel, n) => n === i ? woord : deel).join(" ");
-        if (zoekItems([item], voorstel).length) suggesties.add(voorstel);
+        if (zoekItems([item], voorstel, alleenKoppen).length) suggesties.add(voorstel);
         if (suggesties.size === 3) return [...suggesties];
       }
     }
