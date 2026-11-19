@@ -1,5 +1,5 @@
 import { useTrekverversen } from "./trekverversen";
-import { Foutgrens } from "./foutgrens";
+import { Foutgrens, lazyHerstel } from "./foutgrens";
 import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
@@ -7,7 +7,7 @@ import { artikelId } from "./artikelid";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
-import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
@@ -46,18 +46,18 @@ import { Briefing, Tabs } from "./app-tabs";
 import { feedToetsDoel } from "./toetsdoel";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
-const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
-const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
+const SourcesSheet = lazyHerstel(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
+const VideoGrid = lazyHerstel(() => import("./video").then((m) => ({ default: m.VideoGrid })));
 let detailModule: typeof import("./detail") | undefined;
 let detailBelofte: Promise<typeof import("./detail")> | undefined;
 const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
-const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
+const DetailView = lazyHerstel(() => laadDetail().then((m) => ({ default: m.DetailView })));
 // Houd het componenttype gelijk zolang een artikel openstaat, ook als de module intussen laadt.
 function ArtikelDetail(props: React.ComponentProps<typeof DetailView>) {
   const [Component] = useState(() => detailModule?.DetailView ?? DetailView);
   return <Component {...props} />;
 }
-const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
+const FilterBlad = lazyHerstel(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
 
 const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
@@ -977,7 +977,7 @@ export default function App() {
       <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk alleenKoppen={alleenKoppen} onAlleenKoppen={setAlleenKoppen} modus={zoekmodus} onModus={setZoekmodus} query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
-        <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>
+        <Foutgrens code="CLIENT_SHEET" herstel={SourcesSheet.herstel}><Suspense fallback={null}>
           <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
         </Suspense></Foutgrens>
       ) : null}
@@ -1024,6 +1024,7 @@ export default function App() {
     return (
       <Frame top={top}>
         <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
+          <Foutgrens key={route.selected} code="CLIENT_DETAIL" herstel={DetailView.herstel}>
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
@@ -1038,6 +1039,7 @@ export default function App() {
               }}
             />
           </Suspense>
+          </Foutgrens>
           <Footer />
         </main>
       </Frame>
@@ -1068,7 +1070,7 @@ export default function App() {
   const filterLeeg = <LeegMelding aantal={basisItems.length} ruwAantal={rubriekItems(raw.items).length} onAanpassen={() => setFsheet(true)} onReset={flt.reset} onBronnen={() => setSheet(true)} onBronnenReset={reset} />;
   const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
   const filterBlad = fsheet ? (
-    <Foutgrens code="CLIENT_FILTER_SHEET"><Suspense fallback={null}>
+    <Foutgrens code="CLIENT_FILTER_SHEET" herstel={FilterBlad.herstel}><Suspense fallback={null}>
       <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={sluitFilters} />
     </Suspense></Foutgrens>
   ) : null;
@@ -1142,7 +1144,7 @@ export default function App() {
         ) : null}
         <div id="rubriek-paneel" role="tabpanel" aria-labelledby={rubriekTabId(view)}>
         {isVideo ? (
-          <Foutgrens key={view} code="CLIENT_VIDEO"><Suspense fallback={null}>
+          <Foutgrens key={view} code="CLIENT_VIDEO" herstel={VideoGrid.herstel}><Suspense fallback={null}>
             <VideoGrid
               key={view}
               cat={view}
