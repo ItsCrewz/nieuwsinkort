@@ -11,3 +11,7 @@ assert.deepEqual(zoekItems([kop, tekst], "", true), [kop, tekst]);
 const suggestie = { kop: "Verkiezingen", ai: "Nieuws uit Nederland" } as Item;
 assert.deepEqual(zoeksuggesties([suggestie], "verkiezngen nederland"), ["Verkiezingen nederland"]);
 assert.deepEqual(zoeksuggesties([suggestie], "verkiezngen nederland", true), []);
+
+assert.deepEqual(zoekItems([kop, tekst], "cafe onbekend", "of", true), [kop]);
+assert.deepEqual(zoekItems([kop, tekst], "cafe onbekend -verbouwing", "of", true), []);
+assert.deepEqual(zoeksuggesties([suggestie], "verkiezngen onbekend", true, "of"), ["Verkiezingen onbekend"]);

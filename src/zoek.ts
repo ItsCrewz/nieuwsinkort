@@ -187,7 +187,11 @@ function termenVan(query: string): string[][] {
   return termen;
 }
 
-export function zoekItems(items: Item[], query: string, alleenKoppen = false): Item[] {
+export type Zoekmodus = "alle" | "of";
+
+export function zoekItems(items: Item[], query: string, modusOfKoppen: Zoekmodus | boolean = "alle", alleenKoppen = false): Item[] {
+  const modus = typeof modusOfKoppen === "boolean" ? "alle" : modusOfKoppen;
+  if (typeof modusOfKoppen === "boolean") alleenKoppen = modusOfKoppen;
   query = zonderOnzichtbaar(begrensZoekterm(query));
   const kloktijd = query.trim();
   if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
@@ -200,7 +204,7 @@ export function zoekItems(items: Item[], query: string, alleenKoppen = false): I
     if (min.some((delen) => kandidaten(delen, woorden, lijm).length)) return false;
     // Woordbegin: elke term moet op een eigen woord (of eigen reeks) vallen ("mark markt" vraagt twee woorden).
     const kand = termen.map((delen) => kandidaten(delen, woorden, lijm));
-    return kand.every((k) => k.length) && alleTermenPassen(kand, woorden.length);
+    return modus === "of" && kand.length ? kand.some((k) => k.length > 0) : kand.every((k) => k.length) && alleTermenPassen(kand, woorden.length);
   });
 }
 
@@ -215,7 +219,7 @@ function kleineTikfout(a: string, b: string): boolean {
 }
 
 // Alleen eenvoudige zoekopdrachten corrigeren; speciale zoeksyntaxis blijft ongemoeid.
-export function zoeksuggesties(items: Item[], query: string, alleenKoppen = false): string[] {
+export function zoeksuggesties(items: Item[], query: string, alleenKoppen = false, modus: Zoekmodus = "alle"): string[] {
   if (query.length > 80 || !/^[\p{L}\p{M}\s]+$/u.test(query)) return [];
   const delen = query.trim().split(/\s+/u);
   if (delen.length > 5) return [];
@@ -230,7 +234,7 @@ export function zoeksuggesties(items: Item[], query: string, alleenKoppen = fals
       for (let i = 0; i < termen.length; i++) {
         if (termen[i].length < 5 || termen[i].length > 40 || !kleineTikfout(termen[i], kandidaat)) continue;
         const voorstel = delen.map((deel, n) => n === i ? woord : deel).join(" ");
-        if (zoekItems([item], voorstel, alleenKoppen).length) suggesties.add(voorstel);
+        if (zoekItems([item], voorstel, modus, alleenKoppen).length) suggesties.add(voorstel);
         if (suggesties.size === 3) return [...suggesties];
       }
     }
@@ -247,9 +251,9 @@ const alleenKop = (item: Item): Item => {
 };
 
 // Koptreffers vóór treffers alleen in de tekst; binnen elke groep blijft de volgorde van de invoer (stabiel).
-export function rangschikKoptreffers(items: Item[], query: string): Item[] {
+export function rangschikKoptreffers(items: Item[], query: string, modus: Zoekmodus = "alle"): Item[] {
   if (!query.trim() || items.length < 2) return items;
-  const kop = new Set(zoekItems(items.map(alleenKop), query));
+  const kop = new Set(zoekItems(items.map(alleenKop), query, modus));
   const voor: Item[] = [], rest: Item[] = [];
   for (const item of items) (kop.has(alleenKop(item)) ? voor : rest).push(item);
   return voor.length && rest.length ? [...voor, ...rest] : items;
