@@ -1,0 +1,1 @@
+- Zoeken: een resultaat waarvan de treffer niet in de kop of samenvatting staat, toont nu een fragment ("Gevonden in punt: …") met markering; punten op de kaart worden ook gemarkeerd.

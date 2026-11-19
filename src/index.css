@@ -690,3 +690,5 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .ptr{position:absolute;z-index:4;top:-48px;left:50%;display:flex;align-items:center;gap:8px;pointer-events:none;color:var(--i2);font-size:13px;white-space:nowrap;translate:-50% 0}
 .ptr.klaar{color:var(--a)}
 .ptr-pijl{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--card);box-shadow:0 2px 8px #0002;font-size:22px}
+.nc-zoek{max-width:62ch;font-size:0.875rem;line-height:1.45;color:var(--i2);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.nc-zoek-l{font-weight:600}
