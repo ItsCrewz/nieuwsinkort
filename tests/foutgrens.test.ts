@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { act, createElement } from "react";
+import { Suspense, act, createElement } from "react";
 import { Foutgrens, lazyHerstel, registreerClientfouten } from "../src/foutgrens";
 
 const g = globalThis as any;
@@ -83,5 +83,20 @@ try {
   await act(async () => klik(c2.children[0].children[1]));
   assert.equal(c2.children[0].textContent, "geladen");
   await act(async () => root3.unmount());
+
+  // Detailpad (#1326): loader onthoudt zijn belofte en reset die bij een fout, zoals laadDetail.
+  let net = false;
+  let belofte: Promise<{ default: () => any }> | undefined;
+  const laadD = () => belofte ??= (net ? Promise.resolve({ default: () => createElement("i", null, "artikel") }) : Promise.reject(new Error("chunk"))).catch((e) => { belofte = undefined; throw e; });
+  const Det = lazyHerstel(laadD);
+  const c3 = new NodeMock("div", doc);
+  const root4 = createRoot(c3 as unknown as Element);
+  const toonD = () => createElement(Foutgrens, { code: "CLIENT_DETAIL", herstel: Det.herstel, children: createElement(Suspense, { fallback: null }, createElement(Det, {})) });
+  await act(async () => root4.render(toonD()));
+  assert.equal(c3.children[0].children.length, 2, "Opnieuw proberen na mislukte detailchunk");
+  net = true;
+  await act(async () => klik(c3.children[0].children[1]));
+  assert.equal(c3.children[0].textContent, "artikel");
+  await act(async () => root4.unmount());
   await act(async () => root.unmount());
 } finally { console.error = oud; }

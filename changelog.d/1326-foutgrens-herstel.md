@@ -1,1 +1,2 @@
 - Foutgrens: "Opnieuw proberen" laadt een mislukte lazy-chunk nu opnieuw (verse `lazy`), en biedt daarna "Pagina herladen" bij aanhoudende fouten (#1326).
+- Artikeldetail: een mislukte detail-chunk heeft nu een eigen foutgrens met "Opnieuw proberen" en daarna "Pagina herladen" (#1326).

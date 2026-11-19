@@ -7,7 +7,7 @@ import { artikelId } from "./artikelid";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
-import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
@@ -51,7 +51,7 @@ const VideoGrid = lazyHerstel(() => import("./video").then((m) => ({ default: m.
 let detailModule: typeof import("./detail") | undefined;
 let detailBelofte: Promise<typeof import("./detail")> | undefined;
 const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
-const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
+const DetailView = lazyHerstel(() => laadDetail().then((m) => ({ default: m.DetailView })));
 // Houd het componenttype gelijk zolang een artikel openstaat, ook als de module intussen laadt.
 function ArtikelDetail(props: React.ComponentProps<typeof DetailView>) {
   const [Component] = useState(() => detailModule?.DetailView ?? DetailView);
@@ -1016,6 +1016,7 @@ export default function App() {
     return (
       <Frame top={top}>
         <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
+          <Foutgrens key={route.selected} code="CLIENT_DETAIL" herstel={DetailView.herstel}>
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
@@ -1030,6 +1031,7 @@ export default function App() {
               }}
             />
           </Suspense>
+          </Foutgrens>
           <Footer />
         </main>
       </Frame>
