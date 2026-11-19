@@ -776,6 +776,7 @@ export default function App() {
   const [fsheet, setFsheet] = useState(false);
   const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
   const [zoekterm, setZoekterm] = useState(() => leesZoekterm(window.location.search));
+  const [alleenKoppen, setAlleenKoppen] = useState(false);
   const [zoekAllesSelectie, setZoekAllesSelectie] = useState<Zoekselectie | null>(null);
   const zoekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const schrijfZoekUrl = useCallback((term: string) => {
@@ -937,12 +938,12 @@ export default function App() {
   const zoekBasis = useMemo(() => isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [], [isFeedView, data, route.view, flt.f.cats]);
   const zoekFilter = useMemo(() => isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null, [isFeedView, data, raw, zoekBasis, flt.f, flt.vorig, route.view]);
   // Koptreffers eerst (#1010); bij sortering "nieuw" eerst op tijd, want NewsFeed sorteert dan niet meer zelf.
-  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm), zoekterm) : [];
-  const suggesties = useMemo(() => zoekFilter && data && zoekterm.trim() && !zoekUitkomst.length ? zoeksuggesties(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm) : [], [zoekFilter, data, zoekterm, zoekAlles, zoekUitkomst.length]);
+  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm, alleenKoppen), zoekterm) : [];
+  const suggesties = useMemo(() => zoekFilter && data && zoekterm.trim() && !zoekUitkomst.length ? zoeksuggesties(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm, alleenKoppen) : [], [zoekFilter, data, zoekterm, zoekAlles, zoekUitkomst.length, alleenKoppen]);
   // Zonder tijd-, regio-, video- en samengevoegd-filter: wat de filters aan treffers verbergen (#613).
   const zoekBeperkt = !!zoekFilter && (zoekFilter.tijd !== "alles" || flt.f.video || flt.f.samen || flt.f.regio.length > 0);
   const wisZoekFilters = () => flt.set({ tijd: "alles", video: false, samen: false, regio: [] });
-  const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm).length - zoekUitkomst.length) : 0;
+  const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm, alleenKoppen).length - zoekUitkomst.length) : 0;
   const zoekScope: ZoekScope | undefined = zoekFilter ? {
     tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video- en samenvoegfilters zijn verruimd. Het bronfilter blijft actief." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
     verborgen: zoekVerborgen,
@@ -951,7 +952,7 @@ export default function App() {
   } : undefined;
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk alleenKoppen={alleenKoppen} onAlleenKoppen={setAlleenKoppen} query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>
