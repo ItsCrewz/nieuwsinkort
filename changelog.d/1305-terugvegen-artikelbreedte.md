@@ -1,0 +1,1 @@
+- Terugvegen: de sluitdrempel en eindpositie volgen nu de breedte van het artikel in plaats van het venster, met terugval bij nul of ontbrekende afmetingen (#1305).

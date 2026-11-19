@@ -1,0 +1,1 @@
+- Bij het delen van een bericht staat vermeld wanneer de link verloopt en daarna naar de homepage verwijst (#1287).

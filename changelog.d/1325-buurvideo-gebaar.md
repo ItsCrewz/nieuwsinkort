@@ -1,0 +1,1 @@
+- Filmpjes: een buurvideo start alleen nog na een eenduidig verticale veeg met één vinger; bij een horizontaal of meerledig gebaar blijft de huidige speler actief en wordt een vooractivatie hersteld (#1325).

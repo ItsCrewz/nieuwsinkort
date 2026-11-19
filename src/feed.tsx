@@ -30,7 +30,7 @@ import { soundOn, saveSound, geluidTik, onthoudGeluidTik, volgGeluid } from "./g
 import { posterVerborgen } from "./poster";
 import { svCache } from "./samenvattingcache";
 import { useSamenvatting } from "./usesamenvatting";
-import { ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
+import { ytBufferVast, ytStartBesluit, ytVerwijderBesluit, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl } from "./ytstart";
 
 // Tellers voor diagnose van stilstaande tijd en beeld.
 const diag = ((window as unknown as { __nikVideo?: { herladen: number; vast: number; stil: number } }).__nikVideo ??= { herladen: 0, vast: 0, stil: 0 });
@@ -702,6 +702,11 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
   const blokkade = useRef("-");
   const handdruk = useRef(0);
   const geladen = useRef(false);
+  // Bewaking voor blijvend bufferen (#1243): sinds wanneer status 3 zonder voortgang duurt.
+  const bufferSinds = useRef<number | null>(null);
+  const laatsteTijd = useRef(0);
+  const [vast, setVast] = useState(false);
+  const bufferReset = useCallback(() => { bufferSinds.current = null; setVast(false); }, []);
   const [shown, setShown] = useState(false);
   useEffect(() => {
     onBeeld(shown);
@@ -766,7 +771,7 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       if (d.event === "onError" || d.event === "onAutoplayBlocked") {
         debugEvent(`YouTube ${id} ${d.event} ${typeof d.info === "number" ? d.info : ""}`);
         if (d.event === "onError") {
-          echteFout.current = true; foutCode.current = d.info; setVangnet(false);
+          echteFout.current = true; foutCode.current = d.info; setVangnet(false); bufferReset();
           if (ytEchteFout(d.info)) setShown(true);
           onYtFout(d.info);
         } else if (!echteFout.current && state.current.active && !state.current.paused && autoplayGeblokkeerd(d.event, d.info)) {
@@ -783,12 +788,19 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         start.current.status = status;
         if (status === 1 || status === 3) { gespeeld.current = true; setVangnet(false); setShown(true); }
         if (status === 1) onYtSpeelt();
+        if (status === 3) { if (bufferSinds.current === null) bufferSinds.current = performance.now(); }
+        else bufferReset();
         diagnose();
       }
       if (info && typeof info === "object") {
         const t = info as { playerState?: number; currentTime?: number; duration?: number };
         if (typeof t.duration === "number") dur.current = t.duration;
-        if (typeof t.currentTime === "number") cur.current = t.currentTime;
+        if (typeof t.currentTime === "number") {
+          // Voortgang tijdens bufferen telt als levend: de bewaking begint opnieuw.
+          if (bufferSinds.current !== null && Math.abs(t.currentTime - laatsteTijd.current) > 0.05) bufferSinds.current = performance.now();
+          laatsteTijd.current = t.currentTime;
+          cur.current = t.currentTime;
+        }
       }
       if (status !== null) {
         const playing = status === 1;
@@ -825,26 +837,28 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
       window.removeEventListener("message", onMsg);
       if (seek.current === api) seek.current = null;
     };
-  }, [apply, bar.set, diagnose, id, post, seek, setVangnet, onYtFout, onYtSpeelt, onAutoplayBlocked]);
+  }, [apply, bar.set, bufferReset, diagnose, id, post, seek, setVangnet, onYtFout, onYtSpeelt, onAutoplayBlocked]);
 
   useEffect(() => {
     start.current = { status: null, pogingen: 0, sinds: performance.now() };
     gespeeld.current = false;
     blokkade.current = "-";
     setVangnet(false);
+    bufferReset();
     if (active && echteFout.current) onYtFout(foutCode.current);
     if (!active) setShown(false);
     else if (klaar.current && !state.current.paused) { start.current.pogingen++; apply(); }
     if (!active && klaar.current) { apply(); post("seekTo", [0, true]); }
     diagnose();
-  }, [active, apply, diagnose, post, setVangnet, onYtFout]);
+  }, [active, apply, bufferReset, diagnose, post, setVangnet, onYtFout]);
 
-  useEffect(() => { apply(); }, [muted, paused, apply]);
+  useEffect(() => { apply(); bufferReset(); }, [muted, paused, apply, bufferReset]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (geladen.current && !klaar.current && handdruk.current < 10) { listening(); handdruk.current++; }
       const s = state.current;
+      if (ytBufferVast({ actief: s.active, gepauzeerd: s.paused, fout: echteFout.current, status: start.current.status, bufferSinds: bufferSinds.current, nu: performance.now() })) setVast(true);
       const besluit = ytStartBesluit({ actief: s.active, gepauzeerd: s.paused, klaar: klaar.current, ...start.current, gespeeld: gespeeld.current, fout: echteFout.current, nu: performance.now() });
       if (besluit === "probeer") { start.current.pogingen++; apply(); diagnose(); }
       else if (besluit === "vangnet") {
@@ -878,7 +892,14 @@ function YouTubePlayer({ v, id, active, paused, muted, bar, seek, onBeeld, onAut
         listening();
       }}
     />
-    {active && !paused && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
+    {active && !paused && vast ? (
+      <button type="button" className="f-yt-start f-yt-herstel" onClick={() => {
+        post("seekTo", [laatsteTijd.current, true]);
+        post("playVideo");
+        bufferSinds.current = performance.now(); // geen herstartlus: pas na weer 12 s zonder voortgang opnieuw
+        setVast(false);
+      }}>Video haperkt. Tik om opnieuw te proberen</button>
+    ) : active && !paused && vangnet ? <div className="f-yt-start">Tik om af te spelen</div> : null}
     </>
   );
 }
@@ -1545,12 +1566,23 @@ export function Feed({
         ytBlokWis();
       }
     };
+    let startX = 0;
     let startY = 0;
     let gestart = false;
-    const touchStart = (e: TouchEvent) => { aanraking.current = true; startY = e.changedTouches[0]?.clientY ?? 0; gestart = false; };
+    let meervoud = false; // een tweede vinger maakt er geen veeg naar de volgende slide van
+    const touchStart = (e: TouchEvent) => {
+      aanraking.current = true;
+      if (e.touches.length > 1) { meervoud = true; gestart = false; herstel(); return; }
+      meervoud = false;
+      startX = e.touches[0]?.clientX ?? 0;
+      startY = e.touches[0]?.clientY ?? 0;
+      gestart = false;
+    };
     const touchMove = (e: TouchEvent) => {
-      if (gestart) return;
-      const i = swipeDoel(startY, e.changedTouches[0]?.clientY ?? startY, activeRef.current);
+      if (meervoud) return;
+      const t = e.touches[0] ?? e.changedTouches[0];
+      const i = swipeDoel(startX, startY, t?.clientX ?? startX, t?.clientY ?? startY, swipeStart.current?.van ?? activeRef.current);
+      if (gestart) { if (i === null) { gestart = false; herstel(); } return; } // werd alsnog horizontaal of keerde om
       if (i === null) return;
       richting.current = i < activeRef.current ? -1 : 1;
       if (root.current?.querySelector(`.fslide[data-i="${activeRef.current}"] iframe.f-yt`)) return;
@@ -1578,14 +1610,17 @@ export function Feed({
     };
     let herstelTimer: number | undefined;
     const touchEnd = (e: TouchEvent) => {
+      if (e.touches.length > 0) return; // nog een vinger op het scherm
       aanraking.current = false;
-      const doel = swipeDoel(startY, e.changedTouches[0]?.clientY ?? startY, swipeStart.current?.van ?? activeRef.current);
+      const t = e.changedTouches[0];
+      const doel = meervoud ? null : swipeDoel(startX, startY, t?.clientX ?? startX, t?.clientY ?? startY, swipeStart.current?.van ?? activeRef.current);
+      meervoud = false;
       if (doel === null || (swipeStart.current && doel !== swipeStart.current.naar)) herstel();
       if (doel !== null) startDirect(doel);
       window.clearTimeout(herstelTimer);
       herstelTimer = window.setTimeout(herstel, 1500);
     };
-    const touchCancel = () => { aanraking.current = false; herstel(); };
+    const touchCancel = () => { aanraking.current = false; meervoud = false; gestart = false; herstel(); };
     const scrollEnd = () => herstel();
     r.addEventListener("touchstart", touchStart, { passive: true });
     r.addEventListener("touchmove", touchMove, { passive: true });
@@ -1605,7 +1640,7 @@ export function Feed({
       types.forEach((t) => r.removeEventListener(t, onGesture, { capture: true }));
       window.removeEventListener("keydown", onGesture, { capture: true });
     };
-  }, [unmuteNow, startDirect, ytBlokWis]);
+  }, [unmuteNow, startDirect, ytBlokWis, herstel]);
   const toggleMute = useCallback(() => {
     const eerste = !geluidTik() || Date.now() - knopEersteOp.current < 1000;
     knopEersteOp.current = 0;

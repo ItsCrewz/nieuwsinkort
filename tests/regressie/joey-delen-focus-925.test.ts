@@ -1,66 +1,126 @@
 import assert from "node:assert/strict";
-import React from "react";
-import { DeelBlok } from "../../src/detail";
+import { act, createElement } from "react";
 import type { Item } from "../../src/types";
 
-// Een kleine hook-stub laat Reacts ref-levenscyclus bij een her-render controleren.
-const intern = React as unknown as { __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: { ReactCurrentDispatcher: { current: unknown } } };
-const dispatcher = intern.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher;
-const vorig = dispatcher.current;
-const hooks: unknown[] = [];
-let index = 0;
-dispatcher.current = {
-  useState(init: unknown) {
-    const i = index++;
-    if (!(i in hooks)) hooks[i] = init;
-    return [hooks[i], (waarde: unknown) => { hooks[i] = waarde; }];
-  },
-  useRef(init: unknown) {
-    const i = index++;
-    if (!(i in hooks)) hooks[i] = { current: init };
-    return hooks[i];
-  },
-  useCallback(fn: unknown) {
-    const i = index++;
-    if (!(i in hooks)) hooks[i] = fn;
-    return hooks[i];
-  },
-  useEffect() { index++; },
+// Echte React-render van DetailView (#1234) met een minimale nep-DOM (geen jsdom): de handmatige deellink wordt eenmaal geselecteerd en
+// gefocust, een hertekening met dezelfde url steelt de focus niet terug, een andere url remount het blok (key={url}) en een
+// verdwenen en teruggekeerde invoer wordt opnieuw geselecteerd.
+const g = globalThis as any;
+g.MessageChannel = class {
+  port1: { onmessage: ((e: { data: unknown }) => void) | null } = { onmessage: null };
+  port2 = { postMessage: (data: unknown) => setImmediate(() => this.port1.onmessage?.({ data })) };
 };
-const url = "https://nieuwsinkort.nl/bericht/test";
-const item = { kop: "Testbericht" } as Item;
-const render = () => {
-  index = 0;
-  return DeelBlok({ item, url }).props.children as (React.ReactElement & { ref: (el: unknown) => void })[];
+g.IS_REACT_ACT_ENVIRONMENT = true;
+
+class Knoop {
+  nodeType = 1; kinderen: Knoop[] = []; ouder: Knoop | null = null; attrs: Record<string, string> = {}; style: Record<string, string> = {};
+  tekst = ""; ownerDocument: any = doc;
+  constructor(public nodeName: string, nodeType = 1) { this.nodeType = nodeType; }
+  get parentNode() { return this.ouder; } get parentElement() { return this.ouder; }
+  get tagName() { return this.nodeName; }
+  get namespaceURI() { return "http://www.w3.org/1999/xhtml"; }
+  get firstChild() { return this.kinderen[0] ?? null; }
+  get lastChild() { return this.kinderen[this.kinderen.length - 1] ?? null; }
+  get nextSibling() { return this.ouder?.kinderen[this.ouder.kinderen.indexOf(this) + 1] ?? null; }
+  set textContent(w: string) { this.kinderen = []; if (w) this.appendChild(new Knoop("#text", 3)).tekst = w; }
+  get nodeValue() { return this.tekst; } set nodeValue(w: string) { this.tekst = w; }
+  get data() { return this.tekst; } set data(w: string) { this.tekst = w; }
+  appendChild(k: Knoop) { return this.insertBefore(k, null); }
+  insertBefore(k: Knoop, voor: Knoop | null) {
+    k.ouder?.removeChild(k);
+    const i = voor ? this.kinderen.indexOf(voor) : this.kinderen.length;
+    this.kinderen.splice(i < 0 ? this.kinderen.length : i, 0, k); k.ouder = this; return k;
+  }
+  removeChild(k: Knoop) { const i = this.kinderen.indexOf(k); if (i >= 0) this.kinderen.splice(i, 1); k.ouder = null; return k; }
+  setAttribute(n: string, w: string) { this.attrs[n] = String(w); }
+  removeAttribute(n: string) { delete this.attrs[n]; }
+  addEventListener() {} removeEventListener() {}
+  classList = { add() {}, remove() {}, contains: () => false };
+  focus() { doc.activeElement = this; } select() { this.geselecteerd++; } geselecteerd = 0;
+  inhoud(): string { return this.nodeType === 3 ? this.tekst : this.kinderen.map((k) => k.inhoud()).join(""); }
+  vind(f: (k: Knoop) => boolean): Knoop | null { if (f(this)) return this; for (const k of this.kinderen) { const r = k.vind(f); if (r) return r; } return null; }
+}
+const doc: any = {
+  createElement: (n: string) => new Knoop(n.toUpperCase()), createElementNS: (_ns: string, n: string) => new Knoop(n.toUpperCase()), createTextNode: (t: string) => { const k = new Knoop("#text", 3); k.tekst = t; return k; },
+  addEventListener() {}, removeEventListener() {}, body: null,
 };
+doc.body = new Knoop("BODY");
+g.document = doc;
+g.window = Object.assign(new EventTarget(), { HTMLIFrameElement: class {} });
+doc.defaultView = g.window;
+doc.activeElement = null;
+doc.documentElement = doc.body;
+
+
+const { DetailView } = await import("../../src/detail");
+const { createRoot } = await import("react-dom/client");
+const maakItem = (id: string, kop = "Testbericht"): Item => ({ id, kop, cat: "nl", ai: "Een korte inleiding over het testbericht." } as Item);
+const dag = "2026-01-05";
 const oudeNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
-let pogingen = 0;
-Object.defineProperty(globalThis, "navigator", { configurable: true, value: {
-  share: async () => { pogingen++; throw new Error("geweigerd"); },
-  clipboard: { writeText: async () => { pogingen++; throw new Error("geweigerd"); } },
-} });
+let clipboardWerkt = false;
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: { clipboard: { writeText: async () => { if (!clipboardWerkt) throw new Error("geweigerd"); } } } });
+
+const zoek = (f: (k: Knoop) => boolean) => doc.body.vind(f) ?? wortel.vind(f);
+const wortel = new Knoop("DIV");
+const root = createRoot(wortel as unknown as Element);
+const toon = (item: Item) => act(async () => root.render(createElement(DetailView, { item, onBack: () => {}, bionic: false, dag })));
+const knop = () => zoek((k) => k.attrs.class === "deel-knop");
+const invoer = () => zoek((k) => k.attrs.class === "deel-invoer");
+const klik = async () => {
+  const sleutel = Object.keys(knop()!).find((s) => s.startsWith("__reactProps$"))!;
+  await act(async () => { await (knop() as any)[sleutel].onClick(); });
+};
+
 try {
-  let kinderen = render();
-  await kinderen[0].props.onClick();
-  assert.equal(pogingen, 2);
-  kinderen = render();
-  assert.equal(kinderen[1].props.children, "Kopieer handmatig met Ctrl+C of Command+C.");
-  const invoer = kinderen[2];
-  assert.equal(invoer.props.value, url);
-  assert.equal(invoer.props.readOnly, true);
-  assert.equal(invoer.props["aria-describedby"], kinderen[1].props.id);
-  let actief = "knop";
-  let selectie = "";
-  const veld = { focus() { actief = "invoer"; }, select() { selectie = url; } };
-  (invoer.ref as (el: unknown) => void)(veld);
-  assert.equal(actief, "invoer");
-  assert.equal(selectie, url);
-  actief = "volgend element"; // Tab, gevolgd door een her-render van de ouder.
-  const opnieuw = render()[2];
-  assert.equal(opnieuw.ref, invoer.ref);
-  assert.equal(actief, "volgend element");
-} finally {
-  dispatcher.current = vorig;
+  await toon(maakItem("abcd1234"));
+  assert.equal(invoer(), null, "fallback is nog dicht");
+
+  // 1. De fallback opent: focus in de invoer en de link is geselecteerd.
+  await klik();
+  const veld = invoer()!;
+  assert.ok(veld, "fallback opent na mislukt delen");
+  assert.equal(doc.activeElement, veld, "focus staat in de invoer");
+  assert.equal(veld.geselecteerd, 1, "link is geselecteerd");
+  const props = (veld as any)[Object.keys(veld).find((x) => x.startsWith("__reactProps$"))!];
+  assert.equal(props.readOnly, true, "invoer is alleen-lezen");
+  assert.match(String(props.value), /^https?:\/\//, "invoer bevat de deellink");
+  assert.equal(props["aria-describedby"], "deel-instructie");
+  const tekst = zoek((k) => k.attrs.id === "deel-instructie")!.inhoud();
+  assert.ok(tekst.startsWith("Kopieer handmatig met Ctrl+C of Command+C."), "instructietekst");
+  assert.ok(tekst.includes("tot 06.00 uur Nederlandse tijd"), "geldigheid vermeld");
+
+  // 2. Tab naar een ander element en een hertekening met dezelfde url (nieuw item-object): focus en selectie blijven.
+  const volgend = new Knoop("BUTTON");
+  doc.activeElement = volgend;
+  await toon(maakItem("abcd1234"));
+  assert.equal(invoer(), veld, "dezelfde invoer blijft staan");
+  assert.equal(doc.activeElement, volgend, "hertekening steelt de focus niet terug");
+  assert.equal(veld.geselecteerd, 1, "link wordt niet opnieuw geselecteerd");
+
+  // 3. Andere url: key={url} remount het blok, de fallback verdwijnt en delen werkt weer.
+  await toon(maakItem("efgh5678"));
+  assert.equal(invoer(), null, "fallback verdwijnt bij een andere url");
+  assert.equal(knop()!.attrs.disabled, undefined, "deelknop is bruikbaar");
+  await klik();
+  const nieuw = invoer()!;
+  assert.ok(nieuw && nieuw !== veld, "nieuwe klik opent de fallback opnieuw");
+  assert.equal(doc.activeElement, nieuw);
+  assert.equal(nieuw.geselecteerd, 1, "nieuwe link is geselecteerd");
+
+  // 4. Invoer verdwijnt (geslaagd kopiëren) en komt terug (mislukt): opnieuw selecteren en focussen.
+  clipboardWerkt = true;
+  await klik();
+  assert.equal(invoer(), null, "invoer verdwijnt na geslaagd kopiëren");
+  clipboardWerkt = false;
+  doc.activeElement = volgend;
+  await klik();
+  const terug = invoer()!;
+  assert.ok(terug, "invoer komt terug");
+  assert.equal(doc.activeElement, terug);
+  assert.equal(terug.geselecteerd, 1, "teruggekeerde invoer is opnieuw geselecteerd");
+  await act(async () => root.unmount());
+  console.log("ok joey-delen-focus-925");
+} catch (e) { process.stderr.write("FOUT " + String((e as Error)?.stack ?? e) + "\n"); process.exitCode = 1; } finally {
   if (oudeNavigator) Object.defineProperty(globalThis, "navigator", oudeNavigator);
   else Reflect.deleteProperty(globalThis, "navigator");
 }

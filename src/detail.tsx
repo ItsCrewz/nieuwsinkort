@@ -35,7 +35,8 @@ function SourceRow({ b }: { b: Bron }) {
         </span>
         <span className="s-title">{b.site}</span>
         <span className="s-out">{h}</span>
-        <Icon name="ext" className="sm" label="Opent in nieuw tabblad" />
+        <Icon name="ext" className="sm" />
+        <span className="sr-only"> (opent in nieuw tabblad)</span>
       </a>
     </li>
   );
@@ -49,7 +50,7 @@ function zonderBronvermelding(item: Item): Item {
 }
 
 function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean; meerBronnen?: Bron[] }) {
-  const { meer: opgehaald, laden } = useMeer(item);
+  const { meer: opgehaald, laden, fout, opnieuw } = useMeer(item);
   const meer = filterMeer(opgehaald, meerBronnen);
   if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
   const sites = (item.bronnen ?? []).map((b) => b.site);
@@ -60,6 +61,12 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
   const uit = o.uitleg && uitleg.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
   return (
     <>
+      {fout ? (
+        <p className="d-meer-fout" role="status">
+          De extra uitleg kon niet worden geladen.{" "}
+          <button type="button" onClick={opnieuw}>Opnieuw proberen</button>
+        </p>
+      ) : null}
       {uitleg.length ? (
         <section className="d-sec d-meer" aria-label="Uitgebreid">
           <h2 className="d-h">Uitgebreid</h2>
@@ -81,6 +88,7 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
                 <a className="pb-site" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
                   {b.site}
                   <Icon name="ext" className="sm" />
+                  <span className="sr-only"> (opent in nieuw tabblad)</span>
                 </a>
                 <ul className="bn">
                   {b.punten.map((p, k) => (
@@ -99,6 +107,7 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
           <a className="btn ghost d-more" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
             Lees het hele artikel bij {b.site}
             <Icon name="ext" />
+            <span className="sr-only"> (opent in nieuw tabblad)</span>
           </a>
         </div>
       ))}
@@ -110,31 +119,36 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
   const [deelStatus, setDeelStatus] = useState("");
   const [deelTeller, setDeelTeller] = useState(0);
   const actie = useRef(0);
+  const geselecteerd = useRef(false);
   const focusInvoer = useCallback((el: HTMLInputElement | null) => {
-    if (el) { el.focus(); el.select(); }
+    // Eenmaal per verschijning; een herhaalde ref-aanroep steelt de focus niet terug
+    if (!el) { geselecteerd.current = false; return; }
+    if (geselecteerd.current) return;
+    geselecteerd.current = true;
+    el.focus(); el.select();
   }, []);
   useEffect(() => {
     return () => { actie.current++; };
   }, []);
   useEffect(() => {
-    if (deelStatus !== "gekopieerd") return;
+    if (deelStatus !== "gekopieerd" && deelStatus !== "gedeeld") return;
     const t = setTimeout(() => setDeelStatus(""), 3000);
     return () => clearTimeout(t);
   }, [deelStatus, deelTeller]);
   return (
     <>
-      <button type="button" className="deel-knop" aria-label="Deel dit bericht" disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
+      <button type="button" className="deel-knop" aria-label="Deel dit bericht" aria-describedby={deelStatus === "gekopieerd" || deelStatus === "gedeeld" || deelStatus === "handmatig" ? "deel-instructie" : undefined} disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
         const huidig = ++actie.current;
         flushSync(() => setDeelStatus("")); // live region eerst echt leeg committen, zodat de herbevestiging een DOM-wijziging is
         if (!url) return;
         const status = await deel(navigator, item.kop, url);
         if (actie.current !== huidig) return;
         setDeelStatus(status);
-        if (status === "gekopieerd") setDeelTeller((n) => n + 1); // elke geslaagde actie start de timer van 3 s opnieuw
+        if (status === "gekopieerd" || status === "gedeeld") setDeelTeller((n) => n + 1); // elke geslaagde actie start de timer van 3 s opnieuw
       }}>
         <Icon name="share" />
       </button>
-      <span id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
+      <span id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" || deelStatus === "gedeeld" || deelStatus === "handmatig" ? `${deelStatus === "gekopieerd" ? "Link gekopieerd. " : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C. " : ""}De link werkt tot 06.00 uur Nederlandse tijd op de dag na de nieuwsdag. Daarna opent de homepage.` : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
       {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" aria-describedby="deel-instructie" readOnly value={url} ref={focusInvoer} /> : null}
     </>
   );
@@ -180,7 +194,7 @@ export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: I
         </div>
         <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
-        {videobron ? <a className="btn ghost d-more" href={veiligeUrl(videobron.href)} target="_blank" rel="noopener noreferrer">Bekijk video bij {videobron.site}</a> : null}
+        {videobron ? <a className="btn ghost d-more" href={veiligeUrl(videobron.href)} target="_blank" rel="noopener noreferrer">Bekijk video bij {videobron.site}<span className="sr-only"> (opent in nieuw tabblad)</span></a> : null}
         {intro ? (
           <p className="d-lead bn">
             <BionicText text={intro} on={bionic} />

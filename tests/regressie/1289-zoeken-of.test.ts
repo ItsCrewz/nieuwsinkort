@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { createElement, createRef } from "react";
+import { renderToStaticMarkup } from "react-dom/server.browser";
+import { zoekItems, rangschikKoptreffers } from "../../src/zoek";
+import { ZoekFormulier } from "../../src/zoekbalk";
+import type { Item } from "../../src/types";
+
+const ajax = { cat: "nl", kop: "Ajax wint", ai: "Een wedstrijd" } as Item;
+const psv = { cat: "sport", kop: "PSV wint", ai: "Ajax kijkt toe" } as Item;
+const items = [ajax, psv];
+assert.deepEqual(zoekItems(items, "ajax psv"), [psv]);
+assert.deepEqual(zoekItems(items, "ajax psv", "of"), items);
+assert.deepEqual(zoekItems(items, "ajax psv -wedstrijd", "of"), [psv]);
+assert.deepEqual(zoekItems(items, '"ajax wint" onbekend', "of"), [ajax]);
+assert.deepEqual(zoekItems(items, "-wedstrijd", "of"), [psv]);
+assert.equal(zoekItems(items, "", "of"), items);
+assert.deepEqual(zoekItems(items, "!".repeat(10000), "of"), []);
+assert.deepEqual(rangschikKoptreffers([ajax, psv], "psv onbekend", "of"), [psv, ajax]);
+const html = renderToStaticMarkup(createElement(ZoekFormulier, { query: "ajax psv", onChange: () => {}, sluit: () => {}, invoer: createRef<HTMLInputElement>(), modus: "of", aantal: 2 }));
+assert.match(html, /type="checkbox" checked=""/);
+assert.match(html, /Vind één van de zoektermen \(OF\)/);
+assert.match(html, /2 resultaten · één van de zoektermen \(OF\)/);

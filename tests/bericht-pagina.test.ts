@@ -33,6 +33,16 @@ try {
   assert.equal(json.inLanguage, "nl-NL"); assert.equal(new URL(json.image).protocol, "https:");
   const indexJson = JSON.parse(sjabloon.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]);
   assert.deepEqual(json.publisher, indexJson["@graph"].find((x: { "@type": string }) => x["@type"] === "NewsMediaOrganization"));
+  // #1316: uitgever met naam, canonieke URL en absoluut eigen logo; ook zonder bronnen en bij speciale tekens; ruw blijft noindex
+  const uitgever = (i: object) => ldVan(i).publisher;
+  for (const i of [item, { ...item, bronnen: [] }, { ...item, bronnen: undefined }, { ...item, kop: 'A & B "c" </script>' }]) {
+    const u = uitgever(i);
+    assert.equal(u["@type"], "NewsMediaOrganization"); assert.equal(u.name, "Nieuws in het kort"); assert.equal(u.url, "https://nieuwsinkort.nl/");
+    assert.equal(u.logo.url, "https://nieuwsinkort.nl/icon-512.png"); assert.equal(new URL(u.logo.url).protocol, "https:");
+  }
+  assert.ok(berichtHtml(sjabloon, item, dag).includes('"logo":{"@type":"ImageObject","url":"https://nieuwsinkort.nl/icon-512.png"'));
+  assert.match(berichtHtml(sjabloon, { ...item, ruw: true }, dag), /name="robots" content="noindex"/);
+  assert.match(berichtHtml(sjabloon, item, dag), /name="robots" content="max-image-preview:large"/);
   const sjabloonMetTijd = sjabloon.replace("</head>", '<meta content="oud" property="article:published_time" /></head>');
   for (const t of [undefined, "ongeldig", ""]) {
     const zonderTijd = berichtHtml(sjabloonMetTijd, { ...item, t }, dag);

@@ -1,5 +1,5 @@
 import { useTrekverversen } from "./trekverversen";
-import { Foutgrens } from "./foutgrens";
+import { Foutgrens, lazyHerstel } from "./foutgrens";
 import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
 import { flushSync } from "react-dom";
 import { DUUR, animeer, kanOvergang, metOvergang, rustig, scrollGedrag } from "./beweging";
@@ -7,7 +7,7 @@ import { artikelId } from "./artikelid";
 import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
-import { Suspense, lazy, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
@@ -36,7 +36,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
+import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, zoekFragment, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
 import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
@@ -46,18 +46,18 @@ import { Briefing, Tabs } from "./app-tabs";
 import { feedToetsDoel } from "./toetsdoel";
 
 // Niet-kritiek: pas laden als het blad opengaat (docs/architectuur.md#chunk-indeling)
-const SourcesSheet = lazy(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
-const VideoGrid = lazy(() => import("./video").then((m) => ({ default: m.VideoGrid })));
+const SourcesSheet = lazyHerstel(() => import("./sheet").then((m) => ({ default: m.SourcesSheet })));
+const VideoGrid = lazyHerstel(() => import("./video").then((m) => ({ default: m.VideoGrid })));
 let detailModule: typeof import("./detail") | undefined;
 let detailBelofte: Promise<typeof import("./detail")> | undefined;
 const laadDetail = () => detailBelofte ??= import("./detail").then((m) => (detailModule = m), (e) => { detailBelofte = undefined; throw e; });
-const DetailView = lazy(() => laadDetail().then((m) => ({ default: m.DetailView })));
+const DetailView = lazyHerstel(() => laadDetail().then((m) => ({ default: m.DetailView })));
 // Houd het componenttype gelijk zolang een artikel openstaat, ook als de module intussen laadt.
 function ArtikelDetail(props: React.ComponentProps<typeof DetailView>) {
   const [Component] = useState(() => detailModule?.DetailView ?? DetailView);
   return <Component {...props} />;
 }
-const FilterBlad = lazy(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
+const FilterBlad = lazyHerstel(() => import("./filters-blad").then((m) => ({ default: m.FilterBlad })));
 
 
 const ALLES_FIRST = 24; // op "Home" eerst zoveel kaarten, daarna "Toon alle"
@@ -250,23 +250,37 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
     if (!el) return;
     // Alleen kaarten in/naast beeld passend maken: 150+ kaarten tegelijk meten blokkeert een iPhone seconden lang.
     let raf = 0, near = false, dirty = true;
+    const meetNabij = () => { const r = el.getBoundingClientRect(); return r.top < innerHeight * 3 && r.bottom > -innerHeight * 2; };
+    let io: IntersectionObserver | null = null;
     const run = () => {
       dirty = true;
+      if (!io) near = meetNabij(); // zonder IO is near anders mogelijk verouderd
       if (!near) return;
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => { dirty = false; fitCard(el); });
     };
-    const r = el.getBoundingClientRect();
-    if (r.top < innerHeight * 3 && r.bottom > -innerHeight * 2) { near = true; dirty = false; fitCard(el); }
-    const io = new IntersectionObserver((es) => { near = es[es.length - 1].isIntersecting; if (near && dirty) run(); }, { rootMargin: "200% 0px" });
-    io.observe(el);
-    const ro = new ResizeObserver(run);
-    ro.observe(el);
+    if (meetNabij()) { near = true; dirty = false; fitCard(el); }
+    io = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver((es) => { near = es[es.length - 1].isIntersecting; if (near && dirty) run(); }, { rootMargin: "200% 0px" });
+    io?.observe(el);
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(run);
+    ro?.observe(el);
+    // Zonder IO: alleen meten als de kaart nog gepast moet worden, hooguit één keer per frame.
+    let scrollRaf = 0;
+    const controleerNabij = () => {
+      if (!dirty || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => { scrollRaf = 0; if (dirty) run(); });
+    };
+    const bijResize = run;
+    if (!io) window.addEventListener("scroll", controleerNabij, { capture: true, passive: true });
+    if (!ro || !io) window.addEventListener("resize", bijResize);
     el.addEventListener("nc-dirty", run);
     document.fonts?.ready.then(run).catch(() => {});
     return () => {
-      ro.disconnect();
-      io.disconnect();
+      ro?.disconnect();
+      io?.disconnect();
+      if (!io) window.removeEventListener("scroll", controleerNabij, true);
+      cancelAnimationFrame(scrollRaf);
+      if (!ro || !io) window.removeEventListener("resize", bijResize);
       el.removeEventListener("nc-dirty", run);
       cancelAnimationFrame(raf);
     };
@@ -286,6 +300,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
   const sum = tekst.ai || tekst.samenvatting;
   const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
+  const fragment = zoekterm.trim() ? zoekFragment(item, zoekterm, [item.kop, sum, ...punten]) : null;
   return (
     <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
       <div className="nc-body">
@@ -308,11 +323,17 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
           <ZoekTekst tekst={sum} query={zoekterm} bionic={bionic} />
         </p>
       ) : null}
+      {fragment ? (
+        <p className="nc-zoek">
+          <span className="nc-zoek-l">Gevonden in {fragment.label.toLowerCase()}: </span>
+          {fragment.delen.map((d, k) => d.markeer ? <mark key={k}>{d.tekst}</mark> : d.tekst)}
+        </p>
+      ) : null}
       {punten.length ? (
         <ul className="nc-pts">
           {punten.map((t, k) => (
             <li key={k} className="bn">
-              <BionicText text={t} on={bionic} />
+              {zoekterm.trim() ? <ZoekTekst tekst={t} query={zoekterm} bionic={bionic} /> : <BionicText text={t} on={bionic} />}
             </li>
           ))}
         </ul>
@@ -420,16 +441,16 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
     read();
     // Kaart-entree (DOM-klassen, geen React-render): kaarten die bij het mounten buiten beeld liggen krijgen 'wacht' en spelen eenmalig 'in' af als ze in beeld komen.
     // Kaarten die al in beeld staan (eerste kaart, LCP) of die bij terug-uit-artikel horen, en alles bij reduced motion, krijgen niets.
-    const io = new IntersectionObserver(
+    const io = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(
       (es) => es.forEach((e) => {
         if (!e.isIntersecting) return;
         const c = e.target as HTMLElement;
         if (c.classList.contains("wacht")) { c.classList.remove("wacht"); c.classList.add("in"); }
-        io.unobserve(c);
+        io?.unobserve(c);
       }),
       { root: el, threshold: 0.35 }
     );
-    const cards = Array.from(el.querySelectorAll<HTMLElement>(".nc"));
+    const cards = io ? Array.from(el.querySelectorAll<HTMLElement>(".nc")) : [];
     const nieuw = cards.filter((c) => !c.dataset.b); // bij een herrun (nieuwe data) alleen nieuwe kaarten beoordelen
     const vr = el.getBoundingClientRect();
     const rects = nieuw.map((c) => c.getBoundingClientRect()); // eerst alles meten, dan schrijven
@@ -437,12 +458,12 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
       c.dataset.b = "1";
       if (!rustig() && !(rects[k].bottom > vr.top && rects[k].top < vr.bottom)) c.classList.add("wacht");
     });
-    cards.forEach((c) => c.classList.contains("wacht") && io.observe(c));
+    cards.forEach((c) => c.classList.contains("wacht") && io?.observe(c));
     return () => {
       el.removeEventListener("scroll", onScroll);
       if (raf) { cancelAnimationFrame(raf); read(); }
       if (positie.current && positie.current !== opgeslagen) bewaarNieuwspositie(tab, positie.current);
-      io.disconnect();
+      io?.disconnect();
     };
   }, [sorted, tab]);
 
@@ -775,7 +796,9 @@ export default function App() {
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
+  const [zoekmodus, setZoekmodus] = useState<Zoekmodus>("alle");
   const [zoekterm, setZoekterm] = useState(() => leesZoekterm(window.location.search));
+  const [alleenKoppen, setAlleenKoppen] = useState(false);
   const [zoekAllesSelectie, setZoekAllesSelectie] = useState<Zoekselectie | null>(null);
   const zoekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const schrijfZoekUrl = useCallback((term: string) => {
@@ -937,12 +960,12 @@ export default function App() {
   const zoekBasis = useMemo(() => isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [], [isFeedView, data, route.view, flt.f.cats]);
   const zoekFilter = useMemo(() => isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null, [isFeedView, data, raw, zoekBasis, flt.f, flt.vorig, route.view]);
   // Koptreffers eerst (#1010); bij sortering "nieuw" eerst op tijd, want NewsFeed sorteert dan niet meer zelf.
-  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm), zoekterm) : [];
-  const suggesties = useMemo(() => zoekFilter && data && zoekterm.trim() && !zoekUitkomst.length ? zoeksuggesties(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm) : [], [zoekFilter, data, zoekterm, zoekAlles, zoekUitkomst.length]);
+  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm, zoekmodus, alleenKoppen), zoekterm, zoekmodus) : [];
+  const suggesties = useMemo(() => zoekFilter && data && zoekterm.trim() && !zoekUitkomst.length ? zoeksuggesties(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm, alleenKoppen, zoekmodus) : [], [zoekFilter, data, zoekterm, zoekAlles, zoekUitkomst.length, alleenKoppen, zoekmodus]);
   // Zonder tijd-, regio-, video- en samengevoegd-filter: wat de filters aan treffers verbergen (#613).
   const zoekBeperkt = !!zoekFilter && (zoekFilter.tijd !== "alles" || flt.f.video || flt.f.samen || flt.f.regio.length > 0);
   const wisZoekFilters = () => flt.set({ tijd: "alles", video: false, samen: false, regio: [] });
-  const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm).length - zoekUitkomst.length) : 0;
+  const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm, zoekmodus, alleenKoppen).length - zoekUitkomst.length) : 0;
   const zoekScope: ZoekScope | undefined = zoekFilter ? {
     tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video- en samenvoegfilters zijn verruimd. Het bronfilter blijft actief." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
     verborgen: zoekVerborgen,
@@ -951,10 +974,10 @@ export default function App() {
   } : undefined;
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk alleenKoppen={alleenKoppen} onAlleenKoppen={setAlleenKoppen} modus={zoekmodus} onModus={setZoekmodus} query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
-        <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>
+        <Foutgrens code="CLIENT_SHEET" herstel={SourcesSheet.herstel}><Suspense fallback={null}>
           <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
         </Suspense></Foutgrens>
       ) : null}
@@ -1001,6 +1024,7 @@ export default function App() {
     return (
       <Frame top={top}>
         <main className="wrap page-in" id="top" tabIndex={-1} key={`d-${route.selected}`}>
+          <Foutgrens key={route.selected} code="CLIENT_DETAIL" herstel={DetailView.herstel}>
           <Suspense fallback={null}>
             <ArtikelDetail
               item={selectedItem}
@@ -1015,6 +1039,7 @@ export default function App() {
               }}
             />
           </Suspense>
+          </Foutgrens>
           <Footer />
         </main>
       </Frame>
@@ -1045,7 +1070,7 @@ export default function App() {
   const filterLeeg = <LeegMelding aantal={basisItems.length} ruwAantal={rubriekItems(raw.items).length} onAanpassen={() => setFsheet(true)} onReset={flt.reset} onBronnen={() => setSheet(true)} onBronnenReset={reset} />;
   const filterBalk = <FilterBalk u={uitkomst} f={flt.f} alles={alles} video={isVideo} onOpen={() => setFsheet(true)} />;
   const filterBlad = fsheet ? (
-    <Foutgrens code="CLIENT_FILTER_SHEET"><Suspense fallback={null}>
+    <Foutgrens code="CLIENT_FILTER_SHEET" herstel={FilterBlad.herstel}><Suspense fallback={null}>
       <FilterBlad f={flt.f} set={flt.set} reset={flt.reset} u={uitkomst} bron={basisItems} catBron={data.items} vorig={flt.vorig} alles={alles} video={isVideo} onClose={sluitFilters} />
     </Suspense></Foutgrens>
   ) : null;
@@ -1119,7 +1144,7 @@ export default function App() {
         ) : null}
         <div id="rubriek-paneel" role="tabpanel" aria-labelledby={rubriekTabId(view)}>
         {isVideo ? (
-          <Foutgrens key={view} code="CLIENT_VIDEO"><Suspense fallback={null}>
+          <Foutgrens key={view} code="CLIENT_VIDEO" herstel={VideoGrid.herstel}><Suspense fallback={null}>
             <VideoGrid
               key={view}
               cat={view}

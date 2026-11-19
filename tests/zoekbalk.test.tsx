@@ -133,4 +133,10 @@ try {
   assert.deepEqual(gefocust, ["gebied"]);
   focusResultaten({ getElementById: () => null });
 }
+// De veldkeuze heeft een toegankelijk label en toont de geselecteerde modus.
+{
+  const html = (alleenKoppen: boolean) => renderToStaticMarkup(createElement(ZoekFormulier, { query: "cafe", onChange: () => {}, sluit: () => {}, invoer: createRef<HTMLInputElement>(), alleenKoppen, onAlleenKoppen: () => {} }));
+  assert.match(html(false), /Zoeken in <select[^>]*><option value="alles" selected="">Alle velden<\/option>/);
+  assert.match(html(true), /<option value="koppen" selected="">Alleen koppen<\/option>/);
+}
 console.log("zoekbalk: tests geslaagd");

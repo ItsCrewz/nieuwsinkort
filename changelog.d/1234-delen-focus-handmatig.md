@@ -1,0 +1,1 @@
+- Delen: de handmatige deellink wordt eenmaal geselecteerd wanneer de fallback verschijnt; een hertekening steelt de focus niet meer terug (#1234).

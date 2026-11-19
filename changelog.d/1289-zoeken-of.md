@@ -1,0 +1,1 @@
+- Zoeken kan naast alle zoektermen ook één van de zoektermen vinden met een OF-keuze (#1289).

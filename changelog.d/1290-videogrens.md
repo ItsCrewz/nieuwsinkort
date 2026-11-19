@@ -1,0 +1,1 @@
+- Regressietest voor het vervallen van gisteren-video's: één timer op de eerstvolgende 10:00 Amsterdam, direct opruimen bij terugkeer naar het tabblad, opruimen bij nieuwe data en unmount, en geen timer zonder gisteren-video's (#1290).

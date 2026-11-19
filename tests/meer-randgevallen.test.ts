@@ -102,6 +102,18 @@ await t("gelijktijdige missers delen één lopende KV-lezing (#1049)", async () 
   for (const r of rs) { assert.equal(r.status, 200); assert.deepEqual(await r.json(), { uitleg: ["x"] }); }
 });
 
+await t("gelijktijdige verzoeken voor verschillende sleutels delen één lezing en krijgen elk hun eigen verdieping", async () => {
+  const teller = { n: 0 };
+  const kv = traag(() => ({ items: { a: { uitleg: ["een"] }, b: { uitleg: ["twee"] }, c: { uitleg: ["drie"] } } }), teller);
+  const sleutels = ["a", "b", "c", "d"];
+  const rs = await Promise.all(sleutels.map((k) => meer({ request: req(`/meer?k=${k}`), env: { NIEUWS: kv } })));
+  assert.equal(teller.n, 1);
+  assert.deepEqual(await rs[0].json(), { uitleg: ["een"] });
+  assert.deepEqual(await rs[1].json(), { uitleg: ["twee"] });
+  assert.deepEqual(await rs[2].json(), { uitleg: ["drie"] });
+  assert.equal(rs[3].status, 404);
+});
+
 await t("verschillende bindings blijven gescheiden bij gelijktijdige lezing", async () => {
   const teller = { n: 0 };
   const kv1 = traag(() => ({ items: { a: { uitleg: ["een"] } } }), teller), kv2 = traag(() => ({ items: { a: { uitleg: ["twee"] } } }), teller);

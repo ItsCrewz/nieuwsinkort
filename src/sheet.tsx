@@ -201,6 +201,7 @@ export function SourcesSheet({
                     <li key={b.href}>
                       <a className="sh-name" href={veiligeUrl(b.href)} target="_blank" rel="noreferrer">
                         <span>{b.site}</span>
+                        <span className="sr-only"> (opent in nieuw tabblad)</span>
                       </a>
                       <Icon name="ext" className="sm muted" />
                     </li>

@@ -35,6 +35,20 @@ try {
   }
   assert.ok(!nieuwsSitemap([{ ...a, t: "2026-11-05T09:00:00Z" }], dag).includes("<url>"), "ISO-tekst in de toekomst eruit (standaardklok)");
 
+  // maximale leeftijd 48 uur (#1301): grenzen en klokwissels (absolute tijd), oud met standaardklok, lege uitkomst
+  const U = 48 * 3600e3, H = 3600e3, LEEG = nieuwsSitemap([], dag);
+  for (const [d, nu] of [["2026-03-29", "2026-03-30T12:00:00Z"], ["2026-10-25", "2026-10-26T12:00:00Z"], ["2026-11-04", "2026-11-04T12:00:00Z"]]) {
+    const ms = Date.parse(nu), met = (tt: number) => nieuwsSitemap([{ ...a, t: tt }], d, ms);
+    assert.ok(met(ms - U).includes("<url>"), `${d}: precies 48 uur erin`);
+    assert.ok(met(ms - U + 1).includes("<url>"), `${d}: 48 uur min 1 ms erin`);
+    assert.ok(!met(ms - U - 1).includes("<url>"), `${d}: 48 uur plus 1 ms eruit`);
+    assert.ok(met(ms - 47 * H).includes("<url>"), `${d}: 47 uur erin`);
+    assert.ok(!met(ms - 49 * H).includes("<url>"), `${d}: 49 uur eruit`);
+    assert.ok(met(ms - U + 1).includes(`<loc>https://nieuwsinkort.nl${artikelPad({ ...a, t: ms - U + 1 }, d)}</loc>`), `${d}: URL en datum ongewijzigd`);
+  }
+  assert.ok(!nieuwsSitemap([{ ...a, t: "2026-10-01T09:00:00Z" }], dag).includes("<url>"), "oud bericht eruit (standaardklok)");
+  assert.equal(nieuwsSitemap([{ ...a, t: "2026-10-01T09:00:00Z" }, { ...ruw, t: "2026-09-01T09:00:00Z" }], dag), LEEG, "alleen oude berichten: exact de lege sitemap");
+
   const data = (gegenereerd: string, items: unknown[]) => ({ ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify({ gegenereerd, items })}` } });
   const vraag = (env: any) => onRequestGet({ request: new Request("https://nieuwsinkort.nl/sitemap-nieuws.xml?x=1"), env, waitUntil: () => {} });
   let r = await vraag(data("2026-11-04T10:00:00Z", [a]));
@@ -42,6 +56,8 @@ try {
   assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("cache-control"), "public, max-age=300");
   assert.equal(r.headers.get("strict-transport-security"), "max-age=604800");
   assert.ok((await r.text()).includes(artikelPad(a, dag)));
+  r = await vraag(data("2026-11-04T10:00:00Z", [{ ...a, t: Date.parse("2026-10-01T09:00:00Z") }]));
+  assert.equal(r.status, 200); assert.equal(await r.text(), LEEG, "oud item: 200 met lege urlset");
   r = await vraag(data("", [a])); assert.equal(r.status, 503);
   r = await vraag({ ASSETS: { fetch: async () => new Response("", { status: 500 }) }, NIEUWS: { get: async () => null } });
   assert.equal(r.status, 503); assert.equal(r.headers.get("cache-control"), "no-store");

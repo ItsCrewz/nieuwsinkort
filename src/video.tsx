@@ -1,5 +1,5 @@
-import { Foutgrens } from "./foutgrens";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Foutgrens, lazyHerstel } from "./foutgrens";
+import { Suspense, useEffect, useRef, useState } from "react";
 import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
@@ -14,7 +14,7 @@ import { ytGereedLijst, ytOndertitelsBijBericht } from "./ytstart";
 import { parseHash } from "./route";
 
 // De volledige videofeed (spelers, hls.js-glue, debug-overlay) is een eigen chunk: pas laden op touch + videoroute.
-const Feed = lazy(() => import("./feed").then((m) => ({ default: m.Feed })));
+const Feed = lazyHerstel(() => import("./feed").then((m) => ({ default: m.Feed })));
 
 /** Touch (swipe-feed) of muis/trackpad (kopjes en kaarten); volgt wijzigingen van de mediaquery. */
 function useTouch(): boolean {
@@ -261,7 +261,7 @@ export function VideoGrid({
       )}
       </div>
       {video && touch && !dubbelzinnig ? (
-        <Foutgrens code="CLIENT_FILMPJES"><Suspense fallback={null}>
+        <Foutgrens code="CLIENT_FILMPJES" herstel={Feed.herstel}><Suspense fallback={null}>
           <Feed
             key={cat}
             list={feedList}

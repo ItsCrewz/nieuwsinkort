@@ -1,0 +1,1 @@
+- Artikelverdieping: bij een mislukte aanvraag van extra tekst verschijnt een melding met een knop om opnieuw te proberen; een bericht zonder verdieping (404) krijgt geen melding (#1314).
