@@ -96,9 +96,9 @@ export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aanta
 }
 
 // Filmpjesweergave heeft geen zoekbalk; zo blijft een actieve nieuwszoekopdracht zichtbaar en wisbaar (#1317).
-export function ZoekActief({ query, onWis }: { query: string; onWis: () => void }) {
+export function ZoekActief({ query, onWis, klasse = "filternote" }: { query: string; onWis: () => void; klasse?: string }) {
   if (!normaliseer(query)) return null;
-  return <div className="filternote" role="status"><span>Zoekopdracht “{query}” staat nog aan voor het nieuws; filmpjes worden niet gefilterd</span><button type="button" className="textbtn" onClick={onWis}>Wis zoekopdracht</button></div>;
+  return <div className={klasse} role="status"><span>Zoekopdracht “{query}” staat nog aan voor het nieuws; filmpjes worden niet gefilterd</span><button type="button" className="textbtn" onClick={onWis}>Wis zoekopdracht</button></div>;
 }
 
 export function ZoekLeeg({ query, onWis, verborgen = 0, onWisFilters, onZoekAlles, suggesties = [], onSuggestie }: { query: string; onWis: () => void; verborgen?: number; onWisFilters?: () => void; onZoekAlles?: () => void; suggesties?: string[]; onSuggestie?: (term: string) => void }) {

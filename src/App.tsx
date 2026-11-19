@@ -1154,6 +1154,7 @@ export default function App() {
               video={route.video}
               onOpen={(slug) => openFeed(view, slug)}
               onCloseFeed={() => closeFeed(view)}
+              zoek={<ZoekActief query={zoekterm} onWis={() => wijzigZoekterm("")} klasse="feed-zoek" />}
             />
           </Suspense></Foutgrens>
         ) : (

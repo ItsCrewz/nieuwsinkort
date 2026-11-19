@@ -4,7 +4,7 @@
 // - Actieve video via IntersectionObserver (60%); die speelt (standaard zonder geluid), de rest pauzeert.
 // - Voortgangsbalk via de Web Animations API op transform: loopt op de compositor, geen JS per frame.
 import { bewaarMeting, herstelSwipe, swipeDoel, type SwipeMeting } from "./swipemeting";
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
@@ -1226,6 +1226,7 @@ export function Feed({
   onClose,
   groups,
   onGroup,
+  zoek,
 }: {
   list: Video[];
   cat: "filmpjes" | "dumpert";
@@ -1233,6 +1234,8 @@ export function Feed({
   onClose: () => void;
   groups?: FeedGroup[];
   onGroup?: (id: string) => void;
+  // Melding over een actieve nieuwszoekopdracht (#1317): de feed bedekt het overzicht, dus hij hoort er zelf in.
+  zoek?: ReactNode;
 }) {
   const gs = groups && groups.length > 1 ? groups : null;
   const [gi, setGi] = useState(() => {
@@ -1717,6 +1720,7 @@ export function Feed({
                 ))}
               </div>
             ) : null}
+            {zoek}
           </div>
         </div>
         <div className="feed-nav" aria-hidden="false">

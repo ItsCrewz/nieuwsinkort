@@ -1,1 +1,2 @@
 - Zoeken: toon bij filmpjes en Dumpert een melding met knop "Wis zoekopdracht" zolang een nieuwszoekopdracht actief is (#1317).
+- Zoeken: toon de melding bij filmpjes en Dumpert ook binnen de verticale videofeed op touch, zodat de zoekopdracht daar zichtbaar en wisbaar blijft (#1317).
