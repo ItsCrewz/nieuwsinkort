@@ -217,6 +217,7 @@ export function zoeksuggesties(items: Item[], query: string): string[] {
   const delen = query.trim().split(/\s+/u);
   if (delen.length > 5) return [];
   const termen = delen.map(normaliseer);
+  if (!termen.some((term) => term.length >= 5 && term.length <= 40)) return [];
   const suggesties = new Set<string>();
   // Begrens ook het werk bij uitzonderlijk veel of lange koppen.
   for (const item of items.slice(0, 1000)) {
