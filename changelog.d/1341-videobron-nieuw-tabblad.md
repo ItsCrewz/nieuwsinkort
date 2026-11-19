@@ -1,0 +1,1 @@
+- Videokaarten vermelden dat de bronlink in een nieuw tabblad opent (#1341).

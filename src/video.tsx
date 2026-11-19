@@ -69,7 +69,7 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
             <span className="v-pop tnum"><Icon name={popIcon(v.populariteit)} className="sm" />{v.populariteit}</span>
           ) : <span />}
           <a href={veiligeUrl(v.href)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="v-ext">
-            Open bij bron <Icon name="ext" className="sm" />
+            Open bij bron (nieuw tabblad) <Icon name="ext" className="sm" />
           </a>
         </div>
       </div>
