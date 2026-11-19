@@ -14,7 +14,7 @@ export function testDelenFocus(serveer, artikelid, item) {
     await page.keyboard.press("Enter");
     const invoer = page.getByRole("textbox", { name: "Link om handmatig te kopiëren" });
     await expect(invoer).toBeFocused();
-    await expect(invoer).toHaveAccessibleDescription("Kopieer handmatig met Ctrl+C of Command+C.");
+    await expect(invoer).toHaveAccessibleDescription("Kopieer handmatig met Ctrl+C of Command+C. De link werkt tot 06.00 uur Nederlandse tijd op de dag na de nieuwsdag. Daarna opent de homepage.");
     const waarde = await invoer.inputValue();
     expect(waarde).toBe(`https://nieuwsinkort.nl${artikelid().artikelPad(item, new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }))}`);
     expect(await invoer.evaluate((el) => el.value.slice(el.selectionStart, el.selectionEnd))).toBe(waarde);

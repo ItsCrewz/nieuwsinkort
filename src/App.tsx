@@ -36,7 +36,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
+import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
 import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
@@ -935,10 +935,11 @@ export default function App() {
       </div>
   );
   const isFeedView = !!data && !route.selected && route.view !== "filmpjes" && route.view !== "dumpert";
-  const zoekBasis = isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [];
-  const zoekFilter = isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null;
+  const zoekBasis = useMemo(() => isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [], [isFeedView, data, route.view, flt.f.cats]);
+  const zoekFilter = useMemo(() => isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null, [isFeedView, data, raw, zoekBasis, flt.f, flt.vorig, route.view]);
   // Koptreffers eerst (#1010); bij sortering "nieuw" eerst op tijd, want NewsFeed sorteert dan niet meer zelf.
   const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm, zoekmodus), zoekterm, zoekmodus) : [];
+  const suggesties = useMemo(() => zoekFilter && data && zoekterm.trim() && !zoekUitkomst.length ? zoeksuggesties(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm) : [], [zoekFilter, data, zoekterm, zoekAlles, zoekUitkomst.length]);
   // Zonder tijd-, regio-, video- en samengevoegd-filter: wat de filters aan treffers verbergen (#613).
   const zoekBeperkt = !!zoekFilter && (zoekFilter.tijd !== "alles" || flt.f.video || flt.f.samen || flt.f.regio.length > 0);
   const wisZoekFilters = () => flt.set({ tijd: "alles", video: false, samen: false, regio: [] });
@@ -1073,7 +1074,7 @@ export default function App() {
             zoekterm={zoekterm}
             nieuwsdata={raw}
             keepOrder={flt.f.sort !== "nieuw" || !!zoekterm.trim()}
-            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={zoekAlles ? undefined : wisZoekFilters} onZoekAlles={!zoekAlles ? () => { setZoekAllesSelectie(zoekselectie); zoekInvoer.current?.focus(); } : undefined} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} suggesties={suggesties} onSuggestie={(term) => { wijzigZoekterm(term); if (zoekAlles) setZoekAllesSelectie({ ...zoekselectie, term }); zoekInvoer.current?.focus(); }} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={zoekAlles ? undefined : wisZoekFilters} onZoekAlles={!zoekAlles ? () => { setZoekAllesSelectie(zoekselectie); zoekInvoer.current?.focus(); } : undefined} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

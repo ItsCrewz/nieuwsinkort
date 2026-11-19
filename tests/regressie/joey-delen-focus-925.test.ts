@@ -44,7 +44,7 @@ try {
   await kinderen[0].props.onClick();
   assert.equal(pogingen, 2);
   kinderen = render();
-  assert.equal(kinderen[1].props.children, "Kopieer handmatig met Ctrl+C of Command+C.");
+  assert.equal(kinderen[1].props.children, "Kopieer handmatig met Ctrl+C of Command+C. De link werkt tot 06.00 uur Nederlandse tijd op de dag na de nieuwsdag. Daarna opent de homepage.");
   const invoer = kinderen[2];
   assert.equal(invoer.props.value, url);
   assert.equal(invoer.props.readOnly, true);

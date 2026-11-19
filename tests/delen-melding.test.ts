@@ -3,7 +3,7 @@ import { act, createElement } from "react";
 import type { Item } from "../src/types";
 
 // Echte React-render van DeelBlok (#1211) met een minimale nep-DOM (geen jsdom): controleert dat de live region
-// hetzelfde element blijft, bij iedere kopieeractie leeg wordt en opnieuw "Link gekopieerd" krijgt, en dat de timer herstart en opruimt.
+// hetzelfde element blijft, bij iedere kopieeractie leeg wordt en opnieuw melding krijgt, en dat de timer herstart en opruimt.
 const g = globalThis as any;
 g.MessageChannel = class {
   port1: { onmessage: ((e: { data: unknown }) => void) | null } = { onmessage: null };
@@ -73,7 +73,7 @@ const mount = async () => {
     const propsSleutel = Object.keys(knop()).find((s) => s.startsWith("__reactProps$"))!;
     await act(async () => { await (knop() as any)[propsSleutel].onClick(); });
   };
-  return { live, klik, unmount: () => act(async () => root.unmount()) };
+  return { live, knop, klik, unmount: () => act(async () => root.unmount()) };
 };
 
 // Legt iedere tekstwijziging van de live region vast
@@ -91,21 +91,26 @@ const geschiedenis = (el: Knoop) => {
 globalThis.setTimeout = ((fn: () => void, ms: number) => { const id = ++timerId; timers.set(id, { op: nu + ms, fn }); return id; }) as unknown as typeof setTimeout;
 globalThis.clearTimeout = ((id: number) => { timers.delete(id); }) as unknown as typeof clearTimeout;
 try {
+  const melding = "Link gekopieerd. De link werkt tot 06.00 uur Nederlandse tijd op de dag na de nieuwsdag. Daarna opent de homepage.";
   const b = await mount();
   const el = b.live();
   const { h } = geschiedenis(el);
+  assert.equal(el.inhoud(), "", "geen uitleg vóór een deelactie");
+  assert.equal(b.knop().attrs["aria-describedby"], undefined);
   await b.klik();
+  assert.equal(b.knop().attrs["aria-describedby"], "deel-instructie");
   assert.equal(b.live(), el, "live region blijft hetzelfde element");
-  assert.equal(el.inhoud(), "Link gekopieerd");
+  assert.equal(el.inhoud(), melding);
   await gaVerder(2000);
   await b.klik();
   assert.equal(b.live(), el, "live region blijft ook na de tweede actie hetzelfde element");
-  assert.equal(el.inhoud(), "Link gekopieerd");
-  assert.deepEqual(h, ["", "Link gekopieerd", "", "Link gekopieerd"], "tweede actie maakt de melding eerst leeg en daarna opnieuw zichtbaar");
+  assert.equal(el.inhoud(), melding);
+  assert.deepEqual(h, ["", melding, "", melding], "tweede actie maakt de melding eerst leeg en daarna opnieuw zichtbaar");
   await gaVerder(2000); // 4 s na de eerste klik, 2 s na de laatste
-  assert.equal(el.inhoud(), "Link gekopieerd", "tweede actie krijgt eigen bevestigingsperiode");
+  assert.equal(el.inhoud(), melding, "tweede actie krijgt eigen bevestigingsperiode");
   await gaVerder(1100);
   assert.equal(el.inhoud(), "", "melding verdwijnt 3 s na de laatste actie");
+  assert.equal(b.knop().attrs["aria-describedby"], undefined);
 
   const c = await mount();
   await c.klik();
