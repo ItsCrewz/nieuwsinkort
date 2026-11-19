@@ -246,6 +246,13 @@ await t("useSourceFilter volgt andere tabbladen via storage-events", async () =>
   opslag.set(KEY, "{kapot");
   await act(async () => void win.dispatchEvent(storageEvent(null)));
   assert.equal(h.result.current.off.size, 0);
+  // alleen de filtersleutel verwijderd in een ander tabblad: selectie leeg
+  opslag.set(KEY, JSON.stringify(["haarlem|haarlemsdagblad"]));
+  await act(async () => void win.dispatchEvent(storageEvent(KEY)));
+  assert.equal(h.result.current.off.size, 1);
+  opslag.delete(KEY);
+  await act(async () => void win.dispatchEvent(storageEvent(KEY)));
+  assert.equal(h.result.current.off.size, 0);
   await h.unmount();
   assert.equal(listeners.remove - voor.remove, 1);
   opslag.clear();
