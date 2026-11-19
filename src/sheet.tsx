@@ -18,7 +18,7 @@ function sourceLine(s: SourceRow): string {
   const st = s.stat;
   if (!st) return inOverzicht || "Niet in overzicht"; // oude data.json zonder bronstats: niets beweren over 'vandaag'
   // Ophalen mislukt is iets anders dan "vandaag niets": zeg het eerlijk, met wanneer het voor het laatst wél lukte.
-  if (st.vandaag == null) return ["Ophalen mislukt", st.ok ? `laatst gelukt ${hhmm(st.ok)}` : st.laatste ? `laatste bericht ${hhmm(st.laatste)}` : "", inOverzicht].filter(Boolean).join(" · ");
+  if (telling(st.vandaag) == null) return ["Ophalen mislukt", st.ok ? `laatst gelukt ${hhmm(st.ok)}` : st.laatste ? `laatste bericht ${hhmm(st.laatste)}` : "", inOverzicht].filter(Boolean).join(" · ");
   const bij = st.ok ? `bijgewerkt ${hhmm(st.ok)}` : ""; // laatste gelukte ophaalronde (elk kwartier)
   const gestoord = !!(st.fout || st.storing);
   const deels = gestoord ? "deels mislukt" : "";
@@ -34,7 +34,7 @@ import { veiligeUrl } from "./url";
 
 /** Groepsregel: een onvolledige telling wordt nooit als volledig dagtotaal getoond. */
 function groupLine(g: SourceGroup): string {
-  if (g.published == null) return `${g.total} in overzicht`;
+  if (g.published == null) return `${g.total} in overzicht · dagtelling onbekend`;
   return g.onvolledig ? `minstens ${g.published} berichten vandaag (onvolledig)` : `${g.published} berichten vandaag`;
 }
 
