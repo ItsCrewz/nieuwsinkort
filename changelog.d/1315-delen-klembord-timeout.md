@@ -1,0 +1,1 @@
+- Delen: een klembord dat niet reageert blokkeert de kopieeractie niet meer; na 2 seconden verschijnt de handmatige kopieeroptie met de artikel-URL.

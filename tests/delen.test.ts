@@ -17,3 +17,14 @@ assert.equal(await deel({ share, canShare, clipboard: { writeText: async (s) => 
 assert.equal(gekopieerd, url);
 assert.equal(await deel({ share, canShare, clipboard: { writeText: async () => { throw Error(); } } }, "Titel", url), "handmatig");
 assert.equal(shareAangeroepen, false);
+// Klembord dat nooit antwoordt (#1315): na de time-out volgt de handmatige terugval; late resultaten veranderen niets.
+let laatOk: () => void = () => {}, laatFout: (e: Error) => void = () => {};
+const start = Date.now();
+assert.equal(await deel({ clipboard: { writeText: () => new Promise<void>(() => {}) } }, "Titel", url, 30), "handmatig");
+assert.ok(Date.now() - start < 1000);
+assert.equal(await deel({ clipboard: { writeText: () => new Promise<void>((ok) => { laatOk = ok; }) } }, "Titel", url, 30), "handmatig");
+laatOk();
+assert.equal(await deel({ clipboard: { writeText: () => new Promise<void>((_, nee) => { laatFout = nee; }) } }, "Titel", url, 30), "handmatig");
+laatFout(new Error("laat"));
+await new Promise((r) => setTimeout(r, 20));
+assert.equal(await deel({ clipboard: { writeText: () => new Promise<void>((ok) => setTimeout(ok, 5)) } }, "Titel", url, 200), "gekopieerd");
