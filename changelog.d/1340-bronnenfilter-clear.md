@@ -1,0 +1,1 @@
+- Tests: het bronnenfilter wordt leeg als alleen de filtersleutel in een ander tabblad wordt verwijderd; `localStorage.clear()` (`key === null`) blijft gedekt (#1340).
