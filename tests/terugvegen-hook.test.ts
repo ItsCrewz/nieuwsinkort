@@ -197,6 +197,40 @@ await t("terugvegen-hook: reduced motion sluit direct", async () => {
   assert.equal(body.style.overflowX, "scroll");
   await h.unmount();
 });
+await t("terugvegen-hook: lege uitgangswaarde komt terug na voltooide en afgebroken veeg en unmount (#1272)", async () => {
+  for (const r of [false, true]) {
+    rustigAan = r;
+    body.style.overflowX = "";
+    const h = await maak(() => {});
+    veeg(200);
+    assert.equal(body.style.overflowX, "hidden");
+    touch("touchend", [], 50); loop();
+    assert.equal(body.style.overflowX, "");
+    veeg(300);
+    touch("touchcancel", [], 20); loop();
+    assert.equal(body.style.overflowX, "");
+    veeg(40); // unmount midden in een veeg
+    assert.equal(body.style.overflowX, "hidden");
+    await h.unmount();
+    assert.equal(body.style.overflowX, "");
+  }
+});
+await t("terugvegen-hook: zonder beslist gebaar blijft overflowX onaangeroerd (#1272)", async () => {
+  for (const begin of ["", "scroll"]) {
+    body.style.overflowX = begin;
+    const h = await maak(() => {});
+    touch("touchstart", [[100, 100]], 0); // stand wacht
+    await h.unmount();
+    assert.equal(body.style.overflowX, begin);
+    const h2 = await maak(() => {});
+    touch("touchstart", [[100, 100]], 0);
+    touch("touchmove", [[100, 160]], 10); // verticaal: nee
+    touch("touchend", [], 20);
+    assert.equal(body.style.overflowX, begin);
+    await h2.unmount();
+    assert.equal(body.style.overflowX, begin);
+  }
+});
 
 await t("terugvegen-hook: pauze en daarna snelle veeg sluit (#1216)", async () => {
   let n = 0;
