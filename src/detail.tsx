@@ -49,7 +49,7 @@ function zonderBronvermelding(item: Item): Item {
 }
 
 function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean; meerBronnen?: Bron[] }) {
-  const { meer: opgehaald, laden } = useMeer(item);
+  const { meer: opgehaald, laden, fout, opnieuw } = useMeer(item);
   const meer = filterMeer(opgehaald, meerBronnen);
   if (laden) return <div className="d-meer-laden" aria-busy="true" aria-label="Meer tekst laden"><span /><span /><span /></div>;
   const sites = (item.bronnen ?? []).map((b) => b.site);
@@ -60,6 +60,12 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
   const uit = o.uitleg && uitleg.length ? [] : (meer?.uittreksel ?? []).filter((b) => b.alineas?.length);
   return (
     <>
+      {fout ? (
+        <p className="d-meer-fout" role="status">
+          De extra uitleg kon niet worden geladen.{" "}
+          <button type="button" onClick={opnieuw}>Opnieuw proberen</button>
+        </p>
+      ) : null}
       {uitleg.length ? (
         <section className="d-sec d-meer" aria-label="Uitgebreid">
           <h2 className="d-h">Uitgebreid</h2>
