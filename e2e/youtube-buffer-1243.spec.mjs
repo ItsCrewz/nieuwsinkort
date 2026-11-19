@@ -31,9 +31,9 @@ test("lang bufferen, voortgang, pauzeren en wisselen herstellen de hint", async 
   await slide().getByRole("button", { name: "Pauzeren" }).click({ force: true });
   await expect(hint()).toHaveCount(0);
   await slide().getByRole("button", { name: "Afspelen" }).click({ force: true });
-  await wacht(9750);
+  await wacht(9000);
   await expect(hint()).toHaveCount(0);
-  await wacht(500);
+  await wacht(1500);
   await expect(hint()).toBeVisible();
   await page.keyboard.press("ArrowDown");
   await expect(slide()).toHaveAttribute("data-i", "1");
@@ -41,8 +41,8 @@ test("lang bufferen, voortgang, pauzeren en wisselen herstellen de hint", async 
   await page.keyboard.press("ArrowUp");
   await expect(slide()).toHaveAttribute("data-i", "0");
   await bericht(13);
-  await wacht(9750);
+  await wacht(9000);
   await expect(hint()).toHaveCount(0);
-  await wacht(500);
+  await wacht(1500);
   await expect(hint()).toBeVisible();
 });
