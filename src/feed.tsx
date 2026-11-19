@@ -1056,7 +1056,7 @@ const Slide = memo(function Slide({ pool, v, i, total, cat, active, mount, prelo
     return () => window.clearTimeout(t);
   }, [jump]);
   return (
-    <section className={`fslide cat-${cat}`} data-i={i} aria-label={`${i + 1} van ${total}: ${v.titel}`} aria-current={active ? "true" : undefined}>
+    <section className={`fslide cat-${cat}`} data-i={i} aria-label={`${i + 1} van ${total}: ${v.titel}`} aria-current={active ? "true" : undefined} {...(active ? {} : { inert: "" })}>
       <div className={`fcol${p?.kind === "youtube" && playable ? " yt-slide" : ""}`}>
         {playable && mount ? (
           p!.kind === "youtube" ? (
@@ -1498,6 +1498,26 @@ export function Feed({
   soundRef.current = { want, nativeBlocked, ytBlokAan: ytBlok.size > 0 };
   // Een YouTube-blokkade hoort bij de slide waarop ze viel; op een andere slide opnieuw proberen.
   useEffect(() => { ytBlokWis(); }, [active, ytBlokWis]);
+  // Niet-actieve slides zijn inert; stond de focus in de vorige slide, dan gaat hij naar de scroller (focusbaar, zichtbaar).
+  const focusSlide = useRef<number | null>(null);
+  useEffect(() => {
+    const r = root.current;
+    if (!r) return;
+    const op = (e: FocusEvent) => {
+      const s = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(".fslide");
+      focusSlide.current = s ? Number(s.dataset.i) : null;
+    };
+    r.addEventListener("focusin", op);
+    return () => r.removeEventListener("focusin", op);
+  }, []);
+  useEffect(() => {
+    const was = focusSlide.current;
+    if (was === null || was === active) return;
+    focusSlide.current = null;
+    const el = document.activeElement;
+    if (el && el !== document.body && !el.closest?.(".fslide[inert]")) return;
+    scroller.current?.focus({ preventScroll: true });
+  }, [active]);
   useEffect(() => {
     const r = root.current;
     if (!r) return;
