@@ -12,6 +12,8 @@ const HDR = { "Content-Type": "application/xml; charset=utf-8", "X-Content-Type-
 // eslint-disable-next-line no-control-regex
 const esc = (s: unknown) => String(s ?? "").replace(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 const leeg = (items: string) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${items}</urlset>\n`;
+// Nieuws-sitemap: alleen berichten van de afgelopen 48 uur (Google News); absolute tijd, dus onafhankelijk van zomer-/wintertijd (#1301).
+const MAX_LEEFTIJD = 48 * 3600e3;
 type Item = { id?: string; kop: string; ruw?: boolean; cat?: string; t?: number | string; bronnen?: { href: string }[] };
 export function nieuwsSitemap(items: Item[], dag: string, nu: number = Date.now()): string {
   const regels: string[] = [];
@@ -20,6 +22,7 @@ export function nieuwsSitemap(items: Item[], dag: string, nu: number = Date.now(
     const ms = i.t ? new Date(i.t).getTime() : NaN;
     if (!heeftArtikelId(i) || !indexeerbaar(i) || !i.kop || !Number.isFinite(ms)) continue; // news:publication_date is verplicht; zonder geldige tijd overslaan
     if (ms > nu) continue; // foutieve brontijd: nog niet gepubliceerd, geen toekomstige publication_date aanbieden (#1175)
+    if (ms < nu - MAX_LEEFTIJD) continue; // te oud: geen oude publicatie als actueel nieuws aanbieden (#1301)
     // Geen <lastmod>: de dagdata kent per bericht alleen de publicatietijd `t`, geen werkelijke wijzigingstijd; die als lastmod opgeven is misleidend (#712).
     const datum = new Date(ms).toISOString();
     regels.push(`<url><loc>https://nieuwsinkort.nl${esc(artikelPad(i, dag))}</loc><news:news><news:publication><news:name>Nieuws in het kort</news:name><news:language>nl</news:language></news:publication><news:publication_date>${datum}</news:publication_date><news:title>${esc(i.kop)}</news:title></news:news></url>`);

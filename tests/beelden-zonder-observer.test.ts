@@ -37,8 +37,7 @@ class NodeMock {
   contains(n: NodeMock | null): boolean { return !!n && (n === this || this.children.some((c) => c.contains(n))); }
   // Kaart k staat op k * KAART, min de scrollstand; kaarten zijn directe kinderen van de container.
   getBoundingClientRect() {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias -- de mock loopt langs de ouders vanaf zichzelf
-    let n: NodeMock = this;
+    let n = this as NodeMock;
     while (n.parentNode && n.parentNode !== container) n = n.parentNode;
     const top = (n.parentNode ? container.children.indexOf(n) : 0) * KAART - scrollY;
     return { top, bottom: top + KAART, left: 0, right: 300, width: 300, height: KAART };

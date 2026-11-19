@@ -1,0 +1,1 @@
+- Sluit berichten ouder dan 48 uur uit van de nieuwssitemap (#1301).
