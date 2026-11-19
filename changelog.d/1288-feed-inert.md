@@ -1,0 +1,1 @@
+- Filmpjes: slides buiten beeld zijn inert, zodat Tab alleen de actieve slide en de feedbediening bereikt; focus uit de vorige slide valt terug op de feed (#1288).
