@@ -1,0 +1,1 @@
+- Terugvegen: herstelt de oorspronkelijke inline `overflowX` van de body na een veeg of unmount; extra regressietests voor een lege uitgangswaarde.
