@@ -186,7 +186,9 @@ function termenVan(query: string): string[][] {
 
 export type Zoekmodus = "alle" | "of";
 
-export function zoekItems(items: Item[], query: string, modus: Zoekmodus = "alle"): Item[] {
+export function zoekItems(items: Item[], query: string, modusOfKoppen: Zoekmodus | boolean = "alle", alleenKoppen = false): Item[] {
+  const modus = typeof modusOfKoppen === "boolean" ? "alle" : modusOfKoppen;
+  if (typeof modusOfKoppen === "boolean") alleenKoppen = modusOfKoppen;
   query = zonderOnzichtbaar(begrensZoekterm(query));
   const kloktijd = query.trim();
   if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
@@ -194,7 +196,7 @@ export function zoekItems(items: Item[], query: string, modus: Zoekmodus = "alle
   const termen = termenVan(plus);
   if (!termen.length && !min.length) return query.trim() ? [] : items;
   return items.filter((item) => {
-    const { woorden, lijm } = zoektekst(item);
+    const { woorden, lijm } = zoektekst(alleenKoppen ? alleenKop(item) : item);
     // Een uitsluitterm die op een woordbegin past laat het item afvallen.
     if (min.some((delen) => kandidaten(delen, woorden, lijm).length)) return false;
     // Woordbegin: elke term moet op een eigen woord (of eigen reeks) vallen ("mark markt" vraagt twee woorden).
@@ -214,7 +216,7 @@ function kleineTikfout(a: string, b: string): boolean {
 }
 
 // Alleen eenvoudige zoekopdrachten corrigeren; speciale zoeksyntaxis blijft ongemoeid.
-export function zoeksuggesties(items: Item[], query: string): string[] {
+export function zoeksuggesties(items: Item[], query: string, alleenKoppen = false, modus: Zoekmodus = "alle"): string[] {
   if (query.length > 80 || !/^[\p{L}\p{M}\s]+$/u.test(query)) return [];
   const delen = query.trim().split(/\s+/u);
   if (delen.length > 5) return [];
@@ -229,7 +231,7 @@ export function zoeksuggesties(items: Item[], query: string): string[] {
       for (let i = 0; i < termen.length; i++) {
         if (termen[i].length < 5 || termen[i].length > 40 || !kleineTikfout(termen[i], kandidaat)) continue;
         const voorstel = delen.map((deel, n) => n === i ? woord : deel).join(" ");
-        if (zoekItems([item], voorstel).length) suggesties.add(voorstel);
+        if (zoekItems([item], voorstel, modus, alleenKoppen).length) suggesties.add(voorstel);
         if (suggesties.size === 3) return [...suggesties];
       }
     }
