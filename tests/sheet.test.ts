@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import React from "react";
-import { SourcesSheet } from "../src/sheet";
+import { SourcesSheet, sourceLine } from "../src/sheet";
 import { GroupToggle, Switch } from "../src/ui";
 import type { SourceGroup } from "../src/sources";
 
@@ -111,3 +111,26 @@ const volledig = SourcesSheet({ ...props, groups: [{ ...groepen[0], onvolledig: 
 assert.match(tekst(volledig), /6 bronnen · 7 berichten vandaag/);
 assert.doesNotMatch(tekst(volledig), /minstens|\(onvolledig\)/);
 console.log("sheet: tests geslaagd");
+
+// #1307: geen kaal "bijgewerkt"/"laatst gelukt"/"laatste" bij een ongeldige of ontbrekende tijd.
+{
+  const rij = (stat: any) => ({ count: 2, stat }) as any;
+  const vandaagOk = "2026-10-30T10:30:00Z";
+  const eerder = "2026-10-28T10:30:00Z";
+  for (const slecht of [undefined, "", "geen-datum"]) {
+    const l1 = sourceLine(rij({ vandaag: 3, ok: slecht }));
+    assert.equal(l1, "3 vandaag · 2 in overzicht");
+    const l2 = sourceLine(rij({ vandaag: 0, laatste: slecht, ok: slecht }));
+    assert.equal(l2, "Vandaag niets");
+    const l3 = sourceLine(rij({ vandaag: 0, fout: "x", laatste: slecht, ok: slecht }));
+    assert.equal(l3, "Stand onvolledig · deels mislukt");
+    assert.equal(sourceLine(rij({ vandaag: null, ok: slecht, laatste: slecht })), "Ophalen mislukt · 2 in overzicht");
+  }
+  assert.equal(sourceLine(rij({ vandaag: 3, ok: vandaagOk })), "3 vandaag · 2 in overzicht · bijgewerkt 11:30");
+  assert.match(sourceLine(rij({ vandaag: 0, laatste: eerder, ok: eerder })), /^Vandaag niets · laatste \S.*· bijgewerkt \S/);
+  assert.equal(sourceLine(rij({ vandaag: null, ok: vandaagOk })), "Ophalen mislukt · laatst gelukt 11:30 · 2 in overzicht");
+  assert.match(sourceLine(rij({ vandaag: null, ok: eerder })), /^Ophalen mislukt · laatst gelukt \S/);
+  // ok ongeldig, laatste geldig: val terug op laatste bericht
+  assert.equal(sourceLine(rij({ vandaag: null, ok: "kapot", laatste: vandaagOk })), "Ophalen mislukt · laatste bericht 11:30 · 2 in overzicht");
+  assert.equal(sourceLine(rij({ vandaag: null, laatste: "kapot" })), "Ophalen mislukt · 2 in overzicht");
+}

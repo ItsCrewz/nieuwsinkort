@@ -1,0 +1,1 @@
+- Bronnenvenster: toon bijgewerkt, laatst gelukt en laatste bericht alleen bij een geldige tijd (#1307).
