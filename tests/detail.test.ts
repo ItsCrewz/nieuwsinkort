@@ -49,3 +49,16 @@ assert.match(toon({ ...basis, cat: "voetbal" }), /class="detail cat-voetbal"/);
 assert.match(toon({ ...basis, beelden: ["https://example.com/a.jpg"] }), /d-img/);
 assert.doesNotMatch(toon(basis, true), /<p class="d-lead bn">Korte samenvatting\.<\/p>/);
 console.log("Detail: laden, categorie, beelden en bionic geslaagd");
+
+// #1329: elke link met target="_blank" meldt in de toegankelijke naam dat een nieuw tabblad opent, met behoud van de bronnaam.
+{
+  const h = toon({ ...basis, bronnen: [basis.bronnen[0]], punten: [] } as Item);
+  const links = h.match(/<a [^>]*target="_blank"[^>]*>.*?<\/a>/g) || [];
+  assert.ok(links.length >= 1, "bronlijst");
+  for (const l of links) {
+    assert.match(l, /<span class="sr-only"> \(opent in nieuw tabblad\)<\/span>/);
+    assert.match(l, /NOS/);
+  }
+  assert.doesNotMatch(h, /aria-label="Opent in nieuw tabblad"/);
+}
+console.log("Detail: bronlinks melden nieuw tabblad geslaagd");

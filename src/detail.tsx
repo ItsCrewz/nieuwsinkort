@@ -35,7 +35,8 @@ function SourceRow({ b }: { b: Bron }) {
         </span>
         <span className="s-title">{b.site}</span>
         <span className="s-out">{h}</span>
-        <Icon name="ext" className="sm" label="Opent in nieuw tabblad" />
+        <Icon name="ext" className="sm" />
+        <span className="sr-only"> (opent in nieuw tabblad)</span>
       </a>
     </li>
   );
@@ -87,6 +88,7 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
                 <a className="pb-site" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
                   {b.site}
                   <Icon name="ext" className="sm" />
+                  <span className="sr-only"> (opent in nieuw tabblad)</span>
                 </a>
                 <ul className="bn">
                   {b.punten.map((p, k) => (
@@ -105,6 +107,7 @@ function MeerTekst({ item, bionic, meerBronnen }: { item: Item; bionic: boolean;
           <a className="btn ghost d-more" href={veiligeUrl(b.href)} target="_blank" rel="noopener noreferrer">
             Lees het hele artikel bij {b.site}
             <Icon name="ext" />
+            <span className="sr-only"> (opent in nieuw tabblad)</span>
           </a>
         </div>
       ))}
@@ -191,7 +194,7 @@ export function DetailView({ item, onBack, bionic, dag, meerBronnen }: { item: I
         </div>
         <h1 className="d-title" ref={kopRef} tabIndex={-1}>{item.kop}</h1>
         {fotos(item).length ? <Beelden urls={fotos(item)} eager className="d-img" /> : null}
-        {videobron ? <a className="btn ghost d-more" href={veiligeUrl(videobron.href)} target="_blank" rel="noopener noreferrer">Bekijk video bij {videobron.site}</a> : null}
+        {videobron ? <a className="btn ghost d-more" href={veiligeUrl(videobron.href)} target="_blank" rel="noopener noreferrer">Bekijk video bij {videobron.site}<span className="sr-only"> (opent in nieuw tabblad)</span></a> : null}
         {intro ? (
           <p className="d-lead bn">
             <BionicText text={intro} on={bionic} />
