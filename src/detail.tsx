@@ -117,26 +117,25 @@ export function DeelBlok({ item, url }: { item: Item; url: string }) {
     return () => { actie.current++; };
   }, []);
   useEffect(() => {
-    if (deelStatus !== "gekopieerd") return;
+    if (deelStatus !== "gekopieerd" && deelStatus !== "gedeeld") return;
     const t = setTimeout(() => setDeelStatus(""), 3000);
     return () => clearTimeout(t);
   }, [deelStatus, deelTeller]);
   return (
     <>
-      <button type="button" className="deel-knop" aria-label="Deel dit bericht" aria-describedby={url ? "deel-geldigheid" : undefined} disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
+      <button type="button" className="deel-knop" aria-label="Deel dit bericht" aria-describedby={deelStatus === "gekopieerd" || deelStatus === "gedeeld" || deelStatus === "handmatig" ? "deel-instructie" : undefined} disabled={!url} title={url ? undefined : "Dit bericht heeft geen eigen link"} onClick={async () => {
         const huidig = ++actie.current;
         flushSync(() => setDeelStatus("")); // live region eerst echt leeg committen, zodat de herbevestiging een DOM-wijziging is
         if (!url) return;
         const status = await deel(navigator, item.kop, url);
         if (actie.current !== huidig) return;
         setDeelStatus(status);
-        if (status === "gekopieerd") setDeelTeller((n) => n + 1); // elke geslaagde actie start de timer van 3 s opnieuw
+        if (status === "gekopieerd" || status === "gedeeld") setDeelTeller((n) => n + 1); // elke geslaagde actie start de timer van 3 s opnieuw
       }}>
         <Icon name="share" />
       </button>
-      <span id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" ? "Link gekopieerd" : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C." : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
+      <span id="deel-instructie" className="deel-melding" role="status" aria-live="polite">{deelStatus === "gekopieerd" || deelStatus === "gedeeld" || deelStatus === "handmatig" ? `${deelStatus === "gekopieerd" ? "Link gekopieerd. " : deelStatus === "handmatig" ? "Kopieer handmatig met Ctrl+C of Command+C. " : ""}De link werkt tot 06.00 uur Nederlandse tijd op de dag na de nieuwsdag. Daarna opent de homepage.` : !url ? "Dit bericht heeft geen eigen link om te delen" : ""}</span>
       {deelStatus === "handmatig" ? <input className="deel-invoer" aria-label="Link om handmatig te kopiëren" aria-describedby="deel-instructie" readOnly value={url} ref={focusInvoer} /> : null}
-      {url ? <p id="deel-geldigheid" className="deel-geldigheid">De link werkt tot 06.00 uur Nederlandse tijd op de dag na de nieuwsdag. Daarna opent de homepage.</p> : null}
     </>
   );
 }

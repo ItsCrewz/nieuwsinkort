@@ -37,8 +37,8 @@ Object.defineProperty(globalThis, "navigator", { configurable: true, value: {
   clipboard: { writeText: async () => { throw new Error("geweigerd"); } },
 } });
 const tik = () => new Promise((r) => setTimeout(r, 0));
-const GEDEELD = "";
-const HANDMATIG = "Kopieer handmatig met Ctrl+C of Command+C.";
+const GEDEELD = "De link werkt tot 06.00 uur Nederlandse tijd op de dag na de nieuwsdag. Daarna opent de homepage.";
+const HANDMATIG = "Kopieer handmatig met Ctrl+C of Command+C. De link werkt tot 06.00 uur Nederlandse tijd op de dag na de nieuwsdag. Daarna opent de homepage.";
 try {
   // Omgekeerde volgorde: eerst klik 2 klaar (handmatig), dan het late resultaat van klik 1 (gedeeld).
   let b = mount();
@@ -63,14 +63,14 @@ try {
   const r1 = b.klik();
   b.unmount();
   wachtrij[0].fout(new Error("geweigerd")); await r1; await tik();
-  assert.equal(b.melding(), GEDEELD);
+  assert.equal(b.melding(), "");
   wachtrij.length = 0;
 
   // Annuleren en een enkele gewone actie blijven werken.
   b = mount();
   const s1 = b.klik();
   wachtrij[0].fout(Object.assign(new Error("stop"), { name: "AbortError" })); await s1; await tik();
-  assert.equal(b.melding(), GEDEELD);
+  assert.equal(b.melding(), "");
   wachtrij.length = 0;
   const s2 = b.klik();
   wachtrij[0].fout(new Error("geweigerd")); await s2; await tik();
