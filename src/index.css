@@ -679,6 +679,9 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .zoek-wis{display:block;margin:auto;color:var(--a)}
 .zoek-scope{flex:1 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:13px;color:var(--i2)}
 .zoek-wis-filters{min-height:44px;padding:0 8px;color:var(--a);border-radius:8px}
+.zoek-wis-filters:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.zoek-nav{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.zoek-nav [aria-disabled="true"]{opacity:.55}
 .zoek-naar-resultaten{display:inline-flex;align-items:center;text-decoration:underline}
 .zoek-wis-filters:focus-visible{outline:2px solid var(--a);outline-offset:2px}
 
