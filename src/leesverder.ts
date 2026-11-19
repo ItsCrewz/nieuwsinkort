@@ -5,6 +5,12 @@ export function heeftLeesVerder(item: Item): boolean {
   return !!(item.meer || item.ai?.trim() || item.samenvatting?.trim() || item.punten?.length);
 }
 
+// #1278: de zichtbare tekst "Lees verder" blijft vooraan, de kop maakt de bestemming herkenbaar voor schermlezers.
+export function leesVerderNaam(kop: string): string {
+  const k = kop.replace(/\s+/g, " ").trim();
+  return k ? `Lees verder: ${k}` : "Lees verder";
+}
+
 export function detailInhoud(item: Item) {
   return {
     paragraphs: (item.samenvatting || "").split(/\n\s*\n/).filter((p) => p.trim()),

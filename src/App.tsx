@@ -25,7 +25,7 @@ import { Beelden, Thumb } from "./beelden";
 import { FilterBalk, TIJD_LABEL, filterNieuws, filterVideos, useFilters, useVideoKlok } from "./filters";
 import { veiligeUrl } from "./url";
 import { herindeel } from "./regio";
-import { bronnenTekst, fotos, heeftLeesVerder } from "./leesverder";
+import { bronnenTekst, fotos, heeftLeesVerder, leesVerderNaam } from "./leesverder";
 import { touchNu } from "./invoer";
 import { volgGeluid } from "./geluid";
 import { laadData, neemVroegeData } from "./vroeg";
@@ -233,16 +233,16 @@ function fitCard(el: HTMLElement) {
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
 // De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
-const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
-  const key = itemKey(item);
+export const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
+  const pad = artikelId(item) || itemKey(item);
   return (
-    <div className={`nc cat-${item.cat}`} data-id={key} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
+    <div className={`nc cat-${item.cat}`} data-id={pad} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
       {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} />}
     </div>
   );
 });
 
-function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
+export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
   const key = itemKey(item);
   const cardRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -285,7 +285,8 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
       cancelAnimationFrame(raf);
     };
   }, [bionic, item, zoekterm]);
-  const click = useOpen(key, onOpen);
+  const pad = artikelId(item) || key; // #1278: eigen id i.p.v. kopsleutel, zodat dubbele koppen het eigen bericht openen
+  const click = useOpen(pad, onOpen);
   const beelden = useMemo(() => fotos(item), [item]);
   const refit = useCallback(() => {
     const el = cardRef.current;
@@ -314,7 +315,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
         </span>
       </div>
       <h2 className="nc-title">
-        <a href={`#/bericht/${key}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
+        <a href={`#/bericht/${pad}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
           <ZoekTekst tekst={item.kop} query={zoekterm} />
         </a>
       </h2>
@@ -341,7 +342,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
       <div className="nc-act">
         <div className="nc-act-row">
         {meer ? (
-          <a className="btn" href={`#/bericht/${key}`} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); voorlaadMeer(item); }}>
+          <a className="btn" href={`#/bericht/${pad}`} aria-label={leesVerderNaam(item.kop)} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); voorlaadMeer(item); }}>
             Lees verder
           </a>
         ) : null}
@@ -383,7 +384,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ids = sorted.map(itemKey);
+    const ids = sorted.map((item) => artikelId(item) || itemKey(item));
     const oud = positie.current;
     if (oud) {
       const herstel = herstelNieuwspositie(oud, ids);
@@ -400,7 +401,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
     bewaarNieuwspositie(tab, positie.current);
   }, [nieuwsdata, tab]);
   // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
-  const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
+  const focusIdx = focusKey ? sorted.findIndex((x) => (artikelId(x) || itemKey(x)) === focusKey) : -1;
   const mountRef = useRef(0);
   mountRef.current = Math.max(mountRef.current, Math.min(total, Math.max(KAARTEN_VOORAF, idx + 1 + KAARTEN_VOORUIT, focusIdx + 1 + KAARTEN_VOORUIT)));
   const mount = mountRef.current;
