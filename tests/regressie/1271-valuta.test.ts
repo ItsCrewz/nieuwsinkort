@@ -14,4 +14,15 @@ for (const [eerste, tweede] of paren) for (const [bron, nieuw] of [[eerste, twee
   assert.deepEqual(nieuwePunten([bron], bron, ""), []);
   assert.deepEqual(nieuweAlineas([bron], [bron]), []);
 }
+const herhalingen = [
+  ["De prijs is €20.", "De prijs is 20 euro."],
+  ["De prijs is € 20.", "De prijs is EUR 20."],
+  ["De prijs is $20.", "De prijs is 20 USD."],
+  ["De prijs is £20.", "De prijs is 20 GBP."],
+];
+for (const [eerste, tweede] of herhalingen) for (const [bron, nieuw] of [[eerste, tweede], [tweede, eerste]]) {
+  assert.deepEqual(nieuwePunten([nieuw], bron, ""), []);
+  assert.deepEqual(nieuwePunten([bron, nieuw], "", ""), [bron]);
+  assert.deepEqual(nieuweAlineas([nieuw], [bron]), []);
+}
 console.log("ok - valutaverschillen blijven zichtbaar");

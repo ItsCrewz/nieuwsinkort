@@ -42,8 +42,19 @@ function nieuwFeit(tekst: string, bekend: string): boolean {
 // Vergelijk met één bronzin: standpunten, ontkenningen, onzekerheid en tijdsaanduidingen veranderen de betekenis.
 const MODAAL: Record<string, string> = { kunnen: "kan", zouden: "zou", mogelijke: "mogelijk", mogelijkerwijs: "mogelijk", vermoedelijk: "waarschijnlijk", wellicht: "misschien" };
 const bijzonder = (s: string) => new Set((s.toLowerCase().match(/\b(?:voor|tegen|aan|uit|in|op|af|kan|kunnen|zou|zouden|mogelijk|mogelijke|mogelijkerwijs|waarschijnlijk|vermoedelijk|misschien|wellicht|niet|geen|nooit|meer|minder|nu|nog|al|pas|weer|morgen|vandaag|gisteren|overmorgen|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\b|\d{1,2}:\d{2}/gu) || []).map((w) => MODAAL[w] ?? w));
+// Zet gangbare valutanotaties bij een bedrag in dezelfde volgorde en vorm.
+function normaliseerValuta(s: string): string {
+  const valuta: Record<string, string> = { "€": "eur", eur: "eur", euro: "eur", "$": "usd", usd: "usd", dollar: "usd", "£": "gbp", gbp: "gbp", pond: "gbp" };
+  const eenheid = "(?:€|\\$|£|eur|euro|usd|dollar|gbp|pond)";
+  const bedrag = "[+\\-−]?\\d+(?:[.,]\\d+)*";
+  const patroon = new RegExp(`(?<![\\p{L}\\p{N}])(?:(${eenheid})\\s*(${bedrag})|(${bedrag})\\s*(${eenheid}))(?![\\p{L}\\p{N}])`, "giu");
+  return s.replace(patroon, (_match, voor: string, getalNa: string, getalVoor: string, na: string) =>
+    `${getalNa || getalVoor} valuta${valuta[(voor || na).toLowerCase()]}`);
+}
 function herhaling(tekst: string, bekend: string): boolean {
   return bekend.split(/\n/).flatMap(zinnen).some((bron) => {
+    tekst = normaliseerValuta(tekst);
+    bron = normaliseerValuta(bron);
     const a = bijzonder(tekst), b = bijzonder(bron);
     const woorden = volgordewoorden(tekst);
     let i = 0;
