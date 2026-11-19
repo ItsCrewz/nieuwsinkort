@@ -28,3 +28,15 @@ assert.equal(await deel({ clipboard: { writeText: () => new Promise<void>((_, ne
 laatFout(new Error("laat"));
 await new Promise((r) => setTimeout(r, 20));
 assert.equal(await deel({ clipboard: { writeText: () => new Promise<void>((ok) => setTimeout(ok, 5)) } }, "Titel", url, 200), "gekopieerd");
+// canShare hangt af van de titel: zonder titel true, met titel false. Dan moet de volledige inhoud gecontroleerd worden.
+const titelAfhankelijk = (d: ShareData) => !d.title;
+shareAangeroepen = false; gekopieerd = "";
+assert.equal(await deel({ share, canShare: titelAfhankelijk, clipboard: { writeText: async (s) => { gekopieerd = s; } } }, "Titel", url), "gekopieerd");
+assert.equal(shareAangeroepen, false);
+assert.equal(gekopieerd, url);
+assert.equal(await deel({ share, canShare: titelAfhankelijk, clipboard: { writeText: async () => { throw Error(); } } }, "Titel", url), "handmatig");
+assert.equal(shareAangeroepen, false);
+let gecontroleerd: ShareData | undefined, aangeboden: ShareData | undefined;
+assert.equal(await deel({ canShare: (d) => { gecontroleerd = d; return true; }, share: async (d) => { aangeboden = d; } }, "Titel", url), "gedeeld");
+assert.deepEqual(gecontroleerd, { title: "Titel", url });
+assert.deepEqual(aangeboden, gecontroleerd);

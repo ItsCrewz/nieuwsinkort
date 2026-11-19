@@ -4,10 +4,12 @@ export const artikelUrl = (item: Parameters<typeof artikelPad>[0], dag: string) 
 type DeelNavigator = { share?: (data: ShareData) => Promise<void>; canShare?: (data: ShareData) => boolean; clipboard?: { writeText: (tekst: string) => Promise<void> } };
 export const KLEMBORD_MS = 2000;
 export async function deel(navigator: DeelNavigator, titel: string, url: string, klembordMs = KLEMBORD_MS): Promise<"gedeeld" | "gekopieerd" | "handmatig" | "geannuleerd"> {
+  // Dezelfde gegevens controleren als aan share() worden aangeboden.
+  const data: ShareData = { title: titel, url };
   let kanDelen = false;
-  try { kanDelen = !!navigator.share && (!navigator.canShare || navigator.canShare({ url })); } catch { /* Probeer kopiëren. */ }
+  try { kanDelen = !!navigator.share && (!navigator.canShare || navigator.canShare(data)); } catch { /* Probeer kopiëren. */ }
   if (kanDelen && navigator.share) {
-    try { await navigator.share({ title: titel, url }); return "gedeeld"; } catch (e) { if (e instanceof Error && e.name === "AbortError") return "geannuleerd"; }
+    try { await navigator.share(data); return "gedeeld"; } catch (e) { if (e instanceof Error && e.name === "AbortError") return "geannuleerd"; }
   }
   // Een klembord dat nooit antwoordt mag de handmatige terugval niet blokkeren: na KLEMBORD_MS geven we op.
   let timer: ReturnType<typeof setTimeout> | undefined;
