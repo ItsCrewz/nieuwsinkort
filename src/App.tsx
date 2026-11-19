@@ -37,7 +37,7 @@ import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
 import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, zoekFragment, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
-import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
+import { Zoekbalk, ZoekActief, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
 import { amsterdamTime, bronLabel, cap, itemKey, pickLead, sortItems } from "./nieuws-hulp";
@@ -1140,6 +1140,7 @@ export default function App() {
             </button>
           </div>
         ) : null}
+        <ZoekActief query={zoekterm} onWis={() => wijzigZoekterm("")} />
         <div id="rubriek-paneel" role="tabpanel" aria-labelledby={rubriekTabId(view)}>
         {isVideo ? (
           <Foutgrens key={view} code="CLIENT_VIDEO"><Suspense fallback={null}>

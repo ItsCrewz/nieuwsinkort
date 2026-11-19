@@ -140,3 +140,15 @@ try {
   assert.match(html(true), /<option value="koppen" selected="">Alleen koppen<\/option>/);
 }
 console.log("zoekbalk: tests geslaagd");
+// Actieve zoekopdracht in de filmpjesweergave (#1317).
+{
+  const { ZoekActief } = await import("../src/zoekbalk");
+  const actief = renderToStaticMarkup(createElement(ZoekActief, { query: "wolf", onWis: () => {} }));
+  assert.match(actief, /Zoekopdracht “wolf” staat nog aan voor het nieuws; filmpjes worden niet gefilterd/);
+  assert.match(actief, /<button type="button" class="textbtn">Wis zoekopdracht<\/button>/);
+  for (const q of ["", "  ", "!!!"]) assert.equal(renderToStaticMarkup(createElement(ZoekActief, { query: q, onWis: () => {} })), "");
+  let gewist = 0;
+  const el = ZoekActief({ query: "wolf", onWis: () => { gewist++; } }) as any;
+  el.props.children[1].props.onClick();
+  assert.equal(gewist, 1);
+}

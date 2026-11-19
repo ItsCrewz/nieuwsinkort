@@ -95,6 +95,12 @@ export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aanta
       </form>;
 }
 
+// Filmpjesweergave heeft geen zoekbalk; zo blijft een actieve nieuwszoekopdracht zichtbaar en wisbaar (#1317).
+export function ZoekActief({ query, onWis }: { query: string; onWis: () => void }) {
+  if (!normaliseer(query)) return null;
+  return <div className="filternote" role="status"><span>Zoekopdracht “{query}” staat nog aan voor het nieuws; filmpjes worden niet gefilterd</span><button type="button" className="textbtn" onClick={onWis}>Wis zoekopdracht</button></div>;
+}
+
 export function ZoekLeeg({ query, onWis, verborgen = 0, onWisFilters, onZoekAlles, suggesties = [], onSuggestie }: { query: string; onWis: () => void; verborgen?: number; onWisFilters?: () => void; onZoekAlles?: () => void; suggesties?: string[]; onSuggestie?: (term: string) => void }) {
   const zoekbaar = !!normaliseer(query);
   return <div className="zoek-leeg">{zoekbaar ? <>Niets gevonden voor “{query}”</> : zoekAanwijzing}{zoekbaar && verborgen > 0 && <> · {verborgenTekst(verborgen)}</>}{suggesties.length > 0 && <div role="group" aria-label="Zoeksuggesties">Zoeksuggesties: {suggesties.map((term) => <button type="button" className="zoek-wis" key={term} onClick={() => onSuggestie?.(term)}>{term}</button>)}</div>} <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button>{zoekbaar && onZoekAlles && <button type="button" className="zoek-wis" onClick={onZoekAlles}>Zoek in alle rubrieken en beschikbare berichten</button>}{zoekbaar && verborgen > 0 && onWisFilters && <button type="button" className="zoek-wis" onClick={onWisFilters}>Wis filters en zoek opnieuw</button>}</div>;
