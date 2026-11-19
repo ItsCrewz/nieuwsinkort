@@ -85,8 +85,11 @@ function hostVan(href: string | undefined): string | undefined {
   } catch { return undefined; }
 }
 
+// Gebruikelijke afkorting van een rubriek (#1304): alleen items uit die rubriek krijgen ze als extra zoekwoord.
+const CAT_ALIAS: Record<string, string> = { f1: "F1" };
+
 function zoektekst(item: Item): Zoektekst {
-  const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).flatMap((bron) => [bron.site, hostVan(bron.href)]), CAT_LABEL[item.cat]];
+  const velden = [item.kop, item.ai, item.samenvatting, ...(item.punten ?? []), ...(item.bronnen ?? []).flatMap((bron) => [bron.site, hostVan(bron.href)]), CAT_LABEL[item.cat], CAT_ALIAS[item.cat]];
   const bewaard = index.get(item);
   if (bewaard && velden.length === bewaard.velden.length && velden.every((veld, i) => veld === bewaard.velden[i])) return bewaard;
   const resultaat = { velden, ...woordenVan(velden.filter(Boolean) as string[], KOPPEL) };
