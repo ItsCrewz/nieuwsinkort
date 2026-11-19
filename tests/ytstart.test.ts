@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ytStartBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint, ytIsGereed } from "../src/ytstart";
+import { ytStartBesluit, ytStatusNaam, ytEchteFout, geluidMag, geluidVoorSlide, autoplayGeblokkeerd, ytEmbedUrl, ytToonHint, ytIsGereed, ytBufferVast, YT_BUFFER_VAST_MS } from "../src/ytstart";
 
 for (const actief of [true, false]) {
   const url = new URL(ytEmbedUrl("abc123", actief, "https://voorbeeld.nl"));
@@ -54,6 +54,24 @@ assert.equal(geluidMag(true, false, false), false);
 assert.equal(geluidMag(true, true, true), false);
 assert.equal(geluidMag(false, true, false), false);
 assert.equal(ytStatusNaam(-1), "unstarted");
+
+// #1243: langdurig bufferen zonder voortgang biedt herstel; kort bufferen niet.
+{
+  const b = { actief: true, gepauzeerd: false, status: 3 as number | null, bufferSinds: 1000, nu: 1000 };
+  assert.equal(YT_BUFFER_VAST_MS, 12000);
+  assert.equal(ytBufferVast({ ...b, nu: 12999 }), false);
+  assert.equal(ytBufferVast({ ...b, nu: 13000 }), true);
+  for (const status of [-1, 0, 1, 2, 5, null]) assert.equal(ytBufferVast({ ...b, status, nu: 60000 }), false);
+  assert.equal(ytBufferVast({ ...b, bufferSinds: null, nu: 60000 }), false); // bewaking gereset
+  assert.equal(ytBufferVast({ ...b, gepauzeerd: true, nu: 60000 }), false);
+  assert.equal(ytBufferVast({ ...b, actief: false, nu: 60000 }), false);
+  assert.equal(ytBufferVast({ ...b, fout: true, nu: 60000 }), false);
+  // Bufferen blijft voor hint en startbesluit "wacht": geen voortijdige fout of herstart.
+  assert.equal(ytToonHint({ ...basis, status: 3, nu: 60000 }), false);
+  assert.equal(ytStartBesluit({ ...basis, status: 3, nu: 60000 }), "wacht");
+  const herstel = css.match(/\.f-yt-herstel\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(herstel, /pointer-events\s*:\s*auto/);
+}
 
 // #661: herstel pas na onReady van het actieve frame.
 {

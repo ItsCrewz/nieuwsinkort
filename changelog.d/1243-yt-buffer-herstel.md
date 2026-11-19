@@ -1,0 +1,1 @@
+- Filmpjes: een YouTube-video die langer dan 12 seconden blijft bufferen zonder voortgang toont nu de knop "Video haperkt. Tik om opnieuw te proberen" (#1243).
