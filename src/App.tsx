@@ -250,25 +250,28 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
     if (!el) return;
     // Alleen kaarten in/naast beeld passend maken: 150+ kaarten tegelijk meten blokkeert een iPhone seconden lang.
     let raf = 0, near = false, dirty = true;
+    const meetNabij = () => { const r = el.getBoundingClientRect(); return r.top < innerHeight * 3 && r.bottom > -innerHeight * 2; };
+    let io: IntersectionObserver | null = null;
     const run = () => {
       dirty = true;
+      if (!io) near = meetNabij(); // zonder IO is near anders mogelijk verouderd
       if (!near) return;
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => { dirty = false; fitCard(el); });
     };
-    const r = el.getBoundingClientRect();
-    if (r.top < innerHeight * 3 && r.bottom > -innerHeight * 2) { near = true; dirty = false; fitCard(el); }
-    const io = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver((es) => { near = es[es.length - 1].isIntersecting; if (near && dirty) run(); }, { rootMargin: "200% 0px" });
+    if (meetNabij()) { near = true; dirty = false; fitCard(el); }
+    io = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver((es) => { near = es[es.length - 1].isIntersecting; if (near && dirty) run(); }, { rootMargin: "200% 0px" });
     io?.observe(el);
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(run);
     ro?.observe(el);
+    // Zonder IO: alleen meten als de kaart nog gepast moet worden, hooguit één keer per frame.
+    let scrollRaf = 0;
     const controleerNabij = () => {
-      const r = el.getBoundingClientRect();
-      near = r.top < innerHeight * 3 && r.bottom > -innerHeight * 2;
-      if (near && dirty) run();
+      if (!dirty || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => { scrollRaf = 0; if (dirty) run(); });
     };
-    const bijResize = () => { dirty = true; if (!io) controleerNabij(); else run(); };
-    if (!io) window.addEventListener("scroll", controleerNabij, true);
+    const bijResize = run;
+    if (!io) window.addEventListener("scroll", controleerNabij, { capture: true, passive: true });
     if (!ro || !io) window.addEventListener("resize", bijResize);
     el.addEventListener("nc-dirty", run);
     document.fonts?.ready.then(run).catch(() => {});
@@ -276,6 +279,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
       ro?.disconnect();
       io?.disconnect();
       if (!io) window.removeEventListener("scroll", controleerNabij, true);
+      cancelAnimationFrame(scrollRaf);
       if (!ro || !io) window.removeEventListener("resize", bijResize);
       el.removeEventListener("nc-dirty", run);
       cancelAnimationFrame(raf);
