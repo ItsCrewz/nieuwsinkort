@@ -4,11 +4,15 @@ import { dagdata, wacht } from "../../src/dagdata";
 import { onRequestGet as vandaag } from "../../functions/vandaag";
 import { onRequestGet as sitemapNieuws } from "../../functions/sitemap-nieuws.xml";
 import { onRequestGet as dataJson } from "../../functions/data.json";
+import { onRequestGet as bericht } from "../../functions/bericht/[[pad]]";
+import { artikelPad } from "../../src/artikelid";
+import { ams } from "../../src/tijd";
 
 wacht.kv = 40; wacht.asset = 60;
 const nooit = () => new Promise<any>(() => {});
 const nu = new Date().toISOString();
-const stat = JSON.stringify({ gegenereerd: nu, items: [{ kop: "Statisch", t: Date.now() - 6e4, bronnen: [{ href: "https://example.nl/a" }] }], filmpjes: [], dumpert: [] });
+const item = { kop: "Statisch", cat: "nl", t: Date.now() - 6e4, bronnen: [{ site: "Voorbeeld", href: "https://example.nl/a" }] };
+const stat = JSON.stringify({ gegenereerd: nu, items: [item], filmpjes: [], dumpert: [] });
 const assets = (signalen: AbortSignal[] = []) => ({ fetch: async (r: any) => { signalen.push(r.signal); return new Response(stat); } });
 const hang = { get: nooit };
 const req = (p = "/data.json") => new Request("https://nieuwsinkort.pages.dev" + p);
@@ -39,10 +43,32 @@ const main = async () => {
   const hangBody = { fetch: async () => ({ ok: true, status: 200, text: nooit, json: nooit }) as any };
   const r5 = await dagdata({ request: req("/data.json?statisch=1"), env: { NIEUWS: hang, ASSETS: hangBody } });
   assert.equal(r5.status, 503);
-  // Genoemde routes hangen niet.
-  for (const f of [vandaag, sitemapNieuws, dataJson] as any[]) {
-    const res = await Promise.race([f({ request: req("/x"), env: { NIEUWS: hang, ASSETS: hangAsset }, params: {} }), new Promise((ok) => setTimeout(() => ok("hang"), 1500))]);
-    assert.notEqual(res, "hang");
+  // Elke route bereikt dagdata en geeft bij twee hangende bronnen een tijdelijke fout.
+  const routes = [
+    { f: dataJson, pad: "/data.json" },
+    { f: vandaag, pad: "/vandaag" },
+    { f: sitemapNieuws, pad: "/sitemap-nieuws.xml" },
+    { f: bericht, pad: artikelPad(item, ams().iso) },
+  ];
+  for (const { f, pad } of routes) {
+    const ctx = { request: req(pad), env: { NIEUWS: hang, ASSETS: hangAsset }, waitUntil: () => {} };
+    const res = await f(ctx);
+    assert.equal(res.status, 503, pad);
+    assert.equal(res.headers.get("Cache-Control"), "no-store", pad);
+  }
+  // Met hangende KV blijft de statische dataset beschikbaar, met de bestaande cacheheaders.
+  const fallbackAssets = { fetch: async (r: Request) => new URL(r.url).pathname === "/data.json"
+    ? new Response(stat) : new Response("<!doctype html><html><head></head><body></body></html>", { headers: { "Content-Type": "text/html" } }) };
+  for (const { f, pad } of routes) {
+    const res = await f({ request: req(pad), env: { NIEUWS: hang, ASSETS: fallbackAssets }, waitUntil: () => {} });
+    assert.equal(res.status, 200, pad);
+    assert.match(await res.text(), /Statisch/, pad);
+    const cc = res.headers.get("Cache-Control") || "";
+    if (pad === "/data.json") assert.equal(cc, "public, max-age=0, s-maxage=60, stale-while-revalidate=240");
+    else {
+      assert.match(cc, /^public, max-age=\d+/, pad);
+      assert.ok(res.headers.get("X-Geldig-Tot"), pad);
+    }
   }
   console.log("ok dagdata-timeout-1328");
 };
