@@ -1,0 +1,1 @@
+- De vandaag-index toont ook berichten na de eerste 200 per rubriek (#1253).
