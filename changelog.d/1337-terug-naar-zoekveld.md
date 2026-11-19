@@ -1,0 +1,1 @@
+- De zoekknop brengt je bij een actieve zoekopdracht terug naar het zoekveld, met behoud van zoekterm en filters (#1337).
