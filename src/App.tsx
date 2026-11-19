@@ -36,7 +36,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
+import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, zoekFragment, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
 import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
@@ -250,23 +250,37 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
     if (!el) return;
     // Alleen kaarten in/naast beeld passend maken: 150+ kaarten tegelijk meten blokkeert een iPhone seconden lang.
     let raf = 0, near = false, dirty = true;
+    const meetNabij = () => { const r = el.getBoundingClientRect(); return r.top < innerHeight * 3 && r.bottom > -innerHeight * 2; };
+    let io: IntersectionObserver | null = null;
     const run = () => {
       dirty = true;
+      if (!io) near = meetNabij(); // zonder IO is near anders mogelijk verouderd
       if (!near) return;
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => { dirty = false; fitCard(el); });
     };
-    const r = el.getBoundingClientRect();
-    if (r.top < innerHeight * 3 && r.bottom > -innerHeight * 2) { near = true; dirty = false; fitCard(el); }
-    const io = new IntersectionObserver((es) => { near = es[es.length - 1].isIntersecting; if (near && dirty) run(); }, { rootMargin: "200% 0px" });
-    io.observe(el);
-    const ro = new ResizeObserver(run);
-    ro.observe(el);
+    if (meetNabij()) { near = true; dirty = false; fitCard(el); }
+    io = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver((es) => { near = es[es.length - 1].isIntersecting; if (near && dirty) run(); }, { rootMargin: "200% 0px" });
+    io?.observe(el);
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(run);
+    ro?.observe(el);
+    // Zonder IO: alleen meten als de kaart nog gepast moet worden, hooguit één keer per frame.
+    let scrollRaf = 0;
+    const controleerNabij = () => {
+      if (!dirty || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => { scrollRaf = 0; if (dirty) run(); });
+    };
+    const bijResize = run;
+    if (!io) window.addEventListener("scroll", controleerNabij, { capture: true, passive: true });
+    if (!ro || !io) window.addEventListener("resize", bijResize);
     el.addEventListener("nc-dirty", run);
     document.fonts?.ready.then(run).catch(() => {});
     return () => {
-      ro.disconnect();
-      io.disconnect();
+      ro?.disconnect();
+      io?.disconnect();
+      if (!io) window.removeEventListener("scroll", controleerNabij, true);
+      cancelAnimationFrame(scrollRaf);
+      if (!ro || !io) window.removeEventListener("resize", bijResize);
       el.removeEventListener("nc-dirty", run);
       cancelAnimationFrame(raf);
     };
@@ -286,6 +300,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
   const sum = tekst.ai || tekst.samenvatting;
   const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
+  const fragment = zoekterm.trim() ? zoekFragment(item, zoekterm, [item.kop, sum, ...punten]) : null;
   return (
     <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
       <div className="nc-body">
@@ -308,11 +323,17 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
           <ZoekTekst tekst={sum} query={zoekterm} bionic={bionic} />
         </p>
       ) : null}
+      {fragment ? (
+        <p className="nc-zoek">
+          <span className="nc-zoek-l">Gevonden in {fragment.label.toLowerCase()}: </span>
+          {fragment.delen.map((d, k) => d.markeer ? <mark key={k}>{d.tekst}</mark> : d.tekst)}
+        </p>
+      ) : null}
       {punten.length ? (
         <ul className="nc-pts">
           {punten.map((t, k) => (
             <li key={k} className="bn">
-              <BionicText text={t} on={bionic} />
+              {zoekterm.trim() ? <ZoekTekst tekst={t} query={zoekterm} bionic={bionic} /> : <BionicText text={t} on={bionic} />}
             </li>
           ))}
         </ul>
@@ -420,16 +441,16 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
     read();
     // Kaart-entree (DOM-klassen, geen React-render): kaarten die bij het mounten buiten beeld liggen krijgen 'wacht' en spelen eenmalig 'in' af als ze in beeld komen.
     // Kaarten die al in beeld staan (eerste kaart, LCP) of die bij terug-uit-artikel horen, en alles bij reduced motion, krijgen niets.
-    const io = new IntersectionObserver(
+    const io = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(
       (es) => es.forEach((e) => {
         if (!e.isIntersecting) return;
         const c = e.target as HTMLElement;
         if (c.classList.contains("wacht")) { c.classList.remove("wacht"); c.classList.add("in"); }
-        io.unobserve(c);
+        io?.unobserve(c);
       }),
       { root: el, threshold: 0.35 }
     );
-    const cards = Array.from(el.querySelectorAll<HTMLElement>(".nc"));
+    const cards = io ? Array.from(el.querySelectorAll<HTMLElement>(".nc")) : [];
     const nieuw = cards.filter((c) => !c.dataset.b); // bij een herrun (nieuwe data) alleen nieuwe kaarten beoordelen
     const vr = el.getBoundingClientRect();
     const rects = nieuw.map((c) => c.getBoundingClientRect()); // eerst alles meten, dan schrijven
@@ -437,12 +458,12 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
       c.dataset.b = "1";
       if (!rustig() && !(rects[k].bottom > vr.top && rects[k].top < vr.bottom)) c.classList.add("wacht");
     });
-    cards.forEach((c) => c.classList.contains("wacht") && io.observe(c));
+    cards.forEach((c) => c.classList.contains("wacht") && io?.observe(c));
     return () => {
       el.removeEventListener("scroll", onScroll);
       if (raf) { cancelAnimationFrame(raf); read(); }
       if (positie.current && positie.current !== opgeslagen) bewaarNieuwspositie(tab, positie.current);
-      io.disconnect();
+      io?.disconnect();
     };
   }, [sorted, tab]);
 

@@ -1,6 +1,6 @@
 import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
-import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen, begrensZoekterm, leesZoekterm, MAX_ZOEKTEKENS } from "../src/zoek";
+import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen, zoekFragment, begrensZoekterm, leesZoekterm, MAX_ZOEKTEKENS } from "../src/zoek";
 import type { Item } from "../src/types";
 import { filterNieuws, STANDAARD } from "../src/filters";
 
@@ -246,4 +246,39 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.equal(markeerDelen("Prijs 1.000 euro", "1000").filter((x) => x.markeer).map((x) => x.tekst).join(), "1.000");
   assert.equal(markeerDelen("Prijs 1 000 euro", "1.000").filter((x) => x.markeer).map((x) => x.tekst).join(), "1 000");
   assert.equal(markeerDelen("Prijs 10000 euro", "1000").filter((x) => x.markeer).length, 0);
+}
+
+// Zoekfragment (#1313)
+{
+  const it = { cat: "nl", kop: "Kabinet valt", ai: "Korte kern", samenvatting: "Lange uitleg over de formatie en het kabinet", punten: ["Eerste punt", "De begroting <b>wijzigt</b> sterk"], bronnen: [{ site: "NOS", href: "https://nos.nl/x" }] } as unknown as Item;
+  const tekst = (f: ReturnType<typeof zoekFragment>) => f!.delen.map((d) => d.tekst).join("");
+  const f = zoekFragment(it, "begroting")!;
+  assert.equal(f.label, "Punt");
+  assert.deepEqual(f.delen.filter((d) => d.markeer).map((d) => d.tekst), ["begroting"]);
+  assert.equal(zoekFragment(it, "formatie")!.label, "Samenvatting");
+  assert.equal(zoekFragment(it, "kabinet"), null); // koptreffer: geen dubbel fragment
+  assert.equal(zoekFragment(it, "  "), null);
+  assert.equal(zoekFragment(it, "bestaatniet"), null);
+  assert.equal(zoekFragment(it, "nos")!.label, "Bron");
+  assert.ok(tekst(zoekFragment(it, "wijzigt")!).includes("<b>wijzigt</b>")); // letterlijke tekst
+  assert.equal(zoekFragment(it, "begroting sterk")!.delen.filter((d) => d.markeer).length, 2);
+  assert.equal(zoekFragment({ cat: "nl", kop: "Kop" } as Item, "iets"), null); // ontbrekende velden
+  const lang = { cat: "nl", kop: "Kop", samenvatting: "woord ".repeat(300) + "zeldzaam " + "woord ".repeat(300) } as Item;
+  const l = zoekFragment(lang, "zeldzaam", [lang.kop])!;
+  assert.ok(tekst(l).length <= 130 && tekst(l).startsWith("…") && tekst(l).endsWith("…") && l.delen.some((d) => d.markeer));
+}
+
+// Rubriek Formule 1 is ook op de afkorting F1 vindbaar (#1304).
+{
+  const f1 = { cat: "f1", kop: "Verstappen wint in Monza" } as Item;
+  const sport = { cat: "sport", kop: "Ajax wint thuis" } as Item;
+  const nl = { cat: "nl", kop: "Kabinet overlegt" } as Item;
+  const alle = [f1, sport, nl];
+  assert.deepEqual(zoekItems(alle, "F1"), [f1]);
+  assert.deepEqual(zoekItems(alle, "f1"), [f1]);
+  assert.deepEqual(zoekItems(alle, "Formule 1"), [f1]);
+  assert.deepEqual(zoekItems(alle, "F1 verstappen"), [f1]);
+  assert.deepEqual(zoekItems(alle, "F1 onbekend"), []);
+  assert.deepEqual(zoekItems(alle, "formule"), [f1]);
+  assert.deepEqual(zoekItems(alle, "form"), [f1]);
 }

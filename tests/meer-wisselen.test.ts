@@ -22,12 +22,12 @@ const uitleg = (x: string) => ({ uitleg: [x] }) as any;
 
 await t("state van een ander item geeft laden, nooit de oude inhoud", () => {
   const st = { k: "a", meer: uitleg("A"), laden: false };
-  assert.deepEqual(meerVoor(st, "a"), { meer: st.meer, laden: false });
-  assert.deepEqual(meerVoor(st, "b"), { meer: null, laden: true });
+  assert.deepEqual(meerVoor(st, "a"), { meer: st.meer, laden: false, fout: false });
+  assert.deepEqual(meerVoor(st, "b"), { meer: null, laden: true, fout: false });
 });
 
 await t("item zonder verdieping toont niets, ook met oude state", () => {
-  assert.deepEqual(meerVoor({ k: "a", meer: uitleg("A"), laden: false }, undefined), { meer: null, laden: false });
+  assert.deepEqual(meerVoor({ k: "a", meer: uitleg("A"), laden: false }, undefined), { meer: null, laden: false, fout: false });
 });
 
 await t("omgekeerd binnenkomende antwoorden blijven bij hun sleutel", async () => {
@@ -62,7 +62,7 @@ await t("useMeer: wisselen van artikel met vertraagde antwoorden toont nooit de 
   await act(async () => wacht["hook-a"](uitleg("A"))); // vertraagd antwoord van het vorige artikel
   assert.equal(result.current.meer?.uitleg?.[0], "B");
   await act(async () => root.render(createElement(C, { item: Z })));
-  assert.deepEqual(result.current, { meer: null, laden: false });
+  assert.deepEqual({ ...result.current, opnieuw: undefined }, { meer: null, laden: false, fout: false, opnieuw: undefined });
   // geen enkele render van een ander artikel toont andermans inhoud
   assert.ok(!log.some((l) => l.startsWith("hook-b:A") || l.startsWith("hook-a:B") || l.startsWith("-:A") || l.startsWith("-:B")), log.join(" "));
   await act(async () => root.unmount());

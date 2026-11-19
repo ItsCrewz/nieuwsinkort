@@ -18,6 +18,12 @@ export function ytOndertitelsBijBericht(e: MessageEvent, frames: Iterable<HTMLIF
   }
 }
 
+// Kort bufferen is normaal; pas na zo lang ononderbroken bufferen zonder voortgang bieden we herstel aan.
+export const YT_BUFFER_VAST_MS = 12000;
+export function ytBufferVast(s: { actief: boolean; gepauzeerd: boolean; fout?: boolean; status: number | null; bufferSinds: number | null; nu: number }): boolean {
+  return s.actief && !s.gepauzeerd && !s.fout && s.status === 3 && s.bufferSinds !== null && s.nu - s.bufferSinds >= YT_BUFFER_VAST_MS;
+}
+
 export function ytToonHint(s: YtStart): boolean {
   return s.actief && !s.gepauzeerd && !s.fout && !s.gespeeld && s.status !== 1 && s.status !== 3 && s.nu - s.sinds >= 1500;
 }
