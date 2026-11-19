@@ -1,1 +1,1 @@
-Een fotoswipe of andere onafhankelijke scroll verandert de voorlaadrichting van nieuwsbeelden niet meer.
+- Laat een fotoswipe of andere onafhankelijke scroll de voorlaadrichting van nieuwsbeelden niet meer veranderen (#1210).

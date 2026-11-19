@@ -44,11 +44,17 @@ assert.ok(geladen.includes(urls[4]), "standaard wordt naar beneden voorgeladen")
 await scroll(lijst, 80);
 assert.ok(geladen.includes(urls[2]), "omhoog bladeren laadt boven de lijstpositie");
 const track = blokken[3].children[0];
-await scroll(track, 30);
-await scroll(track, 0);
+// Zonder scrollHeight negeert de oude code elke scroll; zo bewijst de test dat hij de richting wél zou omdraaien.
+lijst.scrollHeight = 1000; track.scrollHeight = 300;
 const onafhankelijk = new Knoop("div");
+onafhankelijk.scrollHeight = 500;
+await scroll(track, 0);
+await scroll(track, 30);
+await scroll(track, 60);
+await scroll(onafhankelijk, 0);
 await scroll(onafhankelijk, 50);
 await zichtbaar(6);
+assert.ok(!geladen.includes(urls[7]), "een fotoswipe omlaag draait de richting niet om");
 assert.ok(geladen.includes(urls[3]), "de richting blijft omhoog na een fotoswipe en andere scrolls");
 await scroll(lijst, 120);
 await zichtbaar(4);
