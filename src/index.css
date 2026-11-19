@@ -543,6 +543,8 @@ a.sh-name:hover > span{text-decoration:underline;text-underline-offset:3px}
 .vseg + .chips{margin-top:12px}
 .vthumb.tall{aspect-ratio:4/5}
 .feed-topcol{flex-wrap:wrap}
+.feed-zoek{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:0.8125rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.feed-zoek .textbtn{color:#fff;text-decoration:underline}
 .f-tabs{flex-basis:100%;display:flex;justify-content:center;gap:6px;margin-top:2px}
 .f-tab{position:relative;display:inline-flex;align-items:baseline;gap:5px;height:34px;padding:0 12px;border:0;background:none;color:rgba(255,255,255,.6);font-size:0.9375rem;font-weight:600;letter-spacing:-.005em;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.45);-webkit-tap-highlight-color:transparent}
 .f-tab span{font-size:0.71875rem;font-weight:500;opacity:.7}

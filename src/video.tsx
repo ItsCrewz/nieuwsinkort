@@ -1,5 +1,5 @@
 import { Foutgrens, lazyHerstel } from "./foutgrens";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import type { Soort, Video } from "./types";
 import { BionicText } from "./ui";
 import { Icon } from "./icons";
@@ -125,6 +125,7 @@ export function VideoGrid({
   video,
   onOpen,
   onCloseFeed,
+  zoek,
 }: {
   list: Video[];
   cat: "filmpjes" | "dumpert";
@@ -134,6 +135,7 @@ export function VideoGrid({
   video: string | null;
   onOpen: (slug: string) => void;
   onCloseFeed: () => void;
+  zoek?: ReactNode;
 }) {
   const touch = useTouch();
   useEffect(() => {
@@ -268,6 +270,7 @@ export function VideoGrid({
             cat={cat}
             start={start}
             onClose={onCloseFeed}
+            zoek={zoek}
             groups={groups}
             onGroup={(g) => {
               setBron("alle");

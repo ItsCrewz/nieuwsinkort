@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import React, { createElement, createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server.browser";
 import { scopeTekst, verborgenTekst } from "../src/zoek";
-import { Zoekbalk, ZoekFormulier, ZoekLeeg, focusResultaten } from "../src/zoekbalk";
+import { readFileSync } from "node:fs";
+import { Zoekbalk, ZoekActief, ZoekFormulier, ZoekLeeg, focusResultaten } from "../src/zoekbalk";
 
 const leeg = renderToStaticMarkup(createElement(ZoekLeeg, { query: "niets", onWis: () => {} }));
 assert.match(leeg, /Niets gevonden voor “niets”/);
@@ -140,3 +141,27 @@ try {
   assert.match(html(true), /<option value="koppen" selected="">Alleen koppen<\/option>/);
 }
 console.log("zoekbalk: tests geslaagd");
+// Actieve zoekopdracht in de filmpjesweergave (#1317).
+{
+  const { ZoekActief } = await import("../src/zoekbalk");
+  const actief = renderToStaticMarkup(createElement(ZoekActief, { query: "wolf", onWis: () => {} }));
+  assert.match(actief, /Zoekopdracht “wolf” staat nog aan voor het nieuws; filmpjes worden niet gefilterd/);
+  assert.match(actief, /<button type="button" class="textbtn">Wis zoekopdracht<\/button>/);
+  for (const q of ["", "  ", "!!!"]) assert.equal(renderToStaticMarkup(createElement(ZoekActief, { query: q, onWis: () => {} })), "");
+  let gewist = 0;
+  const el = ZoekActief({ query: "wolf", onWis: () => { gewist++; } }) as any;
+  el.props.children[1].props.onClick();
+  assert.equal(gewist, 1);
+}
+// #1317: op touch bedekt de feed het overzicht; de melding staat dan in de feed zelf (Filmpjes én Dumpert).
+{
+  const feed = readFileSync("src/feed.tsx", "utf8");
+  const video = readFileSync("src/video.tsx", "utf8");
+  const app = readFileSync("src/App.tsx", "utf8");
+  assert.match(feed, /\{zoek\}\s*<\/div>\s*<\/div>\s*<div className="feed-nav"/);
+  assert.match(video, /<Feed[^>]*\n(?:[^\n]*\n)*?\s*zoek=\{zoek\}/);
+  assert.match(app, /zoek=\{<ZoekActief query=\{zoekterm\} onWis=\{\(\) => wijzigZoekterm\(""\)\} klasse="feed-zoek" \/>\}/);
+  const html = renderToStaticMarkup(createElement(ZoekActief, { query: "tekst", onWis: () => {}, klasse: "feed-zoek" }));
+  assert.match(html, /class="feed-zoek"[^>]*role="status"[\s\S]*Wis zoekopdracht/);
+  assert.equal(renderToStaticMarkup(createElement(ZoekActief, { query: " ", onWis: () => {}, klasse: "feed-zoek" })), "");
+}
