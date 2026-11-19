@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { besluit, magStarten, recenteSnelheid, sluit, veegBreedte } from "../src/terugvegen";
+import { besluit, magStarten, recenteSnelheid, eindAfstand, sluit, veegBreedte } from "../src/terugvegen";
 
 const t = (naam: string, fn: () => void) => { fn(); console.log("✓", naam); };
 
@@ -50,6 +50,16 @@ t("terugvegen: snel maar onder FLICK_MIN of stilgehouden vinger sluit niet", () 
   const stil = [{ dx: 0, t: 0 }, { dx: 80, t: 50 }];
   assert.equal(recenteSnelheid(stil, 400), undefined);
   assert.equal(sluit(80, 390, 400, recenteSnelheid(stil, 400)), false);
+});
+
+t("terugvegen: eindAfstand brengt het artikel voorbij de rechterrand", () => {
+  assert.equal(eindAfstand(660, 1000, 170), 830); // gecentreerd artikel
+  assert.equal(eindAfstand(660, 1000, 270, 100), 830); // left bevat de toegepaste dx
+  assert.equal(eindAfstand(400, 400, 0), 400);
+  assert.equal(eindAfstand(300, 1000, undefined), 300);
+  assert.equal(eindAfstand(300, 1000, NaN), 300);
+  assert.equal(eindAfstand(300, NaN, 100), 300);
+  assert.equal(eindAfstand(300, 0, 100), 300);
 });
 
 t("terugvegen: veegBreedte volgt het artikel, met veilige terugval", () => {

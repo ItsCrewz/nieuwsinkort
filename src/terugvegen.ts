@@ -50,6 +50,12 @@ export function veegBreedte(artikel: Element | null, venster: number): number {
   return b === undefined ? venster : ok(venster) ? Math.min(b, venster) : b;
 }
 
+// translateX waarmee het artikel helemaal buiten de rechterrand staat; `left` is de huidige rect.left (incl. de al toegepaste `dx`). Ongeldige invoer: alleen de eigen breedte.
+export function eindAfstand(breed: number, venster: number, left?: number, dx = 0): number {
+  if (typeof left !== "number" || !Number.isFinite(left) || !Number.isFinite(venster) || venster <= 0) return breed;
+  return Math.max(breed, venster - (left - Math.max(0, dx)));
+}
+
 const ROLLEN = ["button", "checkbox", "switch", "tab", "menuitem", "menuitemcheckbox", "menuitemradio", "radio", "slider", "spinbutton", "scrollbar", "combobox", "option", "treeitem"];
 export const NEGEER = ["video", "iframe", "embed", "object", "audio", "input", "textarea", "select", "button", "summary", "[contenteditable]", "[data-geen-veeg]", ...ROLLEN.map((r) => `[role="${r}"]`), '[tabindex]:not([tabindex="-1"])'].join(",");
 
@@ -135,7 +141,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       if (ev.type !== "touchcancel" && !selectie() && sluit(dx, breed, ev.timeStamp - t0, recenteSnelheid(punten, ev.timeStamp))) {
         if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
         stand = "sluit";
-        zet(breed, true);
+        zet(eindAfstand(breed, window.innerWidth, el()?.getBoundingClientRect?.().left, dx), true);
         plan(() => { stand = "uit"; terug.current({ geveegd: true }); klaar(); }, 200);
       } else veer();
     };
