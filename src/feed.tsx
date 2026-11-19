@@ -1566,12 +1566,23 @@ export function Feed({
         ytBlokWis();
       }
     };
+    let startX = 0;
     let startY = 0;
     let gestart = false;
-    const touchStart = (e: TouchEvent) => { aanraking.current = true; startY = e.changedTouches[0]?.clientY ?? 0; gestart = false; };
+    let meervoud = false; // een tweede vinger maakt er geen veeg naar de volgende slide van
+    const touchStart = (e: TouchEvent) => {
+      aanraking.current = true;
+      if (e.touches.length > 1) { meervoud = true; gestart = false; herstel(); return; }
+      meervoud = false;
+      startX = e.touches[0]?.clientX ?? 0;
+      startY = e.touches[0]?.clientY ?? 0;
+      gestart = false;
+    };
     const touchMove = (e: TouchEvent) => {
-      if (gestart) return;
-      const i = swipeDoel(startY, e.changedTouches[0]?.clientY ?? startY, activeRef.current);
+      if (meervoud) return;
+      const t = e.touches[0] ?? e.changedTouches[0];
+      const i = swipeDoel(startX, startY, t?.clientX ?? startX, t?.clientY ?? startY, swipeStart.current?.van ?? activeRef.current);
+      if (gestart) { if (i === null) { gestart = false; herstel(); } return; } // werd alsnog horizontaal of keerde om
       if (i === null) return;
       richting.current = i < activeRef.current ? -1 : 1;
       if (root.current?.querySelector(`.fslide[data-i="${activeRef.current}"] iframe.f-yt`)) return;
@@ -1599,14 +1610,17 @@ export function Feed({
     };
     let herstelTimer: number | undefined;
     const touchEnd = (e: TouchEvent) => {
+      if (e.touches.length > 0) return; // nog een vinger op het scherm
       aanraking.current = false;
-      const doel = swipeDoel(startY, e.changedTouches[0]?.clientY ?? startY, swipeStart.current?.van ?? activeRef.current);
+      const t = e.changedTouches[0];
+      const doel = meervoud ? null : swipeDoel(startX, startY, t?.clientX ?? startX, t?.clientY ?? startY, swipeStart.current?.van ?? activeRef.current);
+      meervoud = false;
       if (doel === null || (swipeStart.current && doel !== swipeStart.current.naar)) herstel();
       if (doel !== null) startDirect(doel);
       window.clearTimeout(herstelTimer);
       herstelTimer = window.setTimeout(herstel, 1500);
     };
-    const touchCancel = () => { aanraking.current = false; herstel(); };
+    const touchCancel = () => { aanraking.current = false; meervoud = false; gestart = false; herstel(); };
     const scrollEnd = () => herstel();
     r.addEventListener("touchstart", touchStart, { passive: true });
     r.addEventListener("touchmove", touchMove, { passive: true });
@@ -1626,7 +1640,7 @@ export function Feed({
       types.forEach((t) => r.removeEventListener(t, onGesture, { capture: true }));
       window.removeEventListener("keydown", onGesture, { capture: true });
     };
-  }, [unmuteNow, startDirect, ytBlokWis]);
+  }, [unmuteNow, startDirect, ytBlokWis, herstel]);
   const toggleMute = useCallback(() => {
     const eerste = !geluidTik() || Date.now() - knopEersteOp.current < 1000;
     knopEersteOp.current = 0;
