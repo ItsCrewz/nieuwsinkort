@@ -1,0 +1,1 @@
+- Delen controleert met `canShare` dezelfde gegevens (titel en url) als aan `share` worden aangeboden, zodat een geweigerde combinatie netjes terugvalt op kopiëren (#1306).
