@@ -22,6 +22,15 @@ const dag = (iso?: string) => {
 const kvOpt = (type: "json" | "text") => ({ type, cacheTtl: 60 });
 // Per isolate: het verwerkte vooraf-antwoord 30 s hergebruiken zolang KV dezelfde tekst geeft (scheelt parse, dagfilter, stringify en SHA-1).
 let voorafGeheugen: { vooraf: string; dag: string; tot: number; body: string; tag: string; eind: number } | undefined;
+// Wachttijden (ms): een promise die nooit afrondt mag het verzoek niet laten hangen; bij een time-out gebruikt de aanroeper zijn terugval.
+export const wacht = { kv: 2500, asset: 4000 };
+/** Wacht hooguit `ms` op `p`; daarna verwerpt het resultaat en wordt een laat antwoord genegeerd. `bijTijd` annuleert waar mogelijk. */
+export function begrens<T>(p: Promise<T>, ms: number, bijTijd?: () => void): Promise<T> {
+  return new Promise<T>((ok, fout) => {
+    const timer = setTimeout(() => { try { bijTijd?.(); } catch { /* annuleren is best effort */ } fout(new Error("time-out")); }, ms);
+    p.then((v) => { clearTimeout(timer); ok(v); }, (e) => { clearTimeout(timer); fout(e); });
+  });
+}
 const HDR = { "X-Content-Type-Options": "nosniff", "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=240", "Access-Control-Allow-Origin": "*" };
 // Gisteren-filmpjes verdwijnen om 10:00: s-maxage + stale-while-revalidate mogen er nooit voorbij lopen (#1047). `eind` = tijdstip van die grens (of Infinity).
 const kopMet = (eind: number) => {
@@ -190,7 +199,7 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   const u = new URL(request.url);
   if (!u.searchParams.has("statisch") && env.NIEUWS) {
     try {
-      const vooraf = await env.NIEUWS.get("data-vooraf", kvOpt("text"));
+      const vooraf = await begrens(env.NIEUWS.get("data-vooraf", kvOpt("text")), wacht.kv);
       if (vooraf && (vooraf.slice(0, 10) === dag() || (ams().h < 6 && vooraf.slice(0, 10) === vorigeDag())) && vooraf[10] === "\n") {
         const einde = vooraf.indexOf("\n", 11);
         if (einde > 11) {
@@ -210,17 +219,20 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
     } catch { console.error("data.json: KV vooraf lezen mislukt"); }
   }
   const assetUrl = new URL("/data.json", u.origin).toString();
-  let stat: Response | undefined;
+  let stat: Response | undefined, ctl: AbortController | undefined;
   for (let poging = 0; poging < 2; poging++) {
-    try { stat = await env.ASSETS.fetch(new Request(assetUrl)); } catch { stat = undefined; }
+    const c = ctl = new AbortController();
+    try { stat = await begrens(env.ASSETS.fetch(new Request(assetUrl, { signal: c.signal })), wacht.asset, () => c.abort()); } catch { stat = undefined; }
     if (stat?.ok) break;
   }
+  // Ook het lezen van de body is begrensd; bij een time-out wordt de aanvraag geannuleerd.
+  const leesAsset = <T,>(r: Promise<T>) => begrens(r, wacht.asset, () => ctl?.abort());
   const onbeschikbaar = () => new Response(JSON.stringify({ fout: "Data tijdelijk niet beschikbaar" }), { status: 503, headers: { ...HDR, "Cache-Control": "no-store", "Retry-After": "60" } });
   const kv = env.NIEUWS;
   if (u.searchParams.has("statisch") || !kv) {
     if (!stat?.ok) return onbeschikbaar();
     try {
-      let body = await stat.text();
+      let body = await leesAsset(stat.text());
       const j = JSON.parse(body), n = normaliseerOptioneel(j);
       if (n !== j) body = JSON.stringify(n);
       return new Response(body, { status: stat.status, headers: { ...HDR, "Cache-Control": "no-cache" } });
@@ -234,10 +246,10 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   const bruikbaarUur = (d: any) => bruikbaar(d) && typeof d.gegenereerd === "string" && !isNaN(Date.parse(d.gegenereerd));
   // Ontbrekende, onleesbare of defecte statische data is geen reden om te falen: dan telt alleen de uurdata.
   let S: any = null;
-  if (stat?.ok) { try { const j = await stat.json(); if (bruikbaar(j)) S = j; } catch { console.error("data.json: statische data onleesbaar"); } }
+  if (stat?.ok) { try { const j = await leesAsset(stat.json()); if (bruikbaar(j)) S = j; } catch { console.error("data.json: statische data onleesbaar"); } }
   else console.error("data.json: statische data niet op te halen");
   let H: any = null;
-  try { const j = await kv.get("uur", kvOpt("json")); if (bruikbaarUur(j)) H = j; } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
+  try { const j = await begrens(kv.get("uur", kvOpt("json")), wacht.kv); if (bruikbaarUur(j)) H = j; } catch { console.error("data.json: KV uur lezen mislukt"); /* KV even niet bereikbaar: statisch */ }
   S = normaliseerOptioneel(S); H = normaliseerOptioneel(H);
   let out: any = S;
   try { out = merge(S, H); } catch {
@@ -253,7 +265,7 @@ export const dagdata = async ({ request, env }: Ctx, video = true): Promise<Resp
   try { out = schoon(out); } catch { console.error("data.json: opschonen mislukt"); /* ongeschoond is beter dan niets */ }
   // vooraf gemaakte video-samenvattingen (uur-Worker): meteen meesturen, dan opent het onderblad direct
   try {
-    const sv: any = video ? await kv.get("sv-klaar", kvOpt("json")) : null;
+    const sv: any = video ? await begrens(kv.get("sv-klaar", kvOpt("json")), wacht.kv) : null;
     if (sv?.klaar) out = { ...out, samenvattingen: sv.klaar };
   } catch { console.error("data.json: KV samenvattingen lezen mislukt"); /* zonder: de knop haalt hem op verzoek op */ }
   const nu2 = Date.now();

@@ -1,0 +1,1 @@
+- Data: de server-side dagdatafallback wacht niet langer onbeperkt op KV of assets; na een korte wachttijd geldt de bestaande terugval of een tijdelijke 503 (#1328).
