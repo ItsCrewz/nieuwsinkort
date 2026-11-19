@@ -36,7 +36,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
+import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, zoekFragment, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
 import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
@@ -300,6 +300,7 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
   const sum = tekst.ai || tekst.samenvatting;
   const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
+  const fragment = zoekterm.trim() ? zoekFragment(item, zoekterm, [item.kop, sum, ...punten]) : null;
   return (
     <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
       <div className="nc-body">
@@ -322,11 +323,17 @@ function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: num
           <ZoekTekst tekst={sum} query={zoekterm} bionic={bionic} />
         </p>
       ) : null}
+      {fragment ? (
+        <p className="nc-zoek">
+          <span className="nc-zoek-l">Gevonden in {fragment.label.toLowerCase()}: </span>
+          {fragment.delen.map((d, k) => d.markeer ? <mark key={k}>{d.tekst}</mark> : d.tekst)}
+        </p>
+      ) : null}
       {punten.length ? (
         <ul className="nc-pts">
           {punten.map((t, k) => (
             <li key={k} className="bn">
-              <BionicText text={t} on={bionic} />
+              {zoekterm.trim() ? <ZoekTekst tekst={t} query={zoekterm} bionic={bionic} /> : <BionicText text={t} on={bionic} />}
             </li>
           ))}
         </ul>

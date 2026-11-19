@@ -315,6 +315,43 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
   return delen;
 }
 
+export type ZoekFragment = { label: string; delen: { tekst: string; markeer: boolean }[] };
+
+// Venster rond de eerste treffer, op woordgrenzen met "…" aan de afgekapte kanten.
+function venster(tekst: string, delen: { tekst: string; markeer: boolean }[], breedte: number): { tekst: string; markeer: boolean }[] {
+  let pos = 0;
+  const eerste = delen.findIndex((d) => d.markeer);
+  for (let i = 0; i < eerste; i++) pos += delen[i].tekst.length;
+  if (tekst.length <= breedte) return delen;
+  let begin = Math.max(0, pos - Math.floor(breedte / 3)), eind = Math.min(tekst.length, begin + breedte);
+  begin = Math.max(0, Math.min(begin, eind - breedte));
+  if (begin > 0) { const sp = tekst.indexOf(" ", begin); if (sp !== -1 && sp < pos) begin = sp + 1; }
+  if (eind < tekst.length) { const sp = tekst.lastIndexOf(" ", eind); if (sp > pos) eind = sp; }
+  const uit: { tekst: string; markeer: boolean }[] = [];
+  let van = 0;
+  for (const d of delen) {
+    const a = Math.max(van, begin), b = Math.min(van + d.tekst.length, eind);
+    if (b > a) uit.push({ tekst: tekst.slice(a, b), markeer: d.markeer });
+    van += d.tekst.length;
+  }
+  if (begin > 0 && uit.length) uit[0] = { ...uit[0], tekst: "…" + uit[0].tekst };
+  if (eind < tekst.length && uit.length) uit[uit.length - 1] = { ...uit[uit.length - 1], tekst: uit[uit.length - 1].tekst + "…" };
+  return uit;
+}
+
+// Waar de treffer staat als de kaart die tekst niet toont (#1313). `zichtbaar`: teksten die de kaart al toont en markeert; heeft een daarvan een treffer, dan is een fragment overbodig.
+export function zoekFragment(item: Item, query: string, zichtbaar: (string | undefined)[] = [item.kop, item.ai || item.samenvatting], breedte = 120): ZoekFragment | null {
+  if (!query.trim()) return null;
+  if (zichtbaar.some((t) => t && markeerDelen(t, query).some((d) => d.markeer))) return null;
+  const kandidaten: [string, string | undefined][] = [["Samenvatting", item.samenvatting], ["Samenvatting", item.ai], ...(item.punten ?? []).map((p): [string, string] => ["Punt", p]), ...(item.bronnen ?? []).map((b): [string, string | undefined] => ["Bron", b.site])];
+  for (const [label, tekst] of kandidaten) {
+    if (!tekst) continue;
+    const delen = markeerDelen(tekst, query);
+    if (delen.some((d) => d.markeer)) return { label, delen: venster(tekst, delen, breedte) };
+  }
+  return null;
+}
+
 export function leesZoekterm(zoek: string): string {
   return begrensZoekterm(new URLSearchParams(zoek).get("q") ?? "");
 }
