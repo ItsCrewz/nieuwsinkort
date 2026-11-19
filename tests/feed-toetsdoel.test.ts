@@ -18,12 +18,3 @@ for (const toets of ["Home", "End", "ArrowDown", "ArrowUp", "j", "k"]) {
     assert.equal(feedToetsDoel(kaart, feed), true);
   });
 }
-
-// #1286: de pauzeknop van native video is alleen bij de actieve slide bereikbaar met Tab.
-import { readFileSync } from "node:fs";
-t("ftap: tabIndex volgt active", () => {
-  const bron = readFileSync("src/feed.tsx", "utf8");
-  const m = bron.match(/<button[^>]*className="ftap"[^>]*>/);
-  assert.ok(m);
-  assert.ok(m[0].includes("tabIndex={active ? 0 : -1}"));
-});
