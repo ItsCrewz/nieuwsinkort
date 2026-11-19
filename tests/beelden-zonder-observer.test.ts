@@ -37,13 +37,15 @@ class NodeMock {
   contains(n: NodeMock | null): boolean { return !!n && (n === this || this.children.some((c) => c.contains(n))); }
   // Kaart k staat op k * KAART, min de scrollstand; kaarten zijn directe kinderen van de container.
   getBoundingClientRect() {
-    let n: NodeMock = this;
-    while (n.parentNode && n.parentNode !== container) n = n.parentNode;
-    const top = (n.parentNode ? container.children.indexOf(n) : 0) * KAART - scrollY;
-    return { top, bottom: top + KAART, left: 0, right: 300, width: 300, height: KAART };
+    return kaartRect(this);
   }
   get classList() { return { add() {} }; }
 }
+const kaartRect = (n: NodeMock) => {
+  while (n.parentNode && n.parentNode !== container) n = n.parentNode;
+  const top = (n.parentNode ? container.children.indexOf(n) : 0) * KAART - scrollY;
+  return { top, bottom: top + KAART, left: 0, right: 300, width: 300, height: KAART };
+};
 const doc: any = { activeElement: null, addEventListener() {}, removeEventListener() {}, createElement: (naam: string) => new NodeMock(naam, doc), createTextNode: (tekst: string) => { const n = new NodeMock("#text", doc, 3); n.textContent = tekst; return n; } };
 const actief = new Set<string>();
 const ids = new WeakMap<object, number>();
