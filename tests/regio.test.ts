@@ -37,7 +37,7 @@ t("NL-anker wint van buitenlandse bronnen", () => {
 });
 t("NL-anker herkend bij kleine letters, hoofdletters en gemengde schrijfwijze (#1330)", () => {
   const buiten = [b("https://a.nl/buitenland/1")];
-  for (const nl of ["Nederland", "nederland", "NEDERLAND", "nEdErLaNd", "amsterdamse", "KABINET", "den haag", "Knmi"]) {
+  for (const nl of ["Nederland", "nederland", "NEDERLAND", "nEdErLaNd", "amsterdamse", "KABINET", "den haag", "Knmi", "NS", "ns", "Ns"]) {
     assert.equal(isBuitenland({ kop: `Duitsland en ${nl} sluiten akkoord`, ai: "" }), false, nl);
     assert.equal(isBuitenland({ kop: `Duitsland en ${nl} sluiten akkoord`, ai: "", bronnen: buiten }), false, nl);
   }
@@ -46,15 +46,15 @@ t("NL-anker herkend bij kleine letters, hoofdletters en gemengde schrijfwijze (#
   assert.equal(isBuitenland({ kop: "Duitsland sluit akkoord", ai: "", bronnen: [b("https://a.nl/binnenland/1")] }), false);
   assert.equal(isBuitenland({ kop: "Akkoord", ai: "het kabinet en duitsland praten" }), false);
 });
-t("NL-anker: eigen woordgrenzen en NS alleen in hoofdletters (#1330)", () => {
+t("NL-anker: eigen woordgrenzen en NS ongeacht hoofdletters (#1330)", () => {
   // Een deel van een langer woord is geen anker.
   assert.equal(isBuitenland({ kop: "Duitsland: transnederlandse route", ai: "" }), true);
   assert.equal(isBuitenland({ kop: "Duitsland en de Nederlandën", ai: "" }), false);
-  // "ns" is een gewoon woord, "NS" het spoorbedrijf.
-  assert.equal(isBuitenland({ kop: "Duitsland: ns staat voor niets", ai: "" }), true);
   assert.equal(isBuitenland({ kop: "Duitsland en NS bouwen samen een trein", ai: "" }), false);
   assert.equal(heeftNlAnker("de NS rijdt"), true);
-  assert.equal(heeftNlAnker("de ns rijdt"), false);
+  assert.equal(heeftNlAnker("de ns rijdt"), true);
+  assert.equal(heeftNlAnker("de Ns rijdt"), true);
+  assert.equal(heeftNlAnker("transns"), false);
   assert.equal(heeftNlAnker("amsterdam"), true);
 });
 t("sport (neutraal) beslist niet op landnaam", () => {

@@ -18,10 +18,8 @@ export const BUITEN_WOORD = { test: (t: string) => BUITEN_ONGEVOELIG.test(t) || 
 // een Amerikaanse staat of de Verenigde Staten niet. Alleen VS, geen andere landen, wereldsteden of bijvoeglijke naamwoorden ("Amerikaanse investeerder").
 export const BUITEN_LOCATIE =/\b(Verenigde Staten|Amerikaanse staat|Florida|Californi(?:ë|e)|Texas|Louisiana|Alabama|Arizona|Nevada|Ohio|Oklahoma|Minnesota|Michigan|Tennessee|Hawaii|Los Angeles|Chicago|Miami|Las Vegas|New York)(?![\p{L}\d])/iu;
 // Hoofdletterongevoelig (#1330): een feed die "nederland" schrijft telt gelijk. Echte woordgrenzen (ook voor ë/é), zodat een deel van een langer woord geen anker is.
-const NL_ANKER = /(?<![\p{L}\d])(Nederland\p{L}*|Nederlander\p{L}*|Nederlandse?|kabinet|Tweede Kamer|Eerste Kamer|Den Haag|Haagse|Amsterdam\p{L}*|Rotterdam\p{L}*|Utrecht\p{L}*|Eindhoven|Groningen|Haarlem|Jetten|KNMI|ProRail|Rijkswaterstaat|Wekdienst|Schiphol)(?![\p{L}\d])/iu;
-// "NS" blijft hoofdlettergevoelig: het woord "ns" is geen spoorbedrijf.
-const NL_ANKER_NS = /(?<![\p{L}\d])NS(?![\p{L}\d])/u;
-const nlAnker = (tekst: string) => NL_ANKER.test(tekst) || NL_ANKER_NS.test(tekst);
+const NL_ANKER = /(?<![\p{L}\d])(Nederland\p{L}*|Nederlander\p{L}*|Nederlandse?|kabinet|Tweede Kamer|Eerste Kamer|Den Haag|Haagse|Amsterdam\p{L}*|Rotterdam\p{L}*|Utrecht\p{L}*|Eindhoven|Groningen|Haarlem|Jetten|KNMI|ProRail|Rijkswaterstaat|Wekdienst|Schiphol|NS)(?![\p{L}\d])/iu;
+const nlAnker = (tekst: string) => NL_ANKER.test(tekst);
 // Ook gebruikt door het regiofilter (filters.tsx), zodat filter en indeling dezelfde afweging maken.
 export const heeftNlAnker = nlAnker;
 
