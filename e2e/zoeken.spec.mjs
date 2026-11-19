@@ -279,3 +279,24 @@ test("terug uit een zoekresultaat herstelt de scrollpositie", async ({ page }) =
   await expect(resultaten.nth(2)).toHaveText(titel);
   await expect.poll(async () => Math.abs((await scroll()) - voor)).toBeLessThan(5);
 });
+
+test("terug naar zoekveld behoudt de zoekterm en de zoekknop sluit", async ({ page }) => {
+  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (route) => route.abort());
+  await page.goto("#/");
+  const knop = page.getByRole("button", { name: "Zoeken", exact: true });
+  const terug = page.getByRole("button", { name: "Terug naar zoekveld" });
+  const invoer = page.getByRole("searchbox", { name: "Zoek in het nieuws" });
+  await expect(terug).toHaveCount(0);
+  await knop.click();
+  await invoer.fill("nieuws");
+  await page.getByLabel("Vind één van de zoektermen (OF)").check();
+  await terug.click();
+  await expect(invoer).toBeFocused();
+  await expect(invoer).toHaveValue("nieuws");
+  await expect(page.getByLabel("Vind één van de zoektermen (OF)")).toBeChecked();
+  await knop.click();
+  await expect(invoer).toBeHidden();
+  await expect(knop).toHaveAttribute("aria-expanded", "false");
+  await knop.click();
+  await expect(invoer).toHaveValue("");
+});

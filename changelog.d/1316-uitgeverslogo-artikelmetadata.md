@@ -1,0 +1,1 @@
+- Test dat de artikel-JSON-LD het uitgeverslogo, de uitgevers-URL en noindex voor ruwe artikelen bewaakt (#1316).

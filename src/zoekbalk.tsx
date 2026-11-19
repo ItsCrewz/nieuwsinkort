@@ -55,7 +55,7 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope, alleenKoppen 
     return () => document.removeEventListener("keydown", toets);
   }, [open, sluit]);
   // Buiten .shell renderen (container-type:inline-size), anders scrolt de vaste knop mee, net als de deelknop.
-  const knopEl = <button ref={knop} type="button" className="zoek-knop" aria-expanded={open} {...(open ? { "aria-controls": formId } : {})} aria-label="Zoeken" title="Zoeken" onClick={() => { if (open) sluit(); else { focusBijOpenen.current = true; setOpen(true); } }}><Icon name="search" /></button>;
+  const knopEl = <><button ref={knop} type="button" className="zoek-knop" aria-expanded={open} {...(open ? { "aria-controls": formId } : {})} aria-label="Zoeken" title="Zoeken" onClick={() => { if (open) sluit(); else { focusBijOpenen.current = true; setOpen(true); } }}><Icon name="search" /></button>{open && !!query.trim() && <button type="button" className="zoek-terug" onClick={() => invoer.current?.focus()}>Terug naar zoekveld</button>}</>;
   return (
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}

@@ -1,0 +1,1 @@
+- Test dat gelijktijdige `/meer`-verzoeken voor verschillende sleutels één KV-lezing delen en elk alleen hun eigen verdieping krijgen (#1327).
