@@ -5,7 +5,10 @@
 
 const LOGO = /(?:^|[^\p{L}\p{N}])logo(?:s|type|\d+)?(?=$|[^\p{L}\p{N}])|\/(?!catalogo\.)[^/?#]*logo(?=\.[^/?#]+(?:[?#]|$))/iu;
 const MERK = /(?:^|[/_.-])brand[-_]?(?:logo|mark|asset|kit|watermark)(?=$|[/_.?#-])|\/brands?\//i;
-const SKIP = /placeholder|default[-_.]|fallback|avatar|favicon|icon[-_.]|sprite|blank|spacer|pixel|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
+const SKIP = /placeholder|default[-_.]|fallback|favicon|icon[-_.]|sprite|blank|spacer|pixel|no[-_]?image|og[-_]default|share[-_]default|badge|emoji|gravatar|\.svg(\?|$)|\.gif(\?|$)|feeds\.feedburner|doubleclick|tracking/i;
+// Profielavatar alleen op aantoonbare kenmerken (hostlabel, padsegment, kale bestandsnaam met id/maat, profiel-prefix, ?avatar=);
+// 'avatar-fire-and-ash-trailer-1200x675.jpg' is een nieuwsfoto en blijft staan (#1280).
+const AVATAR = /^https?:\/\/(?:[^/?#]*\.)?avatars?\.|\/avatars?\/|\/(?:[^/?#]*[-_.](?:user|default|profile|member|author|account|comment))?[-_.]?avatars?(?:[-_.]?\d+(?:x\d+)?)?\.[a-z0-9]+$|\/(?:user|default|profile|member|author|account|comment)[-_.]avatars?(?![\p{L}])/iu;
 
 /** Effectieve breedte: alleen imgix (*.imgix.net) levert w × dpr pixels (dpr 1–5). De bonus geldt alleen bij precies één w/width-parameter,
  *  zonder andere breedteparameters (resize, imwidth, im_w) en zonder beperkende parameters (fit, hoogte, ar, max/min, rect, crop):
@@ -45,7 +48,7 @@ export function goedBeeld(u?: string | null): u is string {
   if (!u || typeof u !== "string" || !/^https?:\/\//i.test(u) || u.length > 1200) return false;
   if (/youtube\.com\/(v|embed|watch)\b|youtu\.be\//i.test(u)) return false; // video-link, geen foto
   const hostEnPad = u.split(/[?#]/, 1)[0];
-  return !LOGO.test(hostEnPad) && !MERK.test(hostEnPad) && !SKIP.test(hostEnPad) && !tooSmall(u);
+  return !LOGO.test(hostEnPad) && !MERK.test(hostEnPad) && !SKIP.test(hostEnPad) && !AVATAR.test(hostEnPad) && !/[?&]avatars?=/i.test(u.split("#", 1)[0]) && !tooSmall(u);
 }
 
 /** Mapsegment dat alleen een maat/transformatie is ('1200x675', 'w800', '640', 's640-c', 'w_800,h_450,c_fill', 'large'): hoort niet bij de identiteit.

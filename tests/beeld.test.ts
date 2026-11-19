@@ -31,6 +31,24 @@ t("small als onderwerp blijft bruikbaar, als maatsuffix niet (#1164)", () => {
   assert.equal(goedBeeld("https://example.org/news/report-small.jpg?v=1"), false);
 });
 
+t("avatar als onderwerp blijft bruikbaar, profielavatars niet (#1280)", () => {
+  for (const url of [
+    "https://nieuws.nl/media/avatar-fire-and-ash-trailer-1200x675.jpg",
+    "https://nieuws.nl/2025/12/nieuwe-avatar-film-recensie.jpg",
+    "https://nieuws.nl/avatar-the-way-of-water.webp",
+  ]) assert.equal(goedBeeld(url), true, url);
+  for (const url of [
+    "https://avatars.githubusercontent.com/u/1234.jpg",
+    "https://nieuws.nl/avatars/42/foto.jpg",
+    "https://nieuws.nl/uploads/avatar.png",
+    "https://nieuws.nl/uploads/avatar_42.jpg",
+    "https://nieuws.nl/img/user-avatar.jpg",
+    "https://nieuws.nl/img/default-avatar.jpg",
+    "https://nieuws.nl/foto.jpg?avatar=1",
+    "https://nieuws.nl/gravatar/abc.jpg",
+  ]) assert.equal(goedBeeld(url), false, url);
+});
+
 t("beeldKey herkent varianten van hetzelfde beeld", () => {
   assert.equal(
     beeldKey("https://cdn1.voorbeeld.nl/foto-1200x675.jpg?quality=80"),
