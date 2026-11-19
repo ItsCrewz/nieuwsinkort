@@ -233,10 +233,10 @@ function fitCard(el: HTMLElement) {
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
 // De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
-const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
-  const key = itemKey(item);
+export const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
+  const pad = artikelId(item) || itemKey(item);
   return (
-    <div className={`nc cat-${item.cat}`} data-id={key} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
+    <div className={`nc cat-${item.cat}`} data-id={pad} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
       {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} />}
     </div>
   );
@@ -363,7 +363,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ids = sorted.map(itemKey);
+    const ids = sorted.map((item) => artikelId(item) || itemKey(item));
     const oud = positie.current;
     if (oud) {
       const herstel = herstelNieuwspositie(oud, ids);
@@ -380,7 +380,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
     bewaarNieuwspositie(tab, positie.current);
   }, [nieuwsdata, tab]);
   // Alleen de eerste kaarten + een venster rond de huidige positie krijgen inhoud (DOM 7600 -> ~1500 elementen); lege kaarten houden dezelfde hoogte.
-  const focusIdx = focusKey ? sorted.findIndex((x) => itemKey(x) === focusKey) : -1;
+  const focusIdx = focusKey ? sorted.findIndex((x) => (artikelId(x) || itemKey(x)) === focusKey) : -1;
   const mountRef = useRef(0);
   mountRef.current = Math.max(mountRef.current, Math.min(total, Math.max(KAARTEN_VOORAF, idx + 1 + KAARTEN_VOORUIT, focusIdx + 1 + KAARTEN_VOORUIT)));
   const mount = mountRef.current;

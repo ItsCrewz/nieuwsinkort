@@ -7,7 +7,7 @@ import type { Item } from "../src/types";
 
 const t = (name: string, fn: () => void) => { fn(); console.log("ok", name); };
 zetNepDom({});
-const { KaartInhoud } = await import("../src/App");
+const { KaartInhoud, NewsCard } = await import("../src/App");
 const { itemKey } = await import("../src/nieuws-hulp");
 const { artikelId } = await import("../src/artikelid");
 const item = (kop: string, n: number): Item => ({
@@ -46,4 +46,14 @@ t("na nieuwe data volgt de naam de nieuwe kop", () => {
   const na = leesverder(render(item("Nieuwe kop & meer", 1)))[0];
   assert.match(voor, /Lees verder: Oude kop"/);
   assert.match(na, /Lees verder: Nieuwe kop &amp; meer"/);
+});
+
+t("kaart-id komt overeen met de bestemming voor focusherstel", () => {
+  for (const a of [item("Dubbele kop", 1), item("Dubbele kop", 2), { ...item("Zonder bron", 3), bronnen: [] }]) {
+    const html = renderToStaticMarkup(createElement(NewsCard, { item: a, i: 0, total: 1, bionic: false, onOpen: () => {}, zoekterm: "" }));
+    const kaartId = html.match(/data-id="([^"]+)"/)?.[1];
+    const bestemming = leesverder(html)[0].match(/href="#\/bericht\/([^"]+)"/)?.[1];
+    assert.ok(kaartId);
+    assert.equal(kaartId, bestemming);
+  }
 });
