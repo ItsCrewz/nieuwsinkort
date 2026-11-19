@@ -42,10 +42,10 @@ export function sluit(dx: number, breedte: number, ms: number, recent?: { dx: nu
   return recent ? recent.ms > 0 && recent.dx / recent.ms >= FLICK : ms > 0 && dx / ms >= FLICK;
 }
 
-const ROLLEN = ["button", "checkbox", "switch", "tab", "menuitem", "menuitemcheckbox", "menuitemradio", "radio", "slider", "spinbutton", "scrollbar", "combobox", "option", "treeitem"];
-export const NEGEER = ["video", "iframe", "embed", "object", "audio", "input", "textarea", "select", "button", "summary", "[contenteditable]", "[data-geen-veeg]", ...ROLLEN.map((r) => `[role="${r}"]`), '[tabindex]:not([tabindex="-1"])'].join(",");
+const ROLLEN = ["button", "link", "checkbox", "switch", "tab", "menuitem", "menuitemcheckbox", "menuitemradio", "radio", "slider", "spinbutton", "scrollbar", "combobox", "option", "treeitem"];
+export const NEGEER = ["video", "iframe", "embed", "object", "audio", "input", "textarea", "select", "button", "a[href]", "summary", "[contenteditable]", "[data-geen-veeg]", ...ROLLEN.map((r) => `[role="${r}"]`), '[tabindex]:not([tabindex="-1"])'].join(",");
 
-// Video, embeds, invoer, knoppen, aangepaste bediening (ARIA-rol of focusbaar via tabindex) en horizontaal scrollbare elementen (binnen het artikel) blijven van zichzelf.
+// Video, embeds, invoer, knoppen, links, aangepaste bediening (ARIA-rol of focusbaar via tabindex) en horizontaal scrollbare elementen (binnen het artikel) blijven van zichzelf.
 export function negeerDoel(el: Element | null, grens: Element | null = null): boolean {
   for (let e = el; e && e !== grens; e = e.parentElement) {
     if (e.matches(NEGEER)) return true;
