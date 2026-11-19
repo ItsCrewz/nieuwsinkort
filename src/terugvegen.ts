@@ -42,6 +42,14 @@ export function sluit(dx: number, breedte: number, ms: number, recent?: { dx: nu
   return recent ? recent.ms > 0 && recent.dx / recent.ms >= FLICK : ms > 0 && dx / ms >= FLICK;
 }
 
+// Zichtbare breedte van het artikel (translateX verandert die niet); terugval op venster bij nul, NaN of ontbrekende afmetingen; nooit breder dan het venster.
+export function veegBreedte(artikel: Element | null, venster: number): number {
+  const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
+  const e = artikel as (Element & { offsetWidth?: number }) | null;
+  const b = [e?.getBoundingClientRect?.().width, e?.clientWidth, e?.offsetWidth].find(ok);
+  return b === undefined ? venster : ok(venster) ? Math.min(b, venster) : b;
+}
+
 const ROLLEN = ["button", "checkbox", "switch", "tab", "menuitem", "menuitemcheckbox", "menuitemradio", "radio", "slider", "spinbutton", "scrollbar", "combobox", "option", "treeitem"];
 export const NEGEER = ["video", "iframe", "embed", "object", "audio", "input", "textarea", "select", "button", "summary", "[contenteditable]", "[data-geen-veeg]", ...ROLLEN.map((r) => `[role="${r}"]`), '[tabindex]:not([tabindex="-1"])'].join(",");
 
@@ -123,7 +131,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       if (was === "sluit") return;
       stand = "uit";
       if (was !== "veeg") return;
-      const breed = window.innerWidth;
+      const breed = veegBreedte(el(), window.innerWidth);
       if (ev.type !== "touchcancel" && !selectie() && sluit(dx, breed, ev.timeStamp - t0, recenteSnelheid(punten, ev.timeStamp))) {
         if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
         stand = "sluit";
