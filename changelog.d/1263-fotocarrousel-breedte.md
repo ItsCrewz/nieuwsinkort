@@ -1,0 +1,1 @@
+- De fotocarrousel behoudt de gekozen foto bij een wijzigende schermbreedte (#1263).

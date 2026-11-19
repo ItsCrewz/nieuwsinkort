@@ -142,3 +142,52 @@ t("opruimen gebeurt hooguit één keer", () => {
   pool.geefVrij(2, g, () => {});
   assert.equal(n, 1);
 });
+
+t("gooiende destroy: pauze, src weg en load worden toch uitgevoerd", () => {
+  const log: string[] = [];
+  const el = maakEls(log)[0];
+  el.setSrc("x");
+  log.length = 0;
+  maakBronvrij(el, { destroy() { log.push("destroy"); throw new Error("stuk"); } });
+  assert.deepEqual(log, ["0:pause", "destroy", "0:rm-src", "0:load"]);
+  assert.equal(el.src, null);
+});
+
+t("gooiende pause, removeAttribute of load stopt de overige stappen niet", () => {
+  for (const stuk of ["pause", "removeAttribute", "load"] as const) {
+    const log: string[] = [];
+    const el = maakEls(log)[1];
+    (el as any)[stuk] = () => { log.push(`${stuk}!`); throw new Error("stuk"); };
+    maakBronvrij(el, { destroy() { log.push("destroy"); } });
+    for (const [stap, teken] of [["pause", "pause"], ["removeAttribute", "rm-src"], ["load", "load"]])
+      assert.ok(log.some((l) => l === `${stap}!` || l.endsWith(`:${teken}`)), `${stuk}: ${stap}`);
+    assert.ok(log.includes("destroy"));
+  }
+});
+
+t("slot is na een gooiende destroy opnieuw te claimen en te gebruiken", () => {
+  const pool = new PoolEigenaars();
+  const el = maakEls([])[2];
+  const g = pool.claim(2);
+  pool.zetOpruim(2, g, () => maakBronvrij(el, { destroy() { throw new Error("stuk"); } }));
+  el.setSrc("oud");
+  const nieuw = pool.claim(2);
+  assert.equal(el.src, null);
+  assert.equal(pool.actueel(2, nieuw), true);
+  el.setSrc("nieuw");
+  assert.equal(el.src, "nieuw");
+});
+
+t("een defecte speler houdt het opruimen van de andere poolspelers niet tegen", () => {
+  const log: string[] = [];
+  const els = maakEls(log);
+  const pool = new PoolEigenaars();
+  els.forEach((el, slot) => {
+    const g = pool.claim(slot);
+    el.setSrc("s");
+    pool.zetOpruim(slot, g, () => maakBronvrij(el, slot === 1 ? { destroy() { throw new Error("stuk"); } } : { destroy() {} }));
+  });
+  els.forEach((_, slot) => pool.claim(slot));
+  assert.deepEqual(els.map((e) => e.src), [null, null, null]);
+  assert.equal(log.filter((l) => l.endsWith(":load")).length, 3);
+});

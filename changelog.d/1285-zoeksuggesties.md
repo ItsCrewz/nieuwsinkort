@@ -1,0 +1,1 @@
+- Toon bij een tikfout zonder resultaten maximaal drie zoeksuggesties uit zichtbare berichtkoppen (#1285).

@@ -1,0 +1,1 @@
+- Filmpjes: de pauzeknop van de actieve native video is nu met Tab te bereiken en met Enter of spatie te bedienen, met zichtbare focusring (#1286).

@@ -81,6 +81,13 @@ try {
   assert.ok(veld, "fallback opent na mislukt delen");
   assert.equal(doc.activeElement, veld, "focus staat in de invoer");
   assert.equal(veld.geselecteerd, 1, "link is geselecteerd");
+  const props = (veld as any)[Object.keys(veld).find((x) => x.startsWith("__reactProps$"))!];
+  assert.equal(props.readOnly, true, "invoer is alleen-lezen");
+  assert.match(String(props.value), /^https?:\/\//, "invoer bevat de deellink");
+  assert.equal(props["aria-describedby"], "deel-instructie");
+  const tekst = zoek((k) => k.attrs.id === "deel-instructie")!.inhoud();
+  assert.ok(tekst.startsWith("Kopieer handmatig met Ctrl+C of Command+C."), "instructietekst");
+  assert.ok(tekst.includes("tot 06.00 uur Nederlandse tijd"), "geldigheid vermeld");
 
   // 2. Tab naar een ander element en een hertekening met dezelfde url (nieuw item-object): focus en selectie blijven.
   const volgend = new Knoop("BUTTON");

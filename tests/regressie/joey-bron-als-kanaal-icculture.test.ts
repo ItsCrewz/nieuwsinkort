@@ -60,6 +60,13 @@ await t("stripBronvermelding: eindvermelding en 'via' eruit; toeschrijving aan h
   assert.ok(heeftBronvermelding(fx.item.ai, sites));
 });
 
+await t("een inhoudelijke prijsclaim behoudt de bronvermelding (#1244); verkoop, ontkenning en kijkverwijzing als voorheen", () => {
+  assert.equal(stripBronvermelding("De prijs stijgt via NOS.", ["NOS"]), "De prijs stijgt via NOS.");
+  assert.equal(stripBronvermelding("Het product is te koop via NOS.", ["NOS"]), "Het product is te koop.");
+  assert.equal(stripBronvermelding("Het product is niet te koop via NOS.", ["NOS"]), "Het product is niet te koop via NOS.");
+  assert.equal(stripBronvermelding("De wedstrijd is te zien via NOS.", ["NOS"]), "De wedstrijd is te zien via NOS.");
+});
+
 await t("AI-uitleg onder Uitgebreid: 'Je kunt deze kopen via iCulture' blijft in de data, maar de client toont het niet (zie detail.tsx)", () => {
   assert.ok(fx.meer.uitleg!.join(" ").includes("via iCulture"));
   const uit = uitgebreidOntdubbeld(fx.item, { uitleg: fx.meer.uitleg!.map((p) => stripBronvermelding(p, ["iCulture"])) }).uitgebreid.join(" ");

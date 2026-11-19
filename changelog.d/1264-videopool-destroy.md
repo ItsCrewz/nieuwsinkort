@@ -1,0 +1,1 @@
+- Videopool: ruim een speler ook op als het opruimen van hls.js faalt; pauzeren, src verwijderen en load() worden elk apart geprobeerd (#1264).
