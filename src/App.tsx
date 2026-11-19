@@ -36,7 +36,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie } from "./zoek";
+import { zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
 import { Zoekbalk, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
@@ -775,6 +775,7 @@ export default function App() {
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
+  const [zoekmodus, setZoekmodus] = useState<Zoekmodus>("alle");
   const [zoekterm, setZoekterm] = useState(() => leesZoekterm(window.location.search));
   const [zoekAllesSelectie, setZoekAllesSelectie] = useState<Zoekselectie | null>(null);
   const zoekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -937,11 +938,11 @@ export default function App() {
   const zoekBasis = isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [];
   const zoekFilter = isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null;
   // Koptreffers eerst (#1010); bij sortering "nieuw" eerst op tijd, want NewsFeed sorteert dan niet meer zelf.
-  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm), zoekterm) : [];
+  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm, zoekmodus), zoekterm, zoekmodus) : [];
   // Zonder tijd-, regio-, video- en samengevoegd-filter: wat de filters aan treffers verbergen (#613).
   const zoekBeperkt = !!zoekFilter && (zoekFilter.tijd !== "alles" || flt.f.video || flt.f.samen || flt.f.regio.length > 0);
   const wisZoekFilters = () => flt.set({ tijd: "alles", video: false, samen: false, regio: [] });
-  const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm).length - zoekUitkomst.length) : 0;
+  const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm, zoekmodus).length - zoekUitkomst.length) : 0;
   const zoekScope: ZoekScope | undefined = zoekFilter ? {
     tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video- en samenvoegfilters zijn verruimd. Het bronfilter blijft actief." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
     verborgen: zoekVerborgen,
@@ -950,7 +951,7 @@ export default function App() {
   } : undefined;
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk modus={zoekmodus} onModus={setZoekmodus} query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET"><Suspense fallback={null}>

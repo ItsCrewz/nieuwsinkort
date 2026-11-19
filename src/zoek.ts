@@ -184,7 +184,9 @@ function termenVan(query: string): string[][] {
   return termen;
 }
 
-export function zoekItems(items: Item[], query: string): Item[] {
+export type Zoekmodus = "alle" | "of";
+
+export function zoekItems(items: Item[], query: string, modus: Zoekmodus = "alle"): Item[] {
   query = zonderOnzichtbaar(begrensZoekterm(query));
   const kloktijd = query.trim();
   if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(kloktijd)) return items.filter((item) => item.tijd === kloktijd);
@@ -197,7 +199,7 @@ export function zoekItems(items: Item[], query: string): Item[] {
     if (min.some((delen) => kandidaten(delen, woorden, lijm).length)) return false;
     // Woordbegin: elke term moet op een eigen woord (of eigen reeks) vallen ("mark markt" vraagt twee woorden).
     const kand = termen.map((delen) => kandidaten(delen, woorden, lijm));
-    return kand.every((k) => k.length) && alleTermenPassen(kand, woorden.length);
+    return modus === "of" && kand.length ? kand.some((k) => k.length > 0) : kand.every((k) => k.length) && alleTermenPassen(kand, woorden.length);
   });
 }
 
@@ -210,9 +212,9 @@ const alleenKop = (item: Item): Item => {
 };
 
 // Koptreffers vóór treffers alleen in de tekst; binnen elke groep blijft de volgorde van de invoer (stabiel).
-export function rangschikKoptreffers(items: Item[], query: string): Item[] {
+export function rangschikKoptreffers(items: Item[], query: string, modus: Zoekmodus = "alle"): Item[] {
   if (!query.trim() || items.length < 2) return items;
-  const kop = new Set(zoekItems(items.map(alleenKop), query));
+  const kop = new Set(zoekItems(items.map(alleenKop), query, modus));
   const voor: Item[] = [], rest: Item[] = [];
   for (const item of items) (kop.has(alleenKop(item)) ? voor : rest).push(item);
   return voor.length && rest.length ? [...voor, ...rest] : items;
