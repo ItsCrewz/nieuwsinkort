@@ -165,3 +165,18 @@ console.log("zoekbalk: tests geslaagd");
   assert.match(html, /class="feed-zoek"[^>]*role="status"[\s\S]*Wis zoekopdracht/);
   assert.equal(renderToStaticMarkup(createElement(ZoekActief, { query: " ", onWis: () => {}, klasse: "feed-zoek" })), "");
 }
+
+// Bronkeuze (#1364): lijst, wisknop, melding bij uitgezette bron en lege uitkomst.
+{
+  const bron = { opties: [{ sleutel: "nl|nos", label: "NOS", aantal: 3 }], gekozen: "nl|nos", label: "NOS", onKies: () => {} };
+  const balk = renderToStaticMarkup(createElement(Zoekbalk, { query: "x", onChange: () => {}, aantal: 0, invoer: createRef<HTMLInputElement>(), scope: { tekst: "Zoekt in Home", verborgen: 0, bron } }));
+  assert.match(balk, /<option value="">Alle bronnen<\/option><option value="nl\|nos" selected="">NOS \(3\)<\/option>/);
+  assert.match(balk, /Wis bronkeuze/);
+  const uit = renderToStaticMarkup(createElement(Zoekbalk, { query: "x", onChange: () => {}, aantal: 2, invoer: createRef<HTMLInputElement>(), scope: { tekst: "Zoekt in Home", verborgen: 0, bron: { ...bron, gekozen: "", label: undefined, gewist: "NOS" } } }));
+  assert.match(uit, /Bron NOS is uitgezet; er wordt nu in alle bronnen gezocht/);
+  assert.doesNotMatch(uit, /Wis bronkeuze/);
+  const leegBron = renderToStaticMarkup(createElement(ZoekLeeg, { query: "x", bron: "NOS", onWisBron: () => {}, onWis: () => {} }));
+  assert.match(leegBron, /Niets gevonden voor “x” in bron NOS/);
+  assert.match(leegBron, /Wis bronkeuze en zoek opnieuw/);
+  assert.doesNotMatch(renderToStaticMarkup(createElement(ZoekLeeg, { query: "x", onWis: () => {} })), /in bron/);
+}

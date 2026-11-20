@@ -2,13 +2,14 @@ import { Icon } from "./icons";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { staatFocusInInvoer } from "./zoekfocus";
-import { begrensZoekterm, MAX_ZOEKTEKENS, normaliseer, resultaatTekst, verborgenTekst, type Zoekmodus } from "./zoek";
+import { begrensZoekterm, type BronOptie, MAX_ZOEKTEKENS, normaliseer, resultaatTekst, verborgenTekst, type Zoekmodus } from "./zoek";
 import { touchNu } from "./invoer";
 
 const zoekAanwijzing = "Voer letters of cijfers in om te zoeken.";
 
 // scope: zichtbare zoekscope; verborgen: treffers die filters wegnemen; wisFilters alleen als er beperkende filters zijn.
-export type ZoekScope = { tekst: string; verborgen: number; wisFilters?: () => void; herstel?: () => void };
+export type ZoekBron = { opties: BronOptie[]; gekozen: string; label?: string; onKies: (sleutel: string) => void; gewist?: string };
+export type ZoekScope = { tekst: string; verborgen: number; wisFilters?: () => void; herstel?: () => void; bron?: ZoekBron };
 const scopeId = "zoek-scope";
 const hintId = "zoek-hint";
 const uitsluitTip = "Tip: zet een minteken voor een woord om het uit te sluiten, bijv. verkiezing -amerika.";
@@ -27,7 +28,7 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope, alleenKoppen 
   useEffect(() => { if (query) setOpen(true); }, [query]);
   const [melding, setMelding] = useState<{ query: string; aantal: number } | null>(null);
   const verborgen = scope?.verborgen ?? 0;
-  const scopeMelding = scope ? `. ${scope.tekst}${verborgen ? `. ${verborgenTekst(verborgen)}` : ""}` : "";
+  const scopeMelding = scope ? `. ${scope.tekst}${verborgen ? `. ${verborgenTekst(verborgen)}` : ""}${scope.bron?.gewist ? `. Bron ${scope.bron.gewist} is uitgezet; er wordt nu in alle bronnen gezocht` : ""}` : "";
   useEffect(() => {
     if (!open || !query.trim()) return;
     const timer = window.setTimeout(() => setMelding({ query, aantal }), 400);
@@ -85,6 +86,8 @@ export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aanta
         {!!normaliseer(query) && <span className="zoek-scope">{resultaatTekst(aantal)} · {modus === "of" ? "één van de zoektermen (OF)" : "alle zoektermen"}</span>}
         {aantal > 0 && !!normaliseer(query) && <a href={`#${resultatenId}`} className="zoek-wis-filters zoek-naar-resultaten" onClick={(e) => { e.preventDefault(); focusResultaten(document); }}>Ga naar resultaten ({aantal})</a>}
         <label className="zoek-scope">Zoeken in <select value={alleenKoppen ? "koppen" : "alles"} onChange={(e) => onAlleenKoppen?.(e.target.value === "koppen")}><option value="alles">Alle velden</option><option value="koppen">Alleen koppen</option></select></label>
+        {scope?.bron && (scope.bron.opties.length > 0 || scope.bron.gekozen) && <label className="zoek-scope">Bron <select value={scope.bron.gekozen} onChange={(e) => scope.bron!.onKies(e.target.value)}><option value="">Alle bronnen</option>{scope.bron.opties.map((o) => <option key={o.sleutel} value={o.sleutel}>{o.label} ({o.aantal})</option>)}</select>{scope.bron.gekozen && <button type="button" className="zoek-wis-filters" onClick={() => scope.bron!.onKies("")}>Wis bronkeuze</button>}</label>}
+        {scope?.bron?.gewist && <span className="zoek-scope" role="status">Bron {scope.bron.gewist} is uitgezet; er wordt nu in alle bronnen gezocht</span>}
         {!scope && <span id={hintId} className="zoek-scope">{uitsluitTip}</span>}
         {scope && <div id={scopeId} className="zoek-scope">
           <span>{scope.tekst}{scope.verborgen && query.trim() ? ` · ${verborgenTekst(scope.verborgen)}` : ""}</span>
@@ -101,7 +104,7 @@ export function ZoekActief({ query, onWis, klasse = "filternote" }: { query: str
   return <div className={klasse} role="status"><span>Zoekopdracht “{query}” staat nog aan voor het nieuws; filmpjes worden niet gefilterd</span><button type="button" className="textbtn" onClick={onWis}>Wis zoekopdracht</button></div>;
 }
 
-export function ZoekLeeg({ query, onWis, verborgen = 0, onWisFilters, onZoekAlles, suggesties = [], onSuggestie }: { query: string; onWis: () => void; verborgen?: number; onWisFilters?: () => void; onZoekAlles?: () => void; suggesties?: string[]; onSuggestie?: (term: string) => void }) {
+export function ZoekLeeg({ query, bron, onWisBron, onWis, verborgen = 0, onWisFilters, onZoekAlles, suggesties = [], onSuggestie }: { query: string; bron?: string; onWisBron?: () => void; onWis: () => void; verborgen?: number; onWisFilters?: () => void; onZoekAlles?: () => void; suggesties?: string[]; onSuggestie?: (term: string) => void }) {
   const zoekbaar = !!normaliseer(query);
-  return <div className="zoek-leeg">{zoekbaar ? <>Niets gevonden voor “{query}”</> : zoekAanwijzing}{zoekbaar && verborgen > 0 && <> · {verborgenTekst(verborgen)}</>}{suggesties.length > 0 && <div role="group" aria-label="Zoeksuggesties">Zoeksuggesties: {suggesties.map((term) => <button type="button" className="zoek-wis" key={term} onClick={() => onSuggestie?.(term)}>{term}</button>)}</div>} <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button>{zoekbaar && onZoekAlles && <button type="button" className="zoek-wis" onClick={onZoekAlles}>Zoek in alle rubrieken en beschikbare berichten</button>}{zoekbaar && verborgen > 0 && onWisFilters && <button type="button" className="zoek-wis" onClick={onWisFilters}>Wis filters en zoek opnieuw</button>}</div>;
+  return <div className="zoek-leeg">{zoekbaar ? <>Niets gevonden voor “{query}”{bron ? ` in bron ${bron}` : ""}</> : zoekAanwijzing}{zoekbaar && verborgen > 0 && <> · {verborgenTekst(verborgen)}</>}{suggesties.length > 0 && <div role="group" aria-label="Zoeksuggesties">Zoeksuggesties: {suggesties.map((term) => <button type="button" className="zoek-wis" key={term} onClick={() => onSuggestie?.(term)}>{term}</button>)}</div>} <button type="button" className="zoek-wis" onClick={onWis}>Wis zoekopdracht</button>{zoekbaar && bron && onWisBron && <button type="button" className="zoek-wis" onClick={onWisBron}>Wis bronkeuze en zoek opnieuw</button>}{zoekbaar && onZoekAlles && <button type="button" className="zoek-wis" onClick={onZoekAlles}>Zoek in alle rubrieken en beschikbare berichten</button>}{zoekbaar && verborgen > 0 && onWisFilters && <button type="button" className="zoek-wis" onClick={onWisFilters}>Wis filters en zoek opnieuw</button>}</div>;
 }

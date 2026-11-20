@@ -190,6 +190,9 @@ export function sourceKey(index: Index, gid: GroupId, site: string, href: string
   return `${gid}|${ix ? resolveIn(ix, site, href) : norm(site)}`;
 }
 
+// Sleutel van één bronvermelding van een bericht, voor de bronkeuze in het zoeken (#1364).
+export const itemBronSleutel = (index: Index, it: Item, b: Bron) => sourceKey(index, groepVan(it), b.site, b.href);
+
 export function filterArtikelBronnen(it: Item, index: Index, off: Set<string>): Item | null {
   const bronnen = it.bronnen ?? [];
   if (!bronnen.length || !index.has(groepVan(it))) return it;
