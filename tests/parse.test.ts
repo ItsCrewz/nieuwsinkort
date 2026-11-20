@@ -40,4 +40,13 @@ assert.throws(() => parseFeed("{ongeldig", "https://voorbeeld.nl"), /geen geldig
   // RSS met atom:link blijft werken
   assert.deepEqual(parseFeed(`<rss ${NS}><channel><atom:link href="https://v.nl/feed" rel="self"/><item><title>Rss</title><link>https://v.nl/r</link></item></channel></rss>`, "https://v.nl/feed").map((x) => [x.t, x.l]), [["Rss", "https://v.nl/r"]]);
 }
+{
+  // GUID als bestemming alleen bij permalink (#1381)
+  const gl = (guid: string, link = "") => parseFeed(`<rss><item><title>T</title>${link}${guid}</item></rss>`, "https://v.nl/feed")[0].l;
+  for (const a of ['isPermaLink="false"', "isPermaLink='false'", 'ispermalink="FALSE"', 'isPermaLink = "false"']) assert.equal(gl(`<guid ${a}>https://v.nl/id/1</guid>`), "", a);
+  assert.equal(gl('<guid isPermaLink="true">https://v.nl/a</guid>'), "https://v.nl/a");
+  assert.equal(gl("<guid>https://v.nl/b</guid>"), "https://v.nl/b");
+  assert.equal(gl('<guid isPermaLink="false">https://v.nl/id/2</guid>', "<link>https://v.nl/echt</link>"), "https://v.nl/echt");
+  assert.equal(gl("<guid>urn:uuid:123</guid>"), "");
+}
 console.log("✓ parse: feeds, tekst en URL's");
