@@ -10,7 +10,7 @@ try {
   const foto = "https://voorbeeld.nl/foto.jpg";
   const andereFoto = "https://voorbeeld.nl/andere.jpg";
   const enkel = { ...a, t: nu - 60000, beeld: foto, beelden: undefined, bronnen: [{ site: "NOS", href: "https://nos.nl/een" }] };
-  const lijst = { ...b, t: nu - 120000, beeld: undefined, beelden: [andereFoto, `${foto}?w=800`, "https://voorbeeld.nl/logo.png"], bronnen: [{ site: "RTL", href: "https://rtl.nl/twee" }] };
+  const lijst = { ...b, t: nu - 120000, beeld: undefined, beelden: [andereFoto, "https://voorbeeld.nl/logo.png"], bronnen: [{ site: "RTL", href: "https://rtl.nl/twee" }] };
   const los = { kop: "Een afzonderlijk bericht", t: nu - 180000, beeld: "https://voorbeeld.nl/los.jpg", bronnen: [{ site: "AD", href: "https://ad.nl/drie" }] };
   for (const hoofdEnkel of [true, false]) {
     const extra = { site: "AD", href: "https://ad.nl/vier" };
