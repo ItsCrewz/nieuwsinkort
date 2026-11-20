@@ -23,7 +23,7 @@ export function zonderUitleg<T extends { key: string }>(lijst: T[], cache: Recor
 // De terugval op samenvatting+ai+punten (puur herhaling) bestaat hier niet meer; een artikel zonder enige andere tekst houdt de oude terugval.
 export function uitgebreidOntdubbeld(item: Item, meer: Meer | null | undefined): { punten: string[]; uitgebreid: string[]; uitleg: boolean } {
   const schoon = (l?: string[]) => (l ?? []).map((p) => p.trim()).filter(Boolean);
-  const o = ontdubbel(item, [schoon(meer?.uitleg), schoon(meer?.uittreksel?.flatMap((b) => b.alineas ?? []))]);
+  const o = ontdubbel(item, [schoon(meer?.uitleg), ...(meer?.uittreksel ?? []).map((b) => schoon(b.alineas))]);
   if (o.uitgebreid.length || item.ai?.trim() || item.samenvatting?.trim()) return { punten: o.punten, uitgebreid: o.uitgebreid, uitleg: o.bron === 0 };
   return { punten: item.punten ?? [], uitgebreid: uitgebreidAlineas(item, meer), uitleg: !!schoon(meer?.uitleg).length };
 }
