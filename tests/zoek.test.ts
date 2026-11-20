@@ -1,3 +1,4 @@
+import { bronOpties, filterOpBron, scopeTekst } from "../src/zoek";
 import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
 import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen, zoekFragment, begrensZoekterm, leesZoekterm, MAX_ZOEKTEKENS } from "../src/zoek";
@@ -281,6 +282,22 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.deepEqual(zoekItems(alle, "F1 onbekend"), []);
   assert.deepEqual(zoekItems(alle, "formule"), [f1]);
   assert.deepEqual(zoekItems(alle, "form"), [f1]);
+}
+
+// Bronkeuze (#1364): alleen bronvelden tellen; samengevoegde berichten blijven vindbaar.
+{
+  const sl = (_: Item, b: { site: string }) => "nl|" + b.site.toLowerCase().replace(/\s+/g, "");
+  const a = { cat: "nl", kop: "Nieuws van NU.nl", bronnen: [{ site: "NOS", href: "" }], tijd: "" } as Item;
+  const b = { cat: "nl", kop: "Storm", bronnen: [{ site: "NU.nl", href: "" }, { site: "NOS", href: "" }], tijd: "" } as Item;
+  const c = { cat: "nl", kop: "Anders", bronnen: [{ site: "nos", href: "" }], tijd: "" } as Item;
+  const opties = bronOpties([a, b, c], sl);
+  assert.deepEqual(opties.map((o) => [o.sleutel, o.aantal]), [["nl|nos", 3], ["nl|nu.nl", 1]]);
+  assert.deepEqual(filterOpBron([a, b, c], "nl|nu.nl", sl), [b]);
+  assert.deepEqual(zoekItems(filterOpBron([a, b, c], "nl|nu.nl", sl), "nu.nl"), [b]);
+  assert.deepEqual(zoekItems(filterOpBron([a, b, c], "nl|nos", sl), "nu.nl"), [a, b]);
+  assert.deepEqual(filterOpBron([a, b], "", sl), [a, b]);
+  assert.deepEqual(zoekItems(filterOpBron([a, b, c], "nl|weg", sl), "storm"), []);
+  assert.match(scopeTekst({ rubriek: "Home", zonderPolitiek: false, tijd: "Vandaag", bronnenUit: 0, bron: "NOS" }), /alleen bron NOS$/);
 }
 
 // Hele woorden (#1362): standaard woordbegin, aan = exact woord.

@@ -1,5 +1,5 @@
 import { CAT_LABEL } from "./tabs";
-import type { Item } from "./types";
+import type { Bron, Item } from "./types";
 
 export type Zoekselectie = { term: string; rubriek: string; filters: object; bronnen: object };
 
@@ -265,8 +265,26 @@ export function resultaatTekst(aantal: number): string {
 }
 
 // Zoekscope (#613): binnen welke rubriek en filters wordt gezocht, en hoeveel treffers de filters verbergen.
-export function scopeTekst(s: { rubriek: string; zonderPolitiek: boolean; tijd: string; bronnenUit: number }): string {
-  return ["Zoekt in " + s.rubriek + (s.zonderPolitiek ? " (zonder Politiek)" : ""), s.tijd, ...(s.bronnenUit ? [`${s.bronnenUit} ${s.bronnenUit === 1 ? "bron" : "bronnen"} uit`] : [])].join(" · ");
+export function scopeTekst(s: { rubriek: string; zonderPolitiek: boolean; tijd: string; bronnenUit: number; bron?: string }): string {
+  return ["Zoekt in " + s.rubriek + (s.zonderPolitiek ? " (zonder Politiek)" : ""), s.tijd, ...(s.bronnenUit ? [`${s.bronnenUit} ${s.bronnenUit === 1 ? "bron" : "bronnen"} uit`] : []), ...(s.bron ? [`alleen bron ${s.bron}`] : [])].join(" · ");
+}
+
+// Bronkeuze (#1364): alleen de bronvelden van een bericht tellen, nooit tekst in de kop. `items[].bronnen` bevat al alleen ingeschakelde bronnen; `sleutel` geeft aliassen dezelfde sleutel (sourceKey).
+export type BronSleutel = (item: Item, bron: Bron) => string;
+export type BronOptie = { sleutel: string; label: string; aantal: number };
+export function bronOpties(items: Item[], sleutel: BronSleutel): BronOptie[] {
+  const opties = new Map<string, BronOptie>();
+  for (const item of items) {
+    for (const k of new Set((item.bronnen ?? []).map((b) => sleutel(item, b)))) {
+      const bron = (item.bronnen ?? []).find((b) => sleutel(item, b) === k)!;
+      const o = opties.get(k);
+      if (o) o.aantal++; else opties.set(k, { sleutel: k, label: bron.site || k, aantal: 1 });
+    }
+  }
+  return [...opties.values()].sort((a, b) => a.label.localeCompare(b.label, "nl"));
+}
+export function filterOpBron(items: Item[], keuze: string, sleutel: BronSleutel): Item[] {
+  return keuze ? items.filter((item) => (item.bronnen ?? []).some((b) => sleutel(item, b) === keuze)) : items;
 }
 export function verborgenTekst(aantal: number): string {
   return `${aantal} ${aantal === 1 ? "treffer" : "treffers"} verborgen door filters`;
