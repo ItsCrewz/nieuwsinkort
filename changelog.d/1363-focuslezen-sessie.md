@@ -1,0 +1,1 @@
+- Focus lezen onthoudt de keuze binnen het tabblad als lokale opslag niet beschikbaar is (#1363).
