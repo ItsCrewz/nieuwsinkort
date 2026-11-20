@@ -1,0 +1,1 @@
+- Ontbrekende en ongeldige berichtlinks verwijzen niet langer naar de feed zelf (#1369).
