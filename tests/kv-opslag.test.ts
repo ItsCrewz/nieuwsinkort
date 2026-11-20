@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import worker, { Runner, Fetcher } from "../worker/src/index";
 import { BR_URL, KNMI_VERW } from "../worker/src/weer";
-import { moetSchrijven, uurInhoud, splitState, schrijfState, kvStateWint, ruimOg, HARTSLAG_MS, OG_MAX, DEEL_MAX } from "../worker/src/opslag";
+import { leesState, moetSchrijven, uurInhoud, splitState, schrijfState, kvStateWint, ruimOg, HARTSLAG_MS, OG_MAX, DEEL_MAX } from "../worker/src/opslag";
 import type { LlmState } from "../worker/src/llm";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
@@ -92,14 +92,14 @@ try {
   await t("state splitsen: alleen gewijzigde delen worden geschreven, verdwenen delen gewist", async () => {
     const o = nepOpslag();
     const st: any = { datum: "d", neurons: 1, sums: { a: 1 }, links: {}, art: { x: ["p"] }, llm: {} };
-    assert.equal(await schrijfState(o, st, {}), 5);
+    assert.equal(await schrijfState(o, st, {}), 7);
     const vorige = Object.fromEntries([...o.m].map(([k, v]) => [k, v as string]));
     assert.equal(await schrijfState(o, { ...st }, vorige), 0);
     o.puts.length = 0;
-    assert.equal(await schrijfState(o, { ...st, neurons: 2 }, vorige), 1);
-    assert.deepEqual(o.puts, ["st:rest"]);
+    assert.equal(await schrijfState(o, { ...st, neurons: 2 }, vorige), 3);
+    assert.deepEqual(o.puts, ["st:bezig", "st:rest"]);
     const { art: _a, ...zonderArt } = st;
-    assert.equal(await schrijfState(o, zonderArt, vorige), 1);
+    assert.equal(await schrijfState(o, zonderArt, vorige), 3);
     assert.equal(o.m.has("st:art"), false);
     assert.deepEqual(Object.keys(splitState(st)).sort(), ["st:art", "st:links", "st:llm", "st:rest", "st:sums"]);
   });
@@ -369,6 +369,43 @@ try {
     assert.equal(h.opslag.puts.length, puts, "niets geschreven");
   });
 
+  await t("schrijfState: write faalt na geslaagde deelwrite: st:bezig blijft, leesState meldt onvolledig en de KV-kopie wint bij gelijke tijd (#1393)", async () => {
+    const o = nepOpslag(), basis: any = { datum: "d", neuronDag: "d", neurons: 5, stAt: 100, sums: { a: 1 }, llm: { g: { dag: "d", calls: 1, tokens: 10, venster: [] } } };
+    await schrijfState(o, basis, {});
+    assert.ok(!o.m.has("st:bezig"), "complete ronde wist de markering");
+    const g0 = (await leesState(o))!;
+    assert.equal(g0.at, 100); assert.equal(g0.onvolledig, undefined);
+    // nieuwe ronde met dezelfde stAt: sums lukt, st:llm faalt
+    const echtPut = o.put, nieuw = { ...basis, sums: { a: 2 }, llm: { g: { dag: "d", calls: 2, tokens: 20, venster: [] } } };
+    o.put = async (k: string, v: unknown) => { if (k === "st:llm") throw new Error("kv-fout"); return echtPut(k, v); };
+    await assert.rejects(schrijfState(o, nieuw, g0.json));
+    o.put = echtPut;
+    assert.equal(o.m.get("st:sums"), JSON.stringify({ a: 2 }), "deelwrite is geslaagd");
+    const g = (await leesState(o))!;
+    assert.equal(g.onvolledig, true); assert.equal(g.at, null);
+    assert.ok(!("st:bezig" in g.json), "markering hoort niet bij de delen");
+    assert.equal(kvStateWint(g.st, basis, g.at), true, "KV-kopie (gelijke tijd, gelijke neuronen) wint");
+    // herstart vanuit de KV-kopie: alle delen opnieuw, markering weg, llm niet dubbel
+    await schrijfState(o, basis, Object.fromEntries(Object.keys(g.json).map((k) => [k, ""])));
+    const h = (await leesState(o))!;
+    assert.equal(h.onvolledig, undefined); assert.equal(h.at, 100);
+    assert.equal(h.st.llm.g.tokens, 10); assert.equal(h.st.neurons, 5);
+    assert.ok(!o.m.has("st:bezig"));
+  });
+
+  await t("schrijfState: overgeslagen deel laat st:bezig staan en de neuronenteller blijft leesbaar (#1393)", async () => {
+    const o = nepOpslag(), fouten: string[] = [], echt = console.error;
+    console.error = (...a: unknown[]) => { fouten.push(a.join(" ")); };
+    try {
+      const st: any = { datum: "d", neuronDag: "d", neurons: 1, stAt: 7, ytEmbed: { v: "x".repeat(DEEL_MAX + 10) } };
+      await schrijfState(o, st, {}, { volledig: true });
+      assert.ok(o.m.has("st:bezig"), "markering blijft");
+      const g = (await leesState(o))!;
+      assert.equal(g.onvolledig, true);
+      assert.equal(g.st.neurons, 1, "neuronenteller blijft bruikbaar");
+    } finally { console.error = echt; }
+  });
+
   await t("schrijfState: te groot deel wordt niet geschreven (vorige blijft, gelogd); art/diep/artJ worden ingekort; st:rest eerst, st:llm laatst", async () => {
     const fouten: string[] = [], echt = console.error;
     console.error = (...a: unknown[]) => { fouten.push(a.join(" ")); };
@@ -378,8 +415,10 @@ try {
       const st: any = { datum: "d", neurons: 1, sums: { a: 1 }, links: { l: 1 }, art: {}, llm: { g: 1 }, ytEmbed: { v: groot } };
       st.art = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`k${i}`, ["y".repeat(150000)]]));
       await schrijfState(o, st, {});
-      assert.equal(o.puts[0], "st:rest");
+      assert.equal(o.puts[0], "st:bezig");
+      assert.equal(o.puts[1], "st:rest");
       assert.equal(o.puts[o.puts.length - 1], "st:llm");
+      assert.ok(o.m.has("st:bezig"), "ytEmbed overgeslagen: markering blijft staan");
       assert.ok(!o.m.has("st:ytEmbed"), "te groot deel niet geschreven");
       assert.ok(fouten.some((f) => f.includes("st:ytEmbed") && f.includes("te groot")));
       const art = JSON.parse(o.m.get("st:art") as string);

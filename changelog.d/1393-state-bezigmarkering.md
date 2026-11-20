@@ -1,0 +1,1 @@
+- Worker: een onderbroken of gedeeltelijk geslaagde state-update in DO-opslag wordt herkend (markering `st:bezig`); de KV-kopie wint dan ook bij gelijke tijd en gelijke neuronen, en zonder KV-kopie wordt dit gelogd (#1393).

@@ -127,7 +127,7 @@ export function splitState(st: Record<string, any>): Record<string, string> {
 }
 
 /** Staat in DO-opslag? `json` zijn de gelezen strings, om bij het schrijven alleen gewijzigde delen te vervangen. Geen state = null (migratie: dan KV). */
-export async function leesState(opslag: Opslag): Promise<{ st: any; json: Record<string, string>; at: number | null } | null> {
+export async function leesState(opslag: Opslag): Promise<{ st: any; json: Record<string, string>; at: number | null; onvolledig?: boolean } | null> {
   const rest = await opslag.get("st:rest");
   if (typeof rest !== "string") return null;
   const json: Record<string, string> = { "st:rest": rest };
@@ -137,7 +137,9 @@ export async function leesState(opslag: Opslag): Promise<{ st: any; json: Record
   // st:at = commit-markering: alleen als allerlaatste geschreven, nadat alle delen gelukt zijn (ontbreekt = halve of oude DO-state)
   const at = Number(await opslag.get("st:at"));
   if (at > 0) json["st:at"] = String(at);
-  return { st, json, at: at > 0 ? at : null };
+  // st:bezig = een schrijfronde is begonnen en niet afgerond: de delen kunnen een mengsel zijn, ook als st:at nog klopt. at: null laat de KV-kopie winnen (kvStateWint).
+  const bezig = (await opslag.get("st:bezig")) != null;
+  return { st, json, at: at > 0 && !bezig ? at : null, ...(bezig ? { onvolledig: true } : {}) };
 }
 
 /** Een DO-waarde mag 2 MB zijn; daaronder blijven we ruim (bytes van de JSON-tekst). */
@@ -168,11 +170,15 @@ export async function schrijfState(opslag: Opslag, st: Record<string, any>, vori
   const volg = (k: string) => (k === "st:rest" ? 0 : k === "st:llm" ? 2 : 1);
   w.sort((a, b) => volg(a[0]) - volg(b[0]));
   let n = 0;
-  const weg = Object.keys(vorige).filter((k) => !(k in nieuw) && k !== "st:at");
+  const weg = Object.keys(vorige).filter((k) => !(k in nieuw) && k !== "st:at" && k !== "st:bezig");
+  // markering vóór de eerste deelwrite; alleen na een complete ronde gewist, dus een onderbreking of overgeslagen deel is bij de volgende lezing te herkennen
+  const markeer = w.length > 0 || weg.length > 0;
+  if (markeer) { await opslag.put("st:bezig", "1"); n++; }
   for (const [k, s] of w) { if (k === "st:llm") { for (const d of weg) { await opslag.delete(d); n++; } weg.length = 0; } await opslag.put(k, s); n++; }
   for (const d of weg) { await opslag.delete(d); n++; }
   const at = st.stAt === undefined ? undefined : String(st.stAt);
   if (status.volledig && at !== undefined && vorige["st:at"] !== at) { await opslag.put("st:at", at); n++; }
+  if (markeer && status.volledig) { await opslag.delete("st:bezig"); n++; }
   return n;
 }
 

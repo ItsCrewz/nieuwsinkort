@@ -466,6 +466,7 @@ export class Runner extends DurableObject<Env> {
       // basis als in runBinnen: wint de KV-kopie (halve DO-write), dan die als basis en alle DO-delen opnieuw schrijven
       const kv = g ? await tel.kv.get("state", "json").catch(() => null) : null;
       const kvWint = !!g && kvStateWint(g.st, kv, g.at);
+      if (g?.onvolledig && !kvWint) console.error("state in DO-opslag onvolledig (schrijfronde onderbroken) en geen KV-kopie: ga door met de DO-stand");
       const st = !g || kvWint ? (kv ?? (g ? g.st : await tel.kv.get("state", "json"))) : g.st;
       if (!st) return false;
       const vorige = kvWint ? Object.fromEntries(Object.keys(g!.json).map((k) => [k, ""])) : g?.json || {};
@@ -492,6 +493,7 @@ export class Runner extends DurableObject<Env> {
     // state staat primair in DO-opslag; de KV-kopie wordt alleen gelezen en wint bij nieuwere inhoud (terugrollen naar de vorige Worker, of een mislukte DO-write), zie kvStateWint
     const kvState = (await env.NIEUWS.get("state", "json").catch(() => null)) as State | null;
     const kvWint = !geladen || kvStateWint(geladen.st, kvState, geladen.at);
+    if (geladen?.onvolledig && !kvWint) console.error("state in DO-opslag onvolledig (schrijfronde onderbroken) en geen KV-kopie: ga door met de DO-stand");
     const stateRaw: State | null = kvWint ? kvState ?? geladen?.st ?? null : geladen!.st;
     // KV-state gebruikt: alle delen opnieuw schrijven (lege vorige tekst = verschilt altijd) en DO-delen die KV niet kent wissen
     const vorigeDelen = kvWint ? Object.fromEntries(Object.keys(geladen?.json || {}).map((k) => [k, ""])) : geladen!.json;
