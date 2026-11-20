@@ -24,7 +24,8 @@ assert.equal(absUrl("JavaScript:alert(1)", "https://voorbeeld.nl"), "");
 assert.equal(absUrl("data:text/html,x", "https://voorbeeld.nl"), "");
 assert.equal(absUrl("../a?b=1#c", "https://voorbeeld.nl/x/y/feed"), "https://voorbeeld.nl/x/a?b=1#c");
 assert.equal(absUrl("//cdn.nl/a", "https://voorbeeld.nl"), "https://cdn.nl/a");
-assert.equal(absUrl("", "https://voorbeeld.nl"), "https://voorbeeld.nl/");
+assert.equal(absUrl("", "https://voorbeeld.nl"), "");
+assert.equal(absUrl(" \t ", base), "");
 
 // datums via parseFeed: alleen een dag (12:00 +01:00), CET en CEST
 const rss = (d: string) => parseFeed(`<rss><item><title>T</title><link>/a</link><pubDate>${d}</pubDate></item></rss>`, base)[0].d;
@@ -57,6 +58,13 @@ assert.equal(a.d, Date.parse("2026-01-02T10:00:00Z"));
 assert.equal(a.s, "Samenvatting");
 assert.equal(atom('<link href="/eerste"/><link href="/tweede"/>').l, "https://voorbeeld.nl/eerste");
 assert.equal(atom('<link rel="alternate" href="javascript:alert(1)"/>').l, "");
+assert.equal(atom("").l, "");
+assert.equal(parseFeed('<rss><item><title>A</title><guid>https://voorbeeld.nl/artikel</guid></item></rss>', base)[0].l, "https://voorbeeld.nl/artikel");
+assert.equal(parseFeed('<rss><item><title>A</title></item></rss>', base, "/feed").length, 0);
+assert.equal(parseFeed('<feed><entry><title>A</title><link href=" "/></entry></feed>', base, "/feed").length, 0);
+
+const json = parseFeed(JSON.stringify([{ title: "A" }, { title: "B", url: " " }, { title: "C", link: "/artikel" }]), base);
+assert.deepEqual(json.map((item) => item.l), ["", "", "https://voorbeeld.nl/artikel"]);
 
 console.log("✓ parse-randgevallen: entiteiten, HTML, datums, igTime, Atom en CDATA");
 

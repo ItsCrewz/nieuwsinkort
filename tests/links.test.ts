@@ -39,7 +39,10 @@ t("parseFeed: javascript:-link (ook als entity) wordt leeg, relatieve link absol
   assert.equal(parseFeed(rss("javascript:alert(1)"), "https://x.nl/rss")[0].l, "");
   assert.equal(parseFeed(rss("&#106;avascript:alert(1)"), "https://x.nl/rss")[0].l, "");
   assert.equal(parseFeed(rss("/nieuws/1"), "https://x.nl/rss")[0].l, "https://x.nl/nieuws/1");
-  assert.equal(parseFeed(JSON.stringify([{ title: "a", url: "javascript:alert(1)" }]), "https://x.nl/api")[0].l, "https://x.nl/api");
+  assert.equal(parseFeed(JSON.stringify([{ title: "a", url: "javascript:alert(1)" }]), "https://x.nl/api")[0].l, "");
+  for (const body of [rss(""), '<feed><entry><title>x</title></entry></feed>', JSON.stringify([{ title: "x" }])]) {
+    assert.equal(parseFeed(body, "https://x.nl/feed")[0].l, "");
+  }
 });
 
 t("schoon: bronnen met niet-http(s) href vallen weg", () => {

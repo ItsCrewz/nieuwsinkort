@@ -17,7 +17,7 @@ export const stripHtml = (s: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 // Alleen http(s), relatieve links worden absoluut: een feed mag geen javascript:-href aanleveren
-export const absUrl = (l: string, base: string): string => { try { const u = new URL(l.trim(), base); return /^https?:$/.test(u.protocol) ? u.toString() : ""; } catch { return ""; } };
+export const absUrl = (l: string, base: string): string => { try { if (!l.trim()) return ""; const u = new URL(l.trim(), base); return /^https?:$/.test(u.protocol) ? u.toString() : ""; } catch { return ""; } };
 function tag(block: string, names: string[]): string {
   for (const n of names) {
     const re = new RegExp(`<${n}(?:\\s[^>]*)?>([\\s\\S]*?)</${n}>`, "i");
@@ -85,9 +85,8 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     if (alt) l = decode(alt[1]);
     if (!l) l = decode(tag(b, ["link"]));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
-    const leeg = !l.trim(); // absUrl("") geeft anders de feed-URL zelf
     l = absUrl(l, url);
-    if (pad && (leeg || !padOk(l, pad))) continue;
+    if (pad && !padOk(l, pad)) continue;
     let d = date(tag(b, ["pubDate", "published", "dc:date", "updated", "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
     const raw = tag(b, ["description", "media:description", "summary", "content:encoded", "content"]);
@@ -104,6 +103,6 @@ function parseJson(body: string, url: string): Entry[] {
     return j.vulnerabilities.map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
   if (Array.isArray(j?.hits?.hits)) // Open Raadsinformatie
     return j.hits.hits.map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
-  if (Array.isArray(j)) return j.map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url) || url, d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
+  if (Array.isArray(j)) return j.map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url), d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
   return [];
 }
