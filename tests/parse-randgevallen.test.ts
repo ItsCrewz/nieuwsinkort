@@ -79,3 +79,18 @@ console.log("✓ parse-randgevallen: entiteiten, HTML, datums, igTime, Atom en C
   assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/zzz/a</link></item></channel></rss>', base, "/zzz/").length, 1);
 }
 console.log("✓ parse-randgevallen: Google-news-sitemap met padfilter");
+
+// #1371: onbruikbare records in JSON-feeds worden overgeslagen, geldige blijven
+{
+  const kev = JSON.stringify({ vulnerabilities: [null, 5, "x", [], { vulnerabilityName: "zonder id" }, { cveID: "CVE-2026-1", vulnerabilityName: "Lek", dateAdded: "2026-10-01", shortDescription: "Uitleg" }] });
+  const k = parseFeed(kev, base);
+  assert.equal(k.length, 1);
+  assert.equal(k[0].t, "CVE-2026-1: Lek");
+  assert.equal(k[0].l, "https://nvd.nist.gov/vuln/detail/CVE-2026-1");
+  const raad = parseFeed(JSON.stringify({ hits: { hits: [null, "x", { _id: "7", _source: { name: "Raad", start_date: "2026-10-01" } }] } }), base);
+  assert.deepEqual(raad.map((e) => [e.t, e.l]), [["Raad", "https://id.openraadsinformatie.nl/7"]]);
+  const arr = parseFeed(JSON.stringify([null, 3, [1], { title: "Goed", url: "https://x.nl/a", date: "2026-10-01" }]), base);
+  assert.deepEqual(arr.map((e) => [e.t, e.l]), [["Goed", "https://x.nl/a"]]);
+  assert.throws(() => parseFeed("[{kapot", base), /geen geldige JSON/);
+}
+console.log("✓ parse-randgevallen: JSON-feeds met onbruikbare records");

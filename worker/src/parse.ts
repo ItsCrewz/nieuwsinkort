@@ -100,10 +100,12 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
 function parseJson(body: string, url: string): Entry[] {
   let j: any;
   try { j = JSON.parse(body); } catch { throw new Error("geen geldige JSON"); }
+  // Onbruikbare records (null, getal, tekst, array) overslaan zodat geldige berichten blijven
+  const rec = (a: any[]): any[] => a.filter((x) => x && typeof x === "object" && !Array.isArray(x));
   if (Array.isArray(j?.vulnerabilities)) // CISA KEV
-    return j.vulnerabilities.map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
+    return rec(j.vulnerabilities).filter((v: any) => v.cveID).map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
   if (Array.isArray(j?.hits?.hits)) // Open Raadsinformatie
-    return j.hits.hits.map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
-  if (Array.isArray(j)) return j.map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url) || url, d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
+    return rec(j.hits.hits).map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
+  if (Array.isArray(j)) return rec(j).map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url) || url, d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
   return [];
 }
