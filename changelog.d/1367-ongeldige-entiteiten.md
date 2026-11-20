@@ -1,0 +1,1 @@
+- Ongeldige numerieke entiteiten laten een feed niet meer mislukken (#1367).
