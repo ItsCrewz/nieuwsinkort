@@ -29,6 +29,14 @@ assert.throws(() => parseFeed("{ongeldig", "https://voorbeeld.nl"), /geen geldig
   // ander prefix dan de gedeclareerde, en niet-Atom-prefix: geen entry
   assert.deepEqual(parseFeed(`<feed xmlns:foo="http://voorbeeld.nl/x"><foo:entry><foo:title>Nee</foo:title></foo:entry></feed>`, "https://v.nl/feed"), []);
   assert.deepEqual(parseFeed(`<feed ${NS}><x:entry><x:title>Nee</x:title></x:entry></feed>`, "https://v.nl/feed"), []);
+  // scope: herdefinitie naar een andere namespace, declaratie buiten scope, herdefinitie terug naar Atom
+  const A = "http://www.w3.org/2005/Atom";
+  assert.deepEqual(parseFeed(`<root xmlns:a="${A}"><x xmlns:a="urn:anders"><a:entry><a:title>Geen Atom</a:title></a:entry></x></root>`, "https://v.nl/feed"), []);
+  assert.deepEqual(parseFeed(`<root><x xmlns:a="${A}"/><a:entry><a:title>Buiten scope</a:title></a:entry></root>`, "https://v.nl/feed"), []);
+  assert.deepEqual(parseFeed(`<root xmlns:a="urn:anders"><x xmlns:a="${A}"><a:entry><a:title>Wel</a:title></a:entry></x><a:entry><a:title>Niet</a:title></a:entry></root>`, "https://v.nl/feed").map((x) => x.t), ["Wel"]);
+  // gemengde prefixen naar dezelfde namespace: titel, link, datum en samenvatting
+  const mix = parseFeed(`<feed><a:entry xmlns:a="${A}" xmlns:b="${A}"><b:title>Titel</b:title><b:link href="https://v.nl/a"/><b:published>2026-01-02T10:00:00Z</b:published><b:summary>Samen</b:summary></a:entry></feed>`, "https://v.nl/feed");
+  assert.deepEqual(mix, [{ t: "Titel", l: "https://v.nl/a", d: Date.parse("2026-01-02T10:00:00Z"), s: "Samen" }]);
   // RSS met atom:link blijft werken
   assert.deepEqual(parseFeed(`<rss ${NS}><channel><atom:link href="https://v.nl/feed" rel="self"/><item><title>Rss</title><link>https://v.nl/r</link></item></channel></rss>`, "https://v.nl/feed").map((x) => [x.t, x.l]), [["Rss", "https://v.nl/r"]]);
 }
