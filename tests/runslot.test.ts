@@ -1,6 +1,6 @@
 // Draai: npm run test  (bundelt met esbuild en draait met node)
 import assert from "node:assert/strict";
-import { neemSlot, geefSlot, meetInterval, runsOver, runPlafonds, voorafTeller } from "../worker/src/runslot";
+import { neemSlot, geefSlot, meetInterval, runsOver, runPlafonds, voorafTeller, uurSleutel } from "../worker/src/runslot";
 import { bewaakteRun, type RunStatus } from "../worker/src/run-status";
 import { MAX_ALARMS_PER_UUR } from "../worker/src/vooraf";
 import { ams } from "../src/tijd";
@@ -123,6 +123,24 @@ await t("alarmteller: 12 runs in één uur resetten niet; nieuw uur wel; n blijf
   assert.equal(resets, 1);
   assert.ok(k!.n <= MAX_ALARMS_PER_UUR && k!.n === MAX_ALARMS_PER_UUR);
   assert.deepEqual(voorafTeller(k, 11), { uur: 11, n: 0 });
+});
+
+await t("uurSleutel: beide uren van 02:00 op 2026-10-25 verschillen; gewone uurwissel; vaste klok", () => {
+  const eerste = Date.UTC(2026, 9, 25, 0, 30), tweede = Date.UTC(2026, 9, 25, 1, 30); // 02:30 zomertijd, 02:30 wintertijd
+  assert.equal(ams(eerste).h, 2); assert.equal(ams(tweede).h, 2);
+  assert.notEqual(uurSleutel(eerste), uurSleutel(tweede));
+  assert.equal(uurSleutel(eerste), uurSleutel(eerste + 29 * 60e3));
+  assert.notEqual(uurSleutel(tweede), uurSleutel(tweede + 31 * 60e3));
+  const k = { uur: uurSleutel(eerste), n: MAX_ALARMS_PER_UUR };
+  assert.deepEqual(voorafTeller(k, uurSleutel(tweede)), { uur: uurSleutel(tweede), n: 0 });
+  assert.equal(voorafTeller(k, uurSleutel(eerste + 60e3)), k);
+  let c: { uur: number; n: number } | undefined, resets = 0;
+  for (let i = 0; i < 12; i++) { const nw = voorafTeller(c, uurSleutel(tweede + i * 2 * 60e3)); if (nw !== c) resets++; c = nw; if (c.n < MAX_ALARMS_PER_UUR) c.n++; }
+  assert.equal(resets, 1); assert.ok(c!.n <= MAX_ALARMS_PER_UUR);
+});
+
+await t("alarmteller: oude opgeslagen teller (uur 0..23) wordt veilig eenmalig gereset", () => {
+  assert.deepEqual(voorafTeller({ uur: 2, n: 5 }, uurSleutel(Date.UTC(2026, 9, 25, 1, 30))), { uur: uurSleutel(Date.UTC(2026, 9, 25, 1, 30)), n: 0 });
 });
 
 console.log(`${n} tests ok`);

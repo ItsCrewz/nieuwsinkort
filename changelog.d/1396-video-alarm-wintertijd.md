@@ -1,0 +1,1 @@
+- Video-alarm: de alarmteller gebruikt nu een uniek uur (UTC-uurindex), zodat de twee herhaalde uren van 02:00 bij de wintertijd elk hun eigen limiet krijgen (#1396).
