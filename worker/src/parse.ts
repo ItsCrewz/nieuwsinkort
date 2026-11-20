@@ -47,7 +47,7 @@ export function igTime(link: string): number | null {
 // Google-news-sitemap (<urlset>): titel en tijd uit <news:...>, anders <lastmod>; `pad` houdt alleen links met dat padstuk over (ook voor RSS/Atom in parseFeed)
 function parseSitemap(body: string, url: string, pad?: string): Entry[] {
   const out: Entry[] = [];
-  for (const b of body.match(/<url>[\s\S]*?<\/url>/gi) || []) {
+  for (const b of body.match(/<url(?:\s[^>]*)?>[\s\S]*?<\/url>/gi) || []) {
     const l = absUrl(decode(tag(b, ["loc"])), url);
     const t = stripHtml(tag(b, ["news:title"]));
     if (!l || !t || (pad && !new URL(l).pathname.includes(pad))) continue;
