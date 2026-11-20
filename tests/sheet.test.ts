@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import React from "react";
-import { SourcesSheet } from "../src/sheet";
+import { SourcesSheet, sourceLine } from "../src/sheet";
 import { GroupToggle, Switch } from "../src/ui";
 import type { SourceGroup } from "../src/sources";
 
@@ -128,3 +128,22 @@ const echteNul = SourcesSheet({ ...props, groups: [{ ...groepen[0], sources: [{ 
 assert.match(tekst(echteNul), /Vandaag niets/);
 assert.doesNotMatch(tekst(echteNul), /Ophalen mislukt/);
 console.log("sheet: tests geslaagd");
+
+// #1307: geen kaal label bij ongeldige of ontbrekende tijd; geldige tijden en aantallen blijven.
+{
+  const rij = (stat: any, count = 0) => ({ id: "x", key: "x", naam: "X", count, fromData: false, stat }) as any;
+  const regel = (stat: any, count?: number) => sourceLine(rij(stat, count));
+  const GOED = "2026-10-30T11:00:00Z", OUD = "2026-10-29T10:00:00Z";
+  assert.equal(regel({ vandaag: 3, ok: "kapot" }, 2), "3 vandaag · 2 in overzicht");
+  assert.equal(regel({ vandaag: 3, ok: "kapot", fout: "x" }), "3 vandaag · deels mislukt");
+  assert.equal(regel({ vandaag: 3, ok: GOED }), "3 vandaag · bijgewerkt 12:00");
+  assert.equal(regel({ vandaag: 3, ok: OUD }), "3 vandaag · bijgewerkt do 29 okt");
+  assert.equal(regel({ vandaag: 0, laatste: "kapot", ok: "kapot" }), "Vandaag niets");
+  assert.equal(regel({ vandaag: 0, laatste: "kapot", ok: GOED, storing: true }), "Stand onvolledig · bijgewerkt 12:00 · deels mislukt");
+  assert.equal(regel({ vandaag: 0, ok: GOED }), "Vandaag niets · bijgewerkt 12:00");
+  assert.equal(regel({ vandaag: null, ok: "kapot" }, 1), "Ophalen mislukt · 1 in overzicht");
+  assert.equal(regel({ vandaag: null }), "Ophalen mislukt");
+  assert.equal(regel({ vandaag: null, ok: OUD }), "Ophalen mislukt · laatst gelukt do 29 okt");
+  assert.equal(regel({ vandaag: null, ok: "kapot", laatste: GOED }), "Ophalen mislukt · laatste bericht 12:00");
+  assert.equal(regel({ vandaag: null, laatste: "kapot" }), "Ophalen mislukt");
+}

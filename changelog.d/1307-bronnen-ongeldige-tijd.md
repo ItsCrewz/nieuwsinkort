@@ -1,0 +1,1 @@
+- Bronnenvenster: "bijgewerkt", "laatst gelukt", "laatste bericht" en "laatste" verschijnen alleen nog als de tijd echt weer te geven is; bij een ongeldige tijd blijft de rest van de status en de aantallen staan (#1307).
