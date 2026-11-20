@@ -71,6 +71,13 @@ assert.equal(parseFeed('<feed><entry><title>A</title><link href=" "/></entry></f
 
 const json = parseFeed(JSON.stringify([{ title: "A" }, { title: "B", url: " " }, { title: "C", link: "/artikel" }]), base);
 assert.deepEqual(json.map((item) => item.l), ["", "", "https://voorbeeld.nl/artikel"]);
+
+// Open Raadsinformatie: onbruikbare treffers mogen geldige treffers niet blokkeren.
+const raadHit = { _id: "gemeente/document/123", _source: { name: "Raadsbesluit", start_date: "2026-01-02T10:00:00Z" } };
+const raadVerwacht = [{ t: "Raadsbesluit", l: "https://id.openraadsinformatie.nl/gemeente/document/123", d: Date.parse("2026-01-02T10:00:00Z"), s: "" }];
+assert.deepEqual(parseFeed(JSON.stringify({ hits: { hits: [raadHit] } }), base), raadVerwacht);
+assert.deepEqual(parseFeed(JSON.stringify({ hits: { hits: [null, 42, {}, { _source: {} }, { _id: " ", _source: {} }, { _id: "x", _source: null }, raadHit] } }), base), raadVerwacht);
+assert.throws(() => parseFeed('{"hits":', base), /geen geldige JSON/);
 // #1368: alternate wint ook als href vóór rel staat, met enkele aanhalingstekens en relatieve URL's
 assert.equal(atom('<link rel="self" href="https://voorbeeld.nl/feed"/><link href="/bericht" rel="alternate"/>').l, "https://voorbeeld.nl/bericht");
 assert.equal(atom("<link href='https://voorbeeld.nl/feed' rel='self'/><link href='/bericht' rel='alternate'/>").l, "https://voorbeeld.nl/bericht");

@@ -156,8 +156,16 @@ function parseJson(body: string, url: string): Entry[] {
   try { j = JSON.parse(body); } catch { throw new Error("geen geldige JSON"); }
   if (Array.isArray(j?.vulnerabilities)) // CISA KEV
     return j.vulnerabilities.map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
-  if (Array.isArray(j?.hits?.hits)) // Open Raadsinformatie
-    return j.hits.hits.map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
+  if (Array.isArray(j?.hits?.hits)) { // Open Raadsinformatie
+    const out: Entry[] = [];
+    for (const h of j.hits.hits) {
+      if (!h || typeof h !== "object" || typeof h._id !== "string" || !h._id.trim() || !h._source || typeof h._source !== "object" || Array.isArray(h._source)) continue;
+      const s = h._source;
+      const datum = [s.start_date, s.last_discussed_at, s.date_modified].find((d) => typeof d === "string" && d);
+      out.push({ t: typeof s.name === "string" ? s.name : "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(datum || ""), s: "" });
+    }
+    return out;
+  }
   if (Array.isArray(j)) return j.map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url), d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
   return [];
 }
