@@ -1,0 +1,1 @@
+- Zoeken: knoppen "Vorig resultaat" en "Volgend resultaat" in het zoekformulier brengen de focus naar de vorige of volgende gevonden kaart, met melding van de stand en van begin en einde (#1342).

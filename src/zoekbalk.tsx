@@ -21,6 +21,22 @@ export function focusResultaten(doc: FocusDoc) {
   (gebied?.querySelector(".nc")?.querySelector("a[href]") ?? gebied)?.focus();
 }
 
+type KaartEl = { querySelector(s: string): { focus(): void } | null; scrollIntoView?(o?: { block: "start" }): void };
+type NavDoc = { getElementById(id: string): { querySelectorAll(s: string): ArrayLike<KaartEl> } | null };
+// Focus op de link van kaart k. Kaarten buiten het venster met inhoud hebben nog geen link: scroll er eerst heen en probeer het opnieuw (de feed mount dan de inhoud).
+export function naarResultaat(doc: NavDoc, k: number, wacht: (f: () => void) => void = (f) => { window.setTimeout(f, 120); }, pogingen = 5): boolean {
+  const kaart = doc.getElementById(resultatenId)?.querySelectorAll(".nc")[k];
+  if (!kaart) return false;
+  const link = kaart.querySelector("a[href]");
+  if (link) { link.focus(); return true; }
+  if (pogingen > 0) { kaart.scrollIntoView?.({ block: "start" }); wacht(() => { naarResultaat(doc, k, wacht, pogingen - 1); }); }
+  return false;
+}
+// Tekst voor de aria-live-regel van de resultaatnavigatie (k is 0-gebaseerd).
+export function navTekst(k: number, aantal: number, poging?: "eerste" | "laatste") {
+  return poging === "eerste" ? "Eerste resultaat" : poging === "laatste" ? "Laatste resultaat" : `Resultaat ${k + 1} van ${aantal}`;
+}
+
 export function Zoekbalk({ query, onChange, aantal, invoer, scope, alleenKoppen = false, onAlleenKoppen, modus = "alle", onModus = () => {} }: { alleenKoppen?: boolean; onAlleenKoppen?: (waarde: boolean) => void; modus?: Zoekmodus; onModus?: (modus: Zoekmodus) => void; query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
   const [open, setOpen] = useState(!!query);
   const formId = useId();
@@ -65,6 +81,38 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope, alleenKoppen 
   );
 }
 
+// Eigen component: de hooks staan los van het formulier. Alleen een klik/Enter op een knop verplaatst de focus, nooit tijdens typen.
+function ResultaatNav({ query, aantal, reset }: { query: string; aantal: number; reset: string }) {
+  // focusin op een kaart houdt de teller gelijk.
+  const [huidig, setHuidig] = useState<number | null>(null);
+  const [navMelding, setNavMelding] = useState("");
+  useEffect(() => { setHuidig(null); setNavMelding(""); }, [reset, aantal]);
+  useEffect(() => {
+    if (typeof document === "undefined" || typeof document.addEventListener !== "function") return;
+    const inFocus = (e: Event) => {
+      const kaart = (e.target as HTMLElement | null)?.closest?.(`#${resultatenId} .nc`) as HTMLElement | null | undefined;
+      const i = kaart ? Number(kaart.dataset.i) : NaN;
+      if (Number.isInteger(i)) { setHuidig(i); setNavMelding(""); }
+    };
+    document.addEventListener("focusin", inFocus);
+    return () => document.removeEventListener("focusin", inFocus);
+  }, []);
+  const spring = (richting: -1 | 1) => {
+    const doel = (huidig ?? -1) + richting;
+    if (doel < 0) { setNavMelding(navTekst(0, aantal, "eerste")); if (huidig === null) { setHuidig(0); naarResultaat(document, 0); } return; }
+    if (doel >= aantal) { setNavMelding(navTekst(aantal - 1, aantal, "laatste")); return; }
+    setHuidig(doel);
+    setNavMelding(navTekst(doel, aantal));
+    naarResultaat(document, doel);
+  };
+  if (aantal < 2 || !normaliseer(query)) return null;
+  return <span className="zoek-nav" role="group" aria-label="Navigeren door zoekresultaten">
+    <button type="button" className="zoek-wis-filters" aria-disabled={huidig === null || huidig <= 0} onClick={() => spring(-1)}>Vorig resultaat</button>
+    <button type="button" className="zoek-wis-filters" aria-disabled={huidig !== null && huidig >= aantal - 1} onClick={() => spring(1)}>Volgend resultaat</button>
+    <span className="zoek-scope" aria-live="polite">{navMelding}</span>
+  </span>;
+}
+
 export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aantal = 0, alleenKoppen = false, onAlleenKoppen, modus = "alle", onModus = () => {} }: { alleenKoppen?: boolean; onAlleenKoppen?: (waarde: boolean) => void; modus?: Zoekmodus; onModus?: (modus: Zoekmodus) => void; id?: string; query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope; aantal?: number }) {
   const compositie = useRef(false);
   // Geen maxLength: dat kapt plakken stil af en kan IME-invoer storen; hier melden we het wel, alleen als er echt tekst is weggegooid.
@@ -84,6 +132,7 @@ export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aanta
         <label className="zoek-scope"><input type="checkbox" checked={modus === "of"} onChange={(e) => onModus(e.target.checked ? "of" : "alle")} /> Vind één van de zoektermen (OF)</label>
         {!!normaliseer(query) && <span className="zoek-scope">{resultaatTekst(aantal)} · {modus === "of" ? "één van de zoektermen (OF)" : "alle zoektermen"}</span>}
         {aantal > 0 && !!normaliseer(query) && <a href={`#${resultatenId}`} className="zoek-wis-filters zoek-naar-resultaten" onClick={(e) => { e.preventDefault(); focusResultaten(document); }}>Ga naar resultaten ({aantal})</a>}
+        <ResultaatNav query={query} aantal={aantal} reset={`${modus}|${alleenKoppen}`} />
         <label className="zoek-scope">Zoeken in <select value={alleenKoppen ? "koppen" : "alles"} onChange={(e) => onAlleenKoppen?.(e.target.value === "koppen")}><option value="alles">Alle velden</option><option value="koppen">Alleen koppen</option></select></label>
         {!scope && <span id={hintId} className="zoek-scope">{uitsluitTip}</span>}
         {scope && <div id={scopeId} className="zoek-scope">
