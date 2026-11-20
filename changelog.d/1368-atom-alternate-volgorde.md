@@ -1,0 +1,1 @@
+- Atom: de artikel-URL wordt gekozen ongeacht de volgorde van `rel` en `href` en de aanhalingstekens; de self-link wint niet meer van `rel="alternate"` (#1368).
