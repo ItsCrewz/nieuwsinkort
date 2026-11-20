@@ -19,6 +19,12 @@ try {
   assert.ok(vandaagHtml([], dag).includes("nog geen berichten"), "lege dag");
   assert.equal((html.match(/<link rel="canonical"/g) || []).length, 1);
 
+  const veel = Array.from({ length: 201 }, (_, i) => ({ kop: `Bericht ${i}`, cat: "nl", bronnen: [{ href: `https://nos.nl/${i}` }] }));
+  const groot = vandaagHtml([...veel, ruw, pol], dag);
+  for (const item of veel) assert.ok(groot.includes(`<a href="${artikelPad(item, dag)}">${item.kop}</a>`), `link naar ${item.kop}`);
+  assert.equal((groot.match(/<li>/g) || []).length, 201);
+  assert.ok(!groot.includes("<h2>Tech</h2>") && !groot.includes("Ruw") && !groot.includes("Partij"), "lege rubriek en niet-indexeerbare berichten ontbreken");
+
   const env = { ASSETS: { fetch: async () => Response.json({}) }, NIEUWS: { get: async () => `${dag}\ntag\n${JSON.stringify({ gegenereerd: "2026-11-04T10:00:00Z", items: [a] })}` } };
   let r = await onRequestGet({ request: new Request("https://nieuwsinkort.nl/vandaag?x=1"), env, waitUntil: () => {} });
   assert.equal(r.status, 200); assert.equal(r.headers.get("x-content-type-options"), "nosniff"); assert.equal(r.headers.get("strict-transport-security"), "max-age=604800");
