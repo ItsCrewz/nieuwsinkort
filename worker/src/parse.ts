@@ -81,8 +81,17 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   for (const b of blocks) {
     const t = stripHtml(tag(b, ["title"]));
     let l = "";
-    const alt = /<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']/i.exec(b) || /<link[^>]*href=["']([^"']+)["']/i.exec(b);
-    if (alt) l = decode(alt[1]);
+    // Atom: rel en href los lezen, zodat de volgorde van de attributen niet uitmaakt
+    let eerste = "", alt = "";
+    for (const m of b.matchAll(/<link\b[^>]*>/gi)) {
+      const href = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(m[0]);
+      const h = href ? href[1] ?? href[2] : "";
+      if (!h) continue;
+      if (!eerste) eerste = h;
+      const rel = /\brel\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(m[0]);
+      if (rel && /(?:^|\s)alternate(?:\s|$)/i.test(rel[1] ?? rel[2])) { alt = h; break; }
+    }
+    l = decode(alt || eerste);
     if (!l) l = decode(tag(b, ["link"]));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
     const leeg = !l.trim(); // absUrl("") geeft anders de feed-URL zelf
