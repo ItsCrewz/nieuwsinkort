@@ -165,3 +165,12 @@ console.log("zoekbalk: tests geslaagd");
   assert.match(html, /class="feed-zoek"[^>]*role="status"[\s\S]*Wis zoekopdracht/);
   assert.equal(renderToStaticMarkup(createElement(ZoekActief, { query: " ", onWis: () => {}, klasse: "feed-zoek" })), "");
 }
+
+// Hele woorden (#1362): toegankelijke checkbox, standaard uit, zichtbaar in de melding zolang aan.
+{
+  const balk = (heleWoorden: boolean) => renderToStaticMarkup(createElement(Zoekbalk, { query: "kat", onChange: () => {}, aantal: 2, invoer: createRef<HTMLInputElement>(), heleWoorden, onHeleWoorden: () => {} }));
+  assert.match(balk(false), /<label[^>]*><input type="checkbox"\/> Alleen hele woorden<\/label>/);
+  assert.match(balk(true), /<input type="checkbox" checked=""\/> Alleen hele woorden/);
+  assert.doesNotMatch(balk(false), /hele woorden<\/span>|· hele woorden/);
+  assert.match(balk(true), /2 resultaten · alle zoektermen · hele woorden/);
+}

@@ -37,7 +37,7 @@ export function navTekst(k: number, aantal: number, poging?: "eerste" | "laatste
   return poging === "eerste" ? "Eerste resultaat" : poging === "laatste" ? "Laatste resultaat" : `Resultaat ${k + 1} van ${aantal}`;
 }
 
-export function Zoekbalk({ query, onChange, aantal, invoer, scope, alleenKoppen = false, onAlleenKoppen, modus = "alle", onModus = () => {} }: { alleenKoppen?: boolean; onAlleenKoppen?: (waarde: boolean) => void; modus?: Zoekmodus; onModus?: (modus: Zoekmodus) => void; query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
+export function Zoekbalk({ query, onChange, aantal, invoer, scope, alleenKoppen = false, onAlleenKoppen, modus = "alle", onModus = () => {}, heleWoorden = false, onHeleWoorden }: { heleWoorden?: boolean; onHeleWoorden?: (waarde: boolean) => void; alleenKoppen?: boolean; onAlleenKoppen?: (waarde: boolean) => void; modus?: Zoekmodus; onModus?: (modus: Zoekmodus) => void; query: string; onChange: (query: string) => void; aantal: number; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope }) {
   const [open, setOpen] = useState(!!query);
   const formId = useId();
   useEffect(() => { if (query) setOpen(true); }, [query]);
@@ -48,7 +48,7 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope, alleenKoppen 
     if (!open || !query.trim()) return;
     const timer = window.setTimeout(() => setMelding({ query, aantal }), 400);
     return () => { window.clearTimeout(timer); setMelding(null); };
-  }, [open, query, aantal, scope?.tekst, verborgen, modus, alleenKoppen]);
+  }, [open, query, aantal, scope?.tekst, verborgen, modus, alleenKoppen, heleWoorden]);
   const knop = useRef<HTMLButtonElement>(null);
   const focusBijOpenen = useRef(false);
   const sluit = useCallback(() => { onChange(""); setOpen(false); knop.current?.focus(); }, [onChange]);
@@ -75,8 +75,8 @@ export function Zoekbalk({ query, onChange, aantal, invoer, scope, alleenKoppen 
   return (
     <div className="zoek-container">
       {typeof document === "undefined" ? knopEl : createPortal(knopEl, document.body)}
-      {open && <ZoekFormulier alleenKoppen={alleenKoppen} onAlleenKoppen={onAlleenKoppen} id={formId} query={query} onChange={onChange} sluit={sluit} invoer={invoer} scope={scope} aantal={aantal} modus={modus} onModus={onModus} />}
-      <span className="zoek-status" aria-live="polite">{query.trim() && !normaliseer(query) ? zoekAanwijzing : open && query.trim() && melding?.query === query && melding.aantal === aantal ? resultaatTekst(aantal) + (modus === "of" ? " · één van de zoektermen (OF)" : " · alle zoektermen") + scopeMelding : ""}</span>
+      {open && <ZoekFormulier alleenKoppen={alleenKoppen} onAlleenKoppen={onAlleenKoppen} id={formId} query={query} onChange={onChange} sluit={sluit} invoer={invoer} scope={scope} aantal={aantal} modus={modus} onModus={onModus} heleWoorden={heleWoorden} onHeleWoorden={onHeleWoorden} />}
+      <span className="zoek-status" aria-live="polite">{query.trim() && !normaliseer(query) ? zoekAanwijzing : open && query.trim() && melding?.query === query && melding.aantal === aantal ? resultaatTekst(aantal) + (modus === "of" ? " · één van de zoektermen (OF)" : " · alle zoektermen") + (heleWoorden ? " · hele woorden" : "") + scopeMelding : ""}</span>
     </div>
   );
 }
@@ -113,7 +113,7 @@ function ResultaatNav({ query, aantal, reset }: { query: string; aantal: number;
   </span>;
 }
 
-export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aantal = 0, alleenKoppen = false, onAlleenKoppen, modus = "alle", onModus = () => {} }: { alleenKoppen?: boolean; onAlleenKoppen?: (waarde: boolean) => void; modus?: Zoekmodus; onModus?: (modus: Zoekmodus) => void; id?: string; query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope; aantal?: number }) {
+export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aantal = 0, alleenKoppen = false, onAlleenKoppen, modus = "alle", onModus = () => {}, heleWoorden = false, onHeleWoorden }: { heleWoorden?: boolean; onHeleWoorden?: (waarde: boolean) => void; alleenKoppen?: boolean; onAlleenKoppen?: (waarde: boolean) => void; modus?: Zoekmodus; onModus?: (modus: Zoekmodus) => void; id?: string; query: string; onChange: (query: string) => void; sluit: () => void; invoer: React.RefObject<HTMLInputElement>; scope?: ZoekScope; aantal?: number }) {
   const compositie = useRef(false);
   // Geen maxLength: dat kapt plakken stil af en kan IME-invoer storen; hier melden we het wel, alleen als er echt tekst is weggegooid.
   const [ingekort, setIngekort] = useState(false);
@@ -130,9 +130,10 @@ export function ZoekFormulier({ id, query, onChange, sluit, invoer, scope, aanta
         <button type="button" className="zoek-sluit" onClick={sluit}>Sluiten</button>
         <span className="zoek-scope" role="status">{ingekort && query ? `Zoekopdracht ingekort tot ${MAX_ZOEKTEKENS} tekens` : ""}</span>
         <label className="zoek-scope"><input type="checkbox" checked={modus === "of"} onChange={(e) => onModus(e.target.checked ? "of" : "alle")} /> Vind één van de zoektermen (OF)</label>
-        {!!normaliseer(query) && <span className="zoek-scope">{resultaatTekst(aantal)} · {modus === "of" ? "één van de zoektermen (OF)" : "alle zoektermen"}</span>}
+        <label className="zoek-scope"><input type="checkbox" checked={heleWoorden} onChange={(e) => onHeleWoorden?.(e.target.checked)} /> Alleen hele woorden</label>
+        {!!normaliseer(query) && <span className="zoek-scope">{resultaatTekst(aantal)} · {modus === "of" ? "één van de zoektermen (OF)" : "alle zoektermen"}{heleWoorden ? " · hele woorden" : ""}</span>}
         {aantal > 0 && !!normaliseer(query) && <a href={`#${resultatenId}`} className="zoek-wis-filters zoek-naar-resultaten" onClick={(e) => { e.preventDefault(); focusResultaten(document); }}>Ga naar resultaten ({aantal})</a>}
-        <ResultaatNav query={query} aantal={aantal} reset={`${modus}|${alleenKoppen}`} />
+        <ResultaatNav query={query} aantal={aantal} reset={`${modus}|${alleenKoppen}|${heleWoorden}`} />
         <label className="zoek-scope">Zoeken in <select value={alleenKoppen ? "koppen" : "alles"} onChange={(e) => onAlleenKoppen?.(e.target.value === "koppen")}><option value="alles">Alle velden</option><option value="koppen">Alleen koppen</option></select></label>
         {!scope && <span id={hintId} className="zoek-scope">{uitsluitTip}</span>}
         {scope && <div id={scopeId} className="zoek-scope">
