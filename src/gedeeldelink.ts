@@ -1,4 +1,5 @@
 import { parsePad } from "./artikelid";
+import { ams } from "./tijd";
 
 type Venster = { location: { pathname: string; search: string }; history: { replaceState(s: unknown, t: string, u: string): void; pushState(s: unknown, t: string, u: string): void } };
 
@@ -9,6 +10,13 @@ export function openGedeeld(w: Venster): boolean {
   if (!gedeeld) return false;
   const q = w.location.search;
   w.history.replaceState(null, "", `/${q}#/`);
-  w.history.pushState({ binnen: true }, "", `/${q}#/bericht/${encodeURIComponent(gedeeld.id)}`);
+  w.history.pushState({ binnen: true, gedeeld: { dag: gedeeld.dag, id: gedeeld.id } }, "", `/${q}#/bericht/${encodeURIComponent(gedeeld.id)}`);
   return true;
+}
+
+// Een gedeelde identiteit is alleen geldig bij data van dezelfde Amsterdamse dag.
+export function gedeeldeDagBeschikbaar(dag: string | undefined, gegenereerd: string | undefined): boolean {
+  if (!dag) return true;
+  const tijd = Date.parse(gegenereerd || "");
+  return Number.isFinite(tijd) && ams(tijd).iso === dag;
 }

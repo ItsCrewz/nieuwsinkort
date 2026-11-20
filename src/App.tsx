@@ -1,3 +1,4 @@
+import { gedeeldeDagBeschikbaar } from "./gedeeldelink";
 import { useTrekverversen } from "./trekverversen";
 import { Foutgrens, lazyHerstel } from "./foutgrens";
 import { bewaarNieuwspositie, herstelNieuwspositie, leesNieuwspositie, type Nieuwspositie } from "./nieuwspositie";
@@ -69,11 +70,14 @@ const feedNav = maakFeedNavigatie({ get location() { return window.location; }, 
 let introDone = false;
 
 // De oude Alles-route vervangen zonder een extra geschiedenisitem.
-function huidigeRoute(): Route {
+type AppRoute = Route & { gedeeldeDag?: string };
+function huidigeRoute(): AppRoute {
   if (window.location.hash === "#/alles") {
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#/`);
   }
-  return parseHash(window.location.hash);
+  const route = parseHash(window.location.hash);
+  const gedeeld = window.history.state?.gedeeld;
+  return gedeeld?.id === route.selected && typeof gedeeld.dag === "string" ? { ...route, gedeeldeDag: gedeeld.dag } : route;
 }
 
 // ---------------------------------------------------------------- nieuws
@@ -778,9 +782,9 @@ export default function App() {
   const { groups, index } = useMemo(() => buildSources(catalog, raw), [catalog, raw]);
   const filtered = useFiltered(raw, index, off);
   const data = filtered?.data ?? null;
-  const [route, setRoute] = useState<Route>(() => huidigeRoute());
+  const [route, setRoute] = useState<AppRoute>(() => huidigeRoute());
   // Ook een direct gedeeld bericht kan buiten de gefilterde lijst staan.
-  const selectedItem = route.selected
+  const selectedItem = route.selected && gedeeldeDagBeschikbaar(route.gedeeldeDag, raw?.gegenereerd)
     ? data?.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? raw?.items.find((i) => (itemKey(i) === route.selected || artikelId(i) === route.selected)) ?? null
     : null;
   useLayoutEffect(() => { document.title = selectedItem ? `${selectedItem.kop} – Nieuws in het kort` : viewTitel(route.view); }, [route.view, selectedItem]);
@@ -1041,6 +1045,20 @@ export default function App() {
             />
           </Suspense>
           </Foutgrens>
+          <Footer />
+        </main>
+      </Frame>
+    );
+  }
+
+  if (route.gedeeldeDag && !selectedItem) {
+    return (
+      <Frame top={top}>
+        <main className="wrap" id="top" tabIndex={-1}>
+          <div className="empty" role="status">
+            Dit bericht van {route.gedeeldeDag} is niet meer beschikbaar.
+            <a className="linkbtn" href="#/">Bekijk het actuele overzicht</a>
+          </div>
           <Footer />
         </main>
       </Frame>

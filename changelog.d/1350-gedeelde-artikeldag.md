@@ -1,0 +1,1 @@
+- Gedeelde artikellinks openen alleen berichten van de gevraagde dag en tonen anders een verwijzing naar het actuele overzicht (#1350).
