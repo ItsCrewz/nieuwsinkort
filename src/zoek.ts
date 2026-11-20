@@ -101,10 +101,11 @@ function zoektekst(item: Item): Zoektekst {
 const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+(?:\.\p{N}+)?$/u.test(term);
 // Schriften zonder gebruikelijke woordspaties (#1221): een "woord" is daar een hele zin, dus de term mag overal in het woord vallen.
 const ZONDER_SPATIES = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}ー\p{M}]+$/u;
-const past = (term: string, woord: string) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : ZONDER_SPATIES.test(term) ? woord.includes(term) : woord.startsWith(term);
+// heleWoorden (#1362): het woord moet gelijk zijn aan de term i.p.v. ermee beginnen; schriften zonder spaties blijven overal in het woord passen.
+const past = (term: string, woord: string, heleWoorden = false) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : ZONDER_SPATIES.test(term) ? woord.includes(term) : heleWoorden ? woord === term : woord.startsWith(term);
 
 // Reeksen [begin, eind] waarop een term past. Aaneengeschreven vorm: één woord, of woorden met koppelteken ("coronamaatregelen" = "corona-maatregelen").
-function kandidaten(delen: string[], woorden: string[], lijm: boolean[]): [number, number][] {
+function kandidaten(delen: string[], woorden: string[], lijm: boolean[], heleWoorden = false): [number, number][] {
   const uit: [number, number][] = [];
   const samen = delen.join("");
   for (let i = 0; i < woorden.length; i++) {
@@ -113,8 +114,8 @@ function kandidaten(delen: string[], woorden: string[], lijm: boolean[]): [numbe
       c += woorden[m];
       if (c.length >= samen.length || !samen.startsWith(c) || speciaal(samen) || !lijm[m]) break;
     }
-    if (m < woorden.length && (m === i ? past(samen, woorden[i]) : c.length >= samen.length && c.startsWith(samen))) uit.push([i, m]);
-    if (delen.length > 1 && i + delen.length <= woorden.length && delen.every((d, k) => k < delen.length - 1 ? woorden[i + k] === d : past(d, woorden[i + k]))) uit.push([i, i + delen.length - 1]);
+    if (m < woorden.length && (m === i ? past(samen, woorden[i], heleWoorden) : c.length >= samen.length && (heleWoorden ? c === samen : c.startsWith(samen)))) uit.push([i, m]);
+    if (delen.length > 1 && i + delen.length <= woorden.length && delen.every((d, k) => k < delen.length - 1 ? woorden[i + k] === d : past(d, woorden[i + k], heleWoorden))) uit.push([i, i + delen.length - 1]);
   }
   return uit;
 }
@@ -189,7 +190,7 @@ function termenVan(query: string): string[][] {
 
 export type Zoekmodus = "alle" | "of";
 
-export function zoekItems(items: Item[], query: string, modusOfKoppen: Zoekmodus | boolean = "alle", alleenKoppen = false): Item[] {
+export function zoekItems(items: Item[], query: string, modusOfKoppen: Zoekmodus | boolean = "alle", alleenKoppen = false, heleWoorden = false): Item[] {
   const modus = typeof modusOfKoppen === "boolean" ? "alle" : modusOfKoppen;
   if (typeof modusOfKoppen === "boolean") alleenKoppen = modusOfKoppen;
   query = zonderOnzichtbaar(begrensZoekterm(query));
@@ -201,9 +202,9 @@ export function zoekItems(items: Item[], query: string, modusOfKoppen: Zoekmodus
   return items.filter((item) => {
     const { woorden, lijm } = zoektekst(alleenKoppen ? alleenKop(item) : item);
     // Een uitsluitterm die op een woordbegin past laat het item afvallen.
-    if (min.some((delen) => kandidaten(delen, woorden, lijm).length)) return false;
+    if (min.some((delen) => kandidaten(delen, woorden, lijm, heleWoorden).length)) return false;
     // Woordbegin: elke term moet op een eigen woord (of eigen reeks) vallen ("mark markt" vraagt twee woorden).
-    const kand = termen.map((delen) => kandidaten(delen, woorden, lijm));
+    const kand = termen.map((delen) => kandidaten(delen, woorden, lijm, heleWoorden));
     return modus === "of" && kand.length ? kand.some((k) => k.length > 0) : kand.every((k) => k.length) && alleTermenPassen(kand, woorden.length);
   });
 }
@@ -219,7 +220,7 @@ function kleineTikfout(a: string, b: string): boolean {
 }
 
 // Alleen eenvoudige zoekopdrachten corrigeren; speciale zoeksyntaxis blijft ongemoeid.
-export function zoeksuggesties(items: Item[], query: string, alleenKoppen = false, modus: Zoekmodus = "alle"): string[] {
+export function zoeksuggesties(items: Item[], query: string, alleenKoppen = false, modus: Zoekmodus = "alle", heleWoorden = false): string[] {
   if (query.length > 80 || !/^[\p{L}\p{M}\s]+$/u.test(query)) return [];
   const delen = query.trim().split(/\s+/u);
   if (delen.length > 5) return [];
@@ -234,7 +235,7 @@ export function zoeksuggesties(items: Item[], query: string, alleenKoppen = fals
       for (let i = 0; i < termen.length; i++) {
         if (termen[i].length < 5 || termen[i].length > 40 || !kleineTikfout(termen[i], kandidaat)) continue;
         const voorstel = delen.map((deel, n) => n === i ? woord : deel).join(" ");
-        if (zoekItems([item], voorstel, modus, alleenKoppen).length) suggesties.add(voorstel);
+        if (zoekItems([item], voorstel, modus, alleenKoppen, heleWoorden).length) suggesties.add(voorstel);
         if (suggesties.size === 3) return [...suggesties];
       }
     }
@@ -251,9 +252,9 @@ const alleenKop = (item: Item): Item => {
 };
 
 // Koptreffers vóór treffers alleen in de tekst; binnen elke groep blijft de volgorde van de invoer (stabiel).
-export function rangschikKoptreffers(items: Item[], query: string, modus: Zoekmodus = "alle"): Item[] {
+export function rangschikKoptreffers(items: Item[], query: string, modus: Zoekmodus = "alle", heleWoorden = false): Item[] {
   if (!query.trim() || items.length < 2) return items;
-  const kop = new Set(zoekItems(items.map(alleenKop), query, modus));
+  const kop = new Set(zoekItems(items.map(alleenKop), query, modus, false, heleWoorden));
   const voor: Item[] = [], rest: Item[] = [];
   for (const item of items) (kop.has(alleenKop(item)) ? voor : rest).push(item);
   return voor.length && rest.length ? [...voor, ...rest] : items;
