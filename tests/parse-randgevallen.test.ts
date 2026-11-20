@@ -97,6 +97,20 @@ console.log("✓ parse-randgevallen: entiteiten, HTML, datums, igTime, Atom en C
   // zonder news:publication_date valt het terug op lastmod; zonder titel geen item
   const kaal = parseFeed('<urlset xmlns="x"><url><loc>/a/1</loc><lastmod>2026-10-31T10:00:00+01:00</lastmod><news:news><news:title>Kop &amp; staart</news:title></news:news></url><url><loc>/a/2</loc></url></urlset>', url);
   assert.deepEqual(kaal.map((e) => [e.t, e.l, e.d]), [["Kop & staart", "https://alarmeringen.nl/a/1", Date.parse("2026-10-31T10:00:00+01:00")]]);
+  const attributen = `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><loc>/nieuws/een?a=1&amp;b=2</loc><news:news><news:title>Eerste &amp; tweede</news:title><news:publication_date>2026-10-31T10:00:00Z</news:publication_date></news:news></url>
+    <url><loc>/nieuws/twee</loc><lastmod>2026-11-01T10:00:00Z</lastmod><news:news><news:title>Tweede bericht</news:title></news:news></url>
+    <url id="3"><loc>/anders/drie</loc><news:news><news:title>Ander pad</news:title></news:news></url>
+    <url id="4"><loc>/nieuws/zonder-titel</loc></url>
+    <url id="5"><loc>javascript:alert(1)</loc><news:news><news:title>Ongeldige link</news:title></news:news></url>
+    <url id="6"><news:news><news:title>Ontbrekende link</news:title></news:news></url>
+    <url-extra><loc>/nieuws/nep</loc><news:news><news:title>Geen URL-element</news:title></news:news></url-extra>
+  </urlset>`;
+  assert.deepEqual(parseFeed(attributen, url, "/nieuws/").map((e) => [e.t, e.l, e.d]), [
+    ["Eerste & tweede", "https://alarmeringen.nl/nieuws/een?a=1&b=2", Date.parse("2026-10-31T10:00:00Z")],
+    ["Tweede bericht", "https://alarmeringen.nl/nieuws/twee", Date.parse("2026-11-01T10:00:00Z")],
+  ]);
+  assert.equal(parseFeed(attributen, url).length, 3);
   // RSS past het padfilter sinds #455 ook toe
   assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/a</link></item></channel></rss>', base, "/zzz/").length, 0);
   assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/zzz/a</link></item></channel></rss>', base, "/zzz/").length, 1);
