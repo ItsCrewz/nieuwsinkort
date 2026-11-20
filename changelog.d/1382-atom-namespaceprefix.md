@@ -1,0 +1,1 @@
+- Atom: feeds met een namespaceprefix op entry-elementen (`atom:entry`, `atom:title`, …) leveren nu berichten op.

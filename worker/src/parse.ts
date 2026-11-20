@@ -77,13 +77,17 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   }
   if (/<urlset[\s>]/i.test(body.slice(0, 2000))) return parseSitemap(body, url, pad);
   const kg = /kg\.meowing\.de|kittygram/i.test(url);
-  const blocks = body.match(/<item[\s>][\s\S]*?<\/item>|<entry[\s>][\s\S]*?<\/entry>/gi) || [];
-  for (const b of blocks) {
-    const t = stripHtml(tag(b, ["title"]));
+  // Atom met een prefix (<atom:entry>): alleen prefixen die echt aan de Atom-namespace gebonden zijn, geen willekeurig <foo:entry>
+  const voor = [...new Set([...body.matchAll(/xmlns:([A-Za-z_][\w.-]*)\s*=\s*(["'])http:\/\/www\.w3\.org\/2005\/Atom\2/g)].map((m) => m[1]))].map((x) => x.replace(/\./g, "\\."));
+  const blockRe = new RegExp(`<item[\\s>][\\s\\S]*?</item>|<entry[\\s>][\\s\\S]*?</entry>${voor.length ? `|<(${voor.join("|")}):entry[\\s>][\\s\\S]*?</\\1:entry>` : ""}`, "gi");
+  for (const bm of body.matchAll(blockRe)) {
+    const b = bm[0], p = bm[1];
+    const pn = (n: string[]) => (p ? n.flatMap((x) => [`${p}:${x}`, x]) : n); // prefixed eerst, daarna ongeprefixt
+    const t = stripHtml(tag(b, pn(["title"])));
     let l = "";
     // Atom: rel en href los lezen, zodat de volgorde van de attributen niet uitmaakt
     let eerste = "", alt = "";
-    for (const m of b.matchAll(/<link\b[^>]*>/gi)) {
+    for (const m of b.matchAll(new RegExp(`<${p ? `(?:${p}:)?` : ""}link\\b[^>]*>`, "gi"))) {
       // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
       const at: Record<string, string> = {};
       for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
@@ -96,13 +100,13 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
       if (at.rel && /(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) { alt = h; break; }
     }
     l = decode(alt || eerste);
-    if (!l) l = decode(tag(b, ["link"]));
+    if (!l) l = decode(tag(b, pn(["link"])));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
     l = absUrl(l, url);
     if (pad && !padOk(l, pad)) continue;
-    let d = date(tag(b, ["pubDate", "published", "dc:date", "updated", "a10:updated"]));
+    let d = date(tag(b, [...pn(["pubDate", "published"]), "dc:date", ...pn(["updated"]), "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
-    const raw = tag(b, ["description", "media:description", "summary", "content:encoded", "content"]);
+    const raw = tag(b, [...pn(["description"]), "media:description", ...pn(["summary"]), "content:encoded", ...pn(["content"])]);
     const img = /<media:(?:thumbnail|content)[^>]*url=["']([^"']+)["']/i.exec(b)?.[1] || /<enclosure[^>]*url=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/i.exec(b)?.[1];
     if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(img && absUrl(decode(img), url) ? { img: absUrl(decode(img), url) } : {}) });
   }

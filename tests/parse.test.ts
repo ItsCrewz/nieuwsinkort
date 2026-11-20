@@ -18,4 +18,18 @@ assert.deepEqual(parseFeed('[{"title":"Bericht","url":"/a","date":"2026-01-02"}]
 assert.equal(parseFeed('{"vulnerabilities":[{"cveID":"CVE-1","vulnerabilityName":"Lek"}]}', "https://voorbeeld.nl")[0].l, "https://nvd.nist.gov/vuln/detail/CVE-1");
 assert.equal(parseFeed('{"hits":{"hits":[{"_id":"123","_source":{"name":"Raad"}}]}}', "https://voorbeeld.nl")[0].t, "Raad");
 assert.throws(() => parseFeed("{ongeldig", "https://voorbeeld.nl"), /geen geldige JSON/);
+{
+  const NS = 'xmlns:atom="http://www.w3.org/2005/Atom"';
+  const e = (n: string, extra = "") => `<atom:entry><atom:title>Titel ${n}</atom:title><atom:link rel="self" href="https://v.nl/self${n}"/><atom:link rel="alternate" href="https://v.nl/a${n}"/><atom:published>2026-01-02T10:00:00Z</atom:published><atom:summary>Samenvatting ${n}</atom:summary>${extra}</atom:entry>`;
+  const r = parseFeed(`<feed ${NS}>${e("1")}${e("2")}</feed>`, "https://v.nl/feed");
+  assert.deepEqual(r, [1, 2].map((n) => ({ t: `Titel ${n}`, l: `https://v.nl/a${n}`, d: Date.parse("2026-01-02T10:00:00Z"), s: `Samenvatting ${n}` })));
+  // gemengd: ongeprefixte entry naast prefix-entry
+  const g = parseFeed(`<feed ${NS}>${e("1")}<entry><title>Plat</title><link href="https://v.nl/plat"/></entry></feed>`, "https://v.nl/feed");
+  assert.deepEqual(g.map((x) => x.t), ["Titel 1", "Plat"]);
+  // ander prefix dan de gedeclareerde, en niet-Atom-prefix: geen entry
+  assert.deepEqual(parseFeed(`<feed xmlns:foo="http://voorbeeld.nl/x"><foo:entry><foo:title>Nee</foo:title></foo:entry></feed>`, "https://v.nl/feed"), []);
+  assert.deepEqual(parseFeed(`<feed ${NS}><x:entry><x:title>Nee</x:title></x:entry></feed>`, "https://v.nl/feed"), []);
+  // RSS met atom:link blijft werken
+  assert.deepEqual(parseFeed(`<rss ${NS}><channel><atom:link href="https://v.nl/feed" rel="self"/><item><title>Rss</title><link>https://v.nl/r</link></item></channel></rss>`, "https://v.nl/feed").map((x) => [x.t, x.l]), [["Rss", "https://v.nl/r"]]);
+}
 console.log("✓ parse: feeds, tekst en URL's");
