@@ -237,16 +237,16 @@ function fitCard(el: HTMLElement) {
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
 // De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
-export const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
+export const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm, heleWoorden = false }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string; heleWoorden?: boolean }) {
   const pad = artikelId(item) || itemKey(item);
   return (
     <div className={`nc cat-${item.cat}`} data-id={pad} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
-      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} />}
+      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} heleWoorden={heleWoorden} />}
     </div>
   );
 });
 
-export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
+export function KaartInhoud({ item, i, bionic, onOpen, zoekterm, heleWoorden = false }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string; heleWoorden?: boolean }) {
   const key = itemKey(item);
   const cardRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -288,7 +288,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
       el.removeEventListener("nc-dirty", run);
       cancelAnimationFrame(raf);
     };
-  }, [bionic, item, zoekterm]);
+  }, [bionic, item, zoekterm, heleWoorden]);
   const pad = artikelId(item) || key; // #1278: eigen id i.p.v. kopsleutel, zodat dubbele koppen het eigen bericht openen
   const click = useOpen(pad, onOpen);
   const beelden = useMemo(() => fotos(item), [item]);
@@ -305,7 +305,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
   const sum = tekst.ai || tekst.samenvatting;
   const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
-  const fragment = zoekterm.trim() ? zoekFragment(item, zoekterm, [item.kop, sum, ...punten]) : null;
+  const fragment = zoekterm.trim() ? zoekFragment(item, zoekterm, [item.kop, sum, ...punten], undefined, heleWoorden) : null;
   return (
     <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
       <div className="nc-body">
@@ -320,12 +320,12 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
       </div>
       <h2 className="nc-title">
         <a href={`#/bericht/${pad}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
-          <ZoekTekst tekst={item.kop} query={zoekterm} />
+          <ZoekTekst tekst={item.kop} query={zoekterm} heleWoorden={heleWoorden} />
         </a>
       </h2>
       {sum ? (
         <p className="nc-sum bn">
-          <ZoekTekst tekst={sum} query={zoekterm} bionic={bionic} />
+          <ZoekTekst tekst={sum} query={zoekterm} heleWoorden={heleWoorden} bionic={bionic} />
         </p>
       ) : null}
       {fragment ? (
@@ -338,7 +338,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
         <ul className="nc-pts">
           {punten.map((t, k) => (
             <li key={k} className="bn">
-              {zoekterm.trim() ? <ZoekTekst tekst={t} query={zoekterm} bionic={bionic} /> : <BionicText text={t} on={bionic} />}
+              {zoekterm.trim() ? <ZoekTekst tekst={t} query={zoekterm} heleWoorden={heleWoorden} bionic={bionic} /> : <BionicText text={t} on={bionic} />}
             </li>
           ))}
         </ul>
@@ -364,11 +364,11 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
   );
 }
 
-function ZoekTekst({ tekst, query, bionic = false }: { tekst: string; query: string; bionic?: boolean }) {
-  return <>{markeerDelen(tekst, query).map((deel, i) => deel.markeer ? <mark key={i}><BionicText text={deel.tekst} on={bionic} /></mark> : <BionicText key={i} text={deel.tekst} on={bionic} />)}</>;
+function ZoekTekst({ tekst, query, bionic = false, heleWoorden = false }: { tekst: string; query: string; bionic?: boolean; heleWoorden?: boolean }) {
+  return <>{markeerDelen(tekst, query, heleWoorden).map((deel, i) => deel.markeer ? <mark key={i}><BionicText text={deel.tekst} on={bionic} /></mark> : <BionicText key={i} text={deel.tekst} on={bionic} />)}</>;
 }
 
-function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm, ververs, verversActief, laatstVerversd }: { ververs: () => Promise<boolean | undefined>; verversActief: boolean; laatstVerversd: { current: number }; tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm, heleWoorden = false, ververs, verversActief, laatstVerversd }: { ververs: () => Promise<boolean | undefined>; verversActief: boolean; laatstVerversd: { current: number }; tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; heleWoorden?: boolean; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -535,7 +535,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
             Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
           </div>
         ) : (
-          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} zoekterm={zoekterm} />)
+          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} zoekterm={zoekterm} heleWoorden={heleWoorden} />)
         )}
         <div className="nc-end">
           <Footer />
@@ -1116,6 +1116,7 @@ export default function App() {
             laatstVerversd={laatstVerversd}
             items={zoekUitkomst}
             zoekterm={zoekterm}
+            heleWoorden={heleWoorden}
             nieuwsdata={raw}
             keepOrder={flt.f.sort !== "nieuw" || !!zoekterm.trim()}
             empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} suggesties={suggesties} onSuggestie={(term) => { wijzigZoekterm(term); if (zoekAlles) setZoekAllesSelectie({ ...zoekselectie, term }); zoekInvoer.current?.focus(); }} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={zoekAlles ? undefined : wisZoekFilters} onZoekAlles={!zoekAlles ? () => { setZoekAllesSelectie(zoekselectie); zoekInvoer.current?.focus(); } : undefined} /> : filterLeeg}

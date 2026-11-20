@@ -1,1 +1,1 @@
-- Zoeken: nieuwe optie "Alleen hele woorden" (standaard uit; woordbegin blijft de standaard). Gele markering blijft op woordbegin.
+- Zoeken: nieuwe optie "Alleen hele woorden" (standaard uit; woordbegin blijft de standaard).

@@ -273,7 +273,7 @@ export function verborgenTekst(aantal: number): string {
 }
 
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
-export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
+export function markeerDelen(tekst: string, query: string, heleWoorden = false): { tekst: string; markeer: boolean }[] {
   const plus = splitsUitsluiting(begrensZoekterm(query)).plus;
   // Zoekopdracht "AT&T" markeert zowel "ATT" als "AT&T" in de tekst.
   const paren = [...plus.matchAll(AMPERSAND)].map((m) => normaliseer(m[1]) + "&" + normaliseer(m[2]));
@@ -303,7 +303,9 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
     while ((index = vlak.indexOf(woord, vanaf)) !== -1) {
       const numeriek = /^\p{N}+(?:\.\p{N}+)?$/u.test(woord);
       const getal = numeriek ? vlak.slice(0, index).match(/[\p{N}.,]*$/u)![0] + vlak.slice(index).match(/^[\p{N}.,]*/u)![0] : "";
-      if ((index === 0 || ZONDER_SPATIES.test(woord) || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
+      // heleWoorden (#1362): ook het teken na de treffer mag niet bij het woord horen (zoals `past`).
+      const eindOk = !heleWoorden || ZONDER_SPATIES.test(woord) || !/^[\p{L}\p{M}\p{N}+#]/u.test(vlak.slice(index + woord.length));
+      if ((index === 0 || ZONDER_SPATIES.test(woord) || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && eindOk && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
         bereiken.push({ begin: posities[index].begin, eind: posities[index + woord.length - 1].eind });
       }
       vanaf = index + 1;
@@ -348,13 +350,13 @@ function venster(tekst: string, delen: { tekst: string; markeer: boolean }[], br
 }
 
 // Waar de treffer staat als de kaart die tekst niet toont (#1313). `zichtbaar`: teksten die de kaart al toont en markeert; heeft een daarvan een treffer, dan is een fragment overbodig.
-export function zoekFragment(item: Item, query: string, zichtbaar: (string | undefined)[] = [item.kop, item.ai || item.samenvatting], breedte = 120): ZoekFragment | null {
+export function zoekFragment(item: Item, query: string, zichtbaar: (string | undefined)[] = [item.kop, item.ai || item.samenvatting], breedte = 120, heleWoorden = false): ZoekFragment | null {
   if (!query.trim()) return null;
-  if (zichtbaar.some((t) => t && markeerDelen(t, query).some((d) => d.markeer))) return null;
+  if (zichtbaar.some((t) => t && markeerDelen(t, query, heleWoorden).some((d) => d.markeer))) return null;
   const kandidaten: [string, string | undefined][] = [["Samenvatting", item.samenvatting], ["Samenvatting", item.ai], ...(item.punten ?? []).map((p): [string, string] => ["Punt", p]), ...(item.bronnen ?? []).map((b): [string, string | undefined] => ["Bron", b.site])];
   for (const [label, tekst] of kandidaten) {
     if (!tekst) continue;
-    const delen = markeerDelen(tekst, query);
+    const delen = markeerDelen(tekst, query, heleWoorden);
     if (delen.some((d) => d.markeer)) return { label, delen: venster(tekst, delen, breedte) };
   }
   return null;

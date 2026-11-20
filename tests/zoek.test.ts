@@ -303,4 +303,14 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.deepEqual(zoekItems([kop("Katten"), kop("De kat")], "kat", "alle", false, true).length, 1);
   assert.deepEqual(rangschikKoptreffers([{ ...katten, kop: "Iets", samenvatting: "kat" } as Item, kat], "kat", "alle", true), [kat, { ...katten, kop: "Iets", samenvatting: "kat" }]);
   assert.deepEqual(zoekItems([kop("Rust 2024"), kop("Rust 20240")], "2024", "alle", false, true).length, 1);
+  // Markering en fragment volgen de keuze ook (#1362).
+  const gem = (d: { tekst: string; markeer: boolean }[]) => d.filter((x) => x.markeer).map((x) => x.tekst);
+  assert.deepEqual(gem(markeerDelen("Katten en kat", "kat", true)), ["kat"]);
+  assert.deepEqual(gem(markeerDelen("Katten en kat", "kat")), ["Kat", "kat"]);
+  assert.deepEqual(gem(markeerDelen("東京都", "東京", true)), ["東京"]);
+  const kfr = { cat: "nl", kop: "Katten in Amsterdam", samenvatting: "Rustig", punten: ["de kat slaapt"] } as unknown as Item;
+  const fr = zoekFragment(kfr, "kat", [kfr.kop], 120, true)!;
+  assert.equal(fr.label, "Punt");
+  assert.deepEqual(gem(fr.delen), ["kat"]);
+  assert.equal(zoekFragment(kfr, "kat", [kfr.kop], 120), null);
 }
