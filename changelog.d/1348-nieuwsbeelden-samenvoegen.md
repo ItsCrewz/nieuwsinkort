@@ -1,0 +1,1 @@
+- Behoud foto's uit alle samengevoegde nieuwsberichten (#1348).

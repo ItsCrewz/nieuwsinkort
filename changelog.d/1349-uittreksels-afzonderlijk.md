@@ -1,0 +1,1 @@
+- Artikelverdieping: onder Uitgebreid worden bronuittreksels afzonderlijk beoordeeld; de eerste bron met nieuwe tekst wordt getoond, de volgende alleen als de eerdere uitsluitend herhaling bevat (#1349).

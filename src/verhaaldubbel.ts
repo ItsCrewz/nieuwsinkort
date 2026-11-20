@@ -63,7 +63,7 @@ export function zelfdeVerhaal(a: Verhaal, b: Verhaal): boolean {
 
 }
 
-type Item = { kop?: string; ai?: string; samenvatting?: string; t?: number; tijd?: string; bronnen?: { site: string; href: string }[]; beelden?: string[]; punten?: string[]; meer?: string; uur?: boolean };
+type Item = { kop?: string; ai?: string; samenvatting?: string; t?: number; tijd?: string; bronnen?: { site: string; href: string }[]; beeld?: string; beelden?: string[]; punten?: string[]; meer?: string; uur?: boolean };
 export function ontdubbelVerhalen<T extends Item>(items: T[], routineItems: ReadonlySet<T> = new Set()): T[] {
   const groepen: T[][] = [];
   const verhaal = (i: Item) => ({ kop: i.kop || "", tekst: `${i.ai || ""} ${i.samenvatting || ""}`, tijd: i.t || 0 });
@@ -77,7 +77,7 @@ export function ontdubbelVerhalen<T extends Item>(items: T[], routineItems: Read
     const bronnen = eenPerUitgever([hoofd, ...g].flatMap((x) => x.bronnen || [])).slice(0, 6);
     const routine = g.find((x) => routineItems.has(x));
     const inhoud = routine ? { samenvatting: routine.samenvatting || hoofd.samenvatting, punten: routine.punten?.length ? routine.punten : hoofd.punten, meer: routine.meer || hoofd.meer } : {};
-    const beelden = [...new Set(g.flatMap((x) => x.beelden || []))];
+    const beelden = [...new Set(g.flatMap((x) => [...(Array.isArray(x.beelden) ? x.beelden : []), ...(x.beeld ? [x.beeld] : [])]))];
     const nieuwste = g.reduce((a, b) => (b.t || 0) > (a.t || 0) ? b : a);
     return { ...hoofd, ...inhoud, bronnen, ...(beelden.length ? { beelden } : {}), t: nieuwste.t, tijd: nieuwste.tijd };
   });

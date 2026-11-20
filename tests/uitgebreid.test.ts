@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { uitgebreidAlineas, zonderUitleg } from "../src/uitgebreid";
+import { uitgebreidAlineas, uitgebreidOntdubbeld, zonderUitleg } from "../src/uitgebreid";
 import type { Item } from "../src/types";
 
 const t = (naam: string, f: () => void) => { f(); console.log("ok -", naam); };
@@ -24,4 +24,21 @@ t("cache hergebruikt: artikel met uitleg krijgt geen tweede AI-aanroep", () => {
   for (const m of zonderUitleg([{ key: "a" }, { key: "b" }], cache)) { calls++; (cache as any)[m.key] = { uitleg: ["y"] }; }
   for (const _ of zonderUitleg([{ key: "a" }, { key: "b" }], cache)) calls++;
   assert.equal(calls, 1);
+});
+t("twee bruikbare bronnen: alleen de eerste onder Uitgebreid (#1349)", () => {
+  const o = uitgebreidOntdubbeld(item({ kop: "Brand in Haarlem" }), { uittreksel: [
+    { site: "A", href: "https://a.nl", alineas: ["De brandweer blust een grote brand in een loods aan de Waarderweg."] },
+    { site: "B", href: "https://b.nl", alineas: ["Een andere bron meldt dat de politie het gebied heeft afgezet voor verkeer."] },
+  ] });
+  assert.deepEqual(o.uitgebreid, ["De brandweer blust een grote brand in een loods aan de Waarderweg."]);
+  assert.equal(o.uitleg, false);
+});
+t("eerste bron is alleen herhaling: de tweede bron wordt getoond (#1349)", () => {
+  const zin = "De brandweer blust een grote brand in een loods aan de Waarderweg.";
+  const nieuw = "De politie heeft het gebied afgezet en onderzoekt de oorzaak van de brand.";
+  const o = uitgebreidOntdubbeld(item({ kop: "Brand in Haarlem", samenvatting: zin }), { uittreksel: [
+    { site: "A", href: "https://a.nl", alineas: [zin] },
+    { site: "B", href: "https://b.nl", alineas: [nieuw] },
+  ] });
+  assert.deepEqual(o.uitgebreid, [nieuw]);
 });
