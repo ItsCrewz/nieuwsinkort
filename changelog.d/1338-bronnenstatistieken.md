@@ -1,0 +1,1 @@
+- Het bronnenoverzicht onderscheidt ontbrekende statistieken van een telling van nul (#1338).

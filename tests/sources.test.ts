@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildSources, GROUP_ORDER, norm, sourceKey } from "../src/sources";
+import { buildSources, GROUP_ORDER, norm, sourceKey, telling } from "../src/sources";
 import type { Catalog } from "../src/sources";
 import type { Data, Item, Video } from "../src/types";
 
@@ -103,6 +103,30 @@ assert.equal(buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], 
 assert.equal(buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: { "tech|a": { vandaag: 1 }, "tech|b": { vandaag: 2 }, "tech|c": { vandaag: 0 }, "tech|d": { vandaag: 3, storing: true } } }).groups[0].onvolledig, true);
 assert.equal(buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: { "tech|a": { vandaag: null } } }).groups[0].published, null);
 assert.equal(zonderStats.groups[0].onvolledig, false);
+
+// onbruikbare waarden (NaN, tekst, negatief) zijn onbekend, geen nul; een echte nul blijft nul
+const bouw = (bronstats: Record<string, unknown>) => buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: bronstats as never }).groups[0];
+for (const slecht of [Number.NaN, "5", -1, Infinity]) {
+  const alleen = bouw({ "tech|a": { vandaag: slecht } });
+  assert.equal(alleen.published, null);
+  const mix = bouw({ "tech|a": { vandaag: slecht }, "tech|b": { vandaag: 2 }, "tech|c": { vandaag: 0 }, "tech|d": { vandaag: 1 } });
+  assert.equal(mix.published, 3);
+  assert.equal(mix.onvolledig, true);
+}
+const nul = bouw({ "tech|a": { vandaag: 0 }, "tech|b": { vandaag: 0 }, "tech|c": { vandaag: 0 }, "tech|d": { vandaag: 0 } });
+assert.equal(nul.published, 0);
+assert.equal(nul.onvolledig, false);
+// deels ontbrekende groep: som van de bekende bronnen, onvolledig
+const deels = bouw({ "tech|a": { vandaag: 4 }, "tech|b": { vandaag: 2 } });
+assert.equal(deels.published, 6);
+assert.equal(deels.onvolledig, true);
+// volledig ontbrekend bronstats
+assert.equal(bouw({}).published, null);
+assert.equal(buildSources(sorteerCatalogus, { ...data, items: [], filmpjes: [], dumpert: [], bronstats: undefined }).groups[0].onvolledig, false);
+// telling() rechtstreeks
+assert.equal(telling(0), 0);
+assert.equal(telling(7), 7);
+for (const x of [Number.NaN, -1, "3", null, undefined, Infinity, {}]) assert.equal(telling(x), null);
 
 // eerste bron wint bij dubbele alias of host
 const dubbelCatalogus: Catalog = {
