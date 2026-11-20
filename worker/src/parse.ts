@@ -61,6 +61,20 @@ function padOk(l: string, pad: string): boolean {
   try { return new URL(l).pathname.includes(pad); } catch { return false; }
 }
 
+// Atom: eerste HTML-artikellink (rel ontbreekt of alternate), ongeacht attribuutvolgorde; self/hub/enclosure/related/via nooit.
+function atomLink(b: string): string {
+  for (const m of b.matchAll(/<link\b[^>]*>/gi)) {
+    const a = (n: string) => new RegExp(`\\b${n}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "i").exec(m[0]);
+    const href = a("href"), rel = a("rel"), typ = a("type");
+    const h = href && (href[1] ?? href[2] ?? "").trim();
+    if (!h) continue;
+    if (rel && (rel[1] ?? rel[2] ?? "").trim().toLowerCase() !== "alternate") continue;
+    if (typ && !/html/i.test(typ[1] ?? typ[2] ?? "")) continue;
+    return decode(h);
+  }
+  return "";
+}
+
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const head = body.slice(0, 400).trim();
   if (head[0] === "{" || head[0] === "[") return parseJson(body, url);
@@ -81,12 +95,11 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   for (const b of blocks) {
     const t = stripHtml(tag(b, ["title"]));
     let l = "";
-    const alt = /<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']/i.exec(b) || /<link[^>]*href=["']([^"']+)["']/i.exec(b);
-    if (alt) l = decode(alt[1]);
+    l = atomLink(b);
     if (!l) l = decode(tag(b, ["link"]));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
     const leeg = !l.trim(); // absUrl("") geeft anders de feed-URL zelf
-    l = absUrl(l, url);
+    l = leeg ? "" : absUrl(l, url);
     if (pad && (leeg || !padOk(l, pad))) continue;
     let d = date(tag(b, ["pubDate", "published", "dc:date", "updated", "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
