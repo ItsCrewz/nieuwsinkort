@@ -1,0 +1,1 @@
+- SRU-feeds: records met attributen op het recordelement worden niet meer overgeslagen (#1373).

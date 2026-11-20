@@ -104,7 +104,8 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   if (head[0] === "{" || head[0] === "[") return parseJson(body, url);
   const out: Entry[] = [];
   if (/searchRetrieveResponse/.test(head + body.slice(0, 2000))) {
-    for (const r of body.split(/<sru:record>/).slice(1)) {
+    // openingstag met of zonder attributen; <sru:recordData>/<sru:recordPosition> horen er niet bij
+    for (const r of body.split(/<sru:record(?=[\s>/])(?:"[^"]*"|'[^']*'|[^>"'])*>/).slice(1)) {
       const t = stripHtml(tag(r, ["dcterms:title"]));
       const l = absUrl(decode(/resourceIdentifier="([^"]+)"/.exec(r)?.[1] || ""), url);
       const d = date(tag(r, ["dcterms:available", "dcterms:modified", "dcterms:date"]));
