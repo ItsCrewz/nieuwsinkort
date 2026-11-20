@@ -22,7 +22,7 @@ t("externe URL: schema, poort en host controleren", () => {
   try {
     globalThis.fetch = async (_url, init) => {
       calls++;
-      assert.equal(init?.redirect, "follow");
+      assert.equal(init?.redirect, "manual");
       const r = new Response(new ReadableStream({ cancel() { geannuleerd = true; } }));
       Object.defineProperty(r, "url", { value: "http://127.0.0.1/" });
       return r;
