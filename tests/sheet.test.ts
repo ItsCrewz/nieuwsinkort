@@ -110,4 +110,21 @@ refIndex = 0;
 const volledig = SourcesSheet({ ...props, groups: [{ ...groepen[0], onvolledig: false }] }) as any;
 assert.match(tekst(volledig), /6 bronnen · 7 berichten vandaag/);
 assert.doesNotMatch(tekst(volledig), /minstens|\(onvolledig\)/);
+// groep zonder bruikbare telling: dagtelling onbekend, geen "0 berichten"
+refIndex = 0;
+const onbekend = SourcesSheet({ ...props, groups: [{ ...groepen[0], published: null, onvolledig: false }] }) as any;
+assert.match(tekst(onbekend), /5 in overzicht · dagtelling onbekend/);
+assert.doesNotMatch(tekst(onbekend), /berichten vandaag/);
+// NaN of negatieve telling per bron: ophalen mislukt; een echte nul blijft "Vandaag niets"
+for (const slecht of [Number.NaN, -3]) {
+  refIndex = 0;
+  const bron = (id: string, vandaag: number) => ({ id, key: id, naam: id, count: 0, fromData: false, stat: { vandaag } });
+  const r = SourcesSheet({ ...props, groups: [{ ...groepen[0], sources: [bron("x", slecht)] }] }) as any;
+  assert.match(tekst(r), /Ophalen mislukt/);
+  assert.doesNotMatch(tekst(r), /Vandaag niets|NaN|-3 vandaag/);
+}
+refIndex = 0;
+const echteNul = SourcesSheet({ ...props, groups: [{ ...groepen[0], sources: [{ id: "z", key: "z", naam: "Z", count: 0, fromData: false, stat: { vandaag: 0 } }] }] }) as any;
+assert.match(tekst(echteNul), /Vandaag niets/);
+assert.doesNotMatch(tekst(echteNul), /Ophalen mislukt/);
 console.log("sheet: tests geslaagd");

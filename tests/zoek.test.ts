@@ -1,3 +1,4 @@
+import { bronOpties, filterOpBron, scopeTekst } from "../src/zoek";
 import { resultaatTekst } from "../src/zoek";
 import assert from "node:assert/strict";
 import { normaliseer, zoekItems, rangschikKoptreffers, markeerDelen, zoekFragment, begrensZoekterm, leesZoekterm, MAX_ZOEKTEKENS } from "../src/zoek";
@@ -281,4 +282,52 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.deepEqual(zoekItems(alle, "F1 onbekend"), []);
   assert.deepEqual(zoekItems(alle, "formule"), [f1]);
   assert.deepEqual(zoekItems(alle, "form"), [f1]);
+}
+
+// Bronkeuze (#1364): alleen bronvelden tellen; samengevoegde berichten blijven vindbaar.
+{
+  const sl = (_: Item, b: { site: string }) => "nl|" + b.site.toLowerCase().replace(/\s+/g, "");
+  const a = { cat: "nl", kop: "Nieuws van NU.nl", bronnen: [{ site: "NOS", href: "" }], tijd: "" } as Item;
+  const b = { cat: "nl", kop: "Storm", bronnen: [{ site: "NU.nl", href: "" }, { site: "NOS", href: "" }], tijd: "" } as Item;
+  const c = { cat: "nl", kop: "Anders", bronnen: [{ site: "nos", href: "" }], tijd: "" } as Item;
+  const opties = bronOpties([a, b, c], sl);
+  assert.deepEqual(opties.map((o) => [o.sleutel, o.aantal]), [["nl|nos", 3], ["nl|nu.nl", 1]]);
+  assert.deepEqual(filterOpBron([a, b, c], "nl|nu.nl", sl), [b]);
+  assert.deepEqual(zoekItems(filterOpBron([a, b, c], "nl|nu.nl", sl), "nu.nl"), [b]);
+  assert.deepEqual(zoekItems(filterOpBron([a, b, c], "nl|nos", sl), "nu.nl"), [a, b]);
+  assert.deepEqual(filterOpBron([a, b], "", sl), [a, b]);
+  assert.deepEqual(zoekItems(filterOpBron([a, b, c], "nl|weg", sl), "storm"), []);
+  assert.match(scopeTekst({ rubriek: "Home", zonderPolitiek: false, tijd: "Vandaag", bronnenUit: 0, bron: "NOS" }), /alleen bron NOS$/);
+}
+
+// Hele woorden (#1362): standaard woordbegin, aan = exact woord.
+{
+  const kop = (k: string) => ({ cat: "nl", kop: k } as Item);
+  const kat = kop("De kat slaapt"), katten = kop("Katten in Amsterdam"), leesteken = kop("Kat, hond en muis"), accent = kop("Kát op dak"), samen = kop("Kat-en-muisspel");
+  const alle = [kat, katten, leesteken, accent];
+  assert.deepEqual(zoekItems(alle, "kat"), alle);
+  assert.deepEqual(zoekItems(alle, "kat", "alle", false, false), alle);
+  assert.deepEqual(zoekItems(alle, "kat", "alle", false, true), [kat, leesteken, accent]);
+  assert.deepEqual(zoekItems(alle, "KAT slaapt", "alle", false, true), [kat]);
+  assert.deepEqual(zoekItems(alle, "kat muis", "of", false, true), [kat, leesteken, accent]);
+  assert.deepEqual(zoekItems(alle, "kat -hond", "alle", false, true), [kat, accent]);
+  assert.deepEqual(zoekItems(alle, "kat -hond"), [kat, katten, accent]);
+  assert.deepEqual(zoekItems([kop("Katten")], "kat", "alle", true, true), []);
+  assert.deepEqual(zoekItems([kop("De kat")], "kat", "alle", true, true).length, 1);
+  assert.deepEqual(zoekItems([samen], "kat", "alle", false, true).length, 1);
+  assert.deepEqual(zoekItems([kop("Corona-maatregelen"), kop("Coronamaatregelen versoepeld")], "coronamaatregelen", "alle", false, true).length, 2);
+  assert.deepEqual(zoekItems([kop("Coronamaatregelen")], "corona", "alle", false, true), []);
+  assert.deepEqual(zoekItems([kop("Katten"), kop("De kat")], "kat", "alle", false, true).length, 1);
+  assert.deepEqual(rangschikKoptreffers([{ ...katten, kop: "Iets", samenvatting: "kat" } as Item, kat], "kat", "alle", true), [kat, { ...katten, kop: "Iets", samenvatting: "kat" }]);
+  assert.deepEqual(zoekItems([kop("Rust 2024"), kop("Rust 20240")], "2024", "alle", false, true).length, 1);
+  // Markering en fragment volgen de keuze ook (#1362).
+  const gem = (d: { tekst: string; markeer: boolean }[]) => d.filter((x) => x.markeer).map((x) => x.tekst);
+  assert.deepEqual(gem(markeerDelen("Katten en kat", "kat", true)), ["kat"]);
+  assert.deepEqual(gem(markeerDelen("Katten en kat", "kat")), ["Kat", "kat"]);
+  assert.deepEqual(gem(markeerDelen("東京都", "東京", true)), ["東京"]);
+  const kfr = { cat: "nl", kop: "Katten in Amsterdam", samenvatting: "Rustig", punten: ["de kat slaapt"] } as unknown as Item;
+  const fr = zoekFragment(kfr, "kat", [kfr.kop], 120, true)!;
+  assert.equal(fr.label, "Punt");
+  assert.deepEqual(gem(fr.delen), ["kat"]);
+  assert.equal(zoekFragment(kfr, "kat", [kfr.kop], 120), null);
 }

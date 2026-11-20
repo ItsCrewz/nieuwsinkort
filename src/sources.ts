@@ -15,6 +15,11 @@ export type SourceRow = CatSource & {
   /** door de pipeline geteld uit de feed zelf; undefined = geen bronstats in data.json */
   stat?: import("./types").BronStat;
 };
+/** Alleen een eindig getal ≥ 0 is een echte telling (0 blijft 0); NaN, tekst of negatief is onbekend. */
+export function telling(n: unknown): number | null {
+  return typeof n === "number" && Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 export type SourceGroup = { id: GroupId; label: string; sources: SourceRow[]; total: number; published: number | null; /** minstens één bron zonder bekende telling of deels mislukt: published is een ondergrens */ onvolledig: boolean };
 
 export const GROUP_ORDER: { id: GroupId; label: string }[] = [
@@ -147,7 +152,7 @@ export function buildSources(catalog: Catalog | null, data: Data | null): { grou
   for (const v of data?.dumpert ?? []) add("dumpert", v.bron || "Dumpert", v.href);
   const stats = data?.bronstats;
   if (stats) for (const ix of index.values()) for (const row of ix.rows.values()) if (stats[row.key]) row.stat = stats[row.key];
-  const pub = (s: SourceRow) => s.stat?.vandaag ?? -1;
+  const pub = (s: SourceRow) => telling(s.stat?.vandaag) ?? -1;
   const groups: SourceGroup[] = GROUP_ORDER.map((g) => {
     const sources = [...index.get(g.id)!.rows.values()].sort(
       (a, b) => b.count - a.count || pub(b) - pub(a) || a.naam.localeCompare(b.naam, "nl", { sensitivity: "base" })
@@ -157,8 +162,8 @@ export function buildSources(catalog: Catalog | null, data: Data | null): { grou
       sources,
       total: sources.reduce((n, s) => n + s.count, 0),
       // Ontbrekende of mislukte tellingen zijn onbekend, geen nul: dan is het totaal een ondergrens.
-      published: stats && sources.some((s) => s.stat?.vandaag != null) ? sources.reduce((n, s) => n + (s.stat?.vandaag ?? 0), 0) : null,
-      onvolledig: !!stats && sources.some((s) => s.stat?.vandaag == null || s.stat.fout || s.stat.storing),
+      published: stats && sources.some((s) => telling(s.stat?.vandaag) != null) ? sources.reduce((n, s) => n + (telling(s.stat?.vandaag) ?? 0), 0) : null,
+      onvolledig: !!stats && sources.some((s) => telling(s.stat?.vandaag) == null || s.stat?.fout || s.stat?.storing),
     };
   }).filter((g) => g.sources.length > 0);
   return { groups, index };
@@ -189,6 +194,9 @@ export function sourceKey(index: Index, gid: GroupId, site: string, href: string
   const ix = index.get(gid);
   return `${gid}|${ix ? resolveIn(ix, site, href) : norm(site)}`;
 }
+
+// Sleutel van één bronvermelding van een bericht, voor de bronkeuze in het zoeken (#1364).
+export const itemBronSleutel = (index: Index, it: Item, b: Bron) => sourceKey(index, groepVan(it), b.site, b.href);
 
 export function filterArtikelBronnen(it: Item, index: Index, off: Set<string>): Item | null {
   const bronnen = it.bronnen ?? [];

@@ -1,0 +1,1 @@
+- Zoeken: een bron kiezen om alleen berichten van die ingeschakelde bron te vinden, met wisknop en melding als de bron wordt uitgezet (#1364).

@@ -9,10 +9,10 @@ import { ams } from "./tijd";
 import { toonBekendmaking } from "./bekendmaking";
 import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Data, Item, View } from "./types";
+import type { Bron, Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
-import { actieveBronnen, buildSources, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { actieveBronnen, buildSources, itemBronSleutel, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
 import { sorteerOpGroep } from "./filmgroep";
@@ -37,7 +37,7 @@ import { FeedNavigatie } from "./feednavigatie";
 import { LeegMelding } from "./leegmelding";
 import { prefetchMeer, voorlaadMeer } from "./meer";
 import { bewaakGrens, heeftGisteren, kiesNieuweData, verwijderGisteren } from "./vandaag";
-import { zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, zoekFragment, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
+import { bronOpties, filterOpBron, zoeksuggesties, zoekItems, zoekBereik, rangschikKoptreffers, markeerDelen, zoekFragment, normaliseer, scopeTekst, leesZoekterm, schrijfZoekterm, zelfdeZoekselectie, type Zoekselectie, type Zoekmodus } from "./zoek";
 import { Zoekbalk, ZoekActief, ZoekLeeg, resultatenId, type ZoekScope } from "./zoekbalk";
 import { useKlok } from "./useklok";
 import { maakFeedNavigatie } from "./feedsluiten";
@@ -237,16 +237,16 @@ function fitCard(el: HTMLElement) {
 const KAARTEN_VOORAF = 6, KAARTEN_VOORUIT = 6; // kaarten met inhoud bij de start / vooruit vanaf de huidige kaart
 
 // De kaart blijft altijd staan (zelfde hoogte, scroll-snap, data-id, aria-label); de inhoud wordt pas gemount als de kaart bijna aan de beurt is (zie NewsFeed: `mount`).
-export const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string }) {
+export const NewsCard = memo(function NewsCard({ item, i, total, bionic, onOpen, leeg, zoekterm, heleWoorden = false }: { item: Item; i: number; total: number; bionic: boolean; onOpen: OpenFn; leeg?: boolean; zoekterm: string; heleWoorden?: boolean }) {
   const pad = artikelId(item) || itemKey(item);
   return (
     <div className={`nc cat-${item.cat}`} data-id={pad} data-i={i} role="group" aria-label={`${i + 1} van ${total}: ${item.kop}`}>
-      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} />}
+      {leeg ? null : <KaartInhoud item={item} i={i} bionic={bionic} onOpen={onOpen} zoekterm={zoekterm} heleWoorden={heleWoorden} />}
     </div>
   );
 });
 
-export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string }) {
+export function KaartInhoud({ item, i, bionic, onOpen, zoekterm, heleWoorden = false }: { item: Item; i: number; bionic: boolean; onOpen: OpenFn; zoekterm: string; heleWoorden?: boolean }) {
   const key = itemKey(item);
   const cardRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -288,7 +288,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
       el.removeEventListener("nc-dirty", run);
       cancelAnimationFrame(raf);
     };
-  }, [bionic, item, zoekterm]);
+  }, [bionic, item, zoekterm, heleWoorden]);
   const pad = artikelId(item) || key; // #1278: eigen id i.p.v. kopsleutel, zodat dubbele koppen het eigen bericht openen
   const click = useOpen(pad, onOpen);
   const beelden = useMemo(() => fotos(item), [item]);
@@ -305,7 +305,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
   const sum = tekst.ai || tekst.samenvatting;
   const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
-  const fragment = zoekterm.trim() ? zoekFragment(item, zoekterm, [item.kop, sum, ...punten]) : null;
+  const fragment = zoekterm.trim() ? zoekFragment(item, zoekterm, [item.kop, sum, ...punten], undefined, heleWoorden) : null;
   return (
     <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
       <div className="nc-body">
@@ -320,12 +320,12 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
       </div>
       <h2 className="nc-title">
         <a href={`#/bericht/${pad}`} onClick={click} onPointerDown={laadDetail} onMouseEnter={laadDetail}>
-          <ZoekTekst tekst={item.kop} query={zoekterm} />
+          <ZoekTekst tekst={item.kop} query={zoekterm} heleWoorden={heleWoorden} />
         </a>
       </h2>
       {sum ? (
         <p className="nc-sum bn">
-          <ZoekTekst tekst={sum} query={zoekterm} bionic={bionic} />
+          <ZoekTekst tekst={sum} query={zoekterm} heleWoorden={heleWoorden} bionic={bionic} />
         </p>
       ) : null}
       {fragment ? (
@@ -338,7 +338,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
         <ul className="nc-pts">
           {punten.map((t, k) => (
             <li key={k} className="bn">
-              {zoekterm.trim() ? <ZoekTekst tekst={t} query={zoekterm} bionic={bionic} /> : <BionicText text={t} on={bionic} />}
+              {zoekterm.trim() ? <ZoekTekst tekst={t} query={zoekterm} heleWoorden={heleWoorden} bionic={bionic} /> : <BionicText text={t} on={bionic} />}
             </li>
           ))}
         </ul>
@@ -364,11 +364,11 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm }: { item: Item;
   );
 }
 
-function ZoekTekst({ tekst, query, bionic = false }: { tekst: string; query: string; bionic?: boolean }) {
-  return <>{markeerDelen(tekst, query).map((deel, i) => deel.markeer ? <mark key={i}><BionicText text={deel.tekst} on={bionic} /></mark> : <BionicText key={i} text={deel.tekst} on={bionic} />)}</>;
+function ZoekTekst({ tekst, query, bionic = false, heleWoorden = false }: { tekst: string; query: string; bionic?: boolean; heleWoorden?: boolean }) {
+  return <>{markeerDelen(tekst, query, heleWoorden).map((deel, i) => deel.markeer ? <mark key={i}><BionicText text={deel.tekst} on={bionic} /></mark> : <BionicText key={i} text={deel.tekst} on={bionic} />)}</>;
 }
 
-function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm, ververs, verversActief, laatstVerversd }: { ververs: () => Promise<boolean | undefined>; verversActief: boolean; laatstVerversd: { current: number }; tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
+function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keepOrder, empty, kompakt, samenvatting, zoekterm, heleWoorden = false, ververs, verversActief, laatstVerversd }: { ververs: () => Promise<boolean | undefined>; verversActief: boolean; laatstVerversd: { current: number }; tab: string; items: Item[]; nieuwsdata: unknown; zoekterm: string; heleWoorden?: boolean; head: ReactNode; kompakt?: boolean; samenvatting?: boolean; bionic: boolean; focusKey: string | null; onOpen: OpenFn; keepOrder?: boolean; empty?: ReactNode }) {
   const sorted = useMemo(() => {
     if (keepOrder) return items;
     const s = sortItems(items);
@@ -535,7 +535,7 @@ function NewsFeed({ tab, items, nieuwsdata, head, bionic, focusKey, onOpen, keep
             Nog geen berichten van vandaag in deze rubriek. Het eerste nieuws van vandaag komt rond 05:00–06:00.
           </div>
         ) : (
-          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} zoekterm={zoekterm} />)
+          sorted.map((it, i) => <NewsCard key={itemKey(it)} item={it} i={i} total={total} bionic={bionic} onOpen={onOpen} leeg={i >= mount} zoekterm={zoekterm} heleWoorden={heleWoorden} />)
         )}
         <div className="nc-end">
           <Footer />
@@ -801,9 +801,13 @@ export default function App() {
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
+  const [zoekBron, setZoekBron] = useState("");
+  const zoekBronNaam = useRef("");
+  const [zoekBronGewist, setZoekBronGewist] = useState("");
   const [zoekmodus, setZoekmodus] = useState<Zoekmodus>("alle");
   const [zoekterm, setZoekterm] = useState(() => leesZoekterm(window.location.search));
   const [alleenKoppen, setAlleenKoppen] = useState(false);
+  const [heleWoorden, setHeleWoorden] = useState(false);
   const [zoekAllesSelectie, setZoekAllesSelectie] = useState<Zoekselectie | null>(null);
   const zoekTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const schrijfZoekUrl = useCallback((term: string) => {
@@ -965,21 +969,34 @@ export default function App() {
   const zoekBasis = useMemo(() => isFeedView && data ? (route.view === "alles" ? (flt.f.cats.length ? data.items : data.items.filter((i) => i.cat !== "politiek")) : data.items.filter((i) => i.cat === route.view)) : [], [isFeedView, data, route.view, flt.f.cats]);
   const zoekFilter = useMemo(() => isFeedView && data && raw ? filterNieuws(zoekBasis, flt.f, flt.vorig, raw.gegenereerd, route.view === "alles") : null, [isFeedView, data, raw, zoekBasis, flt.f, flt.vorig, route.view]);
   // Koptreffers eerst (#1010); bij sortering "nieuw" eerst op tijd, want NewsFeed sorteert dan niet meer zelf.
-  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm, zoekmodus, alleenKoppen), zoekterm, zoekmodus) : [];
-  const suggesties = useMemo(() => zoekFilter && data && zoekterm.trim() && !zoekUitkomst.length ? zoeksuggesties(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekterm, alleenKoppen, zoekmodus) : [], [zoekFilter, data, zoekterm, zoekAlles, zoekUitkomst.length, alleenKoppen, zoekmodus]);
+  const bronSleutel = useCallback((it: Item, b: Bron) => itemBronSleutel(index, it, b), [index]);
+  const bronKeuzes = useMemo(() => data ? bronOpties(data.items, bronSleutel) : [], [data, bronSleutel]);
+  const bronLabelGekozen = bronKeuzes.find((o) => o.sleutel === zoekBron)?.label;
+  // Een bron die tijdens het zoeken wordt uitgezet verdwijnt uit de opties: keuze wissen en dat melden.
+  useEffect(() => {
+    if (!zoekBron || !data || bronLabelGekozen) return;
+    setZoekBronGewist(zoekBronNaam.current || zoekBron.split("|").slice(1).join("|"));
+    setZoekBron("");
+  }, [zoekBron, data, bronLabelGekozen]);
+  useEffect(() => { if (bronLabelGekozen) zoekBronNaam.current = bronLabelGekozen; }, [bronLabelGekozen]);
+  const kiesZoekBron = (sleutel: string) => { setZoekBronGewist(""); setZoekBron(sleutel); };
+  const zoekItemsBron = zoekFilter && data ? filterOpBron(zoekBereik(zoekAlles, data.items, zoekFilter.items), zoekBron, bronSleutel) : [];
+  const zoekUitkomst = zoekFilter && data ? rangschikKoptreffers(zoekItems(zoekItemsBron, zoekterm, zoekmodus, alleenKoppen, heleWoorden), zoekterm, zoekmodus, heleWoorden) : [];
+  const suggesties = useMemo(() => zoekFilter && data && zoekterm.trim() && !zoekUitkomst.length ? zoeksuggesties(zoekItemsBron, zoekterm, alleenKoppen, zoekmodus, heleWoorden) : [], [zoekFilter, data, zoekterm, zoekItemsBron, zoekUitkomst.length, alleenKoppen, zoekmodus, heleWoorden]);
   // Zonder tijd-, regio-, video- en samengevoegd-filter: wat de filters aan treffers verbergen (#613).
   const zoekBeperkt = !!zoekFilter && (zoekFilter.tijd !== "alles" || flt.f.video || flt.f.samen || flt.f.regio.length > 0);
   const wisZoekFilters = () => flt.set({ tijd: "alles", video: false, samen: false, regio: [] });
-  const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekterm, zoekmodus, alleenKoppen).length - zoekUitkomst.length) : 0;
+  const zoekVerborgen = zoekBeperkt && raw && normaliseer(zoekterm) ? Math.max(0, zoekItems(filterOpBron(filterNieuws(zoekBasis, { ...flt.f, tijd: "alles", video: false, samen: false, regio: [] }, flt.vorig, raw.gegenereerd, route.view === "alles").items, zoekBron, bronSleutel), zoekterm, zoekmodus, alleenKoppen, heleWoorden).length - zoekUitkomst.length) : 0;
   const zoekScope: ZoekScope | undefined = zoekFilter ? {
-    tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video- en samenvoegfilters zijn verruimd. Het bronfilter blijft actief." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size }),
+    tekst: zoekAlles ? "Zoeken in alle rubrieken en beschikbare berichten; tijd-, rubriek-, regio-, video- en samenvoegfilters zijn verruimd. Het bronfilter blijft actief." : scopeTekst({ rubriek: route.view === "alles" ? "Home" : CAT_LABEL[route.view as keyof typeof CAT_LABEL] ?? String(route.view), zonderPolitiek: route.view === "alles" && !flt.f.cats.length, tijd: TIJD_LABEL[zoekFilter.tijd] + (zoekFilter.auto ? " (automatisch)" : ""), bronnenUit: off.size, bron: bronLabelGekozen }),
+    bron: { opties: bronKeuzes, gekozen: zoekBron, label: bronLabelGekozen, onKies: kiesZoekBron, gewist: zoekBronGewist || undefined },
     verborgen: zoekVerborgen,
     wisFilters: !zoekAlles && zoekBeperkt ? wisZoekFilters : undefined,
     herstel: zoekAlles ? () => { setZoekAllesSelectie(null); zoekInvoer.current?.focus(); } : undefined,
   } : undefined;
   const top = (
     <>
-      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk alleenKoppen={alleenKoppen} onAlleenKoppen={setAlleenKoppen} modus={zoekmodus} onModus={setZoekmodus} query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
+      <TopBar theme={theme} onTheme={toggle} bionic={bionic} onBionic={setBionicPersist} onHome={goHome} onSources={() => setSheet(true)} filtered={off.size} zoeken={isFeedView ? <Zoekbalk alleenKoppen={alleenKoppen} onAlleenKoppen={setAlleenKoppen} heleWoorden={heleWoorden} onHeleWoorden={setHeleWoorden} modus={zoekmodus} onModus={setZoekmodus} query={zoekterm} onChange={wijzigZoekterm} aantal={zoekUitkomst.length} invoer={zoekInvoer} scope={zoekScope} /> : undefined} />
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET" herstel={SourcesSheet.herstel}><Suspense fallback={null}>
@@ -1115,9 +1132,10 @@ export default function App() {
             laatstVerversd={laatstVerversd}
             items={zoekUitkomst}
             zoekterm={zoekterm}
+            heleWoorden={heleWoorden}
             nieuwsdata={raw}
             keepOrder={flt.f.sort !== "nieuw" || !!zoekterm.trim()}
-            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} suggesties={suggesties} onSuggestie={(term) => { wijzigZoekterm(term); if (zoekAlles) setZoekAllesSelectie({ ...zoekselectie, term }); zoekInvoer.current?.focus(); }} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={zoekAlles ? undefined : wisZoekFilters} onZoekAlles={!zoekAlles ? () => { setZoekAllesSelectie(zoekselectie); zoekInvoer.current?.focus(); } : undefined} /> : filterLeeg}
+            empty={zoekterm.trim() ? <ZoekLeeg query={zoekterm} bron={bronLabelGekozen} onWisBron={() => kiesZoekBron("")} suggesties={suggesties} onSuggestie={(term) => { wijzigZoekterm(term); if (zoekAlles) setZoekAllesSelectie({ ...zoekselectie, term }); zoekInvoer.current?.focus(); }} onWis={() => { wijzigZoekterm(""); zoekInvoer.current?.focus(); }} verborgen={zoekVerborgen} onWisFilters={zoekAlles ? undefined : wisZoekFilters} onZoekAlles={!zoekAlles ? () => { setZoekAllesSelectie(zoekselectie); zoekInvoer.current?.focus(); } : undefined} /> : filterLeeg}
             bionic={bionic}
             focusKey={focusKey}
             onOpen={open}

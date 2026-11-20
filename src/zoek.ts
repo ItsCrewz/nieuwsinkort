@@ -1,5 +1,5 @@
 import { CAT_LABEL } from "./tabs";
-import type { Item } from "./types";
+import type { Bron, Item } from "./types";
 
 export type Zoekselectie = { term: string; rubriek: string; filters: object; bronnen: object };
 
@@ -101,10 +101,11 @@ function zoektekst(item: Item): Zoektekst {
 const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+(?:\.\p{N}+)?$/u.test(term);
 // Schriften zonder gebruikelijke woordspaties (#1221): een "woord" is daar een hele zin, dus de term mag overal in het woord vallen.
 const ZONDER_SPATIES = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}ー\p{M}]+$/u;
-const past = (term: string, woord: string) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : ZONDER_SPATIES.test(term) ? woord.includes(term) : woord.startsWith(term);
+// heleWoorden (#1362): het woord moet gelijk zijn aan de term i.p.v. ermee beginnen; schriften zonder spaties blijven overal in het woord passen.
+const past = (term: string, woord: string, heleWoorden = false) => speciaal(term) || woord === "c++" || woord === "c#" ? woord === term : ZONDER_SPATIES.test(term) ? woord.includes(term) : heleWoorden ? woord === term : woord.startsWith(term);
 
 // Reeksen [begin, eind] waarop een term past. Aaneengeschreven vorm: één woord, of woorden met koppelteken ("coronamaatregelen" = "corona-maatregelen").
-function kandidaten(delen: string[], woorden: string[], lijm: boolean[]): [number, number][] {
+function kandidaten(delen: string[], woorden: string[], lijm: boolean[], heleWoorden = false): [number, number][] {
   const uit: [number, number][] = [];
   const samen = delen.join("");
   for (let i = 0; i < woorden.length; i++) {
@@ -113,8 +114,8 @@ function kandidaten(delen: string[], woorden: string[], lijm: boolean[]): [numbe
       c += woorden[m];
       if (c.length >= samen.length || !samen.startsWith(c) || speciaal(samen) || !lijm[m]) break;
     }
-    if (m < woorden.length && (m === i ? past(samen, woorden[i]) : c.length >= samen.length && c.startsWith(samen))) uit.push([i, m]);
-    if (delen.length > 1 && i + delen.length <= woorden.length && delen.every((d, k) => k < delen.length - 1 ? woorden[i + k] === d : past(d, woorden[i + k]))) uit.push([i, i + delen.length - 1]);
+    if (m < woorden.length && (m === i ? past(samen, woorden[i], heleWoorden) : c.length >= samen.length && (heleWoorden ? c === samen : c.startsWith(samen)))) uit.push([i, m]);
+    if (delen.length > 1 && i + delen.length <= woorden.length && delen.every((d, k) => k < delen.length - 1 ? woorden[i + k] === d : past(d, woorden[i + k], heleWoorden))) uit.push([i, i + delen.length - 1]);
   }
   return uit;
 }
@@ -189,7 +190,7 @@ function termenVan(query: string): string[][] {
 
 export type Zoekmodus = "alle" | "of";
 
-export function zoekItems(items: Item[], query: string, modusOfKoppen: Zoekmodus | boolean = "alle", alleenKoppen = false): Item[] {
+export function zoekItems(items: Item[], query: string, modusOfKoppen: Zoekmodus | boolean = "alle", alleenKoppen = false, heleWoorden = false): Item[] {
   const modus = typeof modusOfKoppen === "boolean" ? "alle" : modusOfKoppen;
   if (typeof modusOfKoppen === "boolean") alleenKoppen = modusOfKoppen;
   query = zonderOnzichtbaar(begrensZoekterm(query));
@@ -201,9 +202,9 @@ export function zoekItems(items: Item[], query: string, modusOfKoppen: Zoekmodus
   return items.filter((item) => {
     const { woorden, lijm } = zoektekst(alleenKoppen ? alleenKop(item) : item);
     // Een uitsluitterm die op een woordbegin past laat het item afvallen.
-    if (min.some((delen) => kandidaten(delen, woorden, lijm).length)) return false;
+    if (min.some((delen) => kandidaten(delen, woorden, lijm, heleWoorden).length)) return false;
     // Woordbegin: elke term moet op een eigen woord (of eigen reeks) vallen ("mark markt" vraagt twee woorden).
-    const kand = termen.map((delen) => kandidaten(delen, woorden, lijm));
+    const kand = termen.map((delen) => kandidaten(delen, woorden, lijm, heleWoorden));
     return modus === "of" && kand.length ? kand.some((k) => k.length > 0) : kand.every((k) => k.length) && alleTermenPassen(kand, woorden.length);
   });
 }
@@ -219,7 +220,7 @@ function kleineTikfout(a: string, b: string): boolean {
 }
 
 // Alleen eenvoudige zoekopdrachten corrigeren; speciale zoeksyntaxis blijft ongemoeid.
-export function zoeksuggesties(items: Item[], query: string, alleenKoppen = false, modus: Zoekmodus = "alle"): string[] {
+export function zoeksuggesties(items: Item[], query: string, alleenKoppen = false, modus: Zoekmodus = "alle", heleWoorden = false): string[] {
   if (query.length > 80 || !/^[\p{L}\p{M}\s]+$/u.test(query)) return [];
   const delen = query.trim().split(/\s+/u);
   if (delen.length > 5) return [];
@@ -234,7 +235,7 @@ export function zoeksuggesties(items: Item[], query: string, alleenKoppen = fals
       for (let i = 0; i < termen.length; i++) {
         if (termen[i].length < 5 || termen[i].length > 40 || !kleineTikfout(termen[i], kandidaat)) continue;
         const voorstel = delen.map((deel, n) => n === i ? woord : deel).join(" ");
-        if (zoekItems([item], voorstel, modus, alleenKoppen).length) suggesties.add(voorstel);
+        if (zoekItems([item], voorstel, modus, alleenKoppen, heleWoorden).length) suggesties.add(voorstel);
         if (suggesties.size === 3) return [...suggesties];
       }
     }
@@ -251,9 +252,9 @@ const alleenKop = (item: Item): Item => {
 };
 
 // Koptreffers vóór treffers alleen in de tekst; binnen elke groep blijft de volgorde van de invoer (stabiel).
-export function rangschikKoptreffers(items: Item[], query: string, modus: Zoekmodus = "alle"): Item[] {
+export function rangschikKoptreffers(items: Item[], query: string, modus: Zoekmodus = "alle", heleWoorden = false): Item[] {
   if (!query.trim() || items.length < 2) return items;
-  const kop = new Set(zoekItems(items.map(alleenKop), query, modus));
+  const kop = new Set(zoekItems(items.map(alleenKop), query, modus, false, heleWoorden));
   const voor: Item[] = [], rest: Item[] = [];
   for (const item of items) (kop.has(alleenKop(item)) ? voor : rest).push(item);
   return voor.length && rest.length ? [...voor, ...rest] : items;
@@ -264,15 +265,33 @@ export function resultaatTekst(aantal: number): string {
 }
 
 // Zoekscope (#613): binnen welke rubriek en filters wordt gezocht, en hoeveel treffers de filters verbergen.
-export function scopeTekst(s: { rubriek: string; zonderPolitiek: boolean; tijd: string; bronnenUit: number }): string {
-  return ["Zoekt in " + s.rubriek + (s.zonderPolitiek ? " (zonder Politiek)" : ""), s.tijd, ...(s.bronnenUit ? [`${s.bronnenUit} ${s.bronnenUit === 1 ? "bron" : "bronnen"} uit`] : [])].join(" · ");
+export function scopeTekst(s: { rubriek: string; zonderPolitiek: boolean; tijd: string; bronnenUit: number; bron?: string }): string {
+  return ["Zoekt in " + s.rubriek + (s.zonderPolitiek ? " (zonder Politiek)" : ""), s.tijd, ...(s.bronnenUit ? [`${s.bronnenUit} ${s.bronnenUit === 1 ? "bron" : "bronnen"} uit`] : []), ...(s.bron ? [`alleen bron ${s.bron}`] : [])].join(" · ");
+}
+
+// Bronkeuze (#1364): alleen de bronvelden van een bericht tellen, nooit tekst in de kop. `items[].bronnen` bevat al alleen ingeschakelde bronnen; `sleutel` geeft aliassen dezelfde sleutel (sourceKey).
+export type BronSleutel = (item: Item, bron: Bron) => string;
+export type BronOptie = { sleutel: string; label: string; aantal: number };
+export function bronOpties(items: Item[], sleutel: BronSleutel): BronOptie[] {
+  const opties = new Map<string, BronOptie>();
+  for (const item of items) {
+    for (const k of new Set((item.bronnen ?? []).map((b) => sleutel(item, b)))) {
+      const bron = (item.bronnen ?? []).find((b) => sleutel(item, b) === k)!;
+      const o = opties.get(k);
+      if (o) o.aantal++; else opties.set(k, { sleutel: k, label: bron.site || k, aantal: 1 });
+    }
+  }
+  return [...opties.values()].sort((a, b) => a.label.localeCompare(b.label, "nl"));
+}
+export function filterOpBron(items: Item[], keuze: string, sleutel: BronSleutel): Item[] {
+  return keuze ? items.filter((item) => (item.bronnen ?? []).some((b) => sleutel(item, b) === keuze)) : items;
 }
 export function verborgenTekst(aantal: number): string {
   return `${aantal} ${aantal === 1 ? "treffer" : "treffers"} verborgen door filters`;
 }
 
 // Bewaar de oorspronkelijke tekstposities bij accentongevoelig vergelijken.
-export function markeerDelen(tekst: string, query: string): { tekst: string; markeer: boolean }[] {
+export function markeerDelen(tekst: string, query: string, heleWoorden = false): { tekst: string; markeer: boolean }[] {
   const plus = splitsUitsluiting(begrensZoekterm(query)).plus;
   // Zoekopdracht "AT&T" markeert zowel "ATT" als "AT&T" in de tekst.
   const paren = [...plus.matchAll(AMPERSAND)].map((m) => normaliseer(m[1]) + "&" + normaliseer(m[2]));
@@ -302,7 +321,9 @@ export function markeerDelen(tekst: string, query: string): { tekst: string; mar
     while ((index = vlak.indexOf(woord, vanaf)) !== -1) {
       const numeriek = /^\p{N}+(?:\.\p{N}+)?$/u.test(woord);
       const getal = numeriek ? vlak.slice(0, index).match(/[\p{N}.,]*$/u)![0] + vlak.slice(index).match(/^[\p{N}.,]*/u)![0] : "";
-      if ((index === 0 || ZONDER_SPATIES.test(woord) || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
+      // heleWoorden (#1362): ook het teken na de treffer mag niet bij het woord horen (zoals `past`).
+      const eindOk = !heleWoorden || ZONDER_SPATIES.test(woord) || !/^[\p{L}\p{M}\p{N}+#]/u.test(vlak.slice(index + woord.length));
+      if ((index === 0 || ZONDER_SPATIES.test(woord) || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && eindOk && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
         bereiken.push({ begin: posities[index].begin, eind: posities[index + woord.length - 1].eind });
       }
       vanaf = index + 1;
@@ -347,13 +368,13 @@ function venster(tekst: string, delen: { tekst: string; markeer: boolean }[], br
 }
 
 // Waar de treffer staat als de kaart die tekst niet toont (#1313). `zichtbaar`: teksten die de kaart al toont en markeert; heeft een daarvan een treffer, dan is een fragment overbodig.
-export function zoekFragment(item: Item, query: string, zichtbaar: (string | undefined)[] = [item.kop, item.ai || item.samenvatting], breedte = 120): ZoekFragment | null {
+export function zoekFragment(item: Item, query: string, zichtbaar: (string | undefined)[] = [item.kop, item.ai || item.samenvatting], breedte = 120, heleWoorden = false): ZoekFragment | null {
   if (!query.trim()) return null;
-  if (zichtbaar.some((t) => t && markeerDelen(t, query).some((d) => d.markeer))) return null;
+  if (zichtbaar.some((t) => t && markeerDelen(t, query, heleWoorden).some((d) => d.markeer))) return null;
   const kandidaten: [string, string | undefined][] = [["Samenvatting", item.samenvatting], ["Samenvatting", item.ai], ...(item.punten ?? []).map((p): [string, string] => ["Punt", p]), ...(item.bronnen ?? []).map((b): [string, string | undefined] => ["Bron", b.site])];
   for (const [label, tekst] of kandidaten) {
     if (!tekst) continue;
-    const delen = markeerDelen(tekst, query);
+    const delen = markeerDelen(tekst, query, heleWoorden);
     if (delen.some((d) => d.markeer)) return { label, delen: venster(tekst, delen, breedte) };
   }
   return null;
