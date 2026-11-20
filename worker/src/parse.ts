@@ -62,8 +62,9 @@ function padOk(l: string, pad: string): boolean {
 }
 
 // Atom: eerste HTML-artikellink (rel ontbreekt of bevat alternate), ongeacht attribuutvolgorde; self/hub/enclosure/related/via nooit.
-function atomLink(b: string): string {
-  for (const m of b.matchAll(/<link\b[^>]*>/gi)) {
+// `ps`: Atom-prefixen die binnen de entry gelden (<atom:link>).
+function atomLink(b: string, ps: string[] = []): string {
+  for (const m of b.matchAll(new RegExp(`<${ps.length ? `(?:${ps.join("|")}:)?` : ""}link\\b[^>]*>`, "gi"))) {
     // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
     const at: Record<string, string> = {};
     for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
@@ -77,6 +78,44 @@ function atomLink(b: string): string {
     return decode(h);
   }
   return "";
+}
+
+const ATOM_NS = "http://www.w3.org/2005/Atom";
+// Loopt de tags langs met een scope per element (xmlns:p geldt voor het element en zijn nakomelingen, een herdefinitie wint)
+// en geeft elk <p:entry> waarvan p op dat punt naar Atom wijst, met alle Atom-prefixen die binnen die entry gelden (punten ge-escaped).
+function atomPrefixBlokken(body: string): { i: number; b: string; ps: string[] }[] {
+  const out: { i: number; b: string; ps: string[] }[] = [];
+  const stack: { n: string; ns: Map<string, string> }[] = [];
+  let cur: { i: number; diepte: number; n: string; ps: Set<string> } | null = null;
+  const re = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<(\/?)([A-Za-z_][\w.:-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+  for (const m of body.matchAll(re)) {
+    if (!m[2]) continue;
+    const naam = m[2];
+    if (m[1]) { // sluittag
+      let k = stack.length - 1;
+      while (k >= 0 && stack[k].n !== naam) k--;
+      if (k < 0) continue;
+      stack.length = k;
+      if (cur && cur.n === naam && stack.length === cur.diepte) {
+        out.push({ i: cur.i, b: body.slice(cur.i, (m.index ?? 0) + m[0].length), ps: [...cur.ps].map((x) => x.replace(/\./g, "\\.")) });
+        cur = null;
+      }
+      continue;
+    }
+    const ns = new Map(stack.length ? stack[stack.length - 1].ns : []);
+    for (const x of m[3].matchAll(/\sxmlns:([A-Za-z_][\w.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) ns.set(x[1], x[2] ?? x[3]);
+    const zelf = m[3].endsWith("/");
+    const c = naam.indexOf(":");
+    const p = c > 0 ? naam.slice(0, c) : "";
+    if (cur) for (const [k, v] of ns) if (v === ATOM_NS) cur.ps.add(k);
+    if (!cur && p && naam.slice(c + 1) === "entry" && ns.get(p) === ATOM_NS) {
+      const ps = new Set<string>([...ns].filter(([, v]) => v === ATOM_NS).map(([k]) => k));
+      if (zelf) out.push({ i: m.index ?? 0, b: m[0], ps: [...ps].map((x) => x.replace(/\./g, "\\.")) });
+      else cur = { i: m.index ?? 0, diepte: stack.length, n: naam, ps };
+    }
+    if (!zelf) stack.push({ n: naam, ns });
+  }
+  return out;
 }
 
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
@@ -95,18 +134,22 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   }
   if (/<urlset[\s>]/i.test(body.slice(0, 2000))) return parseSitemap(body, url, pad);
   const kg = /kg\.meowing\.de|kittygram/i.test(url);
-  const blocks = body.match(/<item[\s>][\s\S]*?<\/item>|<entry[\s>][\s\S]*?<\/entry>/gi) || [];
-  for (const b of blocks) {
-    const t = stripHtml(tag(b, ["title"]));
+  // Platte <item>/<entry> via regex; Atom met prefix (<atom:entry>) via atomPrefixBlokken (namespace per element)
+  const blokken: { i: number; b: string; ps: string[] }[] = atomPrefixBlokken(body);
+  for (const bm of body.matchAll(/<item[\s>][\s\S]*?<\/item>|<entry[\s>][\s\S]*?<\/entry>/gi)) blokken.push({ i: bm.index ?? 0, b: bm[0], ps: [] });
+  blokken.sort((x, y) => x.i - y.i);
+  for (const { b, ps } of blokken) {
+    const pn = (n: string[]) => (ps.length ? n.flatMap((x) => [...ps.map((p) => `${p}:${x}`), x]) : n); // prefixed eerst, daarna ongeprefixt
+    const t = stripHtml(tag(b, pn(["title"])));
     let l = "";
-    l = atomLink(b);
-    if (!l) l = decode(tag(b, ["link"]));
+    l = atomLink(b, ps);
+    if (!l) l = decode(tag(b, pn(["link"])));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
     l = absUrl(l, url);
     if (pad && !padOk(l, pad)) continue;
-    let d = date(tag(b, ["pubDate", "published", "dc:date", "updated", "a10:updated"]));
+    let d = date(tag(b, [...pn(["pubDate", "published"]), "dc:date", ...pn(["updated"]), "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
-    const raw = tag(b, ["description", "media:description", "summary", "content:encoded", "content"]);
+    const raw = tag(b, [...pn(["description"]), "media:description", ...pn(["summary"]), "content:encoded", ...pn(["content"])]);
     const img = /<media:(?:thumbnail|content)[^>]*url=["']([^"']+)["']/i.exec(b)?.[1] || /<enclosure[^>]*url=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/i.exec(b)?.[1];
     if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(img && absUrl(decode(img), url) ? { img: absUrl(decode(img), url) } : {}) });
   }
