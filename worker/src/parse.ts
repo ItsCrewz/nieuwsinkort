@@ -81,8 +81,21 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   for (const b of blocks) {
     const t = stripHtml(tag(b, ["title"]));
     let l = "";
-    const alt = /<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']/i.exec(b) || /<link[^>]*href=["']([^"']+)["']/i.exec(b);
-    if (alt) l = decode(alt[1]);
+    // Atom: rel en href los lezen, zodat de volgorde van de attributen niet uitmaakt
+    let eerste = "", alt = "";
+    for (const m of b.matchAll(/<link\b[^>]*>/gi)) {
+      // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
+      const at: Record<string, string> = {};
+      for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+        const n = x[1].toLowerCase();
+        if (!(n in at)) at[n] = x[2] ?? x[3];
+      }
+      const h = at.href || "";
+      if (!h) continue;
+      if (!eerste) eerste = h;
+      if (at.rel && /(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) { alt = h; break; }
+    }
+    l = decode(alt || eerste);
     if (!l) l = decode(tag(b, ["link"]));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
     l = absUrl(l, url);

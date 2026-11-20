@@ -65,6 +65,15 @@ assert.equal(parseFeed('<feed><entry><title>A</title><link href=" "/></entry></f
 
 const json = parseFeed(JSON.stringify([{ title: "A" }, { title: "B", url: " " }, { title: "C", link: "/artikel" }]), base);
 assert.deepEqual(json.map((item) => item.l), ["", "", "https://voorbeeld.nl/artikel"]);
+// #1368: alternate wint ook als href vóór rel staat, met enkele aanhalingstekens en relatieve URL's
+assert.equal(atom('<link rel="self" href="https://voorbeeld.nl/feed"/><link href="/bericht" rel="alternate"/>').l, "https://voorbeeld.nl/bericht");
+assert.equal(atom("<link href='https://voorbeeld.nl/feed' rel='self'/><link href='/bericht' rel='alternate'/>").l, "https://voorbeeld.nl/bericht");
+assert.equal(atom('<link href="https://voorbeeld.nl/feed" rel="self"/><link href="https://voorbeeld.nl/echt" rel="alternate" type="text/html"/>').l, "https://voorbeeld.nl/echt");
+assert.equal(atom('<link href="javascript:alert(1)" rel="alternate"/>').l, "");
+// attribuuttekst binnen een andere waarde is geen echt attribuut
+assert.equal(atom(`<link href="https://voorbeeld.nl/feed" title="rel='alternate'" rel="self"/><link href="/bericht" rel="alternate"/>`).l, "https://voorbeeld.nl/bericht");
+assert.equal(atom(`<link href="https://voorbeeld.nl/feed" title='rel="alternate"' rel="self"/><link href="/bericht" rel="alternate"/>`).l, "https://voorbeeld.nl/bericht");
+assert.equal(atom('<link data-href="https://voorbeeld.nl/nep" href="/echt" rel="alternate"/>').l, "https://voorbeeld.nl/echt");
 
 console.log("✓ parse-randgevallen: entiteiten, HTML, datums, igTime, Atom en CDATA");
 
