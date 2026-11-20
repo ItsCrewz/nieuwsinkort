@@ -101,7 +101,7 @@ function atomPrefixBlokken(body: string): { i: number; b: string; ps: string[] }
 
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const head = body.slice(0, 400).trim();
-  if (head[0] === "{" || head[0] === "[") return parseJson(body, url);
+  if (head[0] === "{" || head[0] === "[") { const r = parseJson(body, url); return pad ? r.filter((e) => padOk(e.l, pad)) : r; }
   const out: Entry[] = [];
   if (/searchRetrieveResponse/.test(head + body.slice(0, 2000))) {
     for (const r of body.split(/<sru:record>/).slice(1)) {

@@ -102,3 +102,18 @@ console.log("✓ parse-randgevallen: entiteiten, HTML, datums, igTime, Atom en C
   assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/zzz/a</link></item></channel></rss>', base, "/zzz/").length, 1);
 }
 console.log("✓ parse-randgevallen: Google-news-sitemap met padfilter");
+
+// #1379: het padfilter geldt ook voor JSON-formaten; zonder pad blijft alles staan
+{
+  const kev = JSON.stringify({ vulnerabilities: [{ cveID: "CVE-1", vulnerabilityName: "A", dateAdded: "2026-01-01" }, { cveID: "", vulnerabilityName: "B" }] });
+  assert.equal(parseFeed(kev, base).length, 2);
+  assert.deepEqual(parseFeed(kev, base, "/vuln/detail/CVE-1").map((e) => e.l), ["https://nvd.nist.gov/vuln/detail/CVE-1"]);
+  assert.equal(parseFeed(kev, base, "/andere/").length, 0);
+  const ori = JSON.stringify({ hits: { hits: [{ _id: "ori/1", _source: { name: "A" } }, { _id: "x/2", _source: { name: "B" } }, { _id: "", _source: { name: "C" } }] } });
+  assert.equal(parseFeed(ori, base).length, 3);
+  assert.deepEqual(parseFeed(ori, base, "/ori/").map((e) => e.l), ["https://id.openraadsinformatie.nl/ori/1"]);
+  const arr = JSON.stringify([{ title: "A", url: "/nieuws/a" }, { title: "B", url: "/sport/b" }, { title: "C" }, { title: "D", url: "http://" }]);
+  assert.equal(parseFeed(arr, base).length, 4);
+  assert.deepEqual(parseFeed(arr, base, "/nieuws/").map((e) => e.t), ["A"]);
+}
+console.log("✓ parse-randgevallen: padfilter voor JSON-formaten");
