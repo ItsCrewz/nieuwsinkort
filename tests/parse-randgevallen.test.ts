@@ -7,10 +7,16 @@ const base = "https://voorbeeld.nl/feed";
 
 // decode: numeriek, hex (kleine en hoofdletter x), hoofdletters in namen en onbekende namen
 assert.equal(decode("&#65;&#x41;&#X42;"), "AAB");
+assert.equal(decode("&#1114111;&#x10FFFF;&#55295;&#xE000;"), "\u{10FFFF}\u{10FFFF}\uD7FF\uE000");
+assert.equal(decode("&#1114112; &#x110000; &#55296; &#xDFFF;"), "&#1114112; &#x110000; &#55296; &#xDFFF;");
+assert.equal(decode(`&#${"9".repeat(400)};`), `&#${"9".repeat(400)};`);
 assert.equal(decode("&AMP; &Eacute; &Zzz;"), "& é &Zzz;"); // naam hoofdletterongevoelig
 assert.equal(decode("&onbekend; &amp;onbekend;"), "&onbekend; &onbekend;");
 assert.equal(decode("&amp;amp;"), "&amp;");
 assert.equal(decode("zonder ; of & los"), "zonder ; of & los");
+
+const kapotteFeed = parseFeed("<rss><channel><item><title>Kapot &#1114112;</title><link>/kapot</link></item><item><title>Geldig &#x1F600;</title><link>/geldig</link></item></channel></rss>", base);
+assert.deepEqual(kapotteFeed.map((e) => e.t), ["Kapot &#1114112;", "Geldig 😀"]);
 
 // stripHtml: dubbel-geëscapete HTML wordt eerst gedecodeerd en dan gestript; script/style verdwijnen
 assert.equal(stripHtml("&lt;p&gt;Een &amp;amp; twee&lt;/p&gt;"), "Een & twee");
