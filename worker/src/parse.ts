@@ -84,12 +84,16 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     // Atom: rel en href los lezen, zodat de volgorde van de attributen niet uitmaakt
     let eerste = "", alt = "";
     for (const m of b.matchAll(/<link\b[^>]*>/gi)) {
-      const href = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(m[0]);
-      const h = href ? href[1] ?? href[2] : "";
+      // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
+      const at: Record<string, string> = {};
+      for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+        const n = x[1].toLowerCase();
+        if (!(n in at)) at[n] = x[2] ?? x[3];
+      }
+      const h = at.href || "";
       if (!h) continue;
       if (!eerste) eerste = h;
-      const rel = /\brel\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(m[0]);
-      if (rel && /(?:^|\s)alternate(?:\s|$)/i.test(rel[1] ?? rel[2])) { alt = h; break; }
+      if (at.rel && /(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) { alt = h; break; }
     }
     l = decode(alt || eerste);
     if (!l) l = decode(tag(b, ["link"]));
