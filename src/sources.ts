@@ -291,3 +291,29 @@ export function useFiltered(data: Data | null, index: Index, off: Set<string>) {
     return { data: { ...data, items, filmpjes: vid(data.filmpjes, "filmpjes"), dumpert: vid(data.dumpert, "dumpert") }, hidden };
   }, [data, index, off]);
 }
+
+/** Keuzes die tijdens een catalogusstoring onder een naamsleutel zijn opgeslagen, na herstel naar de catalogussleutel vertalen. */
+export function migreerBronKeuzes(off: Set<string>, data: Data | null, catalog: Catalog | null): { uit: string[]; weg: string[] } {
+  const uit: string[] = [];
+  const weg: string[] = [];
+  if (!data || !catalog || off.size === 0) return { uit, weg };
+  const oud = buildSources(null, data).index;
+  const nieuw = buildSources(catalog, data).index;
+  const paren = new Map<string, string>();
+  const noteer = (gid: GroupId, site: string, href: string) => {
+    const o = sourceKey(oud, gid, site, href);
+    const n = sourceKey(nieuw, gid, site, href);
+    if (o !== n) paren.set(o, n);
+  };
+  for (const it of data.items ?? []) for (const b of it.bronnen ?? []) noteer(groepVan(it), b.site, b.href);
+  for (const v of data.filmpjes ?? []) noteer("filmpjes", v.bron, v.href);
+  for (const v of data.dumpert ?? []) noteer("dumpert", v.bron || "Dumpert", v.href);
+  const nieuweSleutels = new Set(paren.values());
+  for (const [o, n] of paren) {
+    if (!off.has(o)) continue;
+    if (!off.has(n)) uit.push(n);
+    // blijft staan als de oude sleutel zelf de catalogussleutel van een andere bron is
+    if (!nieuweSleutels.has(o)) weg.push(o);
+  }
+  return { uit, weg };
+}

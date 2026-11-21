@@ -1,1 +1,2 @@
 - Bronnenoverzicht: bij een mislukte bronnenlijst toont het paneel nu een melding met een knop "Opnieuw proberen" (begrensde nieuwe reeks pogingen, bronkeuzes blijven behouden) (#1407).
+- Bronnenoverzicht: een bron die tijdens een storing van de bronnenlijst is uitgezet, blijft ook na herstel uit staan (de keuze wordt naar de catalogussleutel vertaald) (#1407).

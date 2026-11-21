@@ -12,7 +12,7 @@ import { Suspense, memo, startTransition, useCallback, useEffect, useLayoutEffec
 import type { Bron, Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
 import { bewaarFocusKeuze, browserSessieStorage, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
-import { actieveBronnen, buildSources, itemBronSleutel, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { actieveBronnen, buildSources, itemBronSleutel, migreerBronKeuzes, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
 import { sorteerOpGroep } from "./filmgroep";
@@ -781,6 +781,14 @@ export default function App() {
   const { off, setMany, reset } = useSourceFilter();
   const { groups, index } = useMemo(() => buildSources(catalog, raw), [catalog, raw]);
   const filtered = useFiltered(raw, index, off);
+  // Na herstel van de bronnenlijst: keuzes uit de storing (naamsleutels) naar de catalogussleutels vertalen, één keer per catalogus.
+  const gemigreerd = useRef<unknown>(null);
+  useEffect(() => {
+    if (catalogStatus !== "klaar" || !catalog || !raw || gemigreerd.current === catalog) return;
+    gemigreerd.current = catalog;
+    const { uit, weg } = migreerBronKeuzes(off, raw, catalog);
+    if (weg.length) { setMany(weg, true); if (uit.length) setMany(uit, false); }
+  }, [catalogStatus, catalog, raw, off, setMany]);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<AppRoute>(() => huidigeRoute());
   // Ook een direct gedeeld bericht kan buiten de gefilterde lijst staan.
