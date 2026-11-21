@@ -1143,7 +1143,7 @@ export class Runner extends DurableObject<Env> {
     } }, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
       // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.
       // teller per Amsterdams uur: bij runs elke 5 minuten niet bij elke run resetten
-      await opslag.put("vooraf", voorafTeller(await opslag.get<{ uur: number; n: number }>("vooraf"), uurSleutel(Date.now())));
+      await opslag.put("vooraf", voorafTeller(await opslag.get<{ uur: number; n: number }>("vooraf"), uurSleutel(Date.now()), Date.now()));
       const gepland = await opslag.getAlarm(), over = Date.now() + 60e3;
       if (gepland === null || gepland > over) await opslag.setAlarm(over);
     });

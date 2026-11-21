@@ -115,14 +115,14 @@ await t("alarmteller: 12 runs in één uur resetten niet; nieuw uur wel; n blijf
   let k: { uur: number; n: number } | undefined;
   let resets = 0;
   for (let i = 0; i < 12; i++) {
-    const nieuw = voorafTeller(k, uurSleutel(Date.UTC(2026, 5, 1, 8, 30) + i * 60e3));
+    const nieuw = voorafTeller(k, uurSleutel(Date.UTC(2026, 5, 1, 8, 30) + i * 60e3), Date.UTC(2026, 5, 1, 8, 30) + i * 60e3);
     if (nieuw !== k) resets++;
     k = nieuw;
     if (k.n < MAX_ALARMS_PER_UUR) k.n++; // alarm() verhoogt hooguit tot MAX
   }
   assert.equal(resets, 1);
   assert.ok(k!.n <= MAX_ALARMS_PER_UUR && k!.n === MAX_ALARMS_PER_UUR);
-  assert.deepEqual(voorafTeller(k, uurSleutel(Date.UTC(2026, 5, 1, 9, 30))), { uur: uurSleutel(Date.UTC(2026, 5, 1, 9, 30)), n: 0 });
+  assert.deepEqual(voorafTeller(k, uurSleutel(Date.UTC(2026, 5, 1, 9, 30)), Date.UTC(2026, 5, 1, 9, 30)), { uur: uurSleutel(Date.UTC(2026, 5, 1, 9, 30)), n: 0 });
 });
 
 await t("alarmteller: beide uren van 02:xx op 2026-10-25 krijgen een andere sleutel en resetten", () => {
@@ -131,12 +131,15 @@ await t("alarmteller: beide uren van 02:xx op 2026-10-25 krijgen een andere sleu
   assert.notEqual(uurSleutel(eerste), uurSleutel(tweede));
   assert.equal(uurSleutel(eerste), uurSleutel(eerste + 29 * 60e3));
   const k = { uur: uurSleutel(eerste), n: 5 };
-  assert.equal(voorafTeller(k, uurSleutel(eerste + 60e3)), k);
-  assert.deepEqual(voorafTeller(k, uurSleutel(tweede)), { uur: uurSleutel(tweede), n: 0 });
+  assert.equal(voorafTeller(k, uurSleutel(eerste + 60e3), eerste + 60e3), k);
+  assert.deepEqual(voorafTeller(k, uurSleutel(tweede), tweede), { uur: uurSleutel(tweede), n: 0 });
 });
 
-await t("alarmteller: oude teller {uur: 2, n: 5} wordt veilig vervangen", () => {
-  assert.deepEqual(voorafTeller({ uur: 2, n: 5 }, uurSleutel(Date.UTC(2026, 9, 25, 1, 30))), { uur: uurSleutel(Date.UTC(2026, 9, 25, 1, 30)), n: 0 });
+await t("alarmteller: oude teller van het huidige uur behoudt n (limiet blijft), ander uur reset", () => {
+  const w = Date.UTC(2026, 9, 25, 1, 30), z = Date.UTC(2026, 5, 1, 6, 30); // 02:30 CET, 08:30 CEST
+  assert.deepEqual(voorafTeller({ uur: 2, n: 5 }, uurSleutel(w), w), { uur: uurSleutel(w), n: 5 });
+  assert.deepEqual(voorafTeller({ uur: 8, n: 3 }, uurSleutel(z), z), { uur: uurSleutel(z), n: 3 });
+  assert.deepEqual(voorafTeller({ uur: 7, n: 3 }, uurSleutel(z), z), { uur: uurSleutel(z), n: 0 });
 });
 
 console.log(`${n} tests ok`);
