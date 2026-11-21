@@ -99,6 +99,35 @@ function atomPrefixBlokken(body: string): { i: number; b: string; ps: string[] }
   return out;
 }
 
+// Attributen van één tag, ongeacht volgorde en aanhalingstekens.
+function attrs(tagTxt: string): Record<string, string> {
+  const o: Record<string, string> = {};
+  for (const m of tagTxt.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) o[m[1].toLowerCase()] = m[2] ?? m[3] ?? "";
+  return o;
+}
+
+// Beeld uit media:thumbnail/media:content (niet video/audio) of enclosure (MIME-type, of extensie zonder type).
+// Elke kandidaat wordt eerst via absUrl gecontroleerd: een onveilige eerste mag een geldige volgende niet blokkeren.
+function beeldUrl(b: string, base: string): string | undefined {
+  const mt = /<media:(?:thumbnail|content)\b[^>]*>/gi;
+  for (const m of b.matchAll(mt)) {
+    const a = attrs(m[0]);
+    const ty = (a.type || "").toLowerCase();
+    if (!a.url || /^(?:video|audio)\//.test(ty) || /^(?:video|audio)$/i.test(a.medium || "")) continue;
+    const u = absUrl(decode(a.url), base);
+    if (u) return u;
+  }
+  for (const m of b.matchAll(/<enclosure\b[^>]*>/gi)) {
+    const a = attrs(m[0]);
+    if (!a.url) continue;
+    const ty = (a.type || "").split(";")[0].trim().toLowerCase();
+    if (ty ? /^image\/(?:jpe?g|png|webp)$/.test(ty) : /\.(?:jpe?g|png|webp)/i.test(a.url)) {
+      const u = absUrl(decode(a.url), base);
+      if (u) return u;
+    }
+  }
+}
+
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const head = body.slice(0, 400).trim();
   if (head[0] === "{" || head[0] === "[") return parseJson(body, url);
@@ -150,8 +179,8 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     let d = date(tag(b, [...pn(["pubDate", "published"]), "dc:date", ...pn(["updated"]), "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
     const raw = tag(b, [...pn(["description"]), "media:description", ...pn(["summary"]), "content:encoded", ...pn(["content"])]);
-    const img = /<media:(?:thumbnail|content)[^>]*url=["']([^"']+)["']/i.exec(b)?.[1] || /<enclosure[^>]*url=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/i.exec(b)?.[1];
-    if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(img && absUrl(decode(img), url) ? { img: absUrl(decode(img), url) } : {}) });
+    const im = beeldUrl(b, url);
+    if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(im ? { img: im } : {}) });
   }
   return out;
 }
