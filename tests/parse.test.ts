@@ -48,5 +48,9 @@ assert.throws(() => parseFeed("{ongeldig", "https://voorbeeld.nl"), /geen geldig
   assert.equal(gl("<guid>https://v.nl/b</guid>"), "https://v.nl/b");
   assert.equal(gl('<guid isPermaLink="false">https://v.nl/id/2</guid>', "<link>https://v.nl/echt</link>"), "https://v.nl/echt");
   assert.equal(gl("<guid>urn:uuid:123</guid>"), "");
+  // ">" of een nagebootst attribuut binnen een geciteerde waarde (quote-bewust lezen)
+  assert.equal(gl('<guid extra=">" isPermaLink="false">https://v.nl/id/3</guid>'), "");
+  assert.equal(gl("<guid extra='>' isPermaLink='false'>https://v.nl/id/4</guid>"), "");
+  assert.equal(gl(`<guid extra="isPermaLink='false'">https://v.nl/a2</guid>`), "https://v.nl/a2");
 }
 console.log("✓ parse: feeds, tekst en URL's");
