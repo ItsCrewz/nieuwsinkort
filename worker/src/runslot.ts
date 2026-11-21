@@ -1,5 +1,5 @@
 // Run-slot en tijdsgebaseerd AI-aandeel per run (#451): pure logica, zodat de Runner ook bij een cron van elke 5 minuten klopt.
-import { ams } from "../../src/tijd";
+import { midnight } from "../../src/tijd";
 
 export const SLOT_VERLOOP_MS = 10 * 60e3;
 interface Opslag { get<T>(key: string): Promise<T | undefined>; put(key: string, value: unknown): Promise<unknown>; delete(key: string): Promise<unknown> }
@@ -25,11 +25,11 @@ export function meetInterval(vorigeStart: number | undefined, nu: number): numbe
   return Math.min(60, Math.max(5, Math.round(min / 5) * 5));
 }
 
-/** Aantal runs dat nog volgt (inclusief deze) tot 24:00 Amsterdam; bij interval 60 gelijk aan 23 - uur + 1. */
+/** Aantal runs dat nog volgt (inclusief deze) tot de volgende Amsterdamse middernacht. */
 export function runsOver(nu: number, interval: number): number {
-  const a = ams(nu), dagMin = a.h * 60 + a.min;
-  const slotStart = Math.floor(dagMin / interval) * interval;
-  return Math.max(1, Math.max(interval, 1440 - slotStart) / interval);
+  const begin = midnight(nu), einde = midnight(begin + 36 * 3600e3);
+  const slotStart = Math.floor((nu - begin) / (interval * 60e3)) * interval * 60e3;
+  return Math.max(1, (einde - begin - slotStart) / (interval * 60e3));
 }
 
 /** Plafonds van een run uit het resterende budget; formules als vóór #451. De ondergrenzen (300, 120) schalen mee met het interval (bij 60 min ongewijzigd), anders verbruiken 12 runs per uur samen 12x de ondergrens. */
