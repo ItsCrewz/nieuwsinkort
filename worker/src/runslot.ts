@@ -38,7 +38,10 @@ export function runPlafonds(restBudget: number, runsLeft: number, interval = 60)
   return { runBudget: Math.max(300 * f, (restBudget / runsLeft) * 2), diepRun: (diepRest: number) => Math.max(120 * f, Math.min(700, (diepRest / runsLeft) * 2)) };
 }
 
-/** Alarmteller per Amsterdams uur: alleen resetten bij een ander uur. */
+/** Eenduidige sleutel van een werkelijk uur: UTC-uren sinds epoch. Amsterdamse offsets zijn hele uren, dus dit valt samen met de lokale uurgrenzen en onderscheidt de twee uren van 02:00 bij de wintertijd (het lokale uurnummer niet). Een oude teller (uur 0..23) komt nooit overeen en wordt bij de volgende run vervangen. */
+export function uurSleutel(nu: number): number { return Math.floor(nu / 3600e3); }
+
+/** Alarmteller per werkelijk uur (`uurSleutel`): alleen resetten bij een andere sleutel. */
 export function voorafTeller(oud: { uur: number; n: number } | undefined, uur: number): { uur: number; n: number } {
   return oud && oud.uur === uur ? oud : { uur, n: 0 };
 }

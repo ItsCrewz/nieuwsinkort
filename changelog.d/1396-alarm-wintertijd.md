@@ -1,0 +1,1 @@
+- Video-alarm: de teller voor vooraf gemaakte videosamenvattingen onderscheidt nu de twee herhaalde uren bij de overgang naar wintertijd (#1396).
