@@ -130,7 +130,7 @@ function beeldUrl(b: string, base: string): string | undefined {
 
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const head = body.slice(0, 400).trim();
-  if (head[0] === "{" || head[0] === "[") return parseJson(body, url);
+  if (head[0] === "{" || head[0] === "[") { const r = parseJson(body, url, pad); return pad ? r.filter((e) => padOk(e.l, pad)) : r; }
   const out: Entry[] = [];
   if (/searchRetrieveResponse/.test(head + body.slice(0, 2000))) {
     // openingstag met of zonder attributen; <sru:recordData>/<sru:recordPosition> horen er niet bij
@@ -185,11 +185,11 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   return out;
 }
 
-function parseJson(body: string, url: string): Entry[] {
+function parseJson(body: string, url: string, pad?: string): Entry[] {
   let j: any;
   try { j = JSON.parse(body); } catch { throw new Error("geen geldige JSON"); }
   if (Array.isArray(j?.vulnerabilities)) // CISA KEV
-    return j.vulnerabilities.map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
+    return j.vulnerabilities.filter((v: any) => !pad || (typeof v?.cveID === "string" && v.cveID.trim())).map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
   if (Array.isArray(j?.hits?.hits)) { // Open Raadsinformatie
     const out: Entry[] = [];
     for (const h of j.hits.hits) {
