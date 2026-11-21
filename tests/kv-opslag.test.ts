@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import worker, { Runner, Fetcher } from "../worker/src/index";
 import { BR_URL, KNMI_VERW } from "../worker/src/weer";
-import { leesState, moetSchrijven, uurInhoud, splitState, schrijfState, kvStateWint, ruimOg, HARTSLAG_MS, OG_MAX, DEEL_MAX } from "../worker/src/opslag";
+import { leesState, moetSchrijven, uurInhoud, splitState, schrijfState, kvStateWint, herstelBasis, onvolledigMelding, ruimOg, HARTSLAG_MS, OG_MAX, DEEL_MAX } from "../worker/src/opslag";
 import type { LlmState } from "../worker/src/llm";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
@@ -391,6 +391,69 @@ try {
     assert.equal(h.onvolledig, undefined); assert.equal(h.at, 100);
     assert.equal(h.st.llm.g.tokens, 10); assert.equal(h.st.neurons, 5);
     assert.ok(!o.m.has("st:bezig"));
+  });
+
+  await t("herstelBasis: KV is de basis, tellers van dezelfde dag nooit lager dan in de DO-stand; andere dag = KV ongewijzigd (#1393)", async () => {
+    const l = (calls: number, tokens: number, dag = "d") => ({ dag, calls, tokens, venster: [] });
+    const doSt: any = { datum: "d", neuronDag: "d", neurons: 50, calls: 9, inTok: 5, stAt: 2, llm: { a: l(3, 300), b: l(1, 10), c: l(1, 1) } };
+    const kvSt: any = { datum: "d", neuronDag: "d", neurons: 30, calls: 12, stAt: 1, sums: { x: 1 }, llm: { a: l(1, 100), b: l(2, 90) } };
+    const r = herstelBasis(doSt, kvSt);
+    assert.equal(r.neurons, 50); assert.equal(r.calls, 12); assert.equal(r.inTok, 5); assert.equal(r.stAt, 1, "overige velden van KV");
+    assert.deepEqual(r.sums, { x: 1 });
+    assert.equal(r.llm.a.tokens, 300, "DO-versie wint bij meer verbruik"); assert.equal(r.llm.b.tokens, 90, "KV-versie wint"); assert.ok(r.llm.c);
+    assert.equal(kvSt.neurons, 30, "invoer niet gewijzigd");
+    const ander = { ...kvSt, neuronDag: "e", datum: "e" };
+    assert.equal(herstelBasis(doSt, ander), ander);
+  });
+
+  await t("bewaarLlmDo: st:llm faalt na geslaagde deelwrite, KV ouder dan DO: tellers dalen niet, herstel wist st:bezig en logt (#1393)", async () => {
+    const h = harnas();
+    h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
+    await h.run(0);
+    const teller = (tokens: number, dag: string): LlmState[string] => ({ dag, calls: 1, tokens, venster: [] });
+    const kv0 = JSON.parse(h.kv.m.get("state")!), dag = kv0.neuronDag ?? kv0.datum;
+    const tel = { opslag: h.opslag, kv: h.kv };
+    // DO-stand is nieuwer (neuronen 500, llm 200 tokens); KV-kopie is ouder
+    const doRest = { ...JSON.parse(h.opslag.m.get("st:rest") as string), neurons: 500, stAt: kv0.stAt + 5 };
+    h.opslag.m.set("st:rest", JSON.stringify(doRest));
+    h.opslag.m.set("st:llm", JSON.stringify({ "groq:m": teller(200, dag) }));
+    h.kv.m.set("state", JSON.stringify({ ...kv0, neurons: 100, llm: { "groq:m": teller(50, dag) } }));
+    const fouten: string[] = [], echt = console.error, echtPut = h.opslag.put;
+    console.error = (...a: unknown[]) => { fouten.push(a.join(" ")); };
+    try {
+      h.opslag.put = async (k: string, v: unknown) => { if (k === "st:llm") throw new Error("do-fout"); return echtPut(k, v); };
+      klok = T0 + 5 * MIN;
+      assert.equal(await (h.r as any).bewaarLlmDo(tel, {}, { "groq:m": teller(40, dag) }), false);
+      h.opslag.put = echtPut;
+      assert.ok(h.opslag.m.has("st:bezig"), "onderbroken ronde is gemarkeerd");
+      klok = T0 + 6 * MIN;
+      assert.equal(await (h.r as any).bewaarLlmDo(tel, {}, { "groq:m": teller(40, dag) }), true);
+    } finally { console.error = echt; h.opslag.put = echtPut; }
+    const rest = JSON.parse(h.opslag.m.get("st:rest") as string);
+    assert.ok(rest.neurons >= 500, "neuronen dalen niet");
+    assert.ok(JSON.parse(h.opslag.m.get("st:llm") as string)["groq:m"].tokens >= 240, "llm-verbruik daalt niet (200 + 40)");
+    assert.ok(!h.opslag.m.has("st:bezig"), "markering weg na herstel");
+    assert.ok(fouten.some((f) => f.includes("opslagfout state (llm)")));
+  });
+
+  await t("onvolledigMelding: onderscheidt geen KV-kopie van een KV-kopie van een eerdere dag; runBinnen logt die bij onvolledige DO-state (#1393)", async () => {
+    assert.match(onvolledigMelding(null), /geen KV-kopie/);
+    assert.match(onvolledigMelding({ datum: "d" }), /eerdere dag/);
+    const h = harnas();
+    h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
+    await h.run(0);
+    const kv0 = JSON.parse(h.kv.m.get("state")!);
+    h.opslag.m.set("st:bezig", "1");
+    h.kv.m.set("state", JSON.stringify({ ...kv0, neuronDag: "2000-01-01", datum: "2000-01-01" }));
+    const fouten: string[] = [], echt = console.error;
+    console.error = (...a: unknown[]) => { fouten.push(a.join(" ")); };
+    try { await h.run(5); } finally { console.error = echt; }
+    assert.ok(fouten.some((f) => f.includes("eerdere dag")), fouten.join("|"));
+    h.kv.m.delete("state"); h.opslag.m.set("st:bezig", "1");
+    const f2: string[] = [];
+    console.error = (...a: unknown[]) => { f2.push(a.join(" ")); };
+    try { await h.run(10); } finally { console.error = echt; }
+    assert.ok(f2.some((f) => f.includes("geen KV-kopie")), f2.join("|"));
   });
 
   await t("schrijfState: overgeslagen deel laat st:bezig staan en de neuronenteller blijft leesbaar (#1393)", async () => {

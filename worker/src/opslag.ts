@@ -198,6 +198,26 @@ export function kvStateWint(doSt: any, kvSt: any, doAt?: number | null): boolean
   return llmSom(kvSt, kd) > llmSom(doSt, kd);
 }
 
+/** Basis na een onderbroken schrijfronde (`st:bezig`) als de KV-kopie wint: de KV-kopie, maar de tellers van dezelfde neuronendag nooit lager dan in de DO-stand (de KV-kopie kan tot 50 minuten ouder zijn). Per llm-sleutel wint de versie met de meeste calls + tokens op dezelfde dag. Andere dag: KV ongewijzigd (kvStateWint laat dan al de nieuwste dag winnen). */
+export function herstelBasis(doSt: any, kvSt: any): any {
+  if (!doSt || !kvSt) return kvSt ?? doSt;
+  const dd = doSt.neuronDag ?? doSt.datum, kd = kvSt.neuronDag ?? kvSt.datum;
+  if (typeof dd !== "string" || dd !== kd) return kvSt;
+  const uit = { ...kvSt };
+  for (const k of ["neurons", "calls", "inTok", "outTok", "geschat", "foutN"]) {
+    const m = Math.max(Number(kvSt[k]) || 0, Number(doSt[k]) || 0);
+    if (m > 0 || kvSt[k] !== undefined || doSt[k] !== undefined) uit[k] = m;
+  }
+  const som = (x: any) => (x?.dag === kd ? (x.calls || 0) + (x.tokens || 0) : 0);
+  const llm = { ...(kvSt.llm || {}) };
+  for (const [k, v] of Object.entries<any>(doSt.llm || {})) if (!(k in llm) || (v?.dag === kd && som(v) > som(llm[k]))) llm[k] = v;
+  if (Object.keys(llm).length) uit.llm = llm;
+  return uit;
+}
+
+/** Logregel bij een onvolledige DO-state waar de KV-kopie niet wint: geen KV-kopie, of een kopie van een eerdere dag. */
+export const onvolledigMelding = (kvSt: any) => `state in DO-opslag onvolledig (schrijfronde onderbroken); ${kvSt && typeof kvSt === "object" ? "KV-kopie van een eerdere dag" : "geen KV-kopie"}: ga door met de DO-stand`;
+
 /** Wat de alarm nodig heeft (neuronenteller) zonder de grote delen te lezen; null = geen DO-state. */
 export async function leesStateRest(opslag: Opslag): Promise<any | null> {
   const rest = await opslag.get("st:rest");
