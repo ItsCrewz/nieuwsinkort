@@ -2,10 +2,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { nieuwsSitemap } from "../../functions/sitemap-nieuws.xml";
+import { linkId } from "../../src/artikelid";
 
 const t = Date.parse("2026-11-04T09:30:00Z");
 const xml = nieuwsSitemap([
-  { id: "abc&defg", kop: "Café & <nieuws> \"😀\"\u0000\u0001\u000b\ud800\ufffe\uffff", t },
+  { id: "abc&defg", bronnen: [{ href: "https://nos.nl/a" }], kop: "Café & <nieuws> \"😀\"\u0000\u0001\u000b\ud800\ufffe\uffff", t },
   { id: "abcdefgh", kop: "Overig nieuws", t },
   { id: "ijklmnop", kop: "Ruw bericht", ruw: true, t },
   { id: "qrstuvwx", kop: "Zonder tijd" },
@@ -21,9 +22,9 @@ print(json.dumps([[u.findtext("s:loc", namespaces=ns), u.findtext("n:news/n:titl
 assert.equal(parser.status, 0, parser.stderr);
 const artikelen = JSON.parse(parser.stdout);
 assert.equal(artikelen.length, 2);
-assert.equal(artikelen[0][0], "https://nieuwsinkort.nl/bericht/2026-11-04/abc&defg-cafe-nieuws");
+assert.equal(artikelen[0][0], `https://nieuwsinkort.nl/bericht/2026-11-04/${linkId("https://nos.nl/a")}-cafe-nieuws`);
 assert.equal(artikelen[0][1], 'Café & <nieuws> "😀"');
 assert.equal(artikelen[0][2], "2026-11-04T09:30:00.000Z");
 assert.equal(artikelen[1][1], "Overig nieuws");
-assert.ok(xml.includes("abc&amp;defg"));
+assert.ok(!xml.includes("abc&amp;defg"));
 assert.ok(xml.includes("Café &amp; &lt;nieuws&gt; &quot;😀&quot;"));
