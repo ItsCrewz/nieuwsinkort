@@ -1,0 +1,1 @@
+- Een nieuwe thumbnail krijgt na verversing opnieuw een kans als de vorige afbeelding niet laadde (#1422).
