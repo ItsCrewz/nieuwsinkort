@@ -1,0 +1,1 @@
+- Behoud geldige zoekresultaten van Open Raadsinformatie als een treffer ongeldig is (#1383).
