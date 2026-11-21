@@ -21,6 +21,12 @@ assert.deepEqual(parseFeed('<searchRetrieveResponse><sru:record><dcterms:title>B
   assert.deepEqual(r.map((x) => [x.t, x.l, x.s]), [1, 2].map((n) => [`Titel ${n}`, `https://v.nl/b${n}`, `Wet: Tekst ${n}`]));
   assert.deepEqual(r.map((x) => x.d), [1, 2].map((n) => Date.parse(`2026-01-0${n}T11:00:00Z`)));
 }
+{
+  // recordtag in CDATA of commentaar is tekst, geen nieuw record
+  const r = parseFeed('<searchRetrieveResponse><sru:record id="1"><dcterms:title>Een</dcterms:title><x resourceIdentifier="/e"/><dcterms:available>2026-01-01</dcterms:available><dcterms:type>Wet</dcterms:type><dcterms:abstract><![CDATA[Voorbeeld: <sru:record id="x"> tekst]]></dcterms:abstract><!-- <sru:record id="y"> --></sru:record><sru:record><dcterms:title>Twee</dcterms:title><x resourceIdentifier="/t"/><dcterms:available>2026-01-02</dcterms:available></sru:record></searchRetrieveResponse>', "https://v.nl");
+  assert.deepEqual(r.map((x) => [x.t, x.l, x.s]), [["Een", "https://v.nl/e", "Wet: Voorbeeld: tekst"], ["Twee", "https://v.nl/t", ": "]]);
+  assert.deepEqual(r.map((x) => x.d), [1, 2].map((n) => Date.parse(`2026-01-0${n}T11:00:00Z`)));
+}
 assert.deepEqual(parseFeed('[{"title":"Bericht","url":"/a","date":"2026-01-02"}]', "https://voorbeeld.nl/feed"), [{ t: "Bericht", l: "https://voorbeeld.nl/a", d: Date.parse("2026-01-02T11:00:00Z"), s: "" }]);
 assert.equal(parseFeed('{"vulnerabilities":[{"cveID":"CVE-1","vulnerabilityName":"Lek"}]}', "https://voorbeeld.nl")[0].l, "https://nvd.nist.gov/vuln/detail/CVE-1");
 assert.equal(parseFeed('{"hits":{"hits":[{"_id":"123","_source":{"name":"Raad"}}]}}', "https://voorbeeld.nl")[0].t, "Raad");

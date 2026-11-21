@@ -105,7 +105,10 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const out: Entry[] = [];
   if (/searchRetrieveResponse/.test(head + body.slice(0, 2000))) {
     // openingstag met of zonder attributen; <sru:recordData>/<sru:recordPosition> horen er niet bij
-    for (const r of body.split(/<sru:record(?=[\s>/])(?:"[^"]*"|'[^']*'|[^>"'])*>/).slice(1)) {
+    // CDATA en commentaar overslaan: een recordtag in tekst begint nooit een record
+    const ops = [...body.matchAll(/<!\[CDATA\[[\s\S]*?\]\]>|<!--[\s\S]*?-->|<sru:record(?=[\s>/])(?:"[^"]*"|'[^']*'|[^>"'])*>/g)].filter((m) => m[0].startsWith("<sru:"));
+    for (const [n, m] of ops.entries()) {
+      const r = body.slice((m.index ?? 0) + m[0].length, ops[n + 1]?.index ?? body.length);
       const t = stripHtml(tag(r, ["dcterms:title"]));
       const l = absUrl(decode(/resourceIdentifier="([^"]+)"/.exec(r)?.[1] || ""), url);
       const d = date(tag(r, ["dcterms:available", "dcterms:modified", "dcterms:date"]));
