@@ -54,3 +54,20 @@ assert.throws(() => parseFeed("{ongeldig", "https://voorbeeld.nl"), /geen geldig
   assert.deepEqual(parseFeed(`<rss ${NS}><channel><atom:link href="https://v.nl/feed" rel="self"/><item><title>Rss</title><link>https://v.nl/r</link></item></channel></rss>`, "https://v.nl/feed").map((x) => [x.t, x.l]), [["Rss", "https://v.nl/r"]]);
 }
 console.log("✓ parse: feeds, tekst en URL's");
+{
+  // enclosure-beeld op MIME-type (#1384)
+  const img = (e: string) => parseFeed(`<rss><item><title>T</title><link>/a</link>${e}</item></rss>`, "https://v.nl/feed")[0].img;
+  assert.equal(img('<enclosure type="image/jpeg" length="1" url="https://c.nl/foto?id=1"/>'), "https://c.nl/foto?id=1");
+  assert.equal(img("<enclosure url='https://c.nl/f/2' type='image/png'/>"), "https://c.nl/f/2");
+  assert.equal(img('<enclosure url="https://c.nl/f/3" type="image/webp; charset=binary"/>'), "https://c.nl/f/3");
+  assert.equal(img('<enclosure type="image/jpeg" url="/f/4"/>'), "https://v.nl/f/4");
+  assert.equal(img('<enclosure url="https://c.nl/a.jpg" type="audio/mpeg"/>'), undefined);
+  assert.equal(img('<enclosure url="https://c.nl/v" type="video/mp4"/>'), undefined);
+  assert.equal(img('<enclosure url="https://c.nl/v" type="image/gif"/>'), undefined);
+  assert.equal(img('<enclosure url="https://c.nl/v" type="image/svg+xml"/>'), undefined);
+  assert.equal(img('<enclosure url="javascript:alert(1)" type="image/jpeg"/>'), undefined);
+  assert.equal(img('<enclosure type="image/jpeg"/>'), undefined);
+  assert.equal(img('<enclosure url="https://c.nl/z.png"/>'), "https://c.nl/z.png");
+  assert.equal(img('<media:content url="https://c.nl/v.mp4" type="video/mp4"/>'), undefined);
+  assert.equal(img('<media:content url="https://c.nl/v.mp4" medium="video"/><media:thumbnail url="https://c.nl/t.jpg"/>'), "https://c.nl/t.jpg");
+}
