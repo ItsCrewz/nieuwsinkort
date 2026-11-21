@@ -14,6 +14,19 @@ assert.deepEqual(parseFeed("", "https://voorbeeld.nl/feed"), []);
 assert.deepEqual(parseFeed('<rss><item><title>Een &amp; twee</title><link>/nieuws</link><pubDate>2026-01-02</pubDate><description><![CDATA[<p>Hallo</p>]]></description><enclosure url="/foto.jpg"/></item></rss>', "https://voorbeeld.nl/feed"), [{ t: "Een & twee", l: "https://voorbeeld.nl/nieuws", d: Date.parse("2026-01-02T11:00:00Z"), s: "Hallo", img: "https://voorbeeld.nl/foto.jpg" }]);
 assert.deepEqual(parseFeed('<feed><entry><title>Atom</title><link rel="alternate" href="https://ander.nl/a"/><updated>ongeldig</updated></entry></feed>', "https://voorbeeld.nl"), [{ t: "Atom", l: "https://ander.nl/a", d: null, s: "" }]);
 assert.deepEqual(parseFeed('<searchRetrieveResponse><sru:record><dcterms:title>Besluit</dcterms:title><x resourceIdentifier="/besluit"/><dcterms:type>Wet</dcterms:type><dcterms:abstract>Tekst</dcterms:abstract></sru:record></searchRetrieveResponse>', "https://voorbeeld.nl"), [{ t: "Besluit", l: "https://voorbeeld.nl/besluit", d: null, s: "Wet: Tekst" }]);
+{
+  // SRU gemengd: record zonder en met attributen, met recordPosition ertussen
+  const rec = (a: string, n: string) => `<sru:record${a}><sru:recordData><dcterms:title>Titel ${n}</dcterms:title><x resourceIdentifier="/b${n}"/><dcterms:available>2026-01-0${n}</dcterms:available><dcterms:type>Wet</dcterms:type><dcterms:abstract>Tekst ${n}</dcterms:abstract></sru:recordData><sru:recordPosition>${n}</sru:recordPosition></sru:record>`;
+  const r = parseFeed(`<searchRetrieveResponse>${rec("", "1")}${rec(' xmlns:x="urn:x" id=\'a>b\'', "2")}</searchRetrieveResponse>`, "https://v.nl");
+  assert.deepEqual(r.map((x) => [x.t, x.l, x.s]), [1, 2].map((n) => [`Titel ${n}`, `https://v.nl/b${n}`, `Wet: Tekst ${n}`]));
+  assert.deepEqual(r.map((x) => x.d), [1, 2].map((n) => Date.parse(`2026-01-0${n}T11:00:00Z`)));
+}
+{
+  // recordtag in CDATA of commentaar is tekst, geen nieuw record
+  const r = parseFeed('<searchRetrieveResponse><sru:record id="1"><dcterms:title>Een</dcterms:title><x resourceIdentifier="/e"/><dcterms:available>2026-01-01</dcterms:available><dcterms:type>Wet</dcterms:type><dcterms:abstract><![CDATA[Voorbeeld: <sru:record id="x"> tekst]]></dcterms:abstract><!-- <sru:record id="y"> --></sru:record><sru:record><dcterms:title>Twee</dcterms:title><x resourceIdentifier="/t"/><dcterms:available>2026-01-02</dcterms:available></sru:record></searchRetrieveResponse>', "https://v.nl");
+  assert.deepEqual(r.map((x) => [x.t, x.l, x.s]), [["Een", "https://v.nl/e", "Wet: Voorbeeld: tekst"], ["Twee", "https://v.nl/t", ": "]]);
+  assert.deepEqual(r.map((x) => x.d), [1, 2].map((n) => Date.parse(`2026-01-0${n}T11:00:00Z`)));
+}
 assert.deepEqual(parseFeed('[{"title":"Bericht","url":"/a","date":"2026-01-02"}]', "https://voorbeeld.nl/feed"), [{ t: "Bericht", l: "https://voorbeeld.nl/a", d: Date.parse("2026-01-02T11:00:00Z"), s: "" }]);
 assert.equal(parseFeed('{"vulnerabilities":[{"cveID":"CVE-1","vulnerabilityName":"Lek"}]}', "https://voorbeeld.nl")[0].l, "https://nvd.nist.gov/vuln/detail/CVE-1");
 assert.equal(parseFeed('{"hits":{"hits":[{"_id":"123","_source":{"name":"Raad"}}]}}', "https://voorbeeld.nl")[0].t, "Raad");
