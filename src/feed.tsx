@@ -1223,6 +1223,7 @@ export function Feed({
   list,
   cat,
   start,
+  startGepauzeerd,
   onClose,
   groups,
   onGroup,
@@ -1231,6 +1232,7 @@ export function Feed({
   list: Video[];
   cat: "filmpjes" | "dumpert";
   start: string | null;
+  startGepauzeerd?: boolean; // hersteld bewust gepauzeerd filmpje (#1419)
   onClose: () => void;
   groups?: FeedGroup[];
   onGroup?: (id: string) => void;
@@ -1260,7 +1262,7 @@ export function Feed({
     },
     [gs, gi, onGroup]
   );
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(!!startGepauzeerd);
   const [verborgen, setVerborgen] = useState(() => document.hidden);
   const verborgenRef = useRef(document.hidden);
   const zichtGeneratie = useRef(0);
