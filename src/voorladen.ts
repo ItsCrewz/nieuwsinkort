@@ -95,9 +95,27 @@ export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
   const out: Segment[] = [];
   let vorig: { url: string; einde: number } | null = null;
   let br: string | null = null;
+  let map: Segment | null = null;
   for (const l of txt.split("\n").map((x) => x.trim())) {
     if (!l) continue;
     if (l.startsWith("#")) {
+      if (l.startsWith("#EXT-X-MAP:")) {
+        map = null;
+        const attrs = Array.from(l.slice(11).matchAll(/(?:^|,)([A-Z0-9-]+)=("[^"]*"|[^,]*)/g));
+        const uri = attrs.find((m) => m[1] === "URI")?.[2];
+        const range = attrs.find((m) => m[1] === "BYTERANGE")?.[2];
+        const bereik = range?.match(/^"(\d+)@(\d+)"$/);
+        try {
+          if (uri?.startsWith('"') && uri.endsWith('"') && (!range || bereik)) {
+            const url = new URL(uri.slice(1, -1), base).href;
+            const len = bereik ? Number(bereik[1]) : 0;
+            const van = bereik ? Number(bereik[2]) : 0;
+            if (!range) map = { url };
+            else if (len > 0 && Number.isSafeInteger(van + len)) map = { url, bereik: { van, tot: van + len - 1 } };
+          }
+        } catch { /* ongeldige URI overslaan */ }
+        continue;
+      }
       const m = /^#EXT-X-BYTERANGE:(.*)$/.exec(l);
       if (m) br = m[1].trim();
       else if (/^#EXT-X-BYTERANGE(?:\s|:|$)/.test(l)) br = "";
@@ -105,6 +123,11 @@ export function segmentenBereik(txt: string, base: string, max = 2): Segment[] {
     }
     const bereik = br;
     br = null;
+    if (map) {
+      out.push(map);
+      map = null;
+      if (out.length >= max) break;
+    }
     let url = "";
     try {
       url = new URL(l, base).href;
