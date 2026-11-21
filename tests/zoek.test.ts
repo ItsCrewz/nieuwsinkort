@@ -243,7 +243,7 @@ for (const [aantal, tekst] of [[0, "0 resultaten"], [1, "1 resultaat"], [2, "2 r
   assert.ok(!vindt("Aantal 1.500", "1.5") && !vindt("Aantal 1.5", "1.500") && vindt("Aantal 1.500", "1500"));
   assert.ok(vindt("Router 192.168.1.1", "192.168.1.1") && vindt("Versie 1.2.3", "1.2.3") && vindt("iOS 17.2", "ios 17.2"));
   assert.ok(vindt("Maar 3,5 procent", "3,5") && vindt("Er waren 1.000.", "1000"));
-  assert.ok(!vindt("Aantal 1.000", "-1000") && vindt("Aantal 1.000 en meer", "-2000") && vindt("Er waren 1.000 doden", '"1000 doden"'));
+  assert.ok(!vindt("Aantal 1.000", "-1000") && !vindt("Aantal 1.000 en meer", "-2000") && vindt("Er waren 1.000 doden", '"1000 doden"'));
   assert.equal(markeerDelen("Prijs 1.000 euro", "1000").filter((x) => x.markeer).map((x) => x.tekst).join(), "1.000");
   assert.equal(markeerDelen("Prijs 1 000 euro", "1.000").filter((x) => x.markeer).map((x) => x.tekst).join(), "1 000");
   assert.equal(markeerDelen("Prijs 10000 euro", "1000").filter((x) => x.markeer).length, 0);

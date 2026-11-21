@@ -1,0 +1,1 @@
+- Zoeken: een minteken direct voor een getal blijft bij het getal, zodat "-5" geen "5" meer vindt; koppeltekens in woorden blijven gelijk, en uitsluiten (`-woord`) werkt alleen nog voor woorden (#1409).
