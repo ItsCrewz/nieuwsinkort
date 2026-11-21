@@ -1,0 +1,1 @@
+- Warm het initialisatiesegment van gefragmenteerde HLS-video's binnen de bestaande voorlaadlimieten op (#1410).
