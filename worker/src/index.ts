@@ -472,9 +472,12 @@ export class Runner extends DurableObject<Env> {
       // het verschil van deze run staat er al in (st:llm lukte, daarna faalde st:at/KV): niet nog een keer bijtellen
       if (klaar && st.stAt === klaar.stAt && JSON.stringify(st.llm || {}) === klaar.llm) return true;
       telOp(st.llm ||= {}, verschilStand(voor, na));
-      await schrijfState(tel.opslag, st, vorige);
+      const status = { volledig: true };
+      await schrijfState(tel.opslag, st, vorige, status);
       const ks: KvStand = (await tel.opslag.get("kvstand")) || {}, nu = Date.now();
-      if (moetSchrijven(ks.state, undefined, nu)) { await tel.kv.put("state", JSON.stringify(st)); await bewaarKvStand(tel.opslag, { state: { at: nu } }); }
+      // ingekorte DO-state (te groot deel): KV direct volledig bijschrijven en de commit-markering wissen, zodat de volgende run de KV-kopie kiest
+      if (!status.volledig || moetSchrijven(ks.state, undefined, nu)) { await tel.kv.put("state", JSON.stringify(st)); await bewaarKvStand(tel.opslag, { state: { at: nu } }); }
+      if (!status.volledig) await tel.opslag.delete("st:at");
       return true;
     } catch (x) { console.error("opslagfout state (llm)", x); return false; }
   }
