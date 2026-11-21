@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildSources, GROUP_ORDER, norm, sourceKey, telling } from "../src/sources";
+import { buildSources, GROUP_ORDER, migreerBronKeuzes, norm, sourceKey, telling } from "../src/sources";
 import type { Catalog } from "../src/sources";
 import type { Data, Item, Video } from "../src/types";
 
@@ -166,5 +166,13 @@ assert.deepEqual(
     [["dumpert|dumpert", "Dumpert", 1, true]],
   ]
 );
+
+// herstel na een catalogusstoring (#1407): keuze onder de naamsleutel gaat mee naar de catalogussleutel
+assert.deepEqual(migreerBronKeuzes(new Set(["nl|nosnieuws"]), data, catalog), { uit: ["nl|nos"], weg: ["nl|nosnieuws"] });
+assert.deepEqual(migreerBronKeuzes(new Set(["nl|onbekend", "nl|nu"]), data, catalog), { uit: [], weg: [] }); // sleutel gelijk
+assert.deepEqual(migreerBronKeuzes(new Set(["nl|nuitnl"]), data, catalog), { uit: [], weg: [] }); // bron niet uitgezet
+assert.deepEqual(migreerBronKeuzes(new Set(["filmpjes|youtube", "dumpert|"]), data, catalog), { uit: ["filmpjes|yt"], weg: ["filmpjes|youtube"] });
+assert.deepEqual(migreerBronKeuzes(new Set(["nl|nosnieuws", "nl|nos"]), data, catalog), { uit: [], weg: ["nl|nosnieuws"] }); // nieuwe sleutel stond al uit
+assert.deepEqual(migreerBronKeuzes(new Set(["nl|nosnieuws"]), data, null), { uit: [], weg: [] });
 
 console.log("sources: tests geslaagd");

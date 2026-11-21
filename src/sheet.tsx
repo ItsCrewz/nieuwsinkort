@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Bron } from "./types";
-import type { SourceGroup, SourceRow } from "./sources";
+import type { CatalogStatus, SourceGroup, SourceRow } from "./sources";
 import { telling } from "./sources";
 
 const hhmm = (iso?: string) => {
@@ -41,6 +41,8 @@ function groupLine(g: SourceGroup): string {
 
 /** Paneel met alle bronnen; rechts op desktop, onderaan (bottom sheet) op mobiel. */
 export function SourcesSheet({
+  catalogStatus = "klaar",
+  onOpnieuw,
   groups,
   weer,
   off,
@@ -48,6 +50,8 @@ export function SourcesSheet({
   reset,
   onClose,
 }: {
+  catalogStatus?: CatalogStatus;
+  onOpnieuw?: () => void;
   groups: SourceGroup[];
   weer: Bron[];
   off: Set<string>;
@@ -144,6 +148,14 @@ export function SourcesSheet({
                 Alles weer aan
               </button>
             </div>
+            {catalogStatus !== "klaar" && onOpnieuw && (
+              <div className="sh-bar" role={catalogStatus === "fout" ? "alert" : "status"}>
+                <span className="sh-state">{catalogStatus === "fout" ? "De bronnenlijst kon niet worden geladen; mogelijk ontbreken bronnen." : "Bronnenlijst laden…"}</span>
+                <button type="button" className="textbtn" onClick={onOpnieuw} disabled={catalogStatus === "laden"}>
+                  Opnieuw proberen
+                </button>
+              </div>
+            )}
           </div>
           <div className="sh-body">
             {groups.map((g) => {
