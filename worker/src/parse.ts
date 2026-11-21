@@ -107,19 +107,24 @@ function attrs(tagTxt: string): Record<string, string> {
 }
 
 // Beeld uit media:thumbnail/media:content (niet video/audio) of enclosure (MIME-type, of extensie zonder type).
-function beeldUrl(b: string): string | undefined {
+// Elke kandidaat wordt eerst via absUrl gecontroleerd: een onveilige eerste mag een geldige volgende niet blokkeren.
+function beeldUrl(b: string, base: string): string | undefined {
   const mt = /<media:(?:thumbnail|content)\b[^>]*>/gi;
   for (const m of b.matchAll(mt)) {
     const a = attrs(m[0]);
     const ty = (a.type || "").toLowerCase();
     if (!a.url || /^(?:video|audio)\//.test(ty) || /^(?:video|audio)$/i.test(a.medium || "")) continue;
-    return a.url;
+    const u = absUrl(decode(a.url), base);
+    if (u) return u;
   }
   for (const m of b.matchAll(/<enclosure\b[^>]*>/gi)) {
     const a = attrs(m[0]);
     if (!a.url) continue;
     const ty = (a.type || "").split(";")[0].trim().toLowerCase();
-    if (ty ? /^image\/(?:jpe?g|png|webp)$/.test(ty) : /\.(?:jpe?g|png|webp)/i.test(a.url)) return a.url;
+    if (ty ? /^image\/(?:jpe?g|png|webp)$/.test(ty) : /\.(?:jpe?g|png|webp)/i.test(a.url)) {
+      const u = absUrl(decode(a.url), base);
+      if (u) return u;
+    }
   }
 }
 
@@ -173,8 +178,7 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     let d = date(tag(b, [...pn(["pubDate", "published"]), "dc:date", ...pn(["updated"]), "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
     const raw = tag(b, [...pn(["description"]), "media:description", ...pn(["summary"]), "content:encoded", ...pn(["content"])]);
-    const img = beeldUrl(b);
-    const im = img && absUrl(decode(img), url);
+    const im = beeldUrl(b, url);
     if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(im ? { img: im } : {}) });
   }
   return out;

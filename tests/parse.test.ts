@@ -70,4 +70,7 @@ console.log("✓ parse: feeds, tekst en URL's");
   assert.equal(img('<enclosure url="https://c.nl/z.png"/>'), "https://c.nl/z.png");
   assert.equal(img('<media:content url="https://c.nl/v.mp4" type="video/mp4"/>'), undefined);
   assert.equal(img('<media:content url="https://c.nl/v.mp4" medium="video"/><media:thumbnail url="https://c.nl/t.jpg"/>'), "https://c.nl/t.jpg");
+  // onveilige eerste kandidaat blokkeert een geldige volgende niet
+  assert.equal(img('<enclosure url="javascript:alert(1)" type="image/jpeg"/><enclosure url="https://c.nl/g.jpg" type="image/jpeg"/>'), "https://c.nl/g.jpg");
+  assert.equal(img('<media:content url="javascript:alert(1)" type="image/jpeg"/><media:thumbnail url="https://c.nl/t2.jpg"/>'), "https://c.nl/t2.jpg");
 }
