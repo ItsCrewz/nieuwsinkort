@@ -1,0 +1,1 @@
+- `schrijfState` begrenst nu ook `st:rest` (DEEL_MAX): grote niet-essentiële velden vallen weg (state-kopie in KV draagt dan de stand), bij te grote essentiële velden volgt een duidelijke fout vóór de eerste write (#1394).

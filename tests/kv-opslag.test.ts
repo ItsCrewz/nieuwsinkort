@@ -500,6 +500,29 @@ try {
     } finally { console.error = echt; }
   });
 
+  await t("st:rest: precies op de grens wordt ongewijzigd geschreven; erboven vervallen grote niet-essentiële velden (volledig=false); te groot door essentiële velden gooit vóór de eerste write", async () => {
+    const echt = console.error;
+    console.error = () => {};
+    try {
+      const basis = { datum: "d", neurons: 7, runs: 2, stAt: 9 };
+      const leeg = JSON.stringify({ ...basis, vul: "" }).length;
+      const o1 = nepOpslag(), s1 = { volledig: true };
+      await schrijfState(o1, { ...basis, vul: "x".repeat(DEEL_MAX - leeg) }, {}, s1);
+      assert.equal(s1.volledig, true);
+      assert.equal(JSON.parse(o1.m.get("st:rest") as string).vul.length, DEEL_MAX - leeg);
+      assert.equal(o1.m.get("st:at"), "9");
+      const o2 = nepOpslag(), s2 = { volledig: true };
+      await schrijfState(o2, { ...basis, vul: "x".repeat(DEEL_MAX - leeg + 1) }, {}, s2);
+      assert.equal(s2.volledig, false);
+      const r = JSON.parse(o2.m.get("st:rest") as string);
+      assert.equal(r.neurons, 7); assert.equal(r.runs, 2); assert.equal(r.vul, undefined);
+      assert.equal(o2.m.has("st:at"), false, "geen commit-markering");
+      const o3 = nepOpslag();
+      await assert.rejects(schrijfState(o3, { ...basis, neurons: "x".repeat(DEEL_MAX + 1), sums: { a: 1 } }, {}), /te groot/);
+      assert.equal(o3.m.size, 0, "niets half geschreven");
+    } finally { console.error = echt; }
+  });
+
   await t("terugrol-scenario: KV-state van de oude Worker met gelijke neuronen en stAt, maar meer runs en extra sums → KV wint", async () => {
     const dag = "2026-11-02", link = "https://nu.test/binnenland/een";
     const doSt = { datum: dag, neuronDag: dag, neurons: 100, runs: 3, stAt: 7, llm: {}, sums: {} };
