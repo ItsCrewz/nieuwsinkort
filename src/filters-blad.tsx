@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import type { Item } from "./types";
 import { Icon } from "./icons";
 import { rustig } from "./beweging";
+import { vergrendelScroll } from "./scrollslot";
 import { CAT_OPT, REGIO_LABEL, STANDAARD, TIJD_LABEL, heeftVideo, regioVan, samengevoegd, type Filters, type Uitkomst } from "./filters";
 
 export function Chip({ on, onClick, children, n }: { on: boolean; onClick: () => void; children: React.ReactNode; n?: number }) {
@@ -92,8 +93,10 @@ export function FilterBlad({
     };
     window.addEventListener("keydown", onKey);
     document.addEventListener?.("focusin", onIn);
+    const ontgrendel = vergrendelScroll();
     closeBtn.current?.focus({ preventScroll: true });
     return () => {
+      ontgrendel();
       window.removeEventListener("keydown", onKey);
       document.removeEventListener?.("focusin", onIn);
       if (timer.current !== null) window.clearTimeout(timer.current);

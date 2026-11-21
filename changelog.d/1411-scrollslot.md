@@ -1,0 +1,1 @@
+- Herstel de achtergrondscroll na overlappende vensters: gedeelde scrollvergrendeling met teller voor bronnenvenster, filterblad en videoweergave (#1411).
