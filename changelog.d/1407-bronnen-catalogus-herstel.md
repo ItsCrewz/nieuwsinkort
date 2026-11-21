@@ -1,0 +1,1 @@
+- Bronnenoverzicht: bij een mislukte bronnenlijst toont het paneel nu een melding met een knop "Opnieuw proberen" (begrensde nieuwe reeks pogingen, bronkeuzes blijven behouden) (#1407).

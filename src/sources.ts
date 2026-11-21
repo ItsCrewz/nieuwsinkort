@@ -1,6 +1,6 @@
 // Bronnenfilter: welke bronnen je wilt zien. Opgeslagen in localStorage, puur client-side.
 // Een bericht verdwijnt pas als AL zijn bronnen uit staan; anders tonen we alleen de bronnen die aan staan.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { artikelId } from "./artikelid";
 import type { Bron, Data, Item, Video } from "./types";
 
@@ -60,10 +60,15 @@ function hostOf(href: string) {
 // Na een fout hooguit drie nieuwe pogingen (met uitstel), of eerder zodra de verbinding terug is; daarna niet meer.
 export const CATALOG_RETRY_MS = [3000, 10000, 30000];
 
+export type CatalogStatus = "laden" | "fout" | "klaar";
+
+/** `status` scheidt laden en fout van een echt lege lijst; `opnieuw` start (op klik) een nieuwe begrensde reeks pogingen. */
 export function useCatalog() {
-  const [cat, setCat] = useState<Catalog | null>(null);
+  const [staat, setStaat] = useState<{ cat: Catalog | null; status: CatalogStatus }>({ cat: null, status: "laden" });
+  const opnieuwRef = useRef<() => void>(() => {});
   useEffect(() => {
     let weg = false;
+    let klaar = false;
     let poging = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let bezig = false;
@@ -71,7 +76,7 @@ export function useCatalog() {
     const ctrl = new AbortController();
     const leeg: Catalog = { groepen: [] };
     const laad = () => {
-      if (weg || bezig) return;
+      if (weg || klaar || bezig) return;
       // eerste poging + de retries; ook online-events tellen mee
       if (gestart > CATALOG_RETRY_MS.length) return void window.removeEventListener("online", laad);
       gestart++;
@@ -81,20 +86,30 @@ export function useCatalog() {
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error("http"))))
         .then((c: Catalog) => {
           if (!(c && Array.isArray(c.groepen))) throw new Error("vorm");
-          if (!weg) setCat(c);
           bezig = false;
           // geladen: niet opnieuw proberen
-          weg = true;
+          klaar = true;
           window.removeEventListener("online", laad);
+          if (!weg) setStaat({ cat: c, status: "klaar" });
         })
         .catch(() => {
           bezig = false;
-          if (weg) return;
+          if (weg || klaar) return;
           // eerder geladen gegevens blijven staan; anders leeg tot het lukt
-          setCat((vorig) => vorig ?? leeg);
+          setStaat((v) => ({ cat: v.cat ?? leeg, status: "fout" }));
           if (poging < CATALOG_RETRY_MS.length) timer = setTimeout(laad, CATALOG_RETRY_MS[poging++]);
           else window.removeEventListener("online", laad);
         });
+    };
+    opnieuwRef.current = () => {
+      // alleen na een fout en niet tijdens een lopend verzoek; elke extra reeks vraagt een klik
+      if (weg || klaar || bezig) return;
+      clearTimeout(timer);
+      poging = 0;
+      gestart = 0;
+      setStaat((v) => ({ ...v, status: "laden" }));
+      window.addEventListener("online", laad);
+      laad();
     };
     window.addEventListener("online", laad);
     laad();
@@ -105,7 +120,8 @@ export function useCatalog() {
       window.removeEventListener("online", laad);
     };
   }, []);
-  return cat;
+  const opnieuw = useCallback(() => opnieuwRef.current(), []);
+  return { cat: staat.cat, status: staat.status, opnieuw };
 }
 
 type Index = Map<GroupId, { byName: Map<string, string>; byHost: Map<string, string>; rows: Map<string, SourceRow> }>;

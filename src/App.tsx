@@ -777,7 +777,7 @@ export default function App() {
   ].filter(Boolean).join(" ");
   UUR_ACTIEF = Date.now() - Date.parse((raw as any)?.uur?.gegenereerd || "") < 2.5 * 3600e3; // alleen als de uur-run recent draaide
   const { theme, toggle } = useTheme();
-  const catalog = useCatalog();
+  const { cat: catalog, status: catalogStatus, opnieuw: catalogOpnieuw } = useCatalog();
   const { off, setMany, reset } = useSourceFilter();
   const { groups, index } = useMemo(() => buildSources(catalog, raw), [catalog, raw]);
   const filtered = useFiltered(raw, index, off);
@@ -1000,7 +1000,7 @@ export default function App() {
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET" herstel={SourcesSheet.herstel}><Suspense fallback={null}>
-          <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
+          <SourcesSheet catalogStatus={catalogStatus} onOpnieuw={catalogOpnieuw} groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
         </Suspense></Foutgrens>
       ) : null}
     </>

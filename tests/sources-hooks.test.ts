@@ -84,8 +84,9 @@ await t("useCatalog laadt /bronnen.json zonder cache", async () => {
     if (eerste === "niet gerenderd") eerste = c;
     return c;
   }, null);
-  assert.equal(eerste, null);
-  assert.deepEqual(h.result.current, cat);
+  assert.deepEqual({ cat: (eerste as any).cat, status: (eerste as any).status }, { cat: null, status: "laden" });
+  assert.deepEqual(h.result.current.cat, cat);
+  assert.equal(h.result.current.status, "klaar");
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, "/bronnen.json");
   assert.equal((calls[0].init as RequestInit).cache, "no-cache");
@@ -105,7 +106,8 @@ await t("useCatalog valt terug op lege groepen", async () => {
   for (const [naam, antwoord] of gevallen) {
     mockFetch(antwoord);
     const h = await renderHook(() => useCatalog(), null);
-    assert.deepEqual(h.result.current, { groepen: [] }, naam);
+    assert.deepEqual(h.result.current.cat, { groepen: [] }, naam);
+    assert.equal(h.result.current.status, "fout", naam);
     await h.unmount();
   }
   assert.equal(jsonGelezen, false);
@@ -124,10 +126,12 @@ await t("useCatalog herstelt na een tijdelijke fout en stopt daarna", async () =
     return { ok: true, json: async () => cat };
   });
   const h = await renderHook(() => useCatalog(), null);
-  assert.deepEqual(h.result.current, { groepen: [] });
+  assert.deepEqual(h.result.current.cat, { groepen: [] });
+  assert.equal(h.result.current.status, "fout");
   hervat();
   await wacht(40);
-  assert.deepEqual(h.result.current, cat);
+  assert.deepEqual(h.result.current.cat, cat);
+  assert.equal(h.result.current.status, "klaar");
   assert.equal(calls.length, 2);
   await wacht(40);
   assert.equal(calls.length, 2);
@@ -139,7 +143,8 @@ await t("useCatalog geeft na een blijvende fout op en ruimt timers op", async ()
   const h = await renderHook(() => useCatalog(), null);
   await wacht(60);
   assert.equal(calls.length, 4);
-  assert.deepEqual(h.result.current, { groepen: [] });
+  assert.deepEqual(h.result.current.cat, { groepen: [] });
+  assert.equal(h.result.current.status, "fout");
   await h.unmount();
   // verlaten tijdens wachten: geen verdere verzoeken
   CATALOG_RETRY_MS.splice(0, 3, 20, 20, 20);
@@ -166,6 +171,46 @@ await t("useCatalog begrenst ook online-events en breekt een lopend verzoek af b
   assert.equal(signal?.aborted, false);
   await h2.unmount();
   assert.equal(signal?.aborted, true);
+});
+
+await t("useCatalog: opnieuw() herstelt na een fout, begrensd en zonder bronkeuzes te wissen", async () => {
+  CATALOG_RETRY_MS.splice(0, 3, 5, 5, 5);
+  opslag.set(KEY, JSON.stringify(["nl|nos"]));
+  const cat: Catalog = { groepen: [{ id: "nl", label: "Nederland", bronnen: [{ id: "nos", naam: "NOS" }] }] };
+  let werkt = false;
+  const calls = mockFetch(async () => (werkt ? { ok: true, json: async () => cat } : { ok: false, json: async () => ({}) }));
+  const h = await renderHook(() => ({ c: useCatalog(), f: useSourceFilter() }), null);
+  await wacht(60);
+  assert.equal(calls.length, 4);
+  assert.equal(h.result.current.c.status, "fout");
+  // elke klik geeft een nieuwe reeks van hooguit 4 verzoeken, nooit een lus
+  await act(async () => h.result.current.c.opnieuw());
+  await wacht(60);
+  assert.equal(calls.length, 8);
+  assert.equal(h.result.current.c.status, "fout");
+  await wacht(40);
+  assert.equal(calls.length, 8);
+  werkt = true;
+  await act(async () => h.result.current.c.opnieuw());
+  await wacht(10);
+  assert.equal(h.result.current.c.status, "klaar");
+  assert.deepEqual(h.result.current.c.cat, cat);
+  assert.deepEqual([...h.result.current.f.off], ["nl|nos"]);
+  const { groups } = buildSources(h.result.current.c.cat, null);
+  assert.equal(groups.find((x) => x.id === "nl")?.sources.length, 1);
+  // geladen: opnieuw() doet niets meer
+  const n = calls.length;
+  await act(async () => h.result.current.c.opnieuw());
+  await wacht(10);
+  assert.equal(calls.length, n);
+  await h.unmount();
+});
+await t("useCatalog: een echt lege lijst is klaar, geen fout", async () => {
+  mockFetch(async () => ({ ok: true, json: async () => ({ groepen: [] }) }));
+  const h = await renderHook(() => useCatalog(), null);
+  assert.equal(h.result.current.status, "klaar");
+  assert.deepEqual(h.result.current.cat, { groepen: [] });
+  await h.unmount();
 });
 
 // useSourceFilter
