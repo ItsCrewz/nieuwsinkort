@@ -11,7 +11,11 @@ export interface FocusStorage {
 }
 
 // Zonder storage, bij een fout of zonder expliciete keuze: uit.
-export function leesFocusKeuze(storage?: FocusStorage | null): boolean {
+export function leesFocusKeuze(storage?: FocusStorage | null, sessie?: FocusStorage | null): boolean {
+  try {
+    const keuze = sessie?.getItem(FOCUS_KEY);
+    if (keuze === "aan" || keuze === "uit") return keuze === "aan";
+  } catch { /* probeer blijvende opslag */ }
   try {
     return storage?.getItem(FOCUS_KEY) === "aan";
   } catch {
@@ -19,13 +23,16 @@ export function leesFocusKeuze(storage?: FocusStorage | null): boolean {
   }
 }
 
-export function bewaarFocusKeuze(storage: FocusStorage | null | undefined, aan: boolean): void {
+export function bewaarFocusKeuze(storage: FocusStorage | null | undefined, aan: boolean, sessie?: FocusStorage | null): void {
   try {
-    storage?.setItem(FOCUS_KEY, aan ? "aan" : "uit");
-    storage?.removeItem(OUDE_KEY);
+    if (!storage) throw new Error("Geen opslag");
+    storage.setItem(FOCUS_KEY, aan ? "aan" : "uit");
   } catch {
-    /* privémodus: keuze geldt alleen voor deze sessie */
+    try { sessie?.setItem(FOCUS_KEY, aan ? "aan" : "uit"); } catch { /* alleen componentstate */ }
+    return;
   }
+  try { sessie?.removeItem(FOCUS_KEY); } catch { /* negeer */ }
+  ruimOudeFocusKeuzeOp(storage);
 }
 
 export function ruimOudeFocusKeuzeOp(storage?: FocusStorage | null): void {
@@ -45,6 +52,14 @@ export function browserStorage(): FocusStorage | null {
   }
 }
 
+export function browserSessieStorage(): FocusStorage | null {
+  try {
+    return typeof sessionStorage === "undefined" ? null : sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
 // Wijziging uit een ander tabblad volgen (storage-event). Schrijft zelf nooit terug: geen echo of lus.
 // Verwijderde keuze (key === null bij clear(), of newValue null) → standaard uit.
 export function volgFocusKeuze(cb: (aan: boolean) => void): () => void {
@@ -53,8 +68,8 @@ export function volgFocusKeuze(cb: (aan: boolean) => void): () => void {
       // Alleen localStorage telt (geen sessionStorage-event).
       if (e.storageArea && e.storageArea !== window.localStorage) return;
     } catch { return; }
-    if (e.key === null) return cb(false);
-    if (e.key !== FOCUS_KEY) return;
+    if (e.key !== null && e.key !== FOCUS_KEY) return;
+    try { browserSessieStorage()?.removeItem(FOCUS_KEY); } catch { /* negeer */ }
     cb(e.newValue === "aan");
   };
   try { window.addEventListener("storage", luister); } catch { return () => {}; }
