@@ -101,7 +101,7 @@ function atomPrefixBlokken(body: string): { i: number; b: string; ps: string[] }
 
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const head = body.slice(0, 400).trim();
-  if (head[0] === "{" || head[0] === "[") { const r = parseJson(body, url); return pad ? r.filter((e) => padOk(e.l, pad)) : r; }
+  if (head[0] === "{" || head[0] === "[") { const r = parseJson(body, url, pad); return pad ? r.filter((e) => padOk(e.l, pad)) : r; }
   const out: Entry[] = [];
   if (/searchRetrieveResponse/.test(head + body.slice(0, 2000))) {
     for (const r of body.split(/<sru:record>/).slice(1)) {
@@ -151,13 +151,13 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   return out;
 }
 
-function parseJson(body: string, url: string): Entry[] {
+function parseJson(body: string, url: string, pad?: string): Entry[] {
   let j: any;
   try { j = JSON.parse(body); } catch { throw new Error("geen geldige JSON"); }
   if (Array.isArray(j?.vulnerabilities)) // CISA KEV
-    return j.vulnerabilities.map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
+    return j.vulnerabilities.filter((v: any) => !pad || (typeof v?.cveID === "string" && v.cveID.trim())).map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
   if (Array.isArray(j?.hits?.hits)) // Open Raadsinformatie
-    return j.hits.hits.map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
+    return j.hits.hits.filter((h: any) => !pad || (typeof h?._id === "string" && h._id.trim())).map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
   if (Array.isArray(j)) return j.map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url), d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
   return [];
 }

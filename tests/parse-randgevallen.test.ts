@@ -112,6 +112,13 @@ console.log("✓ parse-randgevallen: Google-news-sitemap met padfilter");
   const ori = JSON.stringify({ hits: { hits: [{ _id: "ori/1", _source: { name: "A" } }, { _id: "x/2", _source: { name: "B" } }, { _id: "", _source: { name: "C" } }] } });
   assert.equal(parseFeed(ori, base).length, 3);
   assert.deepEqual(parseFeed(ori, base, "/ori/").map((e) => e.l), ["https://id.openraadsinformatie.nl/ori/1"]);
+  // breed filter: records zonder (of met lege) id vallen af, een geldig record blijft
+  const kev2 = JSON.stringify({ vulnerabilities: [{ cveID: "CVE-1", vulnerabilityName: "A" }, { cveID: "", vulnerabilityName: "B" }, { vulnerabilityName: "C" }] });
+  assert.equal(parseFeed(kev2, base).length, 3);
+  assert.deepEqual(parseFeed(kev2, base, "/vuln/detail/").map((e) => e.l), ["https://nvd.nist.gov/vuln/detail/CVE-1"]);
+  const ori2 = JSON.stringify({ hits: { hits: [{ _id: "ori/1", _source: { name: "A" } }, { _id: "", _source: { name: "B" } }, { _source: { name: "C" } }] } });
+  assert.equal(parseFeed(ori2, base).length, 3);
+  assert.deepEqual(parseFeed(ori2, base, "/").map((e) => e.l), ["https://id.openraadsinformatie.nl/ori/1"]);
   const arr = JSON.stringify([{ title: "A", url: "/nieuws/a" }, { title: "B", url: "/sport/b" }, { title: "C" }, { title: "D", url: "http://" }]);
   assert.equal(parseFeed(arr, base).length, 4);
   assert.deepEqual(parseFeed(arr, base, "/nieuws/").map((e) => e.t), ["A"]);
