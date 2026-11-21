@@ -20,7 +20,7 @@ try {
   assert.ok(xml.includes("<news:language>nl</news:language>"));
   assert.equal((xml.match(/<url>/g) || []).length, 1, "ruw, politiek en zonder tijd ontbreken");
   const veel = Array.from({ length: 1200 }, (_, i) => ({ kop: `Bericht ${i}`, t, bronnen: [{ site: "x", href: `https://x.nl/${i}` }] }));
-  assert.equal((nieuwsSitemap(veel, dag).match(/<url>/g) || []).length, 1000, "max 1000");
+  assert.equal((nieuwsSitemap(veel, dag).match(/<sitemap>/g) || []).length, 2, "index met twee delen");
   assert.equal(nieuwsSitemap([], dag), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"></urlset>\n');
 
   // toekomstige tijden (#1175): grens rond nu en rond de Amsterdamse dagwisseling (gewoon en DST), geïnjecteerde klok

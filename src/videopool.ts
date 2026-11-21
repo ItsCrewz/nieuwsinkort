@@ -59,9 +59,12 @@ export class PoolEigenaars {
     fn?.();
     return true;
   }
-  /** Eigenaar weg: eerst bron opruimen, dan pas parkeren. Een oude eigenaar doet niets. */
+  /** Eigenaar weg: generatie direct ongeldig (late taken vallen af, ook vóór de volgende claim), dan bron
+   *  opruimen en pas parkeren. Een oude eigenaar doet niets. */
   geefVrij(slot: number, gen: number, parkeer: () => void): boolean {
-    if (!this.ruimOp(slot, gen)) return false;
+    if (!this.actueel(slot, gen)) return false;
+    this.gen[slot]++;
+    this.ruimOp(slot);
     parkeer();
     return true;
   }

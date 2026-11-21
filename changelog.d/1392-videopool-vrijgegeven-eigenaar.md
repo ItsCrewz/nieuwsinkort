@@ -1,0 +1,1 @@
+- Videopool: een vrijgegeven eigenaar is direct ongeldig, zodat late speleracties een geparkeerde speler niet meer aansluiten of starten (#1392).

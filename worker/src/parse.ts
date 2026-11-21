@@ -6,7 +6,7 @@ export function decode(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
     if (e[0] === "#") {
       const n = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
-      return Number.isFinite(n) ? String.fromCodePoint(n) : m;
+      return Number.isFinite(n) && n <= 0x10ffff && (n < 0xd800 || n > 0xdfff) ? String.fromCodePoint(n) : m;
     }
     return ENT[e.toLowerCase()] ?? m;
   });
@@ -47,7 +47,7 @@ export function igTime(link: string): number | null {
 // Google-news-sitemap (<urlset>): titel en tijd uit <news:...>, anders <lastmod>; `pad` houdt alleen links met dat padstuk over (ook voor RSS/Atom in parseFeed)
 function parseSitemap(body: string, url: string, pad?: string): Entry[] {
   const out: Entry[] = [];
-  for (const b of body.match(/<url>[\s\S]*?<\/url>/gi) || []) {
+  for (const b of body.match(/<url(?:\s[^>]*)?>[\s\S]*?<\/url>/gi) || []) {
     const l = absUrl(decode(tag(b, ["loc"])), url);
     const t = stripHtml(tag(b, ["news:title"]));
     if (!l || !t || (pad && !new URL(l).pathname.includes(pad))) continue;
@@ -61,12 +61,83 @@ function padOk(l: string, pad: string): boolean {
   try { return new URL(l).pathname.includes(pad); } catch { return false; }
 }
 
+const ATOM_NS = "http://www.w3.org/2005/Atom";
+// Loopt de tags langs met een scope per element (xmlns:p geldt voor het element en zijn nakomelingen, een herdefinitie wint)
+// en geeft elk <p:entry> waarvan p op dat punt naar Atom wijst, met alle Atom-prefixen die binnen die entry gelden (punten ge-escaped).
+function atomPrefixBlokken(body: string): { i: number; b: string; ps: string[] }[] {
+  const out: { i: number; b: string; ps: string[] }[] = [];
+  const stack: { n: string; ns: Map<string, string> }[] = [];
+  let cur: { i: number; diepte: number; n: string; ps: Set<string> } | null = null;
+  const re = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<(\/?)([A-Za-z_][\w.:-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+  for (const m of body.matchAll(re)) {
+    if (!m[2]) continue;
+    const naam = m[2];
+    if (m[1]) { // sluittag
+      let k = stack.length - 1;
+      while (k >= 0 && stack[k].n !== naam) k--;
+      if (k < 0) continue;
+      stack.length = k;
+      if (cur && cur.n === naam && stack.length === cur.diepte) {
+        out.push({ i: cur.i, b: body.slice(cur.i, (m.index ?? 0) + m[0].length), ps: [...cur.ps].map((x) => x.replace(/\./g, "\\.")) });
+        cur = null;
+      }
+      continue;
+    }
+    const ns = new Map(stack.length ? stack[stack.length - 1].ns : []);
+    for (const x of m[3].matchAll(/\sxmlns:([A-Za-z_][\w.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) ns.set(x[1], x[2] ?? x[3]);
+    const zelf = m[3].endsWith("/");
+    const c = naam.indexOf(":");
+    const p = c > 0 ? naam.slice(0, c) : "";
+    if (cur) for (const [k, v] of ns) if (v === ATOM_NS) cur.ps.add(k);
+    if (!cur && p && naam.slice(c + 1) === "entry" && ns.get(p) === ATOM_NS) {
+      const ps = new Set<string>([...ns].filter(([, v]) => v === ATOM_NS).map(([k]) => k));
+      if (zelf) out.push({ i: m.index ?? 0, b: m[0], ps: [...ps].map((x) => x.replace(/\./g, "\\.")) });
+      else cur = { i: m.index ?? 0, diepte: stack.length, n: naam, ps };
+    }
+    if (!zelf) stack.push({ n: naam, ns });
+  }
+  return out;
+}
+
+// Attributen van één tag, ongeacht volgorde en aanhalingstekens.
+function attrs(tagTxt: string): Record<string, string> {
+  const o: Record<string, string> = {};
+  for (const m of tagTxt.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) o[m[1].toLowerCase()] = m[2] ?? m[3] ?? "";
+  return o;
+}
+
+// Beeld uit media:thumbnail/media:content (niet video/audio) of enclosure (MIME-type, of extensie zonder type).
+// Elke kandidaat wordt eerst via absUrl gecontroleerd: een onveilige eerste mag een geldige volgende niet blokkeren.
+function beeldUrl(b: string, base: string): string | undefined {
+  const mt = /<media:(?:thumbnail|content)\b[^>]*>/gi;
+  for (const m of b.matchAll(mt)) {
+    const a = attrs(m[0]);
+    const ty = (a.type || "").toLowerCase();
+    if (!a.url || /^(?:video|audio)\//.test(ty) || /^(?:video|audio)$/i.test(a.medium || "")) continue;
+    const u = absUrl(decode(a.url), base);
+    if (u) return u;
+  }
+  for (const m of b.matchAll(/<enclosure\b[^>]*>/gi)) {
+    const a = attrs(m[0]);
+    if (!a.url) continue;
+    const ty = (a.type || "").split(";")[0].trim().toLowerCase();
+    if (ty ? /^image\/(?:jpe?g|png|webp)$/.test(ty) : /\.(?:jpe?g|png|webp)/i.test(a.url)) {
+      const u = absUrl(decode(a.url), base);
+      if (u) return u;
+    }
+  }
+}
+
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const head = body.slice(0, 400).trim();
   if (head[0] === "{" || head[0] === "[") return parseJson(body, url);
   const out: Entry[] = [];
   if (/searchRetrieveResponse/.test(head + body.slice(0, 2000))) {
-    for (const r of body.split(/<sru:record>/).slice(1)) {
+    // openingstag met of zonder attributen; <sru:recordData>/<sru:recordPosition> horen er niet bij
+    // CDATA en commentaar overslaan: een recordtag in tekst begint nooit een record
+    const ops = [...body.matchAll(/<!\[CDATA\[[\s\S]*?\]\]>|<!--[\s\S]*?-->|<sru:record(?=[\s>/])(?:"[^"]*"|'[^']*'|[^>"'])*>/g)].filter((m) => m[0].startsWith("<sru:"));
+    for (const [n, m] of ops.entries()) {
+      const r = body.slice((m.index ?? 0) + m[0].length, ops[n + 1]?.index ?? body.length);
       const t = stripHtml(tag(r, ["dcterms:title"]));
       const l = absUrl(decode(/resourceIdentifier="([^"]+)"/.exec(r)?.[1] || ""), url);
       const d = date(tag(r, ["dcterms:available", "dcterms:modified", "dcterms:date"]));
@@ -77,13 +148,17 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   }
   if (/<urlset[\s>]/i.test(body.slice(0, 2000))) return parseSitemap(body, url, pad);
   const kg = /kg\.meowing\.de|kittygram/i.test(url);
-  const blocks = body.match(/<item[\s>][\s\S]*?<\/item>|<entry[\s>][\s\S]*?<\/entry>/gi) || [];
-  for (const b of blocks) {
-    const t = stripHtml(tag(b, ["title"]));
+  // Platte <item>/<entry> via regex; Atom met prefix (<atom:entry>) via atomPrefixBlokken (namespace per element)
+  const blokken: { i: number; b: string; ps: string[] }[] = atomPrefixBlokken(body);
+  for (const bm of body.matchAll(/<item[\s>][\s\S]*?<\/item>|<entry[\s>][\s\S]*?<\/entry>/gi)) blokken.push({ i: bm.index ?? 0, b: bm[0], ps: [] });
+  blokken.sort((x, y) => x.i - y.i);
+  for (const { b, ps } of blokken) {
+    const pn = (n: string[]) => (ps.length ? n.flatMap((x) => [...ps.map((p) => `${p}:${x}`), x]) : n); // prefixed eerst, daarna ongeprefixt
+    const t = stripHtml(tag(b, pn(["title"])));
     let l = "";
     // Atom: rel en href los lezen, zodat de volgorde van de attributen niet uitmaakt
     let eerste = "", alt = "";
-    for (const m of b.matchAll(/<link\b[^>]*>/gi)) {
+    for (const m of b.matchAll(new RegExp(`<${ps.length ? `(?:${ps.join("|")}:)?` : ""}link\\b[^>]*>`, "gi"))) {
       // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
       const at: Record<string, string> = {};
       for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
@@ -96,15 +171,16 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
       if (at.rel && /(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) { alt = h; break; }
     }
     l = decode(alt || eerste);
-    if (!l) l = decode(tag(b, ["link"]));
-    if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
+    if (!l) l = decode(tag(b, pn(["link"])));
+    // GUID alleen als bestemming bij permalink (standaard of isPermaLink="true"); "false" is slechts een identificatie
+    if (!l) { const g = tag(b, ["guid"]), ga = /<guid\b((?:[^>"']|"[^"]*"|'[^']*')*)>/i.exec(b)?.[1] ?? ""; let np = ""; for (const x of ga.matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) if (x[1].toLowerCase() === "ispermalink") { np = (x[2] ?? x[3]).trim().toLowerCase(); break; } if (/^https?:/.test(g) && np !== "false") l = decode(g); }
     l = absUrl(l, url);
     if (pad && !padOk(l, pad)) continue;
-    let d = date(tag(b, ["pubDate", "published", "dc:date", "updated", "a10:updated"]));
+    let d = date(tag(b, [...pn(["pubDate", "published"]), "dc:date", ...pn(["updated"]), "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
-    const raw = tag(b, ["description", "media:description", "summary", "content:encoded", "content"]);
-    const img = /<media:(?:thumbnail|content)[^>]*url=["']([^"']+)["']/i.exec(b)?.[1] || /<enclosure[^>]*url=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/i.exec(b)?.[1];
-    if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(img && absUrl(decode(img), url) ? { img: absUrl(decode(img), url) } : {}) });
+    const raw = tag(b, [...pn(["description"]), "media:description", ...pn(["summary"]), "content:encoded", ...pn(["content"])]);
+    const im = beeldUrl(b, url);
+    if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(im ? { img: im } : {}) });
   }
   return out;
 }
@@ -116,8 +192,16 @@ function parseJson(body: string, url: string): Entry[] {
   const rec = (a: any[]): any[] => a.filter((x) => x && typeof x === "object" && !Array.isArray(x));
   if (Array.isArray(j?.vulnerabilities)) // CISA KEV
     return rec(j.vulnerabilities).filter((v: any) => v.cveID).map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
-  if (Array.isArray(j?.hits?.hits)) // Open Raadsinformatie
-    return rec(j.hits.hits).map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
+  if (Array.isArray(j?.hits?.hits)) { // Open Raadsinformatie
+    const out: Entry[] = [];
+    for (const h of j.hits.hits) {
+      if (!h || typeof h !== "object" || typeof h._id !== "string" || !h._id.trim() || !h._source || typeof h._source !== "object" || Array.isArray(h._source)) continue;
+      const s = h._source;
+      const datum = [s.start_date, s.last_discussed_at, s.date_modified].find((d) => typeof d === "string" && d);
+      out.push({ t: typeof s.name === "string" ? s.name : "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(datum || ""), s: "" });
+    }
+    return out;
+  }
   if (Array.isArray(j)) return rec(j).map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url), d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
   return [];
 }

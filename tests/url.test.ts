@@ -6,7 +6,7 @@ for (const url of ["", "/relatief", "javascript:alert(1)", "http://localhost./",
 const origineel = globalThis.fetch;
 try {
   let aangeroepen = false;
-  globalThis.fetch = (async (_url, init) => { aangeroepen = true; assert.equal(init?.redirect, "follow"); return new Response("ok"); }) as typeof fetch;
+  globalThis.fetch = (async (_url, init) => { aangeroepen = true; assert.equal(init?.redirect, "manual"); return new Response("ok"); }) as typeof fetch;
   assert.equal(await (await externeFetch("https://voorbeeld.nl", {})).text(), "ok");
   await assert.rejects(externeFetch("http://localhost", {}), /geweigerde externe URL/);
   assert.equal(aangeroepen, true);

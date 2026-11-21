@@ -7,10 +7,16 @@ const base = "https://voorbeeld.nl/feed";
 
 // decode: numeriek, hex (kleine en hoofdletter x), hoofdletters in namen en onbekende namen
 assert.equal(decode("&#65;&#x41;&#X42;"), "AAB");
+assert.equal(decode("&#1114111;&#x10FFFF;&#55295;&#xE000;"), "\u{10FFFF}\u{10FFFF}\uD7FF\uE000");
+assert.equal(decode("&#1114112; &#x110000; &#55296; &#xDFFF;"), "&#1114112; &#x110000; &#55296; &#xDFFF;");
+assert.equal(decode(`&#${"9".repeat(400)};`), `&#${"9".repeat(400)};`);
 assert.equal(decode("&AMP; &Eacute; &Zzz;"), "& é &Zzz;"); // naam hoofdletterongevoelig
 assert.equal(decode("&onbekend; &amp;onbekend;"), "&onbekend; &onbekend;");
 assert.equal(decode("&amp;amp;"), "&amp;");
 assert.equal(decode("zonder ; of & los"), "zonder ; of & los");
+
+const kapotteFeed = parseFeed("<rss><channel><item><title>Kapot &#1114112;</title><link>/kapot</link></item><item><title>Geldig &#x1F600;</title><link>/geldig</link></item></channel></rss>", base);
+assert.deepEqual(kapotteFeed.map((e) => e.t), ["Kapot &#1114112;", "Geldig 😀"]);
 
 // stripHtml: dubbel-geëscapete HTML wordt eerst gedecodeerd en dan gestript; script/style verdwijnen
 assert.equal(stripHtml("&lt;p&gt;Een &amp;amp; twee&lt;/p&gt;"), "Een & twee");
@@ -65,6 +71,13 @@ assert.equal(parseFeed('<feed><entry><title>A</title><link href=" "/></entry></f
 
 const json = parseFeed(JSON.stringify([{ title: "A" }, { title: "B", url: " " }, { title: "C", link: "/artikel" }]), base);
 assert.deepEqual(json.map((item) => item.l), ["", "", "https://voorbeeld.nl/artikel"]);
+
+// Open Raadsinformatie: onbruikbare treffers mogen geldige treffers niet blokkeren.
+const raadHit = { _id: "gemeente/document/123", _source: { name: "Raadsbesluit", start_date: "2026-01-02T10:00:00Z" } };
+const raadVerwacht = [{ t: "Raadsbesluit", l: "https://id.openraadsinformatie.nl/gemeente/document/123", d: Date.parse("2026-01-02T10:00:00Z"), s: "" }];
+assert.deepEqual(parseFeed(JSON.stringify({ hits: { hits: [raadHit] } }), base), raadVerwacht);
+assert.deepEqual(parseFeed(JSON.stringify({ hits: { hits: [null, 42, {}, { _source: {} }, { _id: " ", _source: {} }, { _id: "x", _source: null }, raadHit] } }), base), raadVerwacht);
+assert.throws(() => parseFeed('{"hits":', base), /geen geldige JSON/);
 // #1368: alternate wint ook als href vóór rel staat, met enkele aanhalingstekens en relatieve URL's
 assert.equal(atom('<link rel="self" href="https://voorbeeld.nl/feed"/><link href="/bericht" rel="alternate"/>').l, "https://voorbeeld.nl/bericht");
 assert.equal(atom("<link href='https://voorbeeld.nl/feed' rel='self'/><link href='/bericht' rel='alternate'/>").l, "https://voorbeeld.nl/bericht");
@@ -91,6 +104,20 @@ console.log("✓ parse-randgevallen: entiteiten, HTML, datums, igTime, Atom en C
   // zonder news:publication_date valt het terug op lastmod; zonder titel geen item
   const kaal = parseFeed('<urlset xmlns="x"><url><loc>/a/1</loc><lastmod>2026-10-31T10:00:00+01:00</lastmod><news:news><news:title>Kop &amp; staart</news:title></news:news></url><url><loc>/a/2</loc></url></urlset>', url);
   assert.deepEqual(kaal.map((e) => [e.t, e.l, e.d]), [["Kop & staart", "https://alarmeringen.nl/a/1", Date.parse("2026-10-31T10:00:00+01:00")]]);
+  const attributen = `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><loc>/nieuws/een?a=1&amp;b=2</loc><news:news><news:title>Eerste &amp; tweede</news:title><news:publication_date>2026-10-31T10:00:00Z</news:publication_date></news:news></url>
+    <url><loc>/nieuws/twee</loc><lastmod>2026-11-01T10:00:00Z</lastmod><news:news><news:title>Tweede bericht</news:title></news:news></url>
+    <url id="3"><loc>/anders/drie</loc><news:news><news:title>Ander pad</news:title></news:news></url>
+    <url id="4"><loc>/nieuws/zonder-titel</loc></url>
+    <url id="5"><loc>javascript:alert(1)</loc><news:news><news:title>Ongeldige link</news:title></news:news></url>
+    <url id="6"><news:news><news:title>Ontbrekende link</news:title></news:news></url>
+    <url-extra><loc>/nieuws/nep</loc><news:news><news:title>Geen URL-element</news:title></news:news></url-extra>
+  </urlset>`;
+  assert.deepEqual(parseFeed(attributen, url, "/nieuws/").map((e) => [e.t, e.l, e.d]), [
+    ["Eerste & tweede", "https://alarmeringen.nl/nieuws/een?a=1&b=2", Date.parse("2026-10-31T10:00:00Z")],
+    ["Tweede bericht", "https://alarmeringen.nl/nieuws/twee", Date.parse("2026-11-01T10:00:00Z")],
+  ]);
+  assert.equal(parseFeed(attributen, url).length, 3);
   // RSS past het padfilter sinds #455 ook toe
   assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/a</link></item></channel></rss>', base, "/zzz/").length, 0);
   assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/zzz/a</link></item></channel></rss>', base, "/zzz/").length, 1);

@@ -1,0 +1,2 @@
+- RSS: een GUID met `isPermaLink="false"` wordt niet meer als artikeladres gebruikt (#1381).
+- RSS: ook bij een `>` of aanhalingstekens binnen een GUID-attribuutwaarde wordt `isPermaLink` correct gelezen (#1381).

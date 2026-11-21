@@ -1,0 +1,1 @@
+- De nieuws-sitemap splitst grote dagfeeds op, zodat ook berichten na de duizendste vindbaar zijn (#1339).
