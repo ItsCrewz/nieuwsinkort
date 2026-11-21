@@ -13,7 +13,7 @@ t("scrubber heeft altijd aria-valuenow en aria-valuetext", () => {
   assert.match(slider, /aria-valuenow=\{[^}]*: 0\}/);
   assert.doesNotMatch(slider, /aria-valuenow=\{[^}]*undefined/);
   assert.match(slider, /aria-valuetext=/);
-  assert.match(feed, /ArrowRight[\s\S]{0,200}\? 5 : -5/);
+  assert.match(feed, /scrubDoel\(e\.key/); // pijlen/Home/End: zie tests/scrub-toetsen.test.ts
 });
 
 t("YouTube-iframe is niet uit de tabvolgorde gehaald", () => {
