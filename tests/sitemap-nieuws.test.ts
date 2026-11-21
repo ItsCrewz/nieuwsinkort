@@ -14,6 +14,7 @@ try {
   const zonderT = { kop: "Zonder tijd", bronnen: [{ site: "NOS", href: "https://nos.nl/z" }] };
   const xml = nieuwsSitemap([a, ruw, pol, zonderT], dag);
   assert.ok(xml.includes(`<loc>https://nieuwsinkort.nl${artikelPad(a, dag)}</loc>`), "zelfde URL als de pagina");
+  assert.ok(nieuwsSitemap([{ ...a, id: "ONGELDIG" }], dag).includes(`<loc>https://nieuwsinkort.nl${artikelPad(a, dag)}</loc>`), "ongeldig id gebruikt de bronidentiteit");
   assert.ok(xml.includes("<news:title>Rook &amp; vuur &lt;b&gt;</news:title>"), "escaping");
   assert.ok(xml.includes("<news:publication_date>2026-11-04T09:30:00.000Z</news:publication_date>"));
   assert.ok(!xml.includes("lastmod"), "geen verzonnen lastmod (#712)");

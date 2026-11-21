@@ -5,7 +5,7 @@ import { artikelPad } from "../../src/artikelid";
 
 const dag = "2026-11-04", t = Date.parse("2026-11-04T09:30:00Z");
 const items = [
-  { id: "ab\u0001\ud800cd&\"", kop: "Café & \"één\" <nieuws> '😀'\u0001\ud800\udfff\ud800\ufffe", t },
+  { id: "ab\u0001\ud800cd&\"", bronnen: [{ href: "https://nos.nl/a" }], kop: "Café & \"één\" <nieuws> '😀'\u0001\ud800\udfff\ud800\ufffe", t },
   { id: "abcdefgh", kop: "Overig nieuws", t },
 ];
 const xml = nieuwsSitemap(items, dag, Date.parse("2026-11-04T12:00:00Z"));

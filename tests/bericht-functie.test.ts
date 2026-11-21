@@ -67,6 +67,8 @@ try {
 
   // linkId en oudeLinkId op een bron: 301 naar het canonieke pad, query blijft behouden
   const metId = { ...item, id: linkId("https://ander.nl/anker") }, canoniek = artikelPad(metId, dag), href = item.bronnen[0].href;
+  r = await bezoek(maakEnv({ items: [{ ...item, id: "ONGELDIG" }] }), pad);
+  assert.equal(r.status, 200, "ongeldig opgeslagen id gebruikt dezelfde bronidentiteit als de client");
   for (const id of [linkId(href), oudeLinkId(href)]) {
     r = await bezoek(maakEnv({ items: [metId] }), `/bericht/${dag}/${id}-oud?utm=1`);
     assert.equal(r.status, 301, id); assert.equal(r.headers.get("location"), `${canoniek}?utm=1`); assert.equal(r.headers.get("cache-control"), "no-store"); assert.equal(r.headers.get("x-robots-tag"), null); basis(r, "301");
