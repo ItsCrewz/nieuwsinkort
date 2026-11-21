@@ -1,0 +1,1 @@
+- Ongeldige of ontbrekende weergegevens blokkeren de nieuwsfeed niet meer (#1418).
