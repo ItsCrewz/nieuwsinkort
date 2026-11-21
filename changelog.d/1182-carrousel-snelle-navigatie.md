@@ -1,0 +1,1 @@
+- Fotocarrousel: snel opeenvolgende klikken of pijltoetsen tijdens een scrollanimatie gaan nu elk een foto verder; aanraken of scrollen met het wiel neemt het gekozen doel over (#1182).
