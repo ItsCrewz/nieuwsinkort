@@ -135,6 +135,13 @@ console.log("✓ parse-randgevallen: Google-news-sitemap met padfilter");
   assert.deepEqual(raad.map((e) => [e.t, e.l]), [["Raad", "https://id.openraadsinformatie.nl/7"]]);
   const arr = parseFeed(JSON.stringify([null, 3, [1], { title: "Goed", url: "https://x.nl/a", date: "2026-10-01" }]), base);
   assert.deepEqual(arr.map((e) => [e.t, e.l]), [["Goed", "https://x.nl/a"]]);
+  // veld van verkeerd type (date: 123) geeft d: null voor dat record, geen TypeError voor de hele feed
+  const kevT = parseFeed(JSON.stringify({ vulnerabilities: [{ cveID: "CVE-1", vulnerabilityName: "A", dateAdded: 123 }, { cveID: "CVE-2", vulnerabilityName: "B", dateAdded: "2026-10-01" }] }), base);
+  assert.deepEqual(kevT.map((e) => [e.t, e.d === null]), [["CVE-1: A", true], ["CVE-2: B", false]]);
+  const arrT = parseFeed(JSON.stringify([{ title: "X", url: "https://x.nl/x", date: 123 }, { title: "Y", url: "https://x.nl/y", date: "2026-10-01" }]), base);
+  assert.deepEqual(arrT.map((e) => [e.t, e.d === null]), [["X", true], ["Y", false]]);
+  const raadT = parseFeed(JSON.stringify({ hits: { hits: [{ _id: "1", _source: { name: "R1", start_date: 123 } }, { _id: "2", _source: { name: "R2", start_date: "2026-10-01" } }] } }), base);
+  assert.deepEqual(raadT.map((e) => [e.t, e.d === null]), [["R1", true], ["R2", false]]);
   assert.throws(() => parseFeed("[{kapot", base), /geen geldige JSON/);
 }
 console.log("✓ parse-randgevallen: JSON-feeds met onbruikbare records");

@@ -26,9 +26,9 @@ function tag(block: string, names: string[]): string {
   }
   return "";
 }
-function date(s: string): number | null {
-  if (!s) return null;
-  s = s.trim();
+function date(v: unknown): number | null {
+  if (typeof v !== "string" || !v) return null; // JSON-veld van verkeerd type: alleen dit record zonder datum
+  let s = v.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) s += "T12:00:00+01:00"; // alleen een datum: midden op de dag
   const t = Date.parse(s.replace(/\s(CET|CEST)$/, (_m, z) => (z === "CEST" ? " +0200" : " +0100")));
   return Number.isFinite(t) ? t : null;
