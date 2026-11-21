@@ -33,6 +33,23 @@ await t("zomertijd: interval 60 blijft per Amsterdams uur gelijk", () => {
   for (let h = 6; h <= 23; h++) assert.equal(runsOver(Date.UTC(2026, 6, 4, h - 2, 17), 60), oud(h));
 });
 
+await t("resterende runs volgen de werkelijke duur van gewone en wisseldagen", () => {
+  for (const [tijd, uren] of [
+    ["2026-03-04T00:00:00+01:00", 24],
+    ["2026-03-29T00:00:00+01:00", 23],
+    ["2026-03-29T01:30:00+01:00", 22],
+    ["2026-03-29T03:00:00+02:00", 21],
+    ["2026-10-25T00:00:00+02:00", 25],
+    ["2026-10-25T02:30:00+02:00", 23],
+    ["2026-10-25T02:30:00+01:00", 22],
+    ["2026-10-25T03:00:00+01:00", 21],
+  ] as const) {
+    assert.equal(runsOver(Date.parse(tijd), 60), uren, tijd);
+  }
+  assert.equal(runsOver(Date.parse("2026-03-29T01:30:00+01:00"), 15), 86);
+  assert.equal(runsOver(Date.parse("2026-10-25T02:30:00+01:00"), 15), 86);
+});
+
 await t("meetInterval: onbekend/0 → 60, 4 → 5, 17 → 15, 3 uur → 60", () => {
   const nu = op(10);
   assert.equal(meetInterval(undefined, nu), 60);
