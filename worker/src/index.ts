@@ -25,7 +25,7 @@ import { externeUrl, externeFetch } from "./url";
 import { REDLIB, redlibPath, redlibToAtom } from "./redlib";
 import { vooraf, MAX_ALARMS_PER_UUR } from "./vooraf";
 import { tierVan, jobGroep, verdeelJobs, ytControleMag, type TierCache } from "./tier";
-import { neemSlot, geefSlot, meetInterval, runsOver, runPlafonds, voorafTeller } from "./runslot";
+import { neemSlot, geefSlot, meetInterval, runsOver, runPlafonds, voorafTeller, uurSleutel } from "./runslot";
 import { xUser, xPosts, xEntry, xVideo, xFouten, XFout, X_VIDEO } from "./x";
 import { dedupVideos } from "../../src/dedup";
 import { uniekeBeelden, ogImage } from "../../src/beeld";
@@ -404,8 +404,9 @@ export class Runner extends DurableObject<Env> {
   async alarm() {
     const tel = maakTel(this.env.NIEUWS, this.ctx.storage), env = { ...this.env, NIEUWS: tel.kv } as Env, opslag = tel.opslag as DurableObjectStorage;
     const A = ams(), U = utcDag(), BUDGET = +(env.BUDGET || 9000) / neuronFactor(env.NEURON_FACTOR);
-    const k: any = (await opslag.get("vooraf")) || { uur: A.h, n: 0 };
-    if (k.uur !== A.h || k.n >= MAX_ALARMS_PER_UUR) return;
+    const uurNu = uurSleutel(Date.now());
+    const k: any = (await opslag.get("vooraf")) || { uur: uurNu, n: 0 };
+    if (k.uur !== uurNu || k.n >= MAX_ALARMS_PER_UUR) return;
     // eerlijk deel per run van wat er tot 85% nog over is na de nieuwsreserve, x1.5 (begin van de dag inhalen)
     const st: any = (await leesStateRest(opslag).catch(() => null)) ?? await env.NIEUWS.get("state", "json").catch(() => null); // DO-state; KV alleen vóór de eerste run na de overstap
     const vidN = +((await env.NIEUWS.get(`vid-neurons:${U}`).catch(() => null)) || 0) || 0;
@@ -1144,7 +1145,7 @@ export class Runner extends DurableObject<Env> {
     } }, out, st, { datum: A.iso, gegenereerd: out.gegenereerd, items: meer }, async () => {
       // Eigen CPU/subrequest-budget voor video-samenvattingen na het nieuws.
       // teller per Amsterdams uur: bij runs elke 5 minuten niet bij elke run resetten
-      await opslag.put("vooraf", voorafTeller(await opslag.get<{ uur: number; n: number }>("vooraf"), A.h));
+      await opslag.put("vooraf", voorafTeller(await opslag.get<{ uur: number; n: number }>("vooraf"), uurSleutel(Date.now()), Date.now()));
       const gepland = await opslag.getAlarm(), over = Date.now() + 60e3;
       if (gepland === null || gepland > over) await opslag.setAlarm(over);
     });

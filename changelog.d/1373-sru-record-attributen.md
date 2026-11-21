@@ -1,0 +1,2 @@
+- SRU-feeds: records met attributen op het recordelement worden niet meer overgeslagen (#1373).
+- SRU-feeds: een recordtag binnen CDATA of commentaar splitst een record niet meer (#1373).

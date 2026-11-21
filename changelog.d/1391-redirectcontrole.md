@@ -1,0 +1,1 @@
+- Controleer bij artikel- en beeldophaling ieder redirectdoel vóór het verzoek en begrens redirectketens (#1391).

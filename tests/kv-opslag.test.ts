@@ -4,6 +4,7 @@ import { webcrypto } from "node:crypto";
 import worker, { Runner, Fetcher } from "../worker/src/index";
 import { BR_URL, KNMI_VERW } from "../worker/src/weer";
 import { leesState, moetSchrijven, uurInhoud, splitState, schrijfState, kvStateWint, herstelBasis, onvolledigMelding, ruimOg, HARTSLAG_MS, OG_MAX, DEEL_MAX } from "../worker/src/opslag";
+import { uurSleutel } from "../worker/src/runslot";
 import type { LlmState } from "../worker/src/llm";
 
 Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
@@ -706,7 +707,7 @@ try {
 
   await t("alarm: ongewijzigde klaar-lijst en data-vooraf = 0 writes; vooraf-log alleen in DO-opslag en via /info en /status", async () => {
     const h = harnas();
-    const A10 = 10;
+    const A10 = uurSleutel(T0);
     await h.opslag.put("vooraf", { uur: A10, n: 0 });
     await h.opslag.put("st:rest", JSON.stringify({ datum: "2026-11-02", neuronDag: "2026-11-02", neurons: 0, calls: 0, runs: 1 }));
     h.kv.m.set("uur", JSON.stringify({ gegenereerd: iso(0), datum: "x", items: [], filmpjes: [], dumpert: [], meta: { aiStand: "normaal" } }));
@@ -739,15 +740,15 @@ try {
     assert.equal(status.vooraf.klaar, 1);
     assert.equal(status.kvTellers.length, 2);
     // een klaar-lijst die 24 uur of ouder is wordt toch opnieuw geschreven (TTL 2 dagen)
-    await h.opslag.put("vooraf", { uur: 10, n: 0 });
     klok = T0 + 24 * 3600e3 + MIN;
+    await h.opslag.put("vooraf", { uur: uurSleutel(klok), n: 0 });
     h.kv.m.set("uur", JSON.stringify({ gegenereerd: new Date(klok).toISOString(), datum: "x", items: [], filmpjes: [], dumpert: [], meta: { aiStand: "normaal" } }));
     h.kv.puts.length = 0;
     await h.r.alarm();
     assert.ok(h.kv.puts.includes("sv-klaar") && h.kv.puts.includes("data-vooraf"));
     // wijzigt de klaar-lijst, dan wordt sv-klaar wél geschreven
-    await h.opslag.put("vooraf", { uur: 10, n: 0 });
     klok += 5 * MIN;
+    await h.opslag.put("vooraf", { uur: uurSleutel(klok), n: 0 });
     h.kv.puts.length = 0;
     const eerder = globalThis.fetch;
     globalThis.fetch = (async (u: any, i?: any) => String(u).endsWith("/samenvatting") ? Response.json({ ok: true, punten: ["anders"], bron: "spraak", sec: 30, neuronen: 5 }) : eerder(u, i)) as any;

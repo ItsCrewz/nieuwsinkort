@@ -11,7 +11,7 @@ import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
-import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
+import { bewaarFocusKeuze, browserSessieStorage, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
 import { actieveBronnen, buildSources, itemBronSleutel, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
@@ -797,7 +797,7 @@ export default function App() {
     const paneel = r && !route.selected ? document.getElementById("rubriek-paneel") : null;
     if (paneel) animeer(paneel, [{ opacity: 0, transform: `translateX(${r * 12}px)` }, { opacity: 1, transform: "none" }], { duration: DUUR[3], easing: "cubic-bezier(.05,.7,.1,1)" });
   }, [route.view, route.selected]);
-  const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
+  const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage(), browserSessieStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
@@ -911,7 +911,7 @@ export default function App() {
 
   const setBionicPersist = (v: boolean) => {
     setBionic(v);
-    bewaarFocusKeuze(browserStorage(), v);
+    bewaarFocusKeuze(browserStorage(), v, browserSessieStorage());
   };
   const setView = (v: View) => {
     // Touch: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht); desktop houdt het overzicht met kopjes.
