@@ -143,7 +143,8 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     }
     l = decode(alt || eerste);
     if (!l) l = decode(tag(b, pn(["link"])));
-    if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
+    // GUID alleen als bestemming bij permalink (standaard of isPermaLink="true"); "false" is slechts een identificatie
+    if (!l) { const g = tag(b, ["guid"]), ga = /<guid\b((?:[^>"']|"[^"]*"|'[^']*')*)>/i.exec(b)?.[1] ?? ""; let np = ""; for (const x of ga.matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) if (x[1].toLowerCase() === "ispermalink") { np = (x[2] ?? x[3]).trim().toLowerCase(); break; } if (/^https?:/.test(g) && np !== "false") l = decode(g); }
     l = absUrl(l, url);
     if (pad && !padOk(l, pad)) continue;
     let d = date(tag(b, [...pn(["pubDate", "published"]), "dc:date", ...pn(["updated"]), "a10:updated"]));
