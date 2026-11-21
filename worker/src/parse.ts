@@ -61,6 +61,25 @@ function padOk(l: string, pad: string): boolean {
   try { return new URL(l).pathname.includes(pad); } catch { return false; }
 }
 
+// Atom: eerste HTML-artikellink (rel ontbreekt of bevat alternate), ongeacht attribuutvolgorde; self/hub/enclosure/related/via nooit.
+// `ps`: Atom-prefixen die binnen de entry gelden (<atom:link>).
+function atomLink(b: string, ps: string[] = []): string {
+  for (const m of b.matchAll(new RegExp(`<${ps.length ? `(?:${ps.join("|")}:)?` : ""}link\\b[^>]*>`, "gi"))) {
+    // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
+    const at: Record<string, string> = {};
+    for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+      const n = x[1].toLowerCase();
+      if (!(n in at)) at[n] = x[2] ?? x[3];
+    }
+    const h = (at.href || "").trim();
+    if (!h) continue;
+    if (at.rel !== undefined && !/(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) continue;
+    if (at.type && !/html/i.test(at.type)) continue;
+    return decode(h);
+  }
+  return "";
+}
+
 const ATOM_NS = "http://www.w3.org/2005/Atom";
 // Loopt de tags langs met een scope per element (xmlns:p geldt voor het element en zijn nakomelingen, een herdefinitie wint)
 // en geeft elk <p:entry> waarvan p op dat punt naar Atom wijst, met alle Atom-prefixen die binnen die entry gelden (punten ge-escaped).
@@ -127,21 +146,7 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     const pn = (n: string[]) => (ps.length ? n.flatMap((x) => [...ps.map((p) => `${p}:${x}`), x]) : n); // prefixed eerst, daarna ongeprefixt
     const t = stripHtml(tag(b, pn(["title"])));
     let l = "";
-    // Atom: rel en href los lezen, zodat de volgorde van de attributen niet uitmaakt
-    let eerste = "", alt = "";
-    for (const m of b.matchAll(new RegExp(`<${ps.length ? `(?:${ps.join("|")}:)?` : ""}link\\b[^>]*>`, "gi"))) {
-      // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
-      const at: Record<string, string> = {};
-      for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
-        const n = x[1].toLowerCase();
-        if (!(n in at)) at[n] = x[2] ?? x[3];
-      }
-      const h = at.href || "";
-      if (!h) continue;
-      if (!eerste) eerste = h;
-      if (at.rel && /(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) { alt = h; break; }
-    }
-    l = decode(alt || eerste);
+    l = atomLink(b, ps);
     if (!l) l = decode(tag(b, pn(["link"])));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
     l = absUrl(l, url);
