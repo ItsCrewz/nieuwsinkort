@@ -1,0 +1,1 @@
+- Zoeken: een minteken direct voor een getal blijft behouden, dus zoeken naar -5 vindt geen 5 of +5 meer; ook het Unicode-minteken en decimalen werken (#1409).
