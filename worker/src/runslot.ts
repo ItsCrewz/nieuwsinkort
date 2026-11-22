@@ -1,5 +1,5 @@
 // Run-slot en tijdsgebaseerd AI-aandeel per run (#451): pure logica, zodat de Runner ook bij een cron van elke 5 minuten klopt.
-import { midnight } from "../../src/tijd";
+import { ams, midnight } from "../../src/tijd";
 
 export const SLOT_VERLOOP_MS = 10 * 60e3;
 interface Opslag { get<T>(key: string): Promise<T | undefined>; put(key: string, value: unknown): Promise<unknown>; delete(key: string): Promise<unknown> }

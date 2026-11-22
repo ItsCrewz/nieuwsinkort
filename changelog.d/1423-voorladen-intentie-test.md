@@ -1,0 +1,2 @@
+- Voorladen: regressietest voor de volgorde overgeslagen intentie, Save-Data aan/uit en herhaalde intenties (#1423).
+- Alarmteller: ontbrekende import van `ams` in `worker/src/runslot.ts` hersteld (testsuite faalde).
