@@ -16,6 +16,7 @@ let zichtbaar = "visible";
 let klaarState = "complete";
 let navVendor = "Google Inc.";
 let navUa = "Mozilla/5.0 (X11; Linux x86_64)";
+let saveData = false;
 const fetches: string[] = [];
 g.window = g;
 g.location = { href: "https://nieuwsinkort.pages.dev/" };
@@ -31,7 +32,7 @@ g.document = {
 };
 g.addEventListener = g.document.addEventListener;
 g.removeEventListener = g.document.removeEventListener;
-Object.defineProperty(g, "navigator", { configurable: true, get: () => ({ vendor: navVendor, userAgent: navUa }) });
+Object.defineProperty(g, "navigator", { configurable: true, get: () => ({ vendor: navVendor, userAgent: navUa, connection: { saveData } }) });
 g.Image = class {
   onload: () => void = () => {};
   set src(s: string) { plaatjes.push(s); queueMicrotask(() => this.onload()); }
@@ -74,7 +75,7 @@ const lijsten = (p: string) => ({
   filmpjes: [vid(`${p}f0`, `https://cdn.example/${p}f0.mp4`, "short"), vid(`${p}j0`, `https://www.youtube.com/embed/${p}jjjjjjj`, "journaal")],
   dumpert: [vid(`${p}d0`, `https://media.dumpert.nl/v/${p}/index.m3u8`)],
 });
-const reset = () => { links.length = plaatjes.length = fetches.length = 0; zichtbaar = "visible"; klaarState = "complete"; navVendor = "Google Inc."; navUa = "Mozilla/5.0 (X11; Linux x86_64)"; for (const k in abonnees) delete abonnees[k]; };
+const reset = () => { links.length = plaatjes.length = fetches.length = 0; zichtbaar = "visible"; klaarState = "complete"; navVendor = "Google Inc."; navUa = "Mozilla/5.0 (X11; Linux x86_64)"; saveData = false; for (const k in abonnees) delete abonnees[k]; };
 
 const opTab = { closest: (q: string) => (q === "[data-video-tab]" ? {} : null) };
 const intentie = (type = "pointerdown", target: unknown = opTab) => (abonnees[type] || []).slice().forEach((f) => (f as any)({ target }));
@@ -120,6 +121,32 @@ t("leeg plan: een intentie zonder videowerk telt niet; met data volgt de start a
   await wacht();
   assert.ok(fetches.some(alsVideo));
   assert.equal((abonnees.pointerdown || []).length, 0);
+  h.unmount();
+});
+
+t("overgeslagen intentie, dan Save-Data aan en uit: precies één start, daarna geen dubbel werk", async () => {
+  reset();
+  const h = maakHook();
+  const l = lijsten("sd686");
+  h.render(l, "2026-03-03T10:00", true);
+  intentie("pointerdown");
+  await wacht();
+  assert.equal(fetches.length, 0);
+  h.render(l, "2026-03-03T10:00", false);
+  saveData = true;
+  intentie("pointerdown");
+  await wacht();
+  assert.equal(fetches.filter(alsVideo).length, 0, "Save-Data: geen videowerk");
+  assert.equal((abonnees.pointerdown || []).length, 1, "listeners blijven staan");
+  saveData = false;
+  intentie("pointerdown");
+  await wacht();
+  const n = fetches.filter(alsVideo).length;
+  assert.ok(n > 0);
+  intentie("pointerdown");
+  intentie("focusin");
+  await wacht();
+  assert.equal(fetches.filter(alsVideo).length, n);
   h.unmount();
 });
 
