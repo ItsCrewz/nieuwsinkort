@@ -1,0 +1,1 @@
+- JSON-feeds: onbruikbare records (null, getallen, tekst, KEV zonder CVE-id) worden overgeslagen, zodat de geldige berichten blijven verschijnen (#1371).
