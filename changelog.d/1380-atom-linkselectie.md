@@ -1,0 +1,2 @@
+- Atom-feeds: de artikellink is nu de alternatieve HTML-link (ook zonder `rel` of met `href` vóór `rel`); self-, hub- en enclosure-links worden niet meer als artikel gekozen en de RSS-link- en GUID-terugval blijft (#1380).
+- Atom-feeds: een ongeldige eerste alternate-link (bijv. `javascript:`) blokkeert een geldige volgende niet meer, en de RSS-terugval leest de tekst van `<link>` niet bij `rel` zonder `alternate` (#1380).

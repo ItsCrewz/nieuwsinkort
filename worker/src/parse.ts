@@ -61,6 +61,39 @@ function padOk(l: string, pad: string): boolean {
   try { return new URL(l).pathname.includes(pad); } catch { return false; }
 }
 
+// Atom: eerste HTML-artikellink (rel ontbreekt of bevat alternate), ongeacht attribuutvolgorde; self/hub/enclosure/related/via nooit.
+// `ps`: Atom-prefixen die binnen de entry gelden (<atom:link>).
+function atomLink(b: string, base: string, ps: string[] = []): string {
+  for (const m of b.matchAll(new RegExp(`<${ps.length ? `(?:${ps.join("|")}:)?` : ""}link\\b[^>]*>`, "gi"))) {
+    // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
+    const at: Record<string, string> = {};
+    for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+      const n = x[1].toLowerCase();
+      if (!(n in at)) at[n] = x[2] ?? x[3];
+    }
+    const h = (at.href || "").trim();
+    if (!h) continue;
+    if (at.rel !== undefined && !/(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) continue;
+    if (at.type && !/html/i.test(at.type)) continue;
+    const u = decode(h);
+    if (absUrl(u, base)) return u; // ongeldige kandidaat (bijv. javascript:) slaat over, een geldige volgende wint
+  }
+  return "";
+}
+
+// RSS-terugval: tekst van <link>, maar niet van een link met rel zonder alternate (self/hub/enclosure)
+function linkTekst(b: string, names: string[]): string {
+  for (const n of names) {
+    const m = new RegExp(`<${n}(\\s[^>]*)?>`, "i").exec(b);
+    if (!m) continue;
+    const rel = /\brel\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(m[1] || "");
+    if (rel && !/(?:^|\s)alternate(?:\s|$)/i.test(rel[1] ?? rel[2])) continue;
+    const t = tag(b, [n]);
+    if (t) return t;
+  }
+  return "";
+}
+
 const ATOM_NS = "http://www.w3.org/2005/Atom";
 // Loopt de tags langs met een scope per element (xmlns:p geldt voor het element en zijn nakomelingen, een herdefinitie wint)
 // en geeft elk <p:entry> waarvan p op dat punt naar Atom wijst, met alle Atom-prefixen die binnen die entry gelden (punten ge-escaped).
@@ -156,22 +189,8 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     const pn = (n: string[]) => (ps.length ? n.flatMap((x) => [...ps.map((p) => `${p}:${x}`), x]) : n); // prefixed eerst, daarna ongeprefixt
     const t = stripHtml(tag(b, pn(["title"])));
     let l = "";
-    // Atom: rel en href los lezen, zodat de volgorde van de attributen niet uitmaakt
-    let eerste = "", alt = "";
-    for (const m of b.matchAll(new RegExp(`<${ps.length ? `(?:${ps.join("|")}:)?` : ""}link\\b[^>]*>`, "gi"))) {
-      // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
-      const at: Record<string, string> = {};
-      for (const x of m[0].matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
-        const n = x[1].toLowerCase();
-        if (!(n in at)) at[n] = x[2] ?? x[3];
-      }
-      const h = at.href || "";
-      if (!h) continue;
-      if (!eerste) eerste = h;
-      if (at.rel && /(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) { alt = h; break; }
-    }
-    l = decode(alt || eerste);
-    if (!l) l = decode(tag(b, pn(["link"])));
+    l = atomLink(b, url, ps);
+    if (!l) l = decode(linkTekst(b, pn(["link"])));
     // GUID alleen als bestemming bij permalink (standaard of isPermaLink="true"); "false" is slechts een identificatie
     if (!l) { const g = tag(b, ["guid"]), ga = /<guid\b((?:[^>"']|"[^"]*"|'[^']*')*)>/i.exec(b)?.[1] ?? ""; let np = ""; for (const x of ga.matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) if (x[1].toLowerCase() === "ispermalink") { np = (x[2] ?? x[3]).trim().toLowerCase(); break; } if (/^https?:/.test(g) && np !== "false") l = decode(g); }
     l = absUrl(l, url);
