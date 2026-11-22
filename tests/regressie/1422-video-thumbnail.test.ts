@@ -25,9 +25,11 @@ assert.ok(sleutel);
 await act(async () => img()[sleutel].onError());
 assert.equal(img(), undefined);
 assert.equal(terugval().textContent, video.bron);
-await toon({ ...video });
-assert.equal(img(), undefined, "een ongewijzigde kapotte URL wordt niet opnieuw geladen");
-assert.ok(terugval());
+for (let i = 0; i < 5; i++) {
+  await toon({ ...video });
+  assert.equal(img(), undefined, "een ongewijzigde kapotte URL wordt niet opnieuw geladen");
+  assert.ok(terugval());
+}
 const nieuweUrl = `${video.thumb}?vernieuwd=1`;
 await toon({ ...video, thumb: nieuweUrl });
 assert.equal(img().getAttribute("src"), viaProxy(nieuweUrl));

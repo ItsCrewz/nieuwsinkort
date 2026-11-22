@@ -1,1 +1,1 @@
-- Een nieuwe thumbnail krijgt na verversing opnieuw een kans als de vorige afbeelding niet laadde (#1422).
+- Regressietest voor het opnieuw proberen van een videothumbnail met een gewijzigde URL; het probleem zelf was al opgelost door #1422 (96bb17ae).
