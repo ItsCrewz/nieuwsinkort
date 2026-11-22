@@ -1,0 +1,1 @@
+- Videofeed: een bewust gepauzeerd filmpje blijft gepauzeerd na terugkeer naar de feed, voor native video en de YouTube-speler (#1419).

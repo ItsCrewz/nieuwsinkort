@@ -84,6 +84,10 @@ export function volgFeedHerstel(video: string, cat: "filmpjes" | "dumpert", feed
   let speelt = true;
   let hervat = false;
   let hersteld = false;
+  // Alleen het herstelde filmpje erft de opgeslagen pauzestand (#1419); een herstelde "speelt" wordt pas overschreven
+  // nadat de speler echt speelt, anders bewaart de eerste update vóór autoplay een foutieve pauze.
+  let erft = !!saved && saved.cat === cat && saved.slug === start;
+  let wacht = false;
   const gereed = ytGereedLijst(); // onReady per frame, ook van vooraf geladen buren
   const actief = () => document.querySelector<HTMLElement>('.feed .fslide[aria-current="true"]');
   const frame = () => actief()?.querySelector<HTMLIFrameElement>('iframe.f-yt');
@@ -91,13 +95,17 @@ export function volgFeedHerstel(video: string, cat: "filmpjes" | "dumpert", feed
   const update = () => {
     const route = parseHash(location.hash);
     const slug = (route.view === cat && route.video) || vorigeSlug || start || video;
-    if (slug !== vorigeSlug) { vorigeSlug = slug; positie = 0; hersteld = false; }
+    if (slug !== vorigeSlug) {
+      vorigeSlug = slug; positie = 0; hersteld = false;
+      const erfde = erft && slug === saved?.slug;
+      speelt = erfde ? saved!.speelt !== false : true; wacht = erfde && speelt; erft = false;
+    }
     const el = actief()?.querySelector<HTMLVideoElement>("video");
     if (!hersteld && slug === saved?.slug && saved.cat === cat) {
       if (el && el.readyState > 0) { try { el.currentTime = saved.positie || 0; } catch { /* nog niet zoekbaar */ } hersteld = true; }
       else if (gereed.is(frame()?.contentWindow)) { stuur("seekTo", [saved.positie || 0, true]); hersteld = true; }
     }
-    if (el) { positie = el.currentTime || 0; if (document.visibilityState === "visible") speelt = !el.paused; }
+    if (el) { positie = el.currentTime || 0; if (!el.paused) wacht = false; if (document.visibilityState === "visible" && !wacht) speelt = !el.paused; }
     const item = feedVideos.find((v) => videoSlug(v) === slug);
     bewaarFeed({ cat, slug, soort: item ? soortVan(item) : "short", positie, speelt, lijst: feedVideos });
   };
@@ -105,7 +113,7 @@ export function volgFeedHerstel(video: string, cat: "filmpjes" | "dumpert", feed
     if (e.origin !== "https://www.youtube-nocookie.com") return;
     if (gereed.meld(e, document.querySelectorAll<HTMLIFrameElement>(".feed iframe.f-yt"))) { update(); return; }
     if (e.source !== frame()?.contentWindow) return;
-    try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; if (typeof d?.info?.currentTime === "number") positie = d.info.currentTime; if (document.visibilityState === "visible" && typeof d?.info?.playerState === "number") speelt = d.info.playerState === 1; } catch { /* onbekend bericht */ }
+    try { const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; if (typeof d?.info?.currentTime === "number") positie = d.info.currentTime; if (document.visibilityState === "visible" && typeof d?.info?.playerState === "number") { if (d.info.playerState === 1) wacht = false; if (!wacht) speelt = d.info.playerState === 1; } } catch { /* onbekend bericht */ }
   };
   let verborgen = false;
   const verberg = () => { if (verborgen) return; verborgen = true; update(); hervat = speelt; actief()?.querySelector<HTMLVideoElement>("video")?.pause(); stuur("pauseVideo"); };
@@ -151,6 +159,8 @@ export function VideoGrid({
   if (!video) opgeslagen.current = null;
   const feedVideos = list;
   const start = video ? herstelFeed(opgeslagen.current, cat, video, feedVideos).slug : null;
+  // Bewust gepauzeerd filmpje: alleen hetzelfde filmpje start gepauzeerd (#1419).
+  const startGepauzeerd = !!start && opgeslagen.current?.cat === cat && opgeslagen.current.slug === start && opgeslagen.current.speelt === false;
   // Dubbelzinnige oude titelroute: geen video openen, terug naar het overzicht.
   const dubbelzinnig = !!video && start === null;
   useEffect(() => { if (dubbelzinnig) onCloseFeed(); }, [dubbelzinnig, onCloseFeed]);
@@ -270,6 +280,7 @@ export function VideoGrid({
             list={feedList}
             cat={cat}
             start={start}
+            startGepauzeerd={startGepauzeerd}
             onClose={onCloseFeed}
             zoek={zoek}
             groups={groups}
