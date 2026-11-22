@@ -461,6 +461,7 @@ export class Runner extends DurableObject<Env> {
   private async bewaarLlm() { await this.llmBewaar?.(); }
   /** Schrijft het verbruik van een mislukte run bij in de state in DO-opslag; de KV-kopie volgt de 50-minutenregel. */
   private async bewaarLlmDo(tel: Tel, voor: LlmState, na: LlmState, klaar: { stAt: number; llm: string } | null = null): Promise<boolean> {
+    const status = { volledig: true };
     try {
       const g = await leesState(tel.opslag);
       // basis als in runBinnen: wint de KV-kopie (halve DO-write), dan die als basis en alle DO-delen opnieuw schrijven
@@ -472,14 +473,18 @@ export class Runner extends DurableObject<Env> {
       // het verschil van deze run staat er al in (st:llm lukte, daarna faalde st:at/KV): niet nog een keer bijtellen
       if (klaar && st.stAt === klaar.stAt && JSON.stringify(st.llm || {}) === klaar.llm) return true;
       telOp(st.llm ||= {}, verschilStand(voor, na));
-      const status = { volledig: true };
       await schrijfState(tel.opslag, st, vorige, status);
+      // ingekorte DO-state: de commit-markering meteen wissen, vóór de KV-put; faalt die, dan blijft de oude KV-kopie winnen
+      if (!status.volledig) await tel.opslag.delete("st:at");
       const ks: KvStand = (await tel.opslag.get("kvstand")) || {}, nu = Date.now();
       // ingekorte DO-state (te groot deel): KV direct volledig bijschrijven en de commit-markering wissen, zodat de volgende run de KV-kopie kiest
       if (!status.volledig || moetSchrijven(ks.state, undefined, nu)) { await tel.kv.put("state", JSON.stringify(st)); await bewaarKvStand(tel.opslag, { state: { at: nu } }); }
-      if (!status.volledig) await tel.opslag.delete("st:at");
       return true;
-    } catch (x) { console.error("opslagfout state (llm)", x); return false; }
+    } catch (x) {
+      console.error("opslagfout state (llm)", x);
+      if (!status.volledig) await tel.opslag.delete("st:at").catch(() => {}); // best-effort: een onvolledige state houdt geen geldige markering
+      return false;
+    }
   }
   private async runBinnen(force: boolean, interval: number, tel: Tel, geplandTijd: number | undefined, meldBronfouten: (fouten: Bronfout[]) => void) {
     // KV en DO-opslag lopen via de tellende proxy's van deze run (meta.kvWritesRun, tellerregel)

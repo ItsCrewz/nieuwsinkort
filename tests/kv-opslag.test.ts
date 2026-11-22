@@ -547,6 +547,25 @@ try {
     } finally { console.error = echt; }
   });
 
+  for (const [naam, faal] of [["KV-put faalt", "put"], ["bewaarKvStand faalt", "kvstand"]] as const) await t(`bewaarLlmDo: te grote rest en ${naam} → st:at weg, KV-kopie wint (#1394)`, async () => {
+    const echt = console.error;
+    console.error = () => {};
+    try {
+      const h = harnas(), dag = "2026-11-02";
+      const volledig = { datum: dag, neuronDag: dag, neurons: 5, runs: 1, stAt: 6, llm: {}, sums: { a: 1 }, extra: "x".repeat(DEEL_MAX + 10) };
+      await h.opslag.put("st:rest", JSON.stringify({ datum: dag, neuronDag: dag, neurons: 5, runs: 1, stAt: 5 }));
+      await h.opslag.put("st:at", "5");
+      h.kv.m.set("state", JSON.stringify(volledig));
+      if (faal === "put") h.kv.put = async () => { throw new Error("kv stuk"); };
+      else { const put = h.opslag.put; h.opslag.put = async (k: string, v: unknown) => { if (k === "kvstand") throw new Error("do stuk"); return put(k, v); }; }
+      const tel = { kv: h.kv, opslag: h.opslag } as any;
+      assert.equal(await (h.r as any).bewaarLlmDo(tel, {}, { g: { dag, calls: 1, tokens: 9, venster: [] } }), false);
+      assert.equal(h.opslag.m.has("st:at"), false, "geen geldige commit-markering bij onvolledige state");
+      const g = await (await import("../worker/src/opslag")).leesState(h.opslag);
+      assert.equal(kvStateWint(g!.st, JSON.parse(h.kv.m.get("state")!), g!.at), true);
+    } finally { console.error = echt; }
+  });
+
   await t("terugrol-scenario: KV-state van de oude Worker met gelijke neuronen en stAt, maar meer runs en extra sums → KV wint", async () => {
     const dag = "2026-11-02", link = "https://nu.test/binnenland/een";
     const doSt = { datum: dag, neuronDag: dag, neurons: 100, runs: 3, stAt: 7, llm: {}, sums: {} };
