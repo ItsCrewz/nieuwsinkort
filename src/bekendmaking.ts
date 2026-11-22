@@ -26,8 +26,18 @@ export function isBekendmakingLabel(tekst: string): boolean {
   return LABEL.test(schoneBekendmakingTekst(tekst));
 }
 
+// Alleen de echte hostnaam telt: tekst in pad, query of userinfo van een andere host niet.
+export function isOfficieleHost(href: string): boolean {
+  try {
+    const u = new URL(href);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    const h = u.hostname.toLowerCase().replace(/\.$/, "");
+    return h === "officielebekendmakingen.nl" || h.endsWith(".officielebekendmakingen.nl");
+  } catch { return false; }
+}
+
 export function toonBekendmaking<T extends { ruw?: boolean; ai?: string; samenvatting?: string; bronnen?: { site: string; href: string }[] }>(item: T): T {
-  if (!item.ruw || !item.bronnen?.some((b) => /offici[eë]le bekendmakingen/iu.test(b.site) || /(?:^|\.)officielebekendmakingen\.nl(?:[/:]|$)/iu.test(b.href))) return item;
+  if (!item.ruw || !item.bronnen?.some((b) => /offici[eë]le bekendmakingen/iu.test(b.site) || isOfficieleHost(b.href))) return item;
   const ai = bekendmakingTekst(item.ai || "");
   const samenvatting = bekendmakingTekst(item.samenvatting || "");
   return { ...item, ai: ai || (!samenvatting ? bekendmakingFallback : ""), samenvatting };
