@@ -16,7 +16,7 @@ let bewaard: FeedStatus | null = null;
 g.history = { state: null, replaceState(s: any) { g.history.state = s; bewaard = s?.feed ?? null; } };
 g.sessionStorage = { setItem() {}, getItem: () => null };
 doc.visibilityState = "visible";
-const frame = { contentWindow: {} as any };
+const frame = { contentWindow: { postMessage() {} } as any };
 const video = { readyState: 4, currentTime: 5, paused: true };
 let soort: "video" | "yt" = "video";
 doc.querySelector = () => ({ querySelector: (s: string) => (s === "video" ? (soort === "video" ? video : null) : soort === "yt" ? frame : null) });
