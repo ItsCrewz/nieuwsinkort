@@ -35,6 +35,18 @@ for (const status of [1, 3]) assert.equal(ytStartBesluit({ ...basis, status, nu:
 assert.equal(ytStartBesluit({ ...basis, gespeeld: true, status: 2, nu: 2500 }), "wacht");
 assert.equal(ytStartBesluit({ ...basis, actief: false, nu: 2500 }), "wacht");
 assert.equal(ytStartBesluit({ ...basis, fout: true, nu: 2500 }), "wacht");
+// #1424: bewust pauzeren vóór het eerste beeld toont geen hint en doet geen startpoging; na hervatten komt de hint alsnog.
+for (const nu of [1000, 1500, 2500, 60000]) {
+  assert.equal(ytToonHint({ ...basis, gepauzeerd: true, status: -1, nu }), false);
+  assert.equal(ytStartBesluit({ ...basis, gepauzeerd: true, status: -1, nu }), "wacht");
+  assert.equal(ytStartBesluit({ ...basis, gepauzeerd: true, status: 5, pogingen: 1, nu }), "wacht");
+}
+assert.equal(ytToonHint({ ...basis, nu: 2500 }), true); // hint zichtbaar...
+assert.equal(ytToonHint({ ...basis, gepauzeerd: true, nu: 2500 }), false); // ...pauzeren haalt hem weg
+assert.equal(ytStartBesluit({ ...basis, gepauzeerd: true, nu: 2500 }), "wacht");
+assert.equal(ytStartBesluit({ ...basis, pogingen: 3, nu: 2500 }), "vangnet"); // hervat: echt uitblijvende start
+assert.equal(ytToonHint({ ...basis, fout: true, nu: 2500 }), false); // fout en actief blijven gelden na hervatten
+assert.equal(ytToonHint({ ...basis, actief: false, nu: 2500 }), false);
 for (const code of [100, 101, 150, 152]) { assert.equal(ytEchteFout(code), true); assert.equal(autoplayGeblokkeerd("onError", code), false); }
 for (const soort of ["onAutoplayBlocked", "NotAllowedError"]) assert.equal(autoplayGeblokkeerd(soort), true);
 // De 1,5 s-timeout en een niet-echte onError zijn geen geluidsweigering (#437): alleen de hint.
