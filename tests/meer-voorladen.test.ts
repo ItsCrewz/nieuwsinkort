@@ -83,5 +83,17 @@ const leeg = () => new Promise((r) => setTimeout(r, 0));
     await prefetchMeer(item("l1")); // minst recent: verwijderd
     assert.equal(aanvragen.length, voor + 1);
   });
+  await t("herhaald focussen (voorlaadMeer) geeft geen dubbele aanvraag en openen werkt na een fout", async () => {
+    modus = "hang"; open = []; nu += 1000;
+    const voor = aanvragen.length;
+    voorlaadMeer(item("fo1")); voorlaadMeer(item("fo1")); voorlaadMeer(item("fo1"));
+    assert.equal(aanvragen.length, voor + 1);
+    modus = "fout";
+    for (const r of open) r(new Response("{", { status: 500 }));
+    open = []; await leeg(); await leeg();
+    assert.deepEqual(await prefetchMeer(item("fo2")), null);
+    modus = "ok";
+    assert.deepEqual(await prefetchMeer(item("fo2")), ok);
+  });
   console.log(`${n} tests ok`);
 })();

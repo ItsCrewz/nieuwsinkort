@@ -305,6 +305,8 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm, heleWoorden = f
   const sum = tekst.ai || tekst.samenvatting;
   const punten = (item.bronnen?.some((b) => verzamelUrl(b.href)) ? relevantePunten(item.punten ?? [], item.kop, item.ai, item.samenvatting) : item.punten ?? []).slice(0, 3);
   const meer = heeftLeesVerder(item);
+  // Hover en toetsenbordfocus zijn dezelfde (begrensde) intentie; focus opent of verplaatst niets.
+  const intentie = () => { laadDetail().catch(() => {}); voorlaadMeer(item); };
   const fragment = zoekterm.trim() ? zoekFragment(item, zoekterm, [item.kop, sum, ...punten], undefined, heleWoorden) : null;
   return (
     <article ref={cardRef} className={`nc-in ${beelden.length ? "has-img" : "no-img"}`}>
@@ -346,7 +348,7 @@ export function KaartInhoud({ item, i, bionic, onOpen, zoekterm, heleWoorden = f
       <div className="nc-act">
         <div className="nc-act-row">
         {meer ? (
-          <a className="btn" href={`#/bericht/${pad}`} aria-label={leesVerderNaam(item.kop)} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={() => { void laadDetail(); voorlaadMeer(item); }}>
+          <a className="btn" href={`#/bericht/${pad}`} aria-label={leesVerderNaam(item.kop)} onClick={click} onPointerDown={() => { void laadDetail(); void prefetchMeer(item); }} onMouseEnter={intentie} onFocus={intentie}>
             Lees verder
           </a>
         ) : null}

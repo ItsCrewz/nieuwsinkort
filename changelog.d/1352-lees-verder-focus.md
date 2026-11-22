@@ -1,0 +1,1 @@
+- Lees verder: toetsenbordfocus laadt de verdieping vooraf, met dezelfde begrenzing als hover (#1352).
