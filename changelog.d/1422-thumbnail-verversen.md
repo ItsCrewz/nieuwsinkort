@@ -1,0 +1,1 @@
+- Regressietest voor het opnieuw proberen van een videothumbnail met een gewijzigde URL; het probleem zelf was al opgelost door #1422 (96bb17ae).

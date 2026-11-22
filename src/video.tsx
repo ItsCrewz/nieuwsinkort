@@ -48,6 +48,7 @@ function VideoCard({ v, i, cat, bionic, enter, onPlay }: { v: Video; i: number; 
     >
       <button type="button" className="vcard-open" aria-label={playable ? `Speel af: ${v.titel}` : `${v.titel} (speelt alleen bij ${v.bron})`} onClick={activate} />
       <div className={`vthumb ${cat === "filmpjes" && soortVan(v) === "short" ? "tall" : ""}`}>
+        {/* Een gewijzigde URL krijgt een nieuwe poging; dezelfde fout blijft staan. */}
         <VideoThumb key={v.thumb} thumb={v.thumb} bron={v.bron} i={i} />
         <span className="playbtn">
           <Icon name={playable ? "play" : "ext"} className={playable ? "fill" : ""} />
