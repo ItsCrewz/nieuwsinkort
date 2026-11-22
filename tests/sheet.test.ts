@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import React from "react";
-import { SourcesSheet } from "../src/sheet";
+import { SourcesSheet, sourceLine } from "../src/sheet";
 import { GroupToggle, Switch } from "../src/ui";
 import type { SourceGroup } from "../src/sources";
 
@@ -127,4 +127,24 @@ refIndex = 0;
 const echteNul = SourcesSheet({ ...props, groups: [{ ...groepen[0], sources: [{ id: "z", key: "z", naam: "Z", count: 0, fromData: false, stat: { vandaag: 0 } }] }] }) as any;
 assert.match(tekst(echteNul), /Vandaag niets/);
 assert.doesNotMatch(tekst(echteNul), /Ophalen mislukt/);
+
+// #1307: onderdelen met een tijd verschijnen alleen als de tijd weergegeven kan worden; aantallen en rest blijven.
+const rij = (stat: any, count = 3) => ({ id: "r", key: "r", naam: "R", count, fromData: true, stat }) as any;
+const geldig = "2026-10-30T10:15:00Z";
+for (const slecht of [undefined, "", "geen-datum"]) {
+  const ok = sourceLine(rij({ vandaag: 4, ok: slecht, fout: "x" }));
+  assert.equal(ok, "4 vandaag · 3 in overzicht · deels mislukt");
+  assert.equal(sourceLine(rij({ vandaag: 0, laatste: slecht, ok: slecht })), "Vandaag niets");
+  assert.equal(sourceLine(rij({ vandaag: 0, laatste: slecht, fout: "x" })), "Stand onvolledig · deels mislukt");
+  assert.equal(sourceLine(rij({ ok: slecht, laatste: slecht })), "Ophalen mislukt · 3 in overzicht");
+}
+assert.equal(sourceLine(rij({ vandaag: 4, ok: geldig })), "4 vandaag · 3 in overzicht · bijgewerkt 11:15");
+assert.equal(sourceLine(rij({ vandaag: 0, laatste: geldig })), "Vandaag niets · laatste 11:15");
+assert.equal(sourceLine(rij({ ok: geldig })), "Ophalen mislukt · laatst gelukt 11:15 · 3 in overzicht");
+// Ongeldige ok bij mislukte ophaling valt terug op het laatste bericht.
+assert.equal(sourceLine(rij({ ok: "kapot", laatste: geldig })), "Ophalen mislukt · laatste bericht 11:15 · 3 in overzicht");
+// Datum van een eerdere dag: datum in plaats van kloktijd.
+const eerder = sourceLine(rij({ ok: "2026-10-27T10:15:00Z" }));
+assert.match(eerder, /^Ophalen mislukt · laatst gelukt \S+ 27 okt/);
+assert.doesNotMatch(eerder, /11:15/);
 console.log("sheet: tests geslaagd");
