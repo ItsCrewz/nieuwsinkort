@@ -7,10 +7,16 @@ const base = "https://voorbeeld.nl/feed";
 
 // decode: numeriek, hex (kleine en hoofdletter x), hoofdletters in namen en onbekende namen
 assert.equal(decode("&#65;&#x41;&#X42;"), "AAB");
+assert.equal(decode("&#1114111;&#x10FFFF;&#55295;&#xE000;"), "\u{10FFFF}\u{10FFFF}\uD7FF\uE000");
+assert.equal(decode("&#1114112; &#x110000; &#55296; &#xDFFF;"), "&#1114112; &#x110000; &#55296; &#xDFFF;");
+assert.equal(decode(`&#${"9".repeat(400)};`), `&#${"9".repeat(400)};`);
 assert.equal(decode("&AMP; &Eacute; &Zzz;"), "& é &Zzz;"); // naam hoofdletterongevoelig
 assert.equal(decode("&onbekend; &amp;onbekend;"), "&onbekend; &onbekend;");
 assert.equal(decode("&amp;amp;"), "&amp;");
 assert.equal(decode("zonder ; of & los"), "zonder ; of & los");
+
+const kapotteFeed = parseFeed("<rss><channel><item><title>Kapot &#1114112;</title><link>/kapot</link></item><item><title>Geldig &#x1F600;</title><link>/geldig</link></item></channel></rss>", base);
+assert.deepEqual(kapotteFeed.map((e) => e.t), ["Kapot &#1114112;", "Geldig 😀"]);
 
 // stripHtml: dubbel-geëscapete HTML wordt eerst gedecodeerd en dan gestript; script/style verdwijnen
 assert.equal(stripHtml("&lt;p&gt;Een &amp;amp; twee&lt;/p&gt;"), "Een & twee");
@@ -65,6 +71,13 @@ assert.equal(parseFeed('<feed><entry><title>A</title><link href=" "/></entry></f
 
 const json = parseFeed(JSON.stringify([{ title: "A" }, { title: "B", url: " " }, { title: "C", link: "/artikel" }]), base);
 assert.deepEqual(json.map((item) => item.l), ["", "", "https://voorbeeld.nl/artikel"]);
+
+// Open Raadsinformatie: onbruikbare treffers mogen geldige treffers niet blokkeren.
+const raadHit = { _id: "gemeente/document/123", _source: { name: "Raadsbesluit", start_date: "2026-01-02T10:00:00Z" } };
+const raadVerwacht = [{ t: "Raadsbesluit", l: "https://id.openraadsinformatie.nl/gemeente/document/123", d: Date.parse("2026-01-02T10:00:00Z"), s: "" }];
+assert.deepEqual(parseFeed(JSON.stringify({ hits: { hits: [raadHit] } }), base), raadVerwacht);
+assert.deepEqual(parseFeed(JSON.stringify({ hits: { hits: [null, 42, {}, { _source: {} }, { _id: " ", _source: {} }, { _id: "x", _source: null }, raadHit] } }), base), raadVerwacht);
+assert.throws(() => parseFeed('{"hits":', base), /geen geldige JSON/);
 // #1368: alternate wint ook als href vóór rel staat, met enkele aanhalingstekens en relatieve URL's
 assert.equal(atom('<link rel="self" href="https://voorbeeld.nl/feed"/><link href="/bericht" rel="alternate"/>').l, "https://voorbeeld.nl/bericht");
 assert.equal(atom("<link href='https://voorbeeld.nl/feed' rel='self'/><link href='/bericht' rel='alternate'/>").l, "https://voorbeeld.nl/bericht");
@@ -91,8 +104,66 @@ console.log("✓ parse-randgevallen: entiteiten, HTML, datums, igTime, Atom en C
   // zonder news:publication_date valt het terug op lastmod; zonder titel geen item
   const kaal = parseFeed('<urlset xmlns="x"><url><loc>/a/1</loc><lastmod>2026-10-31T10:00:00+01:00</lastmod><news:news><news:title>Kop &amp; staart</news:title></news:news></url><url><loc>/a/2</loc></url></urlset>', url);
   assert.deepEqual(kaal.map((e) => [e.t, e.l, e.d]), [["Kop & staart", "https://alarmeringen.nl/a/1", Date.parse("2026-10-31T10:00:00+01:00")]]);
+  const attributen = `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><loc>/nieuws/een?a=1&amp;b=2</loc><news:news><news:title>Eerste &amp; tweede</news:title><news:publication_date>2026-10-31T10:00:00Z</news:publication_date></news:news></url>
+    <url><loc>/nieuws/twee</loc><lastmod>2026-11-01T10:00:00Z</lastmod><news:news><news:title>Tweede bericht</news:title></news:news></url>
+    <url id="3"><loc>/anders/drie</loc><news:news><news:title>Ander pad</news:title></news:news></url>
+    <url id="4"><loc>/nieuws/zonder-titel</loc></url>
+    <url id="5"><loc>javascript:alert(1)</loc><news:news><news:title>Ongeldige link</news:title></news:news></url>
+    <url id="6"><news:news><news:title>Ontbrekende link</news:title></news:news></url>
+    <url-extra><loc>/nieuws/nep</loc><news:news><news:title>Geen URL-element</news:title></news:news></url-extra>
+  </urlset>`;
+  assert.deepEqual(parseFeed(attributen, url, "/nieuws/").map((e) => [e.t, e.l, e.d]), [
+    ["Eerste & tweede", "https://alarmeringen.nl/nieuws/een?a=1&b=2", Date.parse("2026-10-31T10:00:00Z")],
+    ["Tweede bericht", "https://alarmeringen.nl/nieuws/twee", Date.parse("2026-11-01T10:00:00Z")],
+  ]);
+  assert.equal(parseFeed(attributen, url).length, 3);
   // RSS past het padfilter sinds #455 ook toe
   assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/a</link></item></channel></rss>', base, "/zzz/").length, 0);
   assert.equal(parseFeed('<rss><channel><item><title>A</title><link>https://x.nl/zzz/a</link></item></channel></rss>', base, "/zzz/").length, 1);
 }
 console.log("✓ parse-randgevallen: Google-news-sitemap met padfilter");
+
+// #1371: onbruikbare records in JSON-feeds worden overgeslagen, geldige blijven
+{
+  const kev = JSON.stringify({ vulnerabilities: [null, 5, "x", [], { cveID: "CVE-2026-1", vulnerabilityName: "Lek", dateAdded: "2026-10-01", shortDescription: "Uitleg" }] });
+  const k = parseFeed(kev, base);
+  assert.equal(k.length, 1);
+  assert.equal(k[0].t, "CVE-2026-1: Lek");
+  assert.equal(k[0].l, "https://nvd.nist.gov/vuln/detail/CVE-2026-1");
+  const raad = parseFeed(JSON.stringify({ hits: { hits: [null, "x", { _id: "7", _source: { name: "Raad", start_date: "2026-10-01" } }] } }), base);
+  assert.deepEqual(raad.map((e) => [e.t, e.l]), [["Raad", "https://id.openraadsinformatie.nl/7"]]);
+  const arr = parseFeed(JSON.stringify([null, 3, [1], { title: "Goed", url: "https://x.nl/a", date: "2026-10-01" }]), base);
+  assert.deepEqual(arr.map((e) => [e.t, e.l]), [["Goed", "https://x.nl/a"]]);
+  // veld van verkeerd type (date: 123) geeft d: null voor dat record, geen TypeError voor de hele feed
+  const kevT = parseFeed(JSON.stringify({ vulnerabilities: [{ cveID: "CVE-1", vulnerabilityName: "A", dateAdded: 123 }, { cveID: "CVE-2", vulnerabilityName: "B", dateAdded: "2026-10-01" }] }), base);
+  assert.deepEqual(kevT.map((e) => [e.t, e.d === null]), [["CVE-1: A", true], ["CVE-2: B", false]]);
+  const arrT = parseFeed(JSON.stringify([{ title: "X", url: "https://x.nl/x", date: 123 }, { title: "Y", url: "https://x.nl/y", date: "2026-10-01" }]), base);
+  assert.deepEqual(arrT.map((e) => [e.t, e.d === null]), [["X", true], ["Y", false]]);
+  const raadT = parseFeed(JSON.stringify({ hits: { hits: [{ _id: "1", _source: { name: "R1", start_date: 123 } }, { _id: "2", _source: { name: "R2", start_date: "2026-10-01" } }] } }), base);
+  assert.deepEqual(raadT.map((e) => [e.t, e.d === null]), [["R1", true], ["R2", false]]);
+  assert.throws(() => parseFeed("[{kapot", base), /geen geldige JSON/);
+}
+console.log("✓ parse-randgevallen: JSON-feeds met onbruikbare records");
+
+// #1379: het padfilter geldt ook voor JSON-formaten; zonder pad blijft alles staan
+{
+  const kev = JSON.stringify({ vulnerabilities: [{ cveID: "CVE-1", vulnerabilityName: "A", dateAdded: "2026-01-01" }, { cveID: "", vulnerabilityName: "B" }] });
+  assert.equal(parseFeed(kev, base).length, 2);
+  assert.deepEqual(parseFeed(kev, base, "/vuln/detail/CVE-1").map((e) => e.l), ["https://nvd.nist.gov/vuln/detail/CVE-1"]);
+  assert.equal(parseFeed(kev, base, "/andere/").length, 0);
+  const ori = JSON.stringify({ hits: { hits: [{ _id: "ori/1", _source: { name: "A" } }, { _id: "x/2", _source: { name: "B" } }, { _id: "", _source: { name: "C" } }] } });
+  assert.equal(parseFeed(ori, base).length, 2); // hit zonder geldige _id valt altijd af (#1383)
+  assert.deepEqual(parseFeed(ori, base, "/ori/").map((e) => e.l), ["https://id.openraadsinformatie.nl/ori/1"]);
+  // breed filter: records zonder (of met lege) id vallen af, een geldig record blijft
+  const kev2 = JSON.stringify({ vulnerabilities: [{ cveID: "CVE-1", vulnerabilityName: "A" }, { cveID: "", vulnerabilityName: "B" }, { vulnerabilityName: "C" }] });
+  assert.equal(parseFeed(kev2, base).length, 3);
+  assert.deepEqual(parseFeed(kev2, base, "/vuln/detail/").map((e) => e.l), ["https://nvd.nist.gov/vuln/detail/CVE-1"]);
+  const ori2 = JSON.stringify({ hits: { hits: [{ _id: "ori/1", _source: { name: "A" } }, { _id: "", _source: { name: "B" } }, { _source: { name: "C" } }] } });
+  assert.equal(parseFeed(ori2, base).length, 1); // idem (#1383)
+  assert.deepEqual(parseFeed(ori2, base, "/").map((e) => e.l), ["https://id.openraadsinformatie.nl/ori/1"]);
+  const arr = JSON.stringify([{ title: "A", url: "/nieuws/a" }, { title: "B", url: "/sport/b" }, { title: "C" }, { title: "D", url: "http://" }]);
+  assert.equal(parseFeed(arr, base).length, 4);
+  assert.deepEqual(parseFeed(arr, base, "/nieuws/").map((e) => e.t), ["A"]);
+}
+console.log("✓ parse-randgevallen: padfilter voor JSON-formaten");

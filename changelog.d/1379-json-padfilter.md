@@ -1,0 +1,1 @@
+- Feeds: het padfilter geldt nu ook voor JSON-antwoorden; berichten buiten het pad en zonder geldige link komen niet meer in de feed (#1379).

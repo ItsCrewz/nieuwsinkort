@@ -11,8 +11,8 @@ import { relevantePunten, verzamelUrl } from "./puntenrelevantie";
 import { Suspense, memo, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Bron, Data, Item, View } from "./types";
 import { BionicText, FocusSwitch } from "./ui";
-import { bewaarFocusKeuze, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
-import { actieveBronnen, buildSources, itemBronSleutel, useCatalog, useFiltered, useSourceFilter } from "./sources";
+import { bewaarFocusKeuze, browserSessieStorage, browserStorage, leesFocusKeuze, ruimOudeFocusKeuzeOp, volgFocusKeuze } from "./focuslezen";
+import { actieveBronnen, buildSources, itemBronSleutel, migreerBronKeuzes, useCatalog, useFiltered, useSourceFilter } from "./sources";
 import { Icon, IconSprite } from "./icons";
 import { playerFor, soortVan, startSoort } from "./videosoort";
 import { sorteerOpGroep } from "./filmgroep";
@@ -777,10 +777,18 @@ export default function App() {
   ].filter(Boolean).join(" ");
   UUR_ACTIEF = Date.now() - Date.parse((raw as any)?.uur?.gegenereerd || "") < 2.5 * 3600e3; // alleen als de uur-run recent draaide
   const { theme, toggle } = useTheme();
-  const catalog = useCatalog();
+  const { cat: catalog, status: catalogStatus, opnieuw: catalogOpnieuw } = useCatalog();
   const { off, setMany, reset } = useSourceFilter();
   const { groups, index } = useMemo(() => buildSources(catalog, raw), [catalog, raw]);
   const filtered = useFiltered(raw, index, off);
+  // Na herstel van de bronnenlijst: keuzes uit de storing (naamsleutels) naar de catalogussleutels vertalen, één keer per catalogus.
+  const gemigreerd = useRef<unknown>(null);
+  useEffect(() => {
+    if (catalogStatus !== "klaar" || !catalog || !raw || gemigreerd.current === catalog) return;
+    gemigreerd.current = catalog;
+    const { uit, weg } = migreerBronKeuzes(off, raw, catalog);
+    if (weg.length) { setMany(weg, true); if (uit.length) setMany(uit, false); }
+  }, [catalogStatus, catalog, raw, off, setMany]);
   const data = filtered?.data ?? null;
   const [route, setRoute] = useState<AppRoute>(() => huidigeRoute());
   // Ook een direct gedeeld bericht kan buiten de gefilterde lijst staan.
@@ -797,7 +805,7 @@ export default function App() {
     const paneel = r && !route.selected ? document.getElementById("rubriek-paneel") : null;
     if (paneel) animeer(paneel, [{ opacity: 0, transform: `translateX(${r * 12}px)` }, { opacity: 1, transform: "none" }], { duration: DUUR[3], easing: "cubic-bezier(.05,.7,.1,1)" });
   }, [route.view, route.selected]);
-  const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage())); // lazy: geen flits van aan naar uit
+  const [bionic, setBionic] = useState(() => leesFocusKeuze(browserStorage(), browserSessieStorage())); // lazy: geen flits van aan naar uit
   const [sheet, setSheet] = useState(false);
   const [fsheet, setFsheet] = useState(false);
   const sluitFilters = useCallback(() => setFsheet(false), []); // stabiel: FilterBlad herstelt anders focus bij elke filterwijziging (#623)
@@ -911,7 +919,7 @@ export default function App() {
 
   const setBionicPersist = (v: boolean) => {
     setBionic(v);
-    bewaarFocusKeuze(browserStorage(), v);
+    bewaarFocusKeuze(browserStorage(), v, browserSessieStorage());
   };
   const setView = (v: View) => {
     // Touch: Filmpjes/Dumpert openen meteen de verticale feed (sluiten gaat naar het overzicht); desktop houdt het overzicht met kopjes.
@@ -1000,7 +1008,7 @@ export default function App() {
       {isFeedView ? null : dateline}
       {sheet ? (
         <Foutgrens code="CLIENT_SHEET" herstel={SourcesSheet.herstel}><Suspense fallback={null}>
-          <SourcesSheet groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
+          <SourcesSheet catalogStatus={catalogStatus} onOpnieuw={catalogOpnieuw} groups={groups} weer={raw?.weer?.bronnen ?? []} off={off} setMany={setMany} reset={reset} onClose={() => setSheet(false)} />
         </Suspense></Foutgrens>
       ) : null}
     </>

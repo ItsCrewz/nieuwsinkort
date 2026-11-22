@@ -1,0 +1,1 @@
+- Enclosure-afbeeldingen worden nu ook herkend aan hun MIME-type (image/jpeg, png, webp), zonder bestandsextensie; audio en video tellen nooit als beeld (#1384).

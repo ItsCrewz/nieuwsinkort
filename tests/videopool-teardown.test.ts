@@ -191,3 +191,35 @@ t("een defecte speler houdt het opruimen van de andere poolspelers niet tegen", 
   assert.deepEqual(els.map((e) => e.src), [null, null, null]);
   assert.equal(log.filter((l) => l.endsWith(":load")).length, 3);
 });
+
+t("na vrijgeven is de oude generatie direct ongeldig, ook zonder nieuwe claim (#1392)", () => {
+  const log: string[] = [];
+  const els = maakEls(log);
+  const pool = new PoolEigenaars();
+  const g = pool.claim(1);
+  els[1].setSrc("s");
+  pool.zetOpruim(1, g, () => maakBronvrij(els[1]));
+  assert.equal(pool.geefVrij(1, g, () => { els[1].plek = "park"; }), true);
+  assert.equal(pool.actueel(1, g), false);
+  // vertraagde speleractie: de actueel-controle weigert, dus geen src en geen play op het geparkeerde element
+  let play = 0;
+  if (pool.actueel(1, g)) { els[1].setSrc("laat"); play++; }
+  assert.equal(els[1].src, null);
+  assert.equal(play, 0);
+  assert.equal(pool.zetOpruim(1, g, () => log.push("laat")), false);
+  assert.equal(pool.geefVrij(1, g, () => log.push("dubbel")), false);
+  assert.ok(!log.includes("laat") && !log.includes("dubbel"));
+});
+
+t("een oude generatie raakt een nieuwe eigenaar niet na vrijgeven en hergebruik (#1392)", () => {
+  const pool = new PoolEigenaars();
+  const oud = pool.claim(0);
+  pool.geefVrij(0, oud, () => {});
+  const nieuw = pool.claim(0);
+  let weg = 0;
+  pool.zetOpruim(0, nieuw, () => weg++);
+  assert.equal(pool.ruimOp(0, oud), false);
+  assert.equal(pool.geefVrij(0, oud, () => {}), false);
+  assert.equal(weg, 0);
+  assert.equal(pool.actueel(0, nieuw), true);
+});

@@ -6,7 +6,7 @@ export function decode(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
     if (e[0] === "#") {
       const n = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
-      return Number.isFinite(n) ? String.fromCodePoint(n) : m;
+      return Number.isFinite(n) && n <= 0x10ffff && (n < 0xd800 || n > 0xdfff) ? String.fromCodePoint(n) : m;
     }
     return ENT[e.toLowerCase()] ?? m;
   });
@@ -26,9 +26,9 @@ function tag(block: string, names: string[]): string {
   }
   return "";
 }
-function date(s: string): number | null {
-  if (!s) return null;
-  s = s.trim();
+function date(v: unknown): number | null {
+  if (typeof v !== "string" || !v) return null; // JSON-veld van verkeerd type: alleen dit record zonder datum
+  let s = v.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) s += "T12:00:00+01:00"; // alleen een datum: midden op de dag
   const t = Date.parse(s.replace(/\s(CET|CEST)$/, (_m, z) => (z === "CEST" ? " +0200" : " +0100")));
   return Number.isFinite(t) ? t : null;
@@ -47,7 +47,7 @@ export function igTime(link: string): number | null {
 // Google-news-sitemap (<urlset>): titel en tijd uit <news:...>, anders <lastmod>; `pad` houdt alleen links met dat padstuk over (ook voor RSS/Atom in parseFeed)
 function parseSitemap(body: string, url: string, pad?: string): Entry[] {
   const out: Entry[] = [];
-  for (const b of body.match(/<url>[\s\S]*?<\/url>/gi) || []) {
+  for (const b of body.match(/<url(?:\s[^>]*)?>[\s\S]*?<\/url>/gi) || []) {
     const l = absUrl(decode(tag(b, ["loc"])), url);
     const t = stripHtml(tag(b, ["news:title"]));
     if (!l || !t || (pad && !new URL(l).pathname.includes(pad))) continue;
@@ -132,12 +132,45 @@ function atomPrefixBlokken(body: string): { i: number; b: string; ps: string[] }
   return out;
 }
 
+// Attributen van één tag, ongeacht volgorde en aanhalingstekens.
+function attrs(tagTxt: string): Record<string, string> {
+  const o: Record<string, string> = {};
+  for (const m of tagTxt.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) o[m[1].toLowerCase()] = m[2] ?? m[3] ?? "";
+  return o;
+}
+
+// Beeld uit media:thumbnail/media:content (niet video/audio) of enclosure (MIME-type, of extensie zonder type).
+// Elke kandidaat wordt eerst via absUrl gecontroleerd: een onveilige eerste mag een geldige volgende niet blokkeren.
+function beeldUrl(b: string, base: string): string | undefined {
+  const mt = /<media:(?:thumbnail|content)\b[^>]*>/gi;
+  for (const m of b.matchAll(mt)) {
+    const a = attrs(m[0]);
+    const ty = (a.type || "").toLowerCase();
+    if (!a.url || /^(?:video|audio)\//.test(ty) || /^(?:video|audio)$/i.test(a.medium || "")) continue;
+    const u = absUrl(decode(a.url), base);
+    if (u) return u;
+  }
+  for (const m of b.matchAll(/<enclosure\b[^>]*>/gi)) {
+    const a = attrs(m[0]);
+    if (!a.url) continue;
+    const ty = (a.type || "").split(";")[0].trim().toLowerCase();
+    if (ty ? /^image\/(?:jpe?g|png|webp)$/.test(ty) : /\.(?:jpe?g|png|webp)/i.test(a.url)) {
+      const u = absUrl(decode(a.url), base);
+      if (u) return u;
+    }
+  }
+}
+
 export function parseFeed(body: string, url: string, pad?: string): Entry[] {
   const head = body.slice(0, 400).trim();
-  if (head[0] === "{" || head[0] === "[") return parseJson(body, url);
+  if (head[0] === "{" || head[0] === "[") { const r = parseJson(body, url, pad); return pad ? r.filter((e) => padOk(e.l, pad)) : r; }
   const out: Entry[] = [];
   if (/searchRetrieveResponse/.test(head + body.slice(0, 2000))) {
-    for (const r of body.split(/<sru:record>/).slice(1)) {
+    // openingstag met of zonder attributen; <sru:recordData>/<sru:recordPosition> horen er niet bij
+    // CDATA en commentaar overslaan: een recordtag in tekst begint nooit een record
+    const ops = [...body.matchAll(/<!\[CDATA\[[\s\S]*?\]\]>|<!--[\s\S]*?-->|<sru:record(?=[\s>/])(?:"[^"]*"|'[^']*'|[^>"'])*>/g)].filter((m) => m[0].startsWith("<sru:"));
+    for (const [n, m] of ops.entries()) {
+      const r = body.slice((m.index ?? 0) + m[0].length, ops[n + 1]?.index ?? body.length);
       const t = stripHtml(tag(r, ["dcterms:title"]));
       const l = absUrl(decode(/resourceIdentifier="([^"]+)"/.exec(r)?.[1] || ""), url);
       const d = date(tag(r, ["dcterms:available", "dcterms:modified", "dcterms:date"]));
@@ -158,25 +191,36 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     let l = "";
     l = atomLink(b, url, ps);
     if (!l) l = decode(linkTekst(b, pn(["link"])));
-    if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
+    // GUID alleen als bestemming bij permalink (standaard of isPermaLink="true"); "false" is slechts een identificatie
+    if (!l) { const g = tag(b, ["guid"]), ga = /<guid\b((?:[^>"']|"[^"]*"|'[^']*')*)>/i.exec(b)?.[1] ?? ""; let np = ""; for (const x of ga.matchAll(/([^\s=/<>"']+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) if (x[1].toLowerCase() === "ispermalink") { np = (x[2] ?? x[3]).trim().toLowerCase(); break; } if (/^https?:/.test(g) && np !== "false") l = decode(g); }
     l = absUrl(l, url);
     if (pad && !padOk(l, pad)) continue;
     let d = date(tag(b, [...pn(["pubDate", "published"]), "dc:date", ...pn(["updated"]), "a10:updated"]));
     if (kg) d = igTime(l); // Kittygram: geen echte datum in de feed
     const raw = tag(b, [...pn(["description"]), "media:description", ...pn(["summary"]), "content:encoded", ...pn(["content"])]);
-    const img = /<media:(?:thumbnail|content)[^>]*url=["']([^"']+)["']/i.exec(b)?.[1] || /<enclosure[^>]*url=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/i.exec(b)?.[1];
-    if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(img && absUrl(decode(img), url) ? { img: absUrl(decode(img), url) } : {}) });
+    const im = beeldUrl(b, url);
+    if (t || l) out.push({ t, l, d, s: stripHtml(raw).slice(0, 600), ...(im ? { img: im } : {}) });
   }
   return out;
 }
 
-function parseJson(body: string, url: string): Entry[] {
+function parseJson(body: string, url: string, pad?: string): Entry[] {
   let j: any;
   try { j = JSON.parse(body); } catch { throw new Error("geen geldige JSON"); }
+  // Onbruikbare records (null, getal, tekst, array) overslaan zodat geldige berichten blijven
+  const rec = (a: any[]): any[] => a.filter((x) => x && typeof x === "object" && !Array.isArray(x));
   if (Array.isArray(j?.vulnerabilities)) // CISA KEV
-    return j.vulnerabilities.map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
-  if (Array.isArray(j?.hits?.hits)) // Open Raadsinformatie
-    return j.hits.hits.map((h: any) => { const s = h._source || {}; return { t: s.name || "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(s.start_date || s.last_discussed_at || s.date_modified || ""), s: "" }; });
-  if (Array.isArray(j)) return j.map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url), d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
+    return rec(j.vulnerabilities).filter((v: any) => !pad || (typeof v.cveID === "string" && v.cveID.trim())).map((v: any) => ({ t: `${v.cveID}: ${v.vulnerabilityName}`, l: `https://nvd.nist.gov/vuln/detail/${v.cveID}`, d: date(v.dateAdded), s: v.shortDescription || "" }));
+  if (Array.isArray(j?.hits?.hits)) { // Open Raadsinformatie
+    const out: Entry[] = [];
+    for (const h of j.hits.hits) {
+      if (!h || typeof h !== "object" || typeof h._id !== "string" || !h._id.trim() || !h._source || typeof h._source !== "object" || Array.isArray(h._source)) continue;
+      const s = h._source;
+      const datum = [s.start_date, s.last_discussed_at, s.date_modified].find((d) => typeof d === "string" && d);
+      out.push({ t: typeof s.name === "string" ? s.name : "", l: `https://id.openraadsinformatie.nl/${h._id}`, d: date(datum || ""), s: "" });
+    }
+    return out;
+  }
+  if (Array.isArray(j)) return rec(j).map((a: any) => ({ t: a.title || a.Title || "", l: absUrl(String(a.url || a.link || ""), url), d: date(a.date || a.published || a.created || ""), s: a.description || "" }));
   return [];
 }

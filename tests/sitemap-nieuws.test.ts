@@ -14,13 +14,14 @@ try {
   const zonderT = { kop: "Zonder tijd", bronnen: [{ site: "NOS", href: "https://nos.nl/z" }] };
   const xml = nieuwsSitemap([a, ruw, pol, zonderT], dag);
   assert.ok(xml.includes(`<loc>https://nieuwsinkort.nl${artikelPad(a, dag)}</loc>`), "zelfde URL als de pagina");
+  assert.ok(nieuwsSitemap([{ ...a, id: "ONGELDIG" }], dag).includes(`<loc>https://nieuwsinkort.nl${artikelPad(a, dag)}</loc>`), "ongeldig id gebruikt de bronidentiteit");
   assert.ok(xml.includes("<news:title>Rook &amp; vuur &lt;b&gt;</news:title>"), "escaping");
   assert.ok(xml.includes("<news:publication_date>2026-11-04T09:30:00.000Z</news:publication_date>"));
   assert.ok(!xml.includes("lastmod"), "geen verzonnen lastmod (#712)");
   assert.ok(xml.includes("<news:language>nl</news:language>"));
   assert.equal((xml.match(/<url>/g) || []).length, 1, "ruw, politiek en zonder tijd ontbreken");
   const veel = Array.from({ length: 1200 }, (_, i) => ({ kop: `Bericht ${i}`, t, bronnen: [{ site: "x", href: `https://x.nl/${i}` }] }));
-  assert.equal((nieuwsSitemap(veel, dag).match(/<url>/g) || []).length, 1000, "max 1000");
+  assert.equal((nieuwsSitemap(veel, dag).match(/<sitemap>/g) || []).length, 2, "index met twee delen");
   assert.equal(nieuwsSitemap([], dag), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"></urlset>\n');
 
   // toekomstige tijden (#1175): grens rond nu en rond de Amsterdamse dagwisseling (gewoon en DST), geïnjecteerde klok

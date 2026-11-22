@@ -1,0 +1,1 @@
+- De regressietest voor het bronnenvenster controleert ook snel heropenen, herhaald Escape en focusherstel (#1406).

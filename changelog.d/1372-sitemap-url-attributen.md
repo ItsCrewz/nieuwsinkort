@@ -1,0 +1,1 @@
+- News-sitemaps lezen nu ook URL-elementen met XML-attributen (#1372).

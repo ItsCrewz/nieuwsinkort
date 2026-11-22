@@ -1,6 +1,6 @@
 // Draai: npm run test  (bundelt met esbuild en draait met node)
 import assert from "node:assert/strict";
-import { neemSlot, geefSlot, meetInterval, runsOver, runPlafonds, voorafTeller } from "../worker/src/runslot";
+import { neemSlot, geefSlot, meetInterval, runsOver, runPlafonds, voorafTeller, uurSleutel } from "../worker/src/runslot";
 import { bewaakteRun, type RunStatus } from "../worker/src/run-status";
 import { MAX_ALARMS_PER_UUR } from "../worker/src/vooraf";
 import { ams } from "../src/tijd";
@@ -31,6 +31,23 @@ await t("interval 60: runsLeft, runBudget en diepRun gelijk aan de oude uurformu
 
 await t("zomertijd: interval 60 blijft per Amsterdams uur gelijk", () => {
   for (let h = 6; h <= 23; h++) assert.equal(runsOver(Date.UTC(2026, 6, 4, h - 2, 17), 60), oud(h));
+});
+
+await t("resterende runs volgen de werkelijke duur van gewone en wisseldagen", () => {
+  for (const [tijd, uren] of [
+    ["2026-03-04T00:00:00+01:00", 24],
+    ["2026-03-29T00:00:00+01:00", 23],
+    ["2026-03-29T01:30:00+01:00", 22],
+    ["2026-03-29T03:00:00+02:00", 21],
+    ["2026-10-25T00:00:00+02:00", 25],
+    ["2026-10-25T02:30:00+02:00", 23],
+    ["2026-10-25T02:30:00+01:00", 22],
+    ["2026-10-25T03:00:00+01:00", 21],
+  ] as const) {
+    assert.equal(runsOver(Date.parse(tijd), 60), uren, tijd);
+  }
+  assert.equal(runsOver(Date.parse("2026-03-29T01:30:00+01:00"), 15), 86);
+  assert.equal(runsOver(Date.parse("2026-10-25T02:30:00+01:00"), 15), 86);
 });
 
 await t("meetInterval: onbekend/0 → 60, 4 → 5, 17 → 15, 3 uur → 60", () => {
@@ -115,14 +132,31 @@ await t("alarmteller: 12 runs in één uur resetten niet; nieuw uur wel; n blijf
   let k: { uur: number; n: number } | undefined;
   let resets = 0;
   for (let i = 0; i < 12; i++) {
-    const nieuw = voorafTeller(k, 10);
+    const nieuw = voorafTeller(k, uurSleutel(Date.UTC(2026, 5, 1, 8, 30) + i * 60e3), Date.UTC(2026, 5, 1, 8, 30) + i * 60e3);
     if (nieuw !== k) resets++;
     k = nieuw;
     if (k.n < MAX_ALARMS_PER_UUR) k.n++; // alarm() verhoogt hooguit tot MAX
   }
   assert.equal(resets, 1);
   assert.ok(k!.n <= MAX_ALARMS_PER_UUR && k!.n === MAX_ALARMS_PER_UUR);
-  assert.deepEqual(voorafTeller(k, 11), { uur: 11, n: 0 });
+  assert.deepEqual(voorafTeller(k, uurSleutel(Date.UTC(2026, 5, 1, 9, 30)), Date.UTC(2026, 5, 1, 9, 30)), { uur: uurSleutel(Date.UTC(2026, 5, 1, 9, 30)), n: 0 });
+});
+
+await t("alarmteller: beide uren van 02:xx op 2026-10-25 krijgen een andere sleutel en resetten", () => {
+  const eerste = Date.UTC(2026, 9, 25, 0, 30), tweede = Date.UTC(2026, 9, 25, 1, 30); // 02:30 CEST en 02:30 CET
+  assert.equal(ams(eerste).h, 2); assert.equal(ams(tweede).h, 2);
+  assert.notEqual(uurSleutel(eerste), uurSleutel(tweede));
+  assert.equal(uurSleutel(eerste), uurSleutel(eerste + 29 * 60e3));
+  const k = { uur: uurSleutel(eerste), n: 5 };
+  assert.equal(voorafTeller(k, uurSleutel(eerste + 60e3), eerste + 60e3), k);
+  assert.deepEqual(voorafTeller(k, uurSleutel(tweede), tweede), { uur: uurSleutel(tweede), n: 0 });
+});
+
+await t("alarmteller: oude teller van het huidige uur behoudt n (limiet blijft), ander uur reset", () => {
+  const w = Date.UTC(2026, 9, 25, 1, 30), z = Date.UTC(2026, 5, 1, 6, 30); // 02:30 CET, 08:30 CEST
+  assert.deepEqual(voorafTeller({ uur: 2, n: 5 }, uurSleutel(w), w), { uur: uurSleutel(w), n: 5 });
+  assert.deepEqual(voorafTeller({ uur: 8, n: 3 }, uurSleutel(z), z), { uur: uurSleutel(z), n: 3 });
+  assert.deepEqual(voorafTeller({ uur: 7, n: 3 }, uurSleutel(z), z), { uur: uurSleutel(z), n: 0 });
 });
 
 console.log(`${n} tests ok`);

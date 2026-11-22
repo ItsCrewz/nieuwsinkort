@@ -1,0 +1,1 @@
+- Verdeel het resterende AI-runbudget volgens de werkelijke lengte van de Amsterdamse dag, ook bij de klokwisseling (#1395).

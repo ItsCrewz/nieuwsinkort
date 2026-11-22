@@ -1,0 +1,1 @@
+- Ongeldige opgeslagen artikel-id's vallen terug op de bronlink, zodat artikel- en sitemaplinks werken (#1408).
