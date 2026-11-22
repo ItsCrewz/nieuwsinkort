@@ -32,6 +32,7 @@ import { Icon } from "./icons";
 import { rustig } from "./beweging";
 import { GroupToggle, Switch } from "./ui";
 import { veiligeUrl } from "./url";
+import { vergrendelScroll } from "./scrollslot";
 
 /** Groepsregel: een onvolledige telling wordt nooit als volledig dagtotaal getoond. */
 function groupLine(g: SourceGroup): string {
@@ -105,15 +106,14 @@ export function SourcesSheet({
     };
     window.addEventListener("keydown", onKey);
     document.addEventListener?.("focusin", onIn);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const ontgrendel = vergrendelScroll();
     closeBtn.current?.focus({ preventScroll: true });
     return () => {
       sluiting.current.klaar = true;
       window.clearTimeout(sluiting.current.timer);
       window.removeEventListener("keydown", onKey);
       document.removeEventListener?.("focusin", onIn);
-      document.body.style.overflow = prev;
+      ontgrendel();
       prevFocus?.focus?.({ preventScroll: true });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

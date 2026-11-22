@@ -8,6 +8,7 @@ import { type ReactNode, memo, useCallback, useEffect, useLayoutEffect, useMemo,
 import { createPortal, flushSync } from "react-dom";
 import type { Video } from "./types";
 import { Icon } from "./icons";
+import { vergrendelScroll } from "./scrollslot";
 import { rustig, scrollGedrag } from "./beweging";
 import { maakSluiter } from "./feedsluiten";
 import { playerFor, viaProxy, youtubeId } from "./videosoort";
@@ -1473,16 +1474,12 @@ export function Feed({
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
-    const html = document.documentElement;
-    const prev = [html.style.overflow, document.body.style.overflow];
-    html.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
+    const ontgrendel = vergrendelScroll();
     const prevFocus = document.activeElement as HTMLElement | null;
     scroller.current?.focus({ preventScroll: true });
     return () => {
       window.removeEventListener("keydown", onKey);
-      html.style.overflow = prev[0];
-      document.body.style.overflow = prev[1];
+      ontgrendel();
       prevFocus?.focus?.({ preventScroll: true });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
