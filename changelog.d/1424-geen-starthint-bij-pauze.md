@@ -1,0 +1,1 @@
+- Test beide volgordes van bewust pauzeren en hervatten bij het starten van een YouTube-video: geen hint tijdens pauze, wel na hervatten bij een uitblijvende start (#1424).
