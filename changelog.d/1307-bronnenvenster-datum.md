@@ -1,0 +1,1 @@
+- Bronnenvenster: toon bijgewerkt, laatst gelukt en laatste bericht alleen als de tijd werkelijk kan worden weergegeven; aantallen en overige status blijven staan (#1307).

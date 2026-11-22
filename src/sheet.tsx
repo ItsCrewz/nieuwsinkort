@@ -13,19 +13,25 @@ const hhmm = (iso?: string) => {
   return day(d) === day(new Date()) ? d.toLocaleTimeString("nl-NL", opt) : d.toLocaleDateString("nl-NL", { timeZone: "Europe/Amsterdam", weekday: "short", day: "numeric", month: "short", ...(Date.now() - +d > 300 * 864e5 ? { weekday: undefined, year: "numeric" } : {}) });
 };
 
+/** Label met tijd, alleen als de tijd werkelijk weergegeven kan worden. */
+const met = (label: string, iso?: string) => {
+  const t = hhmm(iso);
+  return t ? `${label} ${t}` : "";
+};
+
 /** Tekst per bron. "Vandaag niets" alleen als de feed zelf vandaag echt niets publiceerde. */
-function sourceLine(s: SourceRow): string {
+export function sourceLine(s: SourceRow): string {
   const inOverzicht = s.count ? `${s.count} in overzicht` : "";
   const st = s.stat;
   if (!st) return inOverzicht || "Niet in overzicht"; // oude data.json zonder bronstats: niets beweren over 'vandaag'
   // Ophalen mislukt is iets anders dan "vandaag niets": zeg het eerlijk, met wanneer het voor het laatst wél lukte.
-  if (telling(st.vandaag) == null) return ["Ophalen mislukt", st.ok ? `laatst gelukt ${hhmm(st.ok)}` : st.laatste ? `laatste bericht ${hhmm(st.laatste)}` : "", inOverzicht].filter(Boolean).join(" · ");
-  const bij = st.ok ? `bijgewerkt ${hhmm(st.ok)}` : ""; // laatste gelukte ophaalronde (elk kwartier)
+  if (telling(st.vandaag) == null) return ["Ophalen mislukt", met("laatst gelukt", st.ok) || met("laatste bericht", st.laatste), inOverzicht].filter(Boolean).join(" · ");
+  const bij = met("bijgewerkt", st.ok); // laatste gelukte ophaalronde (elk kwartier)
   const gestoord = !!(st.fout || st.storing);
   const deels = gestoord ? "deels mislukt" : "";
   // Nul gevonden bij een deels mislukte ophaling: stand onvolledig, niet beweren dat de bron niets publiceerde.
-  if (st.vandaag === 0 && gestoord) return [`Stand onvolledig${st.laatste ? ` · laatste ${hhmm(st.laatste)}` : ""}`, bij, deels].filter(Boolean).join(" · ");
-  if (st.vandaag === 0) return [`Vandaag niets${st.laatste ? ` · laatste ${hhmm(st.laatste)}` : ""}`, bij, deels].filter(Boolean).join(" · ");
+  if (st.vandaag === 0 && gestoord) return [["Stand onvolledig", met("laatste", st.laatste)].filter(Boolean).join(" · "), bij, deels].filter(Boolean).join(" · ");
+  if (st.vandaag === 0) return [["Vandaag niets", met("laatste", st.laatste)].filter(Boolean).join(" · "), bij, deels].filter(Boolean).join(" · ");
   return [`${st.vandaag} vandaag`, inOverzicht, bij, deels].filter(Boolean).join(" · ");
 }
 import { Icon } from "./icons";
