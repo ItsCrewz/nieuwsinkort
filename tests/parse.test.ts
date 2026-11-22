@@ -19,6 +19,9 @@ assert.equal(atom('<link href="https://ander.nl/b" rel="alternate"/>')[0].l, "ht
 assert.equal(atom('<link rel="hub" href="https://hub.nl/"/><link href="https://ander.nl/c"/>')[0].l, "https://ander.nl/c");
 assert.equal(atom('<link rel="self" href="https://voorbeeld.nl/feed"/><link rel="hub" href="https://hub.nl/"/><link rel="enclosure" href="https://x.nl/a.mp3"/>')[0].l, "");
 assert.equal(atom('<link rel="self" href="https://voorbeeld.nl/feed"/><link rel="enclosure" href="https://x.nl/a.mp3"/>', "<guid>https://ander.nl/g</guid>")[0].l, "https://ander.nl/g");
+assert.equal(atom('<link rel="alternate" href="javascript:alert(1)"/><link rel="alternate" type="text/html" href="https://ander.nl/geldig"/>')[0].l, "https://ander.nl/geldig");
+assert.equal(atom('<link rel="self" href="https://voorbeeld.nl/feed">https://voorbeeld.nl/feed</link>')[0].l, "");
+assert.equal(atom('<link rel="self" href="https://voorbeeld.nl/feed">https://voorbeeld.nl/feed</link>', "<guid>https://ander.nl/g2</guid>")[0].l, "https://ander.nl/g2");
 assert.deepEqual(parseFeed('<feed><entry><title>A</title><link rel="self" href="https://voorbeeld.nl/feed"/></entry></feed>', "https://voorbeeld.nl/feed", "/nieuws"), []);
 assert.deepEqual(parseFeed('<searchRetrieveResponse><sru:record><dcterms:title>Besluit</dcterms:title><x resourceIdentifier="/besluit"/><dcterms:type>Wet</dcterms:type><dcterms:abstract>Tekst</dcterms:abstract></sru:record></searchRetrieveResponse>', "https://voorbeeld.nl"), [{ t: "Besluit", l: "https://voorbeeld.nl/besluit", d: null, s: "Wet: Tekst" }]);
 assert.deepEqual(parseFeed('[{"title":"Bericht","url":"/a","date":"2026-01-02"}]', "https://voorbeeld.nl/feed"), [{ t: "Bericht", l: "https://voorbeeld.nl/a", d: Date.parse("2026-01-02T11:00:00Z"), s: "" }]);

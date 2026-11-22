@@ -63,7 +63,7 @@ function padOk(l: string, pad: string): boolean {
 
 // Atom: eerste HTML-artikellink (rel ontbreekt of bevat alternate), ongeacht attribuutvolgorde; self/hub/enclosure/related/via nooit.
 // `ps`: Atom-prefixen die binnen de entry gelden (<atom:link>).
-function atomLink(b: string, ps: string[] = []): string {
+function atomLink(b: string, base: string, ps: string[] = []): string {
   for (const m of b.matchAll(new RegExp(`<${ps.length ? `(?:${ps.join("|")}:)?` : ""}link\\b[^>]*>`, "gi"))) {
     // attributen één voor één lezen: een geciteerde waarde wordt in één keer verwerkt en telt nooit als naam
     const at: Record<string, string> = {};
@@ -75,7 +75,21 @@ function atomLink(b: string, ps: string[] = []): string {
     if (!h) continue;
     if (at.rel !== undefined && !/(?:^|\s)alternate(?:\s|$)/i.test(at.rel)) continue;
     if (at.type && !/html/i.test(at.type)) continue;
-    return decode(h);
+    const u = decode(h);
+    if (absUrl(u, base)) return u; // ongeldige kandidaat (bijv. javascript:) slaat over, een geldige volgende wint
+  }
+  return "";
+}
+
+// RSS-terugval: tekst van <link>, maar niet van een link met rel zonder alternate (self/hub/enclosure)
+function linkTekst(b: string, names: string[]): string {
+  for (const n of names) {
+    const m = new RegExp(`<${n}(\\s[^>]*)?>`, "i").exec(b);
+    if (!m) continue;
+    const rel = /\brel\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(m[1] || "");
+    if (rel && !/(?:^|\s)alternate(?:\s|$)/i.test(rel[1] ?? rel[2])) continue;
+    const t = tag(b, [n]);
+    if (t) return t;
   }
   return "";
 }
@@ -142,8 +156,8 @@ export function parseFeed(body: string, url: string, pad?: string): Entry[] {
     const pn = (n: string[]) => (ps.length ? n.flatMap((x) => [...ps.map((p) => `${p}:${x}`), x]) : n); // prefixed eerst, daarna ongeprefixt
     const t = stripHtml(tag(b, pn(["title"])));
     let l = "";
-    l = atomLink(b, ps);
-    if (!l) l = decode(tag(b, pn(["link"])));
+    l = atomLink(b, url, ps);
+    if (!l) l = decode(linkTekst(b, pn(["link"])));
     if (!l) { const g = tag(b, ["guid"]); if (/^https?:/.test(g)) l = decode(g); }
     l = absUrl(l, url);
     if (pad && !padOk(l, pad)) continue;
