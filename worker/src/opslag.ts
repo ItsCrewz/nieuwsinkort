@@ -198,7 +198,7 @@ export function kvStateWint(doSt: any, kvSt: any, doAt?: number | null): boolean
   return llmSom(kvSt, kd) > llmSom(doSt, kd);
 }
 
-/** Basis na een onderbroken schrijfronde (`st:bezig`) als de KV-kopie wint: de KV-kopie, maar de tellers van dezelfde neuronendag nooit lager dan in de DO-stand (de KV-kopie kan tot 50 minuten ouder zijn). Per llm-sleutel wint de versie met de meeste calls + tokens op dezelfde dag. Andere dag: KV ongewijzigd (kvStateWint laat dan al de nieuwste dag winnen). */
+/** Basis na een onderbroken schrijfronde (`st:bezig`) als de KV-kopie wint: de KV-kopie, maar de tellers van dezelfde neuronendag nooit lager dan in de DO-stand (de KV-kopie kan tot 50 minuten ouder zijn). Per llm-sleutel op dezelfde dag krijgen calls en tokens elk het maximum van beide versies (venster van de versie met de grootste som). Andere dag: KV ongewijzigd (kvStateWint laat dan al de nieuwste dag winnen). */
 export function herstelBasis(doSt: any, kvSt: any): any {
   if (!doSt || !kvSt) return kvSt ?? doSt;
   const dd = doSt.neuronDag ?? doSt.datum, kd = kvSt.neuronDag ?? kvSt.datum;
@@ -210,7 +210,18 @@ export function herstelBasis(doSt: any, kvSt: any): any {
   }
   const som = (x: any) => (x?.dag === kd ? (x.calls || 0) + (x.tokens || 0) : 0);
   const llm = { ...(kvSt.llm || {}) };
-  for (const [k, v] of Object.entries<any>(doSt.llm || {})) if (!(k in llm) || (v?.dag === kd && som(v) > som(llm[k]))) llm[k] = v;
+  for (const [k, v] of Object.entries<any>(doSt.llm || {})) {
+    const a = llm[k];
+    if (!a) { llm[k] = v; continue; }
+    if (v?.dag !== kd || a.dag !== kd) { if (v?.dag === kd) llm[k] = v; continue; }
+    // calls en tokens afzonderlijk het maximum; venster van de versie met de grootste som (niet samenvoegen: reserveringen zouden dubbel tellen)
+    const n: any = { ...(som(v) > som(a) ? v : a), calls: Math.max(a.calls || 0, v.calls || 0), tokens: Math.max(a.tokens || 0, v.tokens || 0) };
+    if (a.maand !== undefined || v.maand !== undefined) {
+      const mt = a.maand === v.maand ? Math.max(a.maandTokens || 0, v.maandTokens || 0) : undefined;
+      if (mt !== undefined) n.maandTokens = mt;
+    }
+    llm[k] = n;
+  }
   if (Object.keys(llm).length) uit.llm = llm;
   return uit;
 }

@@ -407,6 +407,18 @@ try {
     assert.equal(herstelBasis(doSt, ander), ander);
   });
 
+  await t("herstelBasis: calls en tokens per llm-sleutel apart het maximum, venster van de grootste som (#1393)", async () => {
+    const l = (calls: number, tokens: number, tijd: number) => ({ dag: "d", calls, tokens, venster: [{ tijd, tokens }] });
+    const kvSt: any = { datum: "d", neuronDag: "d", llm: { a: l(2, 100, 1), b: l(1, 102, 2) } };
+    const doSt: any = { datum: "d", neuronDag: "d", llm: { a: l(1, 102, 3), b: l(2, 100, 4) } };
+    const r = herstelBasis(doSt, kvSt);
+    assert.equal(r.llm.a.calls, 2); assert.equal(r.llm.a.tokens, 102);
+    assert.equal(r.llm.b.calls, 2); assert.equal(r.llm.b.tokens, 102);
+    assert.deepEqual(r.llm.a.venster, [{ tijd: 3, tokens: 102 }], "venster van DO (som 103 > 102)");
+    assert.deepEqual(r.llm.b.venster, [{ tijd: 2, tokens: 102 }], "venster van KV (som 103 > 102)");
+    assert.equal(kvSt.llm.a.calls, 2); assert.equal(doSt.llm.a.calls, 1, "invoer niet gewijzigd");
+  });
+
   await t("bewaarLlmDo: st:llm faalt na geslaagde deelwrite, KV ouder dan DO: tellers dalen niet, herstel wist st:bezig en logt (#1393)", async () => {
     const h = harnas();
     h.feed.entries = [e("een", "Kabinet praat over de begroting van volgend jaar", -20)];
