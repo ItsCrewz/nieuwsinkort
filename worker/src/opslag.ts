@@ -155,6 +155,21 @@ function krimp(naam: string, tekst: string): string {
   return tekst;
 }
 
+/** Tellers en markeringen die `st:rest` nooit mag verliezen (budget, verbruik, commit-markering). */
+const REST_ESSENTIEEL = ["datum", "neuronDag", "neurons", "calls", "runs", "stAt", "inTok", "outTok", "geschat", "foutN", "okAt"];
+
+/** Te grote `st:rest`: laat de grootste niet-essentiële velden vallen tot het past; null = ook met alleen de essentiële velden te groot. */
+function krimpRest(tekst: string): string | null {
+  const o = JSON.parse(tekst) as Record<string, unknown>;
+  const rest = Object.entries(o).filter(([k]) => !REST_ESSENTIEEL.includes(k)).map(([k, v]) => [k, bytes(JSON.stringify(v) ?? "")] as const).sort((a, b) => b[1] - a[1]);
+  for (const [k] of rest) {
+    delete o[k];
+    const t = JSON.stringify(o);
+    if (bytes(t) <= DEEL_MAX) return t;
+  }
+  return null;
+}
+
 /** Alleen de gewijzigde delen schrijven. `st:rest` (neuronenteller, llm-stand) eerst en apart, zodat die nooit mee faalt met een groot deel; `st:llm` als laatste, zodat een mislukking halverwege het llm-verbruik niet half bijschrijft (bewaarLlmDo telt het dan één keer bij).
  *  Een te groot deel wordt (bij art/artJ/diep: na inkorten) niet of verkleind geschreven en gelogd; de vorige DO-versie blijft dan staan. Geeft het aantal writes.
  *  Daarna volgt `st:at` (= st.stAt) als commit-markering, alleen als geen deel is overgeslagen; `status.volledig` meldt dat (false = de KV-kopie moet de stand dragen). */
@@ -162,7 +177,15 @@ export async function schrijfState(opslag: Opslag, st: Record<string, any>, vori
   const nieuw = splitState(st), w: [string, string][] = [];
   for (const [k, v] of Object.entries(nieuw)) {
     if (vorige[k] === v) continue;
-    const s = k === "st:rest" || bytes(v) <= DEEL_MAX ? v : krimp(k, v);
+    let s = bytes(v) <= DEEL_MAX ? v : k === "st:rest" ? "" : krimp(k, v);
+    if (k === "st:rest" && !s) {
+      // vóór de eerste write beslissen: niets half schrijven, de vorige DO-versie blijft staan
+      const k2 = krimpRest(v);
+      if (k2 === null) throw new Error(`state-deel st:rest te groot (${bytes(v)} bytes) door essentiële velden, niet geschreven`);
+      console.error(`state-deel st:rest te groot (${bytes(v)} bytes), niet-essentiële velden weggelaten`);
+      status.volledig = false;
+      s = k2;
+    }
     if (k !== "st:rest" && bytes(s) > DEEL_MAX) { console.error(`state-deel ${k} te groot (${bytes(s)} bytes), niet geschreven`); status.volledig = false; continue; }
     if (s !== v) console.error(`state-deel ${k} te groot (${bytes(v)} bytes), ingekort`);
     w.push([k, s]);
