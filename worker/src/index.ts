@@ -13,7 +13,7 @@ import { ams, midnight } from "../../src/tijd";
 import { begrensOg, schrijfRun, uurFout } from "../../src/kv";
 import { bewaakteRun } from "./run-status";
 import { batchesOphalen, foutcode, type Broncode, type Bronfout } from "./bronfouten";
-import { maakTel, voegTellerToe, legeRun, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoudVandaag, leesState, schrijfState, kvStateWint, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
+import { maakTel, voegTellerToe, legeRun, moetSchrijven, moetPubliceren, publiceerInterval, leesKvDag, telKvDag, MEER_MIN_MS, bewaarKvStand, uurInhoudVandaag, leesState, schrijfState, kvStateWint, herstelBasis, onvolledigMelding, leesStateRest, ruimOg, ogVers, ruimIg, DAG_MS, IG_TTL_MS, type Tel, type KvStand, type OgCache, type IgCache } from "./opslag";
 import { DurableObject } from "cloudflare:workers";
 import { parseFeed, type Entry } from "./parse";
 import { buildWeer, BR_URL, OM_URL, KNMI_VERW } from "./weer";
@@ -467,7 +467,8 @@ export class Runner extends DurableObject<Env> {
       // basis als in runBinnen: wint de KV-kopie (halve DO-write), dan die als basis en alle DO-delen opnieuw schrijven
       const kv = g ? await tel.kv.get("state", "json").catch(() => null) : null;
       const kvWint = !!g && kvStateWint(g.st, kv, g.at);
-      const st = !g || kvWint ? (kv ?? (g ? g.st : await tel.kv.get("state", "json"))) : g.st;
+      if (g?.onvolledig && !kvWint) console.error(onvolledigMelding(kv));
+      const st = !g ? await tel.kv.get("state", "json") : kvWint ? (g.onvolledig ? herstelBasis(g.st, kv) : kv) : g.st;
       if (!st) return false;
       const vorige = kvWint ? Object.fromEntries(Object.keys(g!.json).map((k) => [k, ""])) : g?.json || {};
       // het verschil van deze run staat er al in (st:llm lukte, daarna faalde st:at/KV): niet nog een keer bijtellen
@@ -493,7 +494,8 @@ export class Runner extends DurableObject<Env> {
     // state staat primair in DO-opslag; de KV-kopie wordt alleen gelezen en wint bij nieuwere inhoud (terugrollen naar de vorige Worker, of een mislukte DO-write), zie kvStateWint
     const kvState = (await env.NIEUWS.get("state", "json").catch(() => null)) as State | null;
     const kvWint = !geladen || kvStateWint(geladen.st, kvState, geladen.at);
-    const stateRaw: State | null = kvWint ? kvState ?? geladen?.st ?? null : geladen!.st;
+    if (geladen?.onvolledig && !kvWint) console.error(onvolledigMelding(kvState));
+    const stateRaw: State | null = kvWint ? (geladen?.onvolledig ? herstelBasis(geladen.st, kvState) : kvState) ?? geladen?.st ?? null : geladen!.st;
     // KV-state gebruikt: alle delen opnieuw schrijven (lege vorige tekst = verschilt altijd) en DO-delen die KV niet kent wissen
     const vorigeDelen = kvWint ? Object.fromEntries(Object.keys(geladen?.json || {}).map((k) => [k, ""])) : geladen!.json;
     const bronnen: any = await bronnenR.json();
