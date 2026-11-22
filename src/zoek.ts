@@ -26,7 +26,10 @@ const gewoneBreedte = (tekst: string) => tekst.replace(/[Ａ-Ｚａ-ｚ０-９]|
 
 // Onzichtbare scheidingstekens (#1203): soft hyphen, zero-width space/(non-)joiner, word joiner en BOM horen niet bij een woordgrens.
 const ONZICHTBAAR = /[\u00ad\u200b-\u200d\u2060\ufeff]/g;
-const zonderOnzichtbaar = (tekst: string) => tekst.replace(ONZICHTBAAR, "");
+// Het Unicode-minteken (U+2212) direct voor een cijfer is een gewoon minteken (#1409).
+const zonderOnzichtbaar = (tekst: string) => tekst.replace(ONZICHTBAAR, "").replace(/\u2212(?=\p{N})/gu, "-");
+
+// Negatief getal (#1409): een minteken direct voor een cijfer, zonder letter, cijfer, punt of komma ervoor ("-5" wel, "2024-5" en "corona-5" niet).
 
 // Duizendtal (#1215): 1–3 cijfers en groepen van precies 3, gescheiden door punt, NBSP, smalle NBSP of dunne spatie, met optionele decimaalstaart. Versies (1.2.3) en decimalen (1.5) vallen erbuiten; een gewone spatie telt bewust niet.
 const DUIZENDTAL = /(?<!\p{N}|\p{N}[.,])\p{N}{1,3}(?:[.\u00a0\u202f\u2009]\p{N}{3})+(?:,\p{N}+)?(?!\p{N}|[.,]\p{N})/gu;
@@ -34,7 +37,7 @@ const duizendtallen = (tekst: string) => tekst.replace(DUIZENDTAL, (getal) => ge
 
 export function normaliseer(tekst: string): string {
   return duizendtallen(gewoneBreedte(zonderOnzichtbaar(tekst))).normalize("NFD").replace(/(\p{Script=Latin})\p{M}+/gu, "$1").toLowerCase().replace(/ς/g, "σ").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c])
-    .replace(/\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|[^\p{L}\p{M}\p{N}]+/gu, (deel) => /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
+    .replace(/(?<![\p{L}\p{N}.,])-\p{N}+(?:[.,]\p{N}+)?|\p{N}+(?:\.\p{N}+){2,}|\p{N}+\.\p{N}{3}(?!\p{N})|\p{N}+[.,]\p{N}+|(?<![\p{L}\p{N}])c(?:\+\+|#)(?![\p{L}\p{N}+#])|(?:(?!(?<![\p{L}\p{N}.,])-\p{N})[^\p{L}\p{M}\p{N}])+/gu, (deel) => /^-\p{N}/u.test(deel) ? deel.replace(",", ".") : /^\p{N}/u.test(deel) ? /^(?:\p{N}+\.){2}|^\p{N}+\.\p{N}{3}$/u.test(deel) ? deel.replace(/\./g, " ") : deel.replace(",", ".") : deel === "c++" || deel === "c#" ? deel : " ").trim();
 }
 
 // Koppelteken tussen twee letters/cijfers, behalve tussen twee losse tekens ("V-S" blijft geen "VS"): "corona-maatregelen" is dezelfde samenstelling als "coronamaatregelen".
@@ -48,6 +51,7 @@ function afkortingen(tekst: string): string {
 // Koppelteken in de zoekterm: ook tussen losse tekens ("v-s" blijft een reeks van twee delen).
 const TERMKOPPEL = /(?<=[\p{L}\p{N}])[-\u2010\u2011](?=[\p{L}\p{N}])/gu;
 const MARKER = "\u0001";
+const MIN = "\u0002"; // markeert een minteken van een negatief getal in de zoekterm (#1409)
 
 // Korte aaneengeschreven paren rond & (AT&T, H&M, R&D, Q&A, #1209): ook als "ATT" vindbaar. Spaties ("Rock & Roll") en langere delen ("Tom&Jerry") blijven gescheiden.
 const AMPERSAND = /(?<![\p{L}\p{N}])([\p{L}\p{N}]{1,3})&([\p{L}\p{N}]{1,3})(?![\p{L}\p{N}])/gu;
@@ -98,7 +102,7 @@ function zoektekst(item: Item): Zoektekst {
 }
 
 // Exact i.p.v. woordbegin: c++/c# en volledig numerieke termen (2024 vindt geen 20240, 20 geen 2026).
-const speciaal = (term: string) => term === "c++" || term === "c#" || /^\p{N}+(?:\.\p{N}+)?$/u.test(term);
+const speciaal = (term: string) => term === "c++" || term === "c#" || /^-?\p{N}+(?:\.\p{N}+)?$/u.test(term);
 // Schriften zonder gebruikelijke woordspaties (#1221): een "woord" is daar een hele zin, dus de term mag overal in het woord vallen.
 const ZONDER_SPATIES = /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}ー\p{M}]+$/u;
 // heleWoorden (#1362): het woord moet gelijk zijn aan de term i.p.v. ermee beginnen; schriften zonder spaties blijven overal in het woord passen.
@@ -162,8 +166,8 @@ export function begrensZoekterm(tekst: string): string {
   return tekst.slice(0, laatste >= 0xd800 && laatste <= 0xdbff ? MAX_ZOEKTEKENS - 1 : MAX_ZOEKTEKENS);
 }
 
-// Uitsluitterm (#1166): een minteken aan het begin of na witruimte, direct gevolgd door een letter of cijfer. "v-s" en een los "-" tellen niet.
-const UITSLUIT = /(?<![^\s])-(?=[\p{L}\p{N}])([^\s"“”„]+)/gu;
+// Uitsluitterm (#1166): een minteken aan het begin of na witruimte, direct gevolgd door een letter (een cijfer is een negatief getal, #1409). "v-s" en een los "-" tellen niet.
+const UITSLUIT = /(?<![^\s])-(?=\p{L})([^\s"“”„]+)/gu;
 function splitsUitsluiting(query: string): { plus: string; min: string[][] } {
   const min: string[][] = [];
   const plus = query.replace(UITSLUIT, (_, term) => { min.push(...termenVan(term)); return " "; });
@@ -181,8 +185,8 @@ function termenVan(query: string): string[][] {
   });
   // Het stuurteken \u0001 is bewust de markering voor termkoppeltekens (#811).
   // eslint-disable-next-line no-control-regex
-  for (const token of afkortingen(duizendtallen(rest.replace(AMPERSAND, "$1$2"))).normalize("NFC").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
-    const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk).split(" ").filter(Boolean));
+  for (const token of afkortingen(duizendtallen(rest.replace(AMPERSAND, "$1$2"))).normalize("NFC").replace(/(?<![\p{L}\p{N}.,])-(?=\p{N})/gu, "\u0002").replace(TERMKOPPEL, MARKER).split(/[^\p{L}\p{M}\p{N}+#\u0001\u0002.,]+|(?<!\p{N})[.,]|[.,](?!\p{N})/u)) {
+    const delen = token.split(MARKER).flatMap((stuk) => normaliseer(stuk.split(MIN).join("-")).split(" ").filter(Boolean));
     if (token.includes(MARKER) && delen.length > 1) termen.push(delen); else for (const d of delen) termen.push([d]);
   }
   return termen;
@@ -308,7 +312,7 @@ export function markeerDelen(tekst: string, query: string, heleWoorden = false):
     const begin = offset;
     offset += teken.length;
     if (scheiding.has(begin)) { posities[posities.length - 1].eind = offset; continue; }
-    const genormaliseerd = gewoneBreedte(zonderOnzichtbaar(teken)).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]);
+    const genormaliseerd = gewoneBreedte(zonderOnzichtbaar(teken)).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace("\u2212", "-").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]);
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
       vlak += letter;
@@ -319,8 +323,10 @@ export function markeerDelen(tekst: string, query: string, heleWoorden = false):
   for (const woord of woorden) {
     let vanaf = 0, index: number;
     while ((index = vlak.indexOf(woord, vanaf)) !== -1) {
-      const numeriek = /^\p{N}+(?:\.\p{N}+)?$/u.test(woord);
-      const getal = numeriek ? vlak.slice(0, index).match(/[\p{N}.,]*$/u)![0] + vlak.slice(index).match(/^[\p{N}.,]*/u)![0] : "";
+      const numeriek = /^-?\p{N}+(?:\.\p{N}+)?$/u.test(woord);
+      // Een positief getal markeert nooit het getal achter een minteken (#1409).
+      const negatief = numeriek && woord[0] !== "-" && vlak[index - 1] === "-" && !/[\p{L}\p{N}.,]/u.test(vlak[index - 2] ?? "");
+      const getal = !numeriek || negatief ? "" : woord[0] === "-" ? vlak.slice(index).match(/^-[\p{N}.,]*/u)![0] : vlak.slice(0, index).match(/[\p{N}.,]*$/u)![0] + vlak.slice(index).match(/^[\p{N}.,]*/u)![0];
       // heleWoorden (#1362): ook het teken na de treffer mag niet bij het woord horen (zoals `past`).
       const eindOk = !heleWoorden || ZONDER_SPATIES.test(woord) || !/^[\p{L}\p{M}\p{N}+#]/u.test(vlak.slice(index + woord.length));
       if ((index === 0 || ZONDER_SPATIES.test(woord) || !/[\p{L}\p{M}\p{N}]$/u.test(vlak.slice(0, index))) && eindOk && (!numeriek || normaliseer(getal).split(" ").includes(woord) || (/\bios\s+$/u.test(vlak.slice(0, index)) && new RegExp(`^${woord}\\.\\p{N}+$`, "u").test(getal)))) {
