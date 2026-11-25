@@ -1,0 +1,1 @@
+- Filterblad: een oude sluitactie wordt geannuleerd en een opnieuw opgezet blad begint niet half gesloten; de sluitcallback wordt hooguit eenmaal aangeroepen (#1440).
