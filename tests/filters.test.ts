@@ -121,6 +121,34 @@ t("vijf minuten vooruit blijft nieuwste en valt binnen Laatste uur en Vandaag", 
   });
 });
 
+t("ver in de toekomst gedateerde berichten tellen niet als recent en staan niet bovenaan", () => {
+  const nu = "2026-10-30T10:00:00+01:00";
+  metNu(nu, () => {
+    const n = Date.now();
+    const met = (kop: string, tijd: string, t?: number): Item => ({ ...bericht(kop, tijd), t });
+    const items = [
+      met("geldig", "09:40", n - 20 * 60e3),
+      met("marge", "10:05", n + 5 * 60e3),
+      met("ver met tijd", "08:30", n + 3 * 24 * 3600e3),
+      met("ver zonder tijd", "", n + 3 * 24 * 3600e3),
+      met("ontbreekt", "09:30"),
+    ];
+    const kopt = (tijd: Filters["tijd"], sort: Filters["sort"] = "nieuw", vorig = 0) =>
+      filterNieuws(items, { ...STANDAARD, tijd, sort }, vorig, nu, true);
+    assert.deepEqual(kopt("alles").items.map((it) => it.kop), ["marge", "geldig", "ontbreekt", "ver met tijd", "ver zonder tijd"]);
+    assert.deepEqual(kopt("alles", "oud").items.map((it) => it.kop), ["ver met tijd", "ontbreekt", "geldig", "marge", "ver zonder tijd"]);
+    const uur = kopt("1u");
+    assert.deepEqual(uur.items.map((it) => it.kop), ["marge", "geldig", "ontbreekt", "ver zonder tijd"]);
+    assert.equal(uur.per["1u"], 4);
+    assert.equal(kopt("1u", "nieuw", Date.now() - 3600e3).per.sinds, 4);
+    // Automatische keuze: toekomstige berichten maken van "Sinds je laatste bezoek" geen vals recent aanbod.
+    const veel = [...Array(5)].map((_, i) => met(`ver${i}`, "08:30", n + 3 * 24 * 3600e3)).concat([...Array(2)].map((_, i) => met(`oud${i}`, "08:00")));
+    const auto = filterNieuws(veel, { ...STANDAARD, tijd: "auto" }, n - 3600e3, nu, true);
+    assert.equal(auto.per.sinds, 0);
+    assert.notEqual(auto.tijd, "sinds");
+  });
+});
+
 t("gegenereerd bepaalt gisteren; relatieve filters blijven tegen nu rekenen", () => {
   metNu("2026-10-30T07:30:00+01:00", () => {
     const gen = "2026-10-29T23:00:00+01:00";
