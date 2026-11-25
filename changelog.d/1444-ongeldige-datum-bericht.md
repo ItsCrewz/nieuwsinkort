@@ -1,0 +1,1 @@
+- Artikelpagina: tests bewaken dat een ontbrekende, ongeldige of niet-tekst datum in de dagdata een tijdelijke 503 zonder cache geeft in plaats van een serverfout of redirect (#1444).
