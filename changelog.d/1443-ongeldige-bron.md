@@ -1,0 +1,1 @@
+- Tests: een ongeldig bronrecord (null) in een bericht laat de datarespons en andere berichten intact (#1443).
