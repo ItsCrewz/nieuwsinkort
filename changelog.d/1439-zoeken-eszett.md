@@ -1,0 +1,1 @@
+- Zoeken: de markering in resultaten herkent nu ook ß/ẞ als ss (en andersom), zodat "strasse" "Straße" markeert (#1439).

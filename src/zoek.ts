@@ -312,7 +312,7 @@ export function markeerDelen(tekst: string, query: string, heleWoorden = false):
     const begin = offset;
     offset += teken.length;
     if (scheiding.has(begin)) { posities[posities.length - 1].eind = offset; continue; }
-    const genormaliseerd = gewoneBreedte(zonderOnzichtbaar(teken)).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace("\u2212", "-").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]);
+    const genormaliseerd = gewoneBreedte(zonderOnzichtbaar(teken)).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ").replace(",", ".").replace("\u2212", "-").replace(/[ﬀ-ﬆ]/g, (c) => LIGATUUR[c]).replace(/[øłæœđß]/g, (c) => LETTERVARIANT[c]);
     if (!genormaliseerd && posities.length) posities[posities.length - 1].eind = offset;
     for (const letter of genormaliseerd) {
       vlak += letter;
