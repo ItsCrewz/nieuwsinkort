@@ -1,0 +1,1 @@
+- Terugvegen: een lopende veeg wordt afgebroken en het artikel veert terug bij draaien of een gewijzigde vensterbreedte, in plaats van onterecht te sluiten (#1460).
