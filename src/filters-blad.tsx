@@ -56,6 +56,7 @@ export function FilterBlad({
     if (afgehandeld.current) return;
     afgehandeld.current = true;
     if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
     onCloseRef.current();
   }, []);
   const close = useCallback(() => {
@@ -66,7 +67,10 @@ export function FilterBlad({
     timer.current = window.setTimeout(rondAf, 360);
   }, [rondAf]);
   useEffect(() => {
+    // Opnieuw opgezet effect (bijv. StrictMode) midden in een sluitanimatie: begin schoon, anders blijft het blad half gesloten staan.
     afgehandeld.current = false;
+    sluitGestart.current = false;
+    setClosing(false);
     const prev = document.activeElement as HTMLElement | null;
     // Tab blijft in het blad; uitgeschakelde knoppen (bijv. Standaard) tellen niet mee.
     const bedien = () => Array.from(panel.current?.querySelectorAll<HTMLElement>("button:not([disabled]), [tabindex]:not([tabindex='-1'])") ?? []);
@@ -100,6 +104,7 @@ export function FilterBlad({
       window.removeEventListener("keydown", onKey);
       document.removeEventListener?.("focusin", onIn);
       if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = null;
       afgehandeld.current = true;
       prev?.focus?.({ preventScroll: true });
     };

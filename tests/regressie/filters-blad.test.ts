@@ -195,6 +195,29 @@ verlatenTimer.fn();
 assert.equal(gesloten, 2);
 opruimen();
 
+// Effect opnieuw op dezelfde instantie midden in een sluitanimatie: het blad sluit daarna nog, precies eenmaal.
+refs = [];
+closing = false;
+minderBeweging = false;
+root = maak();
+opruimen = effect!();
+nodes(root, "button").find((b) => b.props.className === "scrim").props.onClick();
+const halfTimer = timer!;
+assert.equal(closing, true);
+opruimen();
+assert.equal(halfTimer.gewist, true);
+const voor = gesloten;
+root = maak();
+opruimen = effect!();
+assert.equal(closing, false);
+nodes(root, "button").find((b) => b.props.className === "scrim").props.onClick();
+assert.equal(closing, true);
+const nieuweTimer = timer!;
+nieuweTimer.fn();
+nieuweTimer.fn();
+assert.equal(gesloten, voor + 1);
+opruimen();
+
 // Minder beweging sluit direct en herstelt bij ontkoppelen de focus.
 refs = [];
 closing = false;
@@ -202,7 +225,7 @@ minderBeweging = true;
 root = maak();
 opruimen = effect!();
 nodes(root, "button").find((b) => b.props.className === "scrim").props.onClick();
-assert.equal(gesloten, 3);
+assert.equal(gesloten, 4);
 opruimen();
 assert.deepEqual(focus.slice(-2), ["sluiten", "vorig"]);
 
