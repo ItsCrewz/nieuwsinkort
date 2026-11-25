@@ -24,6 +24,21 @@ t("schoon: NU-miniatuur met toegangsparameters blijft op het oorspronkelijke adr
   assert.deepEqual(r.items[0].beelden, [`${b}?token=a&sig=z`]);
 });
 
+t("schoon: ongeldig item (null, string, getal) breekt de opschoning van geldige items niet (#1441)", () => {
+  const b = "https://voorbeeld.nl/foto.jpg";
+  const v = (id: string) => ({ id, titel: "Film " + id, url: "https://example.nl/" + id });
+  const r: any = schoon({
+    items: [null, { cat: "nl", kop: "A", bronnen: [{ site: "X", href: "javascript:alert(1)" }, { site: "NU.nl", href: "https://nu.nl/1" }], beeld: b, beelden: [b, b] }, "x", 5],
+    dumpert: [null, v("d1")], filmpjes: [v("f1"), null, 7],
+  });
+  assert.equal(r.items.length, 1);
+  assert.equal(r.items[0].kop, "A");
+  assert.deepEqual(r.items[0].bronnen.map((x: any) => x.site), ["NU.nl"]);
+  assert.deepEqual(r.items[0].beelden, [b]);
+  assert.equal(r.dumpert.length, 1);
+  assert.equal(r.filmpjes.length, 1);
+});
+
 t("merge + schoon: uur-filmpjes en statische filmpjes ontdubbeld, foto's per bericht uniek", () => {
   const now = new Date(Date.now()).toISOString();
   const S = { gegenereerd: new Date(Date.now() - 3600e3).toISOString(), items: [{ cat: "nl", kop: "A", bronnen: [{ site: "NOS", href: "https://nos.nl/1" }], beeld: "https://cdn.nos.nl/a-1200x675.jpg", beelden: ["https://cdn.nos.nl/a-600x338.jpg"] }],
