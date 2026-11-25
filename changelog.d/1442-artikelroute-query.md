@@ -1,0 +1,1 @@
+- Artikelroute: de canonieke slug-redirect behoudt de volledige query (bijv. `?nietmeten=1`); de canonical in de metadata blijft zonder query en een test legt dat vast (#1442).
