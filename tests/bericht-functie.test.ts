@@ -52,7 +52,7 @@ try {
   // 503: KV-fout, andere dag, ongeldige data
   for (const [naam, o] of [
     ["kv-fout", { kvFout: true }], ["andere dag", { gegenereerd: "2026-11-03T09:00:00Z" }], ["geen datum", { ruwData: { items: [item] } }],
-    ["ongeldige datum", { ruwData: { gegenereerd: "nooit", items: [item] } }], ["items geen lijst", { ruwData: { gegenereerd: `${dag}T09:00:00Z`, items: "x" } }], ["data null", { ruwData: null }],
+    ["ongeldige datum", { ruwData: { gegenereerd: "nooit", items: [item] } }], ["datum geen tekst", { ruwData: { gegenereerd: 123, items: [item] } }], ["lege datum", { ruwData: { gegenereerd: "", items: [item] } }], ["items geen lijst", { ruwData: { gegenereerd: `${dag}T09:00:00Z`, items: "x" } }], ["data null", { ruwData: null }],
   ] as [string, Opties][]) {
     opslag.clear(); r = await bezoek(maakEnv(o), pad); assert.equal(r.status, 503, naam); assert.equal(r.headers.get("cache-control"), "no-store", naam);
   }
