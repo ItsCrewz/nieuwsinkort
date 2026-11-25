@@ -1,0 +1,1 @@
+- Bronfilter: een bericht zonder eigen id houdt dezelfde artikel- en deellink wanneer lezers bronnen uit- en aanzetten (#1445).
