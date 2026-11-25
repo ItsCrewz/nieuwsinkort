@@ -1,0 +1,1 @@
+- Nieuwsfilters: berichten met een ver in de toekomst gedateerde publicatietijd tellen niet meer mee voor Laatste uur of Sinds laatste bezoek en staan niet meer bovenaan; ze vallen terug op de HH:MM-tijd (#1455).

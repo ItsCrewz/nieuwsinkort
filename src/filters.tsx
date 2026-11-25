@@ -212,7 +212,9 @@ export function filterNieuws(items: Item[], f: Filters, vorig: number, gen: stri
   if (!Number.isFinite(vorig) || vorig < 0 || vorig > Date.now()) vorig = 0;
   const g = genVan(gen);
   const basis = zonderTijd(items, f, alles);
-  const ts = basis.map((it) => typeof it.t === "number" && it.t > 0 && Number.isFinite(new Date(it.t).getTime()) ? it.t : tijdstip(it.tijd, g));
+  const nu = Date.now();
+  // Onwaarschijnlijk toekomstige publicatietijden (buiten de marge) vallen terug op de HH:MM-tijd, zoals bij video's.
+  const ts = basis.map((it) => (typeof it.t === "number" && it.t > 0 ? publicatieTijd(it.t, nu) : null) ?? tijdstip(it.tijd, g));
   const tel = (t: Exclude<Tijd, "auto">) => {
     if (t === "alles") return basis.length;
     if (t === "sinds" && !vorig) return basis.length;
