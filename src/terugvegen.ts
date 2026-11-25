@@ -82,7 +82,7 @@ export function useTerugvegen(ref: { current: HTMLElement | null }, onBack: (opt
 }
 
 export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: { current: (opties?: { geveegd?: boolean }) => void }) {
-    let x0 = 0, y0 = 0, t0 = 0, dx = 0, punten: Punt[] = [], stand: "uit" | "wacht" | "veeg" | "sluit" = "uit";
+    let x0 = 0, y0 = 0, t0 = 0, dx = 0, breedte0 = 0, punten: Punt[] = [], stand: "uit" | "wacht" | "veeg" | "sluit" = "uit";
     let timer: ReturnType<typeof setTimeout> | undefined, overflowVoor: string | null = null;
     const el = () => ref.current;
     const zet = (x: number, anim: boolean, veer = false) => {
@@ -102,6 +102,13 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
     const plan = (fn: () => void, ms: number) => { wis(); timer = setTimeout(() => { timer = undefined; fn(); }, ms); };
     // Onderbroken veeg: artikel blijft open en veert terug (direct bij reduced motion).
     const veer = () => { if (rustig()) klaar(); else { zet(0, true, true); plan(klaar, 220); } };
+    // Maatwijziging (draaien, andere viewport) tijdens een gebaar: afbreken, het artikel blijft open en veert terug.
+    const maat = () => {
+      if ((stand !== "wacht" && stand !== "veeg") || window.innerWidth === breedte0) return;
+      const was = stand;
+      stand = "uit";
+      if (was === "veeg") veer();
+    };
     const start = (ev: TouchEvent) => {
       if (stand === "sluit") return; // bevestigde veeg: de sluiting loopt af, een nieuwe aanraking breekt die niet af
       if (stand === "veeg") klaar(); // tweede vinger tijdens een veeg
@@ -111,6 +118,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       if (ev.touches.length !== 1 || !t || !magStarten(t.clientX) || selectie()) return;
       const artikel = el();
       if (!magStartenOp(artikel, typeof Element !== "undefined" && ev.target instanceof Element ? ev.target : null)) return;
+      breedte0 = window.innerWidth;
       x0 = t.clientX; y0 = t.clientY; t0 = ev.timeStamp; dx = 0; punten = [{ dx: 0, t: t0 }]; stand = "wacht";
     };
     const beweeg = (ev: TouchEvent) => {
@@ -137,6 +145,7 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
       if (was === "sluit") return;
       stand = "uit";
       if (was !== "veeg") return;
+      if (window.innerWidth !== breedte0) { veer(); return; } // vangnet: breedte veranderd zonder resize-event
       const breed = veegBreedte(el(), window.innerWidth);
       if (ev.type !== "touchcancel" && !selectie() && sluit(dx, breed, ev.timeStamp - t0, recenteSnelheid(punten, ev.timeStamp))) {
         if (rustig()) { klaar(); terug.current({ geveegd: true }); return; }
@@ -149,7 +158,11 @@ export function luisterTerugvegen(ref: { current: HTMLElement | null }, terug: {
     document.addEventListener("touchmove", beweeg, { passive: false });
     document.addEventListener("touchend", eind, { passive: true });
     document.addEventListener("touchcancel", eind, { passive: true });
+    window.addEventListener?.("resize", maat);
+    window.addEventListener?.("orientationchange", maat);
     return () => {
+      window.removeEventListener?.("resize", maat);
+      window.removeEventListener?.("orientationchange", maat);
       document.removeEventListener("touchstart", start);
       document.removeEventListener("touchmove", beweeg);
       document.removeEventListener("touchend", eind);
