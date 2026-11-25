@@ -36,4 +36,11 @@ try {
     assert.equal(r.headers.get("cache-control"), "no-store");
     assert.equal(r.headers.get("x-robots-tag"), "noindex");
   }
+  // Met sjabloon: een correcte link geeft direct 200 (geen redirect) en de canonical bevat nooit de bezoekersquery (#1442).
+  const metSjabloon = { ...env, ASSETS: { fetch: async () => new Response('<html><head><title>x</title><link rel="canonical" href="https://nieuwsinkort.nl/" /></head><body></body></html>', { headers: { "Content-Type": "text/html" } }) } };
+  const r = await onRequestGet({ request: new Request(`https://nieuwsinkort.nl${canoniek}${query}`), env: metSjabloon, waitUntil: () => {} });
+  assert.equal(r.status, 200);
+  const html = await r.text();
+  assert.ok(html.includes(`<link rel="canonical" href="https://nieuwsinkort.nl${canoniek}" />`));
+  assert.ok(!/canonical"[^>]*nietmeten/.test(html) && !html.includes(`og:url" content="https://nieuwsinkort.nl${canoniek}?`));
 } finally { Date.now = echteNu; }
