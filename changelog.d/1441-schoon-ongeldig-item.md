@@ -1,0 +1,1 @@
+- Data opschonen: een ongeldig item (null, string, getal) wordt overgeslagen en breekt de opschoning van geldige berichten en video's niet meer (#1441).

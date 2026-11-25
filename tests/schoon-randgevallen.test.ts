@@ -76,8 +76,8 @@ t("opschonen en ontdubbelen muteren de invoer niet", () => {
   assert.deepEqual((resultaat as any).ontdubbeld, { filmpjes: 2, dumpert: 1 });
 });
 
-t("ongeldige lijstleden en niet-string hrefs geven de huidige fout door", () => {
-  assert.throws(() => schoon({ items: [null] }), TypeError);
+t("ongeldige lijstleden worden overgeslagen (#1441); niet-string hrefs geven nog de huidige fout door", () => {
+  assert.deepEqual((schoon({ items: [null, 5, { kop: "A" }] }) as any).items, [{ kop: "A" }]);
   assert.throws(() => schoon({ items: [{ bronnen: [{ href: 42 }] }] }), TypeError);
 });
 
